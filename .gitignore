@@ -1,0 +1,5 @@
+*.pyc
+vagrant_ansible_inventory_default
+.vagrant
+/envdir/*
+settings.py
