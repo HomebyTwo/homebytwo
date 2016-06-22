@@ -1,7 +1,6 @@
 from django.contrib.gis import admin
-
-# Register your models here.
+from leaflet.admin import LeafletGeoAdmin
 
 from .models import Route
 
-admin.site.register(Route, admin.OSMGeoAdmin)
+admin.site.register(Route, LeafletGeoAdmin)
