@@ -6,9 +6,10 @@ from django.contrib.gis.db import models
 class Route(models.Model):
     name = models.CharField(max_length=50)
     swissmobility_id = models.BigIntegerField(unique=True)
-    totalup = models.FloatField('Total elevation difference up', default=0)
-    totaldown = models.FloatField('Total elevation difference down', default=0)
+    totalup = models.FloatField('Total elevation difference up in m', default=0)
+    totaldown = models.FloatField('Total elevation difference down in mq', default=0)
     length = models.FloatField('Total length of the track in m', default=0)
+    description = models.TextField('Text description of the Route')
 
     # GeoDjango-specific field type: LineString
     geom = models.LineStringField('line geometry', srid=21781)

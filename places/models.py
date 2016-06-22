@@ -9,3 +9,4 @@ class Place(models.Model):
     altitude = models.FloatField()
     name = models.CharField(max_length=250)
     geom = models.MultiPointField(srid=21781)
+    description = models.TextField('Text description of the Place')
