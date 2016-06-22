@@ -1,6 +1,7 @@
 import os
 from django.contrib.gis.utils import LayerMapping
 from .models import Place
+from django.contrib import settings
 
 swissplaces_mapping = {
     'place_type' : 'OBJEKTART',
@@ -10,7 +11,7 @@ swissplaces_mapping = {
 }
 
 swissplaces_shp = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), 'data', 'shp', 'swissNAMES3D_PKT.shp'),
+    os.path.join(settings.BASE_DIR, 'media', 'shapefiles', 'swissNAMES3D_PKT.shp'),
 )
 
 def run(verbose=True):
