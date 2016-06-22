@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static leaflet_tags %}
+{% load static leaflet_tags geojson_tags %}
 
 {% block title %}Home by Two - Available Routes{% endblock %}
 
@@ -10,13 +10,17 @@
 
 {% block content %}
     <h1>{{ route.name}}</h1>
-    {% leaflet_map "main" callback="main_map_init" %}
+    <h2>Route</h2>
+    <h2>Map<h2>
+    {% leaflet_map "main" callback="detail_map_init" %}
 {% endblock content %}
 
 {% block extrajs %}
     <script type="text/javascript">
-        function main_map_init (map, options) {
-            // Use Leaflet API here
+        function detail_map_init (map, options) {
+        	var geom = L.geoJson({{ route.geom|geojsonfeature|safe }});
+            geom.addTo(map);
+            map.fitBounds(geom.getBounds());
         }
     </script>
 {% endblock extrajs %}
