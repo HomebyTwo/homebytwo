@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static leaflet_tags %}
+
+{% block title %}Home by Two - Available Routes{% endblock %}
+
+{% block extralinks %}
+    {% leaflet_js %}
+    {% leaflet_css %}
+{% endblock extralinks %}
+
+{% block content %}
+    <h1>{{ route.name}}</h1>
+    {% leaflet_map "main" callback="main_map_init" %}
+{% endblock content %}
+
+{% block extrajs %}
+    <script type="text/javascript">
+        function main_map_init (map, options) {
+            // Use Leaflet API here
+        }
+    </script>
+{% endblock extrajs %}
