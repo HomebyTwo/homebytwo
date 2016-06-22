@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
+from django.contrib.staticfiles import finders
 
 # Create your models here.
 class Route(models.Model):
@@ -22,3 +23,10 @@ class Route(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    # Returns poster picture for the list view
+    def get_poster_picture(self):
+        if finders.find('routes/images/' + str(self.swissmobility_id) + '.jpg'):
+            return 'routes/images/' + str(self.swissmobility_id) + '.jpg'
+        else:
+            return 'routes/images/default.jpg'

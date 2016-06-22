@@ -3,13 +3,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href={% static "styles/base.css" %}/>
     <title>{% block title %}Home by Two{% endblock %}</title>
+    {% block extralinks %}{% endblock %}
 </head>
 
 <body>
     <div id="content">
         {% block content %}{% endblock %}
     </div>
+    {% block extrajs %}{% endblock %}
 </body>
 </html>
