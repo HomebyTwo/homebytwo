@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n humanize static%}
+
+{% block title %}Home by Two - Available Routes{% endblock %}
+
+{% block content %}
+    {% if routes %}
+        <ul>
+        {% for route in routes %}
+            <li>
+                <a href="/routes/{{ route.id }}/">
+                    <img src="" height=""/>
+                    <h2>{{ route.name }}</h2>
+                    <p>{{ route.length|floatformat:3}}</p>
+                </a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No route available.</p>
+    {% endif %}
+{% endblock content %}
