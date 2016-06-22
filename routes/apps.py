@@ -3,5 +3,5 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 
 
-class TrackConfig(AppConfig):
-    name = 'tracks'
+class RouteConfig(AppConfig):
+    name = 'routes'
