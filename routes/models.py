@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
+from django.contrib.gis.db.models.functions import Length
 from django.contrib.staticfiles import finders
 
 # Create your models here.
@@ -30,3 +31,6 @@ class Route(models.Model):
             return 'routes/images/' + str(self.swissmobility_id) + '.jpg'
         else:
             return 'routes/images/default.jpg'
+
+    def get_distance(self):
+        return Length(self.geom)

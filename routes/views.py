@@ -1,13 +1,12 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.contrib.gis.measure import D, Distance
-from django.contrib.gis.db.models.functions import Length
 
 from .models import Route
 
 # Create your views here.
 def index(request):
-    routes = Route.objects.annotate(distance=Length('geom')).order_by('-created')
+    routes = Route.objects.order_by('-created')
     context = {
         'routes': routes,
     }
