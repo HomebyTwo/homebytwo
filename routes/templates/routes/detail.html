@@ -10,17 +10,24 @@
 
 {% block content %}
     <h1>{{ route.name}}</h1>
-    <h2>Route</h2>
-    <h2>Map<h2>
-    {% leaflet_map "main" callback="detail_map_init" %}
+
+    {% include 'routes/course.html' %}
+
+    {% if route.geom %}
+        <h2>Map<h2>
+        {% leaflet_map "main" callback="detail_map_init" %}
+    {% endif %}
+
 {% endblock content %}
 
-{% block extrajs %}
-    <script type="text/javascript">
-        function detail_map_init (map, options) {
-        	var geom = L.geoJson({{ route.geom|geojsonfeature|safe }});
-            geom.addTo(map);
-            map.fitBounds(geom.getBounds());
-        }
-    </script>
-{% endblock extrajs %}
+{% if route.geom %}
+    {% block extrajs %}
+        <script type="text/javascript">
+            function detail_map_init (map, options) {
+                var geom = L.geoJson({{ route.geom|geojsonfeature|safe }});
+                geom.addTo(map);
+                map.fitBounds(geom.getBounds());
+            }
+        </script>
+    {% endblock extrajs %}
+{% endif %}
