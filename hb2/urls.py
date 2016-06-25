@@ -18,7 +18,7 @@ from django.contrib import admin
 from routes.models import Route
 
 urlpatterns = [
-    url(r'^places/', include('places.urls')),
     url(r'^routes/', include('routes.urls')),
+    url(r'^importers/', include('importers.urls')),
     url(r'^admin/', admin.site.urls),
 ]

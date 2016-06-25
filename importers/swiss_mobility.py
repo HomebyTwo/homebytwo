@@ -55,14 +55,14 @@ def write_json_file(file_name, json_data, json_folder='data/json'):
     print "Writing to file: " + json_folder + '/' + file_name
 
     content = json.dumps(json_data, indent=4)
-    target = open(os.path.join('routes', json_folder, file_name), 'w')
+    target = open(os.path.join(os.path.dirname(__file__), json_folder, file_name), 'w')
     target.write(content)
     target.close()
 
 def read_json_file(file_name, json_folder='data/json'):
     """Load json file into Python dict"""
 
-    json_file = open(os.path.join('routes', json_folder, file_name), 'r')
+    json_file = open(os.path.join(os.path.dirname(__file__), json_folder, file_name), 'r')
     json_content = json_file.read()
 
     json_file.close()

@@ -1,10 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.gis.measure import D, Distance
 
 from .models import Route
 
-# Create your views here.
 def index(request):
     routes = Route.objects.order_by('-created')
     context = {
@@ -12,7 +11,14 @@ def index(request):
     }
     return render(request, 'routes/index.html', context)
 
-def detail(request, route_id):
+def detail(request, slug):
+    route = get_object_or_404(Route, slug=slug)
+    context = {
+        'route': route,
+    }
+    return render(request, 'routes/detail.html', context)
+
+def by_id(request, route_id):
     route = Route.objects.get(id=route_id)
     context = {
         'route': route,
