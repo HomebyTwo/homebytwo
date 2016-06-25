@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% load static leaflet_tags geojson_tags %}
+{% load static leaflet_tags %}
 
-{% block title %}Home by Two - {{ route.name }}{% endblock %}
+{% block title %}Home by Two - {{ route.name }} {% endblock %}
 
 {% block extralinks %}
     {% leaflet_js %}
@@ -9,13 +9,14 @@
 {% endblock extralinks %}
 
 {% block content %}
-    <h1>{{ route.name}}</h1>
+    <h1>{{ route.name }}</h1>
+    <p>{{ route.geometry }}</p>
 
     {% include 'routes/course.html' %}
 
     {% if route.geom %}
         <h2>Map<h2>
-        {% leaflet_map "main" callback="detail_map_init" %}
+        <div>{% leaflet_map "main" callback="detail_map_init" %}</div>
     {% endif %}
 
 {% endblock content %}
@@ -24,10 +25,12 @@
     {% block extrajs %}
         <script type="text/javascript">
             function detail_map_init (map, options) {
-                var geom = L.geoJson({{ route.geom|geojsonfeature|safe }});
+                var coords = {{ route.geom }};
+                var latlngs = coords.map( function(item) { return L.latLng(item) } );
+                var geom = L.polyline(latlngs);
                 geom.addTo(map);
                 map.fitBounds(geom.getBounds());
-            }
+            };
         </script>
     {% endblock extrajs %}
 {% endif %}

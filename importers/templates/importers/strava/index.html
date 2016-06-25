@@ -1,14 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Home by Two - Available Routes{% endblock %}
-
 {% block content %}
-    <h1>Your Routes</h1>
+    <h1>Strava Routes for {{ athlete.firstname }}</h1>
     {% if routes %}
         <ul>
         {% for route in routes %}
-            {% include "routes/card.html" %}
+            {% include "importers/strava/card.html" %}
         {% endfor %}
         </ul>
     {% else %}

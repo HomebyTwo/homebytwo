@@ -1,9 +1,9 @@
-{% load static%}
+{% load static compress %}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href={% static "styles/base.css" %}/>
+    <link rel="stylesheet" href={% static "css/custom.css" %}/>
     <title>{% block title %}Home by Two{% endblock %}</title>
     {% block extralinks %}{% endblock %}
 </head>
