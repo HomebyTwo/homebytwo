@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import Distance
 from django.contrib.staticfiles import finders
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, GEOSGeometry
 
 import googlemaps
 import requests
@@ -53,6 +53,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
                             'totaldown': 0,
                             'length': 0,
                             'geom': LineString((0,0), (0,0)),
+                            'description': formatted_route['description']
                         }
 
                 )
@@ -65,34 +66,84 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         return formatted_routes
 
 class SwitzerlandMobilityRoute(models.Model):
-    name = models.CharField(max_length=50)
-    totalup = models.FloatField('Total elevation difference up in m', default=0)
-    totaldown = models.FloatField('Total elevation difference down in m', default=0)
-    length = models.FloatField('Total length of the track in m', default=0)
-    description = models.TextField('Text description of the Route', default='')
-    updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of last creation', auto_now_add=True)
-    geom = models.LineStringField('line geometry', srid=21781)
     switzerland_mobility_id = models.BigIntegerField(unique=True)
+    name = models.CharField(max_length=50)
+    description = models.TextField('Text description of the Route', default='')
+
+    #elevation differences and distance in m
+    totalup = models.FloatField('Total elevation difference up in m', default=0) #elevation gain in m
+    totaldown = models.FloatField('Total elevation difference down in m', default=0) #elevation loss in m
+    length = models.FloatField('Total length of the track in m', default=0) #route distance in m
+
+    #creation and update date
+    updated = models.DateTimeField('Time of last update', auto_now=True)
+    created = models.DateTimeField('Time of creation', auto_now_add=True)
+    owner = models.BigIntegerField('Switzerland Mobility User ID')
+
+    #geographic information
+    geom = models.LineStringField('line geometry', srid=21781)
+    altitude = models.TextField('Altitude information as JSON', default='')
+
     objects = SwitzerlandMobilityRouteManager()
 
+    #retrieve map.wanderland.ch route information
+    def get_routes_details_from_server(self):
+
+        route_base_url = 'https://map.wanderland.ch/track/'
+        route_url = route_base_url + str(self.switzerland_mobility_id) + "/show"
+
+        r = requests.get(route_url)
+
+        if r.status_code == requests.codes.ok:
+            route_json = r.json()
+        else:
+            sys.exit("Error: could not retrieve route information from map.wanderland.ch for route " + str(roue_id))
+
+        # Add route information
+        self.totalup = route_json['properties']['meta']['totalup']
+        self.totaldown = route_json['properties']['meta']['totaldown']
+        self.length = route_json['properties']['meta']['length']
+        self.owner = route_json['properties']['owner']
+
+        # Add GeoJSON line linestring from profile information in json
+        polyline = {}
+
+        # Set geometry type to LineString
+        polyline['type'] = 'LineString'
+
+        coordinates = []
+
+        for point in json.loads(route_json['properties']['profile']):
+            position = [point[0], point[1]]
+            coordinates.append(position)
+
+        polyline['coordinates'] = coordinates
+
+        self.geom = GEOSGeometry(json.dumps(polyline), srid=21781)
+
+        # Record altitude infromation to a list as long as the LineString
+        altitude = []
+
+        for point in json.loads(route_json['properties']['profile']):
+            altitude.append(point[2])
+
+        self.altitude = json.dumps(altitude)
+
+        #Save to database
+        self.save()
+
+        return self
 
     def get_distance(self, unit='m'):
         return Distance(**{unit: self.length})
 
-    def get_point_elevation_on_line(self, location=0):
-        sql = (
-                'SELECT ST_Line_Interpolate_Point(%s, %s) '
-                'FROM routes_place '
-                'WHERE id = %s'
-            )
-
-        point = Route.objects.raw(sql,(self.geom, location, self.id))
-
-        point.geom.transform(4326)
+    def get_point_elevation(self, location=0):
+        point = self.geom.interpolate_normalized(location)
+        point.transform(4326)
+        coords = (point.y, point.x)
 
         gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
-        result = gmaps.elevation(point.geom.coords)
+        result = gmaps.elevation(coords)
 
         return result[0]['elevation']
 
