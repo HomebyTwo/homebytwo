@@ -76,12 +76,6 @@ class SwitzerlandMobilityRoute(models.Model):
     switzerland_mobility_id = models.BigIntegerField(unique=True)
     objects = SwitzerlandMobilityRouteManager()
 
-    # Returns poster picture for the list view
-    def get_poster_picture(self):
-        if finders.find('routes/images/' + str(self.swissmobility_id) + '.jpg'):
-            return 'routes/images/' + str(self.switzerland_mobility_id) + '.jpg'
-        else:
-            return 'routes/images/default.jpg'
 
     def get_distance(self, unit='m'):
         return Distance(**{unit: self.length})
