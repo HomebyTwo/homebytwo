@@ -36,6 +36,17 @@ class Route(models.Model):
     def get_distance(self):
         return Distance(m=self.length)
 
+    def get_point_elevation(self, location=0):
+        point = self.geom.interpolate_normalized(location)
+        point.transform(4326)
+        coords = (point.y, point.x)
+
+        gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
+        result = gmaps.elevation(coords)
+
+        return result[0]['elevation']
+
+
 class Place(models.Model):
     type = models.CharField(max_length=50)
     altitude = models.FloatField()
@@ -57,7 +68,8 @@ class Place(models.Model):
 
         #Query gmaps API for altitude
         gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
-        result = gmaps.elevation(geom.coords)
+        coords = (geom.coords.y, geom.coords.x)
+        result = gmaps.elevation(coords)
 
         #Update altitude information for point
         self.altitude = result[0]['elevation']
