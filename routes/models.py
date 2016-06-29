@@ -3,15 +3,12 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import Distance
-from django.contrib.staticfiles import finders
-from autoslug import AutoSlugField
 
 import googlemaps
 
 
 class Route(models.Model):
     name = models.CharField(max_length=50)
-    slug = AutoSlugField(max_length=50, unique=True, populate_from='name')
     swissmobility_id = models.BigIntegerField(unique=True)
     totalup = models.FloatField('Total elevation difference up in m', default=0)
     totaldown = models.FloatField('Total elevation difference down in m', default=0)
@@ -27,9 +24,6 @@ class Route(models.Model):
 
     def __unicode__(self):
         return self.name
-
-    def slugify_name(self):
-        return slugify(self.name)
 
     # Returns poster picture for the list view
     def get_poster_picture(self):
