@@ -173,7 +173,7 @@ def save_all_routes_to_db(routes):
 
 
 def get_routes():
-    wanderland_credentials = {"username":"cedric.hofstetter@mac.com","password":"JKEHOE66"}
+    wanderland_credentials = {"username":settings.SWITZERLAND_MOBILITY_USERNAME, "password":SWITZERLAND_MOBILITY_PASSWORD}
     routes = retrieve_routes(wanderland_credentials)
     write_json_file('routes.json', routes)
 
