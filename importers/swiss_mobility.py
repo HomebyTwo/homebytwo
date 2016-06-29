@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import sys
-from routes.models import Route
+from .models import SwitzerlandMobilityRoute
 from django.contrib.gis.geos import GEOSGeometry
 
 
@@ -160,8 +160,8 @@ def save_all_routes_to_db(routes):
 
     for route in routes:
 
-        route, created = Route.objects.get_or_create(
-            swissmobility_id = route['id'],
+        route, created = SwitzerlandMobilityRoute.objects.get_or_create(
+            switzerland_mobility_id = route['id'],
             name = route['name'],
             totalup = route['totalup'],
             totaldown = route['totaldown'],

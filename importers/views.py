@@ -52,3 +52,10 @@ def strava_detail(request, strava_route_id):
     }
     return render(request, 'importers/strava/detail.html', context)
 
+def switzerland_mobility_index(request):
+    routes = SwitzerlandMobilityRoute.objects.order_by('-created')
+    context = {
+        'routes': routes,
+    }
+    return render(request, 'routes/index.html', context)
+
