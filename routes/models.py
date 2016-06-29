@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.contrib.staticfiles import finders
+
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import Distance
 
@@ -9,7 +11,6 @@ import googlemaps
 
 class Route(models.Model):
     name = models.CharField(max_length=50)
-    swissmobility_id = models.BigIntegerField(unique=True)
     totalup = models.FloatField('Total elevation difference up in m', default=0)
     totaldown = models.FloatField('Total elevation difference down in m', default=0)
     length = models.FloatField('Total length of the track in m', default=0)
@@ -27,8 +28,8 @@ class Route(models.Model):
 
     # Returns poster picture for the list view
     def get_poster_picture(self):
-        if finders.find('routes/images/' + str(self.swissmobility_id) + '.jpg'):
-            return 'routes/images/' + str(self.swissmobility_id) + '.jpg'
+        if finders.find('routes/images/' + str(self.id) + '.jpg'):
+            return 'routes/images/' + str(self.id) + '.jpg'
         else:
             return 'routes/images/default.jpg'
 
