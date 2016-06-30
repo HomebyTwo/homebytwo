@@ -4,29 +4,30 @@ from django.conf import settings
 
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import Distance
-from django.contrib.staticfiles import finders
 from django.contrib.gis.geos import LineString, GEOSGeometry
 
 import googlemaps
 import requests
 import json
+import sys
+
 
 class SwitzerlandMobilityRouteManager(models.Manager):
 
-    #login to Switzerlan Mobility and retrieve route list
+    # login to Switzerland Mobility and retrieve route list
     def get_routes_list_from_server(self, credentials):
         login_url = 'https://map.wanderland.ch/user/login'
 
-        #login to map.wanderland.ch
+        # login to map.wanderland.ch
         r = requests.post(login_url, data=json.dumps(credentials))
 
-        #save cookies
+        # save cookies
         if r.status_code == requests.codes.ok:
             cookies = r.cookies
         else:
             sys.exit("Error: could not log-in to map.wanderland.ch")
 
-        #retrieve route list
+        # retrieve route list
         routes_list_url = 'https://map.wanderland.ch/tracks_list'
 
         r = requests.post(routes_list_url, cookies=cookies)
@@ -34,70 +35,88 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         if r.status_code == requests.codes.ok:
             routes = r.json()
         else:
-            sys.exit("Error: could not retrieve routes list from map.wanderland.ch")
+            sys.exit(
+                "Error: could not retrieve routes list from map.wanderland.ch"
+            )
 
-        #Take routes list returned by map.wanderland.ch as list of 3 values
-        #e.g. [2692136, u'Rochers de Nayes', None] and transform it into a dictionnary
+        # Take routes list returned by map.wanderland.ch as list of 3 values
+        # e.g. [2692136, u'Rochers de Nayes', None] and add dictionnary labels
         formatted_routes = []
 
         for route in routes:
-            formatted_route = {'id': route[0], 'name': route[1], 'description': route[2]}
+            formatted_route = {
+                'id': route[0],
+                'name': route[1],
+                'description': route[2]
+            }
+
             formatted_routes.append(formatted_route)
 
-            #update routes list in the database
-            switzerland_mobility_route, created = SwitzerlandMobilityRoute.objects.get_or_create(
-                    switzerland_mobility_id = formatted_route['id'],
+            # update routes list in the database
+            routes = SwitzerlandMobilityRoute.objects
+            switzerland_mobility_route, created = routes.get_or_create(
+                    switzerland_mobility_id=formatted_route['id'],
                     defaults={
                             'name': formatted_route['name'],
                             'totalup': 0,
                             'totaldown': 0,
                             'length': 0,
-                            'geom': LineString((0,0), (0,0)),
+                            'geom': LineString((0, 0), (0, 0)),
                             'description': formatted_route['description']
                         }
 
                 )
 
-            #update route name if it has changed
-            if not(created) and switzerland_mobility_route.name != formatted_route['name']:
+            # update route name if it has changed
+            if (
+                not(created) and
+                switzerland_mobility_route.name != formatted_route['name']
+            ):
                 switzerland_mobility_route.name = formatted_route['name']
                 switzerland_mobility_route.save()
 
         return formatted_routes
+
 
 class SwitzerlandMobilityRoute(models.Model):
     switzerland_mobility_id = models.BigIntegerField(unique=True)
     name = models.CharField(max_length=50)
     description = models.TextField('Text description of the Route', default='')
 
-    #elevation differences and distance in m
-    totalup = models.FloatField('Total elevation difference up in m', default=0) #elevation gain in m
-    totaldown = models.FloatField('Total elevation difference down in m', default=0) #elevation loss in m
-    length = models.FloatField('Total length of the track in m', default=0) #route distance in m
+    # elevation gain in m
+    totalup = models.FloatField('Total elevation gain in m', default=0)
+    # elevation loss in m
+    totaldown = models.FloatField('Total elevation loss in m', default=0)
+    # route distance in m
+    length = models.FloatField('Total length of the track in m', default=0)
 
-    #creation and update date
+    # creation and update date
     updated = models.DateTimeField('Time of last update', auto_now=True)
     created = models.DateTimeField('Time of creation', auto_now_add=True)
     owner = models.BigIntegerField('Switzerland Mobility User ID')
 
-    #geographic information
+    # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
     altitude = models.TextField('Altitude information as JSON', default='')
 
     objects = SwitzerlandMobilityRouteManager()
 
-    #retrieve map.wanderland.ch route information
+    # retrieve map.wanderland.ch route information
     def get_routes_details_from_server(self):
 
         route_base_url = 'https://map.wanderland.ch/track/'
-        route_url = route_base_url + str(self.switzerland_mobility_id) + "/show"
+        route_id = str(self.switzerland_mobility_id)
+        route_url = route_base_url + route_id + "/show"
 
         r = requests.get(route_url)
 
         if r.status_code == requests.codes.ok:
             route_json = r.json()
         else:
-            sys.exit("Error: could not retrieve route information from map.wanderland.ch for route " + str(roue_id))
+            sys.exit(
+                "Error: could not retrieve route information "
+                "from map.wanderland.ch for route " + route_id
+            )
 
         # Add route information
         self.totalup = route_json['properties']['meta']['totalup']
@@ -129,7 +148,7 @@ class SwitzerlandMobilityRoute(models.Model):
 
         self.altitude = json.dumps(altitude)
 
-        #Save to database
+        # Save to database
         self.save()
 
         return self
