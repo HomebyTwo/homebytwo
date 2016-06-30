@@ -7,7 +7,7 @@ swissplaces_mapping = {
     'type' : 'OBJEKTART',
     'altitude' : 'HOEHE',
     'name' : 'NAME',
-    'geom' : 'MULTIPOINT25D',
+    'geom' : 'POINT25D',
     'lang' : 'SPRACHCODE',
 }
 
@@ -20,7 +20,7 @@ swissplaces_shp = os.path.abspath(
     ),
 )
 
-lang_translation = {
+lang_translations = {
     'Hochdeutsch inkl. Lokalsprachen':'de',
     'Franzoesisch inkl. Lokalsprachen':'fr',
     'Italienisch inkl. Lokalsprachen':'it',
@@ -79,6 +79,6 @@ def run(verbose=True):
 
     lm.save(strict=True, verbose=verbose)
 
-    translate(lang, lang_translation)
-    translate(type, type_translation)
+    translate('lang', lang_translations)
+    translate('type', type_translations)
 
