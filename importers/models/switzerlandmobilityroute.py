@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.conf import settings
 
 from django.contrib.gis.db import models
+from routes.models import Route
 from django.contrib.gis.measure import Distance
 from django.contrib.gis.geos import LineString, GEOSGeometry
 
@@ -32,6 +33,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         r = requests.post(routes_list_url, cookies=cookies)
 
+        # if request succeeds save json object
         if r.status_code == requests.codes.ok:
             routes = r.json()
         else:
@@ -40,15 +42,21 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             )
 
         # Take routes list returned by map.wanderland.ch as list of 3 values
-        # e.g. [2692136, u'Rochers de Nayes', None] and add dictionnary labels
+        # e.g. [2692136, u'Rochers de Nayes', None] and create a new
+        # dictionnary list with id, name and description
         formatted_routes = []
 
+        # Iterate through json object
         for route in routes:
             formatted_route = {
                 'id': route[0],
                 'name': route[1],
-                'description': route[2]
+                'description': route[2],
             }
+
+            # If description is None convert it to empty
+            if formatted_route['description'] is None:
+                formatted_route['description'] = ''
 
             formatted_routes.append(formatted_route)
 
@@ -62,7 +70,8 @@ class SwitzerlandMobilityRouteManager(models.Manager):
                             'totaldown': 0,
                             'length': 0,
                             'geom': LineString((0, 0), (0, 0)),
-                            'description': formatted_route['description']
+                            'description': formatted_route['description'],
+                            'switzerland_mobility_owner': 0,
                         }
 
                 )
@@ -78,31 +87,18 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         return formatted_routes
 
 
-class SwitzerlandMobilityRoute(models.Model):
+class SwitzerlandMobilityRoute(Route):
+    # Extends Route class with specific attributes and methods
     switzerland_mobility_id = models.BigIntegerField(unique=True)
-    name = models.CharField(max_length=50)
-    description = models.TextField('Text description of the Route', default='')
-
-    # elevation gain in m
-    totalup = models.FloatField('Total elevation gain in m', default=0)
-    # elevation loss in m
-    totaldown = models.FloatField('Total elevation loss in m', default=0)
-    # route distance in m
-    length = models.FloatField('Total length of the track in m', default=0)
-
-    # creation and update date
-    updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of creation', auto_now_add=True)
-    owner = models.BigIntegerField('Switzerland Mobility User ID')
+    switzerland_mobility_owner = models.BigIntegerField('Wanderland user ID')
 
     # geographic information
-    geom = models.LineStringField('line geometry', srid=21781)
     altitude = models.TextField('Altitude information as JSON', default='')
 
     objects = SwitzerlandMobilityRouteManager()
 
-    # retrieve map.wanderland.ch route information
-    def get_routes_details_from_server(self):
+    # retrieve map.wanderland.ch information for a route
+    def get_route_details_from_server(self):
 
         route_base_url = 'https://map.wanderland.ch/track/'
         route_id = str(self.switzerland_mobility_id)
@@ -152,23 +148,3 @@ class SwitzerlandMobilityRoute(models.Model):
         self.save()
 
         return self
-
-    def get_distance(self, unit='m'):
-        return Distance(**{unit: self.length})
-
-    def get_point_elevation(self, location=0):
-        point = self.geom.interpolate_normalized(location)
-        point.transform(4326)
-        coords = (point.y, point.x)
-
-        gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
-        result = gmaps.elevation(coords)
-
-        return result[0]['elevation']
-
-    # Returns the string representation of the model.
-    def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.name

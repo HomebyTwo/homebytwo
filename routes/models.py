@@ -11,12 +11,20 @@ import googlemaps
 
 class Route(models.Model):
     name = models.CharField(max_length=50)
-    totalup = models.FloatField('Total elevation difference up in m', default=0)
-    totaldown = models.FloatField('Total elevation difference down in m', default=0)
-    length = models.FloatField('Total length of the track in m', default=0)
     description = models.TextField('Text description of the Route', default='')
+
+    # elevation gain in m
+    totalup = models.FloatField('Total elevation gain in m', default=0)
+    # elevation loss in m
+    totaldown = models.FloatField('Total elevation loss in m', default=0)
+    # route distance in m
+    length = models.FloatField('Total length of the track in m', default=0)
+
+    # creation and update date
     updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of last creation', auto_now_add=True)
+    created = models.DateTimeField('Time of creation', auto_now_add=True)
+
+    # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
 
     # Returns the string representation of the model.
