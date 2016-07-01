@@ -21,4 +21,5 @@ urlpatterns = [
     url(r'^routes/', include('routes.urls')),
     url(r'^importers/', include('importers.urls')),
     url(r'^admin/', admin.site.urls),
+    url('^', include('django.contrib.auth.urls')),
 ]
