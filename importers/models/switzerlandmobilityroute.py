@@ -61,8 +61,8 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             formatted_routes.append(formatted_route)
 
             # update routes list in the database
-            routes = SwitzerlandMobilityRoute.objects
-            switzerland_mobility_route, created = routes.get_or_create(
+            objects = SwitzerlandMobilityRoute.objects
+            switzerland_mobility_route, created = objects.get_or_create(
                     switzerland_mobility_id=formatted_route['id'],
                     defaults={
                             'name': formatted_route['name'],
