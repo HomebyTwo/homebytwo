@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 
 from django.contrib.gis.db import models
+from .segment import Segment
 from django.contrib.gis.measure import Distance
 
 import googlemaps
@@ -26,6 +27,9 @@ class Route(models.Model):
 
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
+
+    # Each route is made of segments
+    segments = models.ManyToManyField(Segment)
 
     # Returns poster picture for the list view
     def get_poster_picture(self):
