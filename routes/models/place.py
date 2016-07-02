@@ -1,10 +1,7 @@
 from __future__ import unicode_literals
 
-from django.conf import settings
-from django.contrib.staticfiles import finders
-
 from django.contrib.gis.db import models
-from django.contrib.gis.measure import Distance
+from django.conf import settings
 
 import googlemaps
 
@@ -16,7 +13,6 @@ class Place(models.Model):
     description = models.TextField('Text description of the Place', default='')
     updated = models.DateTimeField('Time of last update', auto_now=True)
     created = models.DateTimeField('Time of last creation', auto_now_add=True)
-    lang = models.CharField(max_length=50)
 
     geom = models.PointField(srid=21781)
 
@@ -38,3 +34,9 @@ class Place(models.Model):
         self.save()
 
         return self.altitude
+
+    def __str__(self):
+        return self.name
+
+    def __unicode__(self):
+        return self.name

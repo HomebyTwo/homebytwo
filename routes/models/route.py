@@ -27,13 +27,6 @@ class Route(models.Model):
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
 
-    # Returns the string representation of the model.
-    def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.name
-
     # Returns poster picture for the list view
     def get_poster_picture(self):
         if finders.find('routes/images/' + str(self.id) + '.jpg'):
@@ -53,3 +46,9 @@ class Route(models.Model):
         result = gmaps.elevation(coords)
 
         return result[0]['elevation']
+
+    def __str__(self):
+        return self.name
+
+    def __unicode__(self):
+        return self.name
