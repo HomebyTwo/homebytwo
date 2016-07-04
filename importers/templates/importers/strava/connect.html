@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>Import your Strava Routes</h1>
+<a href="{{ strava_authorize_url }}">
+    <img src="{% static 'img/ConnectWithStrava@2x.png' %}" alt="Connect with Strava" width="171px"/>
+</a>
+{% endblock content %}
