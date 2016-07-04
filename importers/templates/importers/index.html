@@ -2,7 +2,9 @@
 {% load static %}
 
 {% block content %}
-    <a href="{{ strava_authorize_url }}">
-        <img src="{% static 'img/ConnectWithStrava@2x.png' %}" alt="Connect with Strava" width="171px"/>
-    </a>
+<h1>{{ nothing }}</h1>
+<ul>
+    <li><a href="strava/" title="Import from Strava">Import from Strava</a></li>
+    <li><a href="switzerland_mobility/" title="Import from Switzerland Mobility">Import from Switzerland Mobility</a></li>
+</ul>
 {% endblock content %}

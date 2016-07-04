@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-from django.conf import settings
-
 from django.contrib.gis.db import models
 from routes.models import Route
 from django.contrib.gis.geos import LineString
@@ -15,13 +13,12 @@ from polyline import decode
 class StravaRouteManager(models.Manager):
 
     # login to Switzerland Mobility and retrieve route list
-    def get_routes_list_from_server(self):
+    def get_routes_list_from_server(self, user):
         # Initialize Stravalib client
         client = Client()
 
         # Get Strava access token
-        client.access_token = settings.STRAVA_ACCESS_TOKEN
-
+        client.access_token = user.athlete.strava_token
         routes = client.get_routes()
 
         for route in routes:
@@ -47,10 +44,10 @@ class StravaRouteManager(models.Manager):
                         'type': route.type,
                         'sub_type': route.sub_type,
                         'strava_timestamp': route.timestamp,
+                        'user': user,
                     }
 
                 )
-        return routes
 
 
 class StravaRoute(Route):
@@ -69,12 +66,12 @@ class StravaRoute(Route):
     objects = StravaRouteManager()
 
     # retrieve map.wanderland.ch information for a route
-    def get_route_details_from_server(self):
+    def get_route_details_from_server(self, user):
         # Initialize Stravalib client
         client = Client()
 
         # Get Strava access token
-        client.access_token = settings.STRAVA_ACCESS_TOKEN
+        client.access_token = user.athlete.strava_token
 
         # Retrieve route detail
         route = client.get_route(self.strava_route_id)

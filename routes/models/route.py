@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 
 from django.contrib.gis.db import models
+from django.contrib.auth.models import User
 from .segment import Segment
 from django.contrib.gis.measure import Distance
 
@@ -13,6 +14,9 @@ import googlemaps
 class Route(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField('Text description of the Route', default='')
+
+    # link to user
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # elevation gain in m
     totalup = models.FloatField('Total elevation gain in m', default=0)
