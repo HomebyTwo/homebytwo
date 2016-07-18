@@ -110,7 +110,11 @@ def strava_index(request):
 
 
 def switzerland_mobility_index(request):
-    routes = SwitzerlandMobilityRoute.objects.order_by('-created')
+    user = request.user
+    routes = SwitzerlandMobilityRoute.objects.filter(user=user)
+    routes = routes.order_by('-created')
+    if not routes:
+        pass
     context = {
         'routes': routes,
     }
