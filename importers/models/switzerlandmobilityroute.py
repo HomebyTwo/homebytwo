@@ -1,13 +1,9 @@
 from __future__ import unicode_literals
 
-from django.conf import settings
-
 from django.contrib.gis.db import models
 from routes.models import Route
-from django.contrib.gis.measure import Distance
 from django.contrib.gis.geos import LineString, GEOSGeometry
 
-import googlemaps
 import requests
 import json
 import sys
@@ -97,8 +93,8 @@ class SwitzerlandMobilityRoute(Route):
 
     objects = SwitzerlandMobilityRouteManager()
 
-    # retrieve map.wanderland.ch information for a route
     def get_route_details_from_server(self):
+        """ retrieve map.wanderland.ch detail information for a route """
 
         route_base_url = 'https://map.wanderland.ch/track/'
         route_id = str(self.switzerland_mobility_id)
