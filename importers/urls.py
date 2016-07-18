@@ -13,6 +13,13 @@ urlpatterns = [
             name='strava_index'
         ),
 
+    # http://homebytwo.ch/importers/strava/connect/
+    url(
+            r'^strava/connect/$',
+            views.strava_connect,
+            name='strava_connect'
+        ),
+
     # http://homebytwo.ch/importers/strava/authorized/
     url(
             r'^strava/authorized/$',
