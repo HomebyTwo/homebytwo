@@ -66,26 +66,29 @@ class Place(models.Model):
 
     geom = models.PointField(srid=21781)
 
-    #returns altitude for a place and updates the database entry
+    # Returns altitude for a place and updates the database entry
     def get_gmaps_elevation(self):
-        #extract first geometry from Multipoint
+        # Extract first geometry from Multipoint
         geom = self.geom
 
-        #transform coords to Gmaps SRID
+        # Transform coords to Gmaps SRID
         geom.transform(4326)
 
-        #Query gmaps API for altitude
+        # Query gmaps API for altitude
         gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
         coords = (geom.coords.y, geom.coords.x)
         result = gmaps.elevation(coords)
 
-        #Update altitude information for point
+        # Update altitude information for point
         self.altitude = result[0]['elevation']
         self.save()
 
         return self.altitude
 
+
 class Segment(models.Model):
-    start_place = models.ForeignKey(Place, on_delete=models.PROTECT, related_name='starts')
-    end_place = models.ForeignKey(Place, on_delete=models.PROTECT, related_name='ends')
+    start_place = models.ForeignKey(Place, on_delete=models.PROTECT,
+                                    related_name='starts')
+    end_place = models.ForeignKey(Place, on_delete=models.PROTECT,
+                                  related_name='ends')
     geom = models.LineStringField('line geometry', srid=21781)
