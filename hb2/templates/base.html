@@ -4,8 +4,9 @@
 <html lang="en">
 <head>
     <link rel="stylesheet" href={% static "css/custom.css" %}/>
+    <link rel="shortcut icon" href={% static "favicon.ico" %}/>
     <title>{% block title %}Home by Two{% endblock %}</title>
-    {% block extralinks %}{% endblock %}
+    {% block extralinks %}{% endblock extralinks%}
 </head>
 
 <body>
