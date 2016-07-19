@@ -9,7 +9,36 @@ import json
 from datetime import datetime
 
 
+class PlaceManager(models.Manager):
+    """
+    Manager to retrieve places.
+    """
+    def get_public_transport(self):
+        self.filter(public_transport=True)
+
+    def get_places_from_route(self, route, max_distance=100):
+
+        sql = ('SELECT routes_place.id,'
+               'ST_DISTANCE(routes_route.geom, ST_GeometryN(routes_place.geom, 1)) AS distance_from_route, '
+               'ST_LineLocatePoint(routes_route.geom, ST_GeometryN(routes_place.geom, 1)) AS line_location '
+               'FROM routes_route, routes_place '
+               'WHERE routes_route.id = %s '
+               'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
+               'ORDER BY ST_LineLocatePoint(routes_route.geom, ST_GeometryN(routes_place.geom, 1)), '
+               'ST_DISTANCE(routes_route.geom, ST_GeometryN(routes_place.geom, 1));'
+               )
+        # Execute the RAW query
+        return self.raw(sql, [route.id, max_distance])
+
+
 class Place(models.Model):
+    """
+    Places are geographic points along routes.
+    They have a name, description and geom
+    Places are used to create segments from routes and
+    and for public transport connection.
+
+    """
     type = models.CharField(max_length=50)
     altitude = models.FloatField()
     name = models.CharField(max_length=250)
@@ -19,6 +48,8 @@ class Place(models.Model):
     public_transport = models.BooleanField(default=False)
 
     geom = models.PointField(srid=21781)
+
+    objects = PlaceManager()
 
     # Returns altitude for a place and updates the database entry
     def get_gmaps_elevation(self):
@@ -79,7 +110,12 @@ class Place(models.Model):
             'isArrivalTime': is_arrival_time,
             'limit': limit,
             'bike': bike,
-            'fields[]': ['connections/from/departure', 'connections/to/arrival']
+            'fields[]': [
+                         'connections/from/departure',
+                         'connections/to/arrival',
+                         'connections/duration',
+                         'connections/products',
+                         ]
         }
         kwargs = {'params': args}
 
