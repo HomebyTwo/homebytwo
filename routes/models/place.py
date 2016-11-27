@@ -19,13 +19,13 @@ class PlaceManager(models.Manager):
     def get_places_from_route(self, route, max_distance=100):
 
         sql = ('SELECT routes_place.id,'
-               'ST_DISTANCE(routes_route.geom, ST_GeometryN(routes_place.geom, 1)) AS distance_from_route, '
-               'ST_LineLocatePoint(routes_route.geom, ST_GeometryN(routes_place.geom, 1)) AS line_location '
+               'ST_DISTANCE(routes_route.geom, routes_place.geom) AS distance_from_route, '
+               'ST_LineLocatePoint(routes_route.geom, routes_place.geom) AS line_location '
                'FROM routes_route, routes_place '
                'WHERE routes_route.id = %s '
                'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
-               'ORDER BY ST_LineLocatePoint(routes_route.geom, ST_GeometryN(routes_place.geom, 1)), '
-               'ST_DISTANCE(routes_route.geom, ST_GeometryN(routes_place.geom, 1));'
+               'ORDER BY ST_LineLocatePoint(routes_route.geom, routes_place.geom), '
+               'ST_DISTANCE(routes_route.geom, routes_place.geom);'
                )
         # Execute the RAW query
         return self.raw(sql, [route.id, max_distance])
