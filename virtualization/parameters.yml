@@ -1,11 +1,11 @@
 ---
 # Name of your project, will also be the vagrant box name
-project_name: "example"
+project_name: "homebytwo"
 
 # Main hostname through which the vagrant box will be accessible
-hostname: "example.lo"
+hostname: "homebytwo.lo"
 # Alternative hostnames through which you want to access the vagrant box
-hostnames: []
+hostnames: ['hb2.lo']
 
 # Ports you want forwared to your host. See https://www.vagrantup.com/docs/networking/forwarded_ports.html
 # for details.
@@ -23,21 +23,24 @@ forwarded_ports: {
 
 # Name of the database to create for your project if you include the
 # MySQL or PostgreSQL role
-database_name: "example"
+database_name: "homebytwo"
+postgresql_version: "9.4"
+postgis_version: "2.3"
 
 # Root directory of your project for the webserver and other purposes
 root_directory: "/vagrant/"
 
 # Do we activate SSL ? The CA will be copied to your project dir, you can then
 # add it to your computer keychain
-# ssl: yes
+ssl: yes
 
 # For a PHP project, you might want to set the following
 # Default reporting level of PHP errors
 # php_error_reporting: "E_ALL & ~E_NOTICE"
 
 # For a Django or Flask project, you might want to set the following
-# pip_requirements: "requirements/dev.txt"
+pip_requirements: "requirements/dev.txt"
+python_version: "3"
 
 # if you want to dissable ssh StrictHostKeyChecking (needs the ssh role)
 # this has security issues, you better add your ssh host keys in the ssh role
