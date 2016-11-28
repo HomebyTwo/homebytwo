@@ -79,13 +79,13 @@ def strava_index(request):
 
     except Exception as e:
         # Bad Token: Destroy bad token and render Strava connect button button
-        print e
+        print (e)
         athlete.strava_token = ''
         athlete.save()
         return HttpResponseRedirect('/importers/strava/connect')
 
     except Exception as e:
-        print e
+        print (e)
         """Cannot connect to Strava API:
         Destroy bad token and render Strava connect button button"""
         return HttpResponseRedirect('/importers/strava/unavailable')
@@ -95,7 +95,7 @@ def strava_index(request):
         routes = StravaRoute.objects.filter(user=user)
 
     except Exception as e:
-        print e
+        print (e)
 
     if not routes:
         StravaRoute.objects.get_routes_list_from_server(user)
