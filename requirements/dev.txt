@@ -12,7 +12,7 @@ django-debug-toolbar==1.4
 django-extensions==1.6.7
 django-geojson==2.9.0
 django-leaflet==0.18.1
-django==1.9.7
+django==1.10.3
 first==2.0.1              # via pip-tools
 googlemaps==2.4.4
 pillow==3.2.0
