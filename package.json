@@ -6,6 +6,10 @@
   "license": "private",
   "private": true,
   "devDependencies": {
+    "babel-core": "^6.11.4",
+    "babel-loader": "^6.2.4",
+    "babel-preset-es2016": "^6.11.3",
+    "babel-preset-react": "^6.11.1",
     "browser-sync": "^2.12.7",
     "gulp": "^3.9.1",
     "gulp-autoprefixer": "^3.1.0",
@@ -14,12 +18,9 @@
     "gulp-load-plugins": "^1.2.2",
     "gulp-sass": "^2.3.1",
     "gulp-sourcemaps": "^1.6.0",
-    "webpack": "^1.13.1",
-    "babel-core": "^6.11.4",
-    "babel-loader": "^6.2.4",
-    "babel-preset-es2016": "^6.11.3",
-    "babel-preset-react": "^6.11.1",
     "gulp-util": "^3.0.7",
+    "kanbasu": "^1.4.0",
+    "webpack": "^1.13.1",
     "yargs": "^4.7.0"
   }
 }

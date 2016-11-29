@@ -2,7 +2,7 @@
 
 module.exports = {
   src: {
-    sass:           'static/sass/**/*.scss',
+    sass:           'static/scss/**/*.scss',
     javascripts:    'static/javascripts/src/**/*.{js,jsx}',
     webpack:        ['./static/javascripts/src/main.js'],
     images:         'static/images/**/*.{gif,jpg,jpeg,png,svg}',
