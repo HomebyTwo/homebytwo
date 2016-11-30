@@ -1,11 +1,11 @@
 {% load static %}
 
-<li class="route card">
+<li class="mrgv box box--default">
     <a href="/routes/{{ route.id }}/">
-        <img
-        	src="{% static route.get_poster_picture %}"
-        	height="30px" width="30px"
-        	alt="{{ route.name }} poster image"
+        <img class="pull-left"
+        	 src="{% static route.get_poster_picture %}"
+        	 height="30px" width="30px"
+        	 alt="{{ route.name }} poster image"
     	/>
         <h2>{{ route.name }}</h2>
         <p>{{ route.get_distance.km|floatformat:1}}km - {{ route.totalup|floatformat:"0" }}m+ - {{ route.totaldown|floatformat:"0" }}m-</p>
