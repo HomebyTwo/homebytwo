@@ -9,14 +9,16 @@
 {% endblock extralinks %}
 
 {% block content %}
-    <h1>{{ route.name}}</h1>
-
-    {% include 'routes/course.html' %}
-
+    <h1 class="mrg text-center">{{ route.name}}</h1>
+    <div class="clearfix mrg">
+        <a class="pull-left" href="/routes" title="list of routes">Back</a>
+        <a class="pull-right" href="edit" title="list of routes">Edit</a>
+    </div>
     {% if route.geom %}
-        <h2>Map<h2>
         {% leaflet_map "main" callback="detail_map_init" %}
     {% endif %}
+
+    {% include 'routes/course.html' %}
 
 {% endblock content %}
 
@@ -27,6 +29,7 @@
                 var geom = L.geoJson({{ route.geom|geojsonfeature|safe }});
                 geom.addTo(map);
                 map.fitBounds(geom.getBounds());
+                map.scrollWheelZoom.disable();
             }
         </script>
     {% endblock extrajs %}

@@ -4,9 +4,9 @@
 {% block title %}Home by Two - Available Routes{% endblock %}
 
 {% block content %}
-    <h1>Your Routes</h1>
+    <h1 class="text-center">Your Routes</h1>
     {% if routes %}
-        <ul>
+        <ul class="list">
         {% for route in routes %}
             {% include "routes/card.html" %}
         {% endfor %}
