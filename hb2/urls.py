@@ -15,7 +15,6 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-from routes.models import Route
 
 urlpatterns = [
     url(r'^routes/', include('routes.urls')),
