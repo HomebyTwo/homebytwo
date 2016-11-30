@@ -24,8 +24,6 @@ forwarded_ports: {
 # Name of the database to create for your project if you include the
 # MySQL or PostgreSQL role
 database_name: "homebytwo"
-postgresql_version: "9.4"
-postgis_version: "2.3"
 
 # Root directory of your project for the webserver and other purposes
 root_directory: "/vagrant/"
