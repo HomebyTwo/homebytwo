@@ -2,9 +2,13 @@
 {% load static %}
 
 {% block content %}
-<h1>{{ nothing }}</h1>
-<ul>
-    <li><a href="strava/" title="Import from Strava">Import from Strava</a></li>
-    <li><a href="switzerland_mobility/" title="Import from Switzerland Mobility">Import from Switzerland Mobility</a></li>
+<h1 class="text-center">Import routes from your favorite applications</h1>
+<ul class="list">
+    <li class="mrg box box--default">
+    	<a class="btn btn--primary" href="strava/" title="Import from Strava">Import from Strava</a>
+   	</li>
+    <li class="mrg box box--default">
+    	<a class="btn btn--primary" href="switzerland_mobility/" title="Import from Switzerland Mobility">Import from Switzerland Mobility</a>
+    </li>
 </ul>
 {% endblock content %}

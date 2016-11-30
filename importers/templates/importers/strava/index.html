@@ -2,9 +2,9 @@
 {% load static %}
 
 {% block content %}
-    <h1>Strava Routes for {{ athlete.firstname }}</h1>
+    <h1>Import Strava Routes for {{ athlete.firstname }}</h1>
     {% if routes %}
-        <ul>
+        <ul class="list">
         {% for route in routes %}
             {% include "routes/card.html" %}
         {% endfor %}
