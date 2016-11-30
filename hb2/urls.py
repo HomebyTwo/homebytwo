@@ -16,7 +16,10 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 
+from landingpage import views as landingpage_views
+
 urlpatterns = [
+    url(r'^$', landingpage_views.home, name='home'),
     url(r'^routes/', include('routes.urls')),
     url(r'^importers/', include('importers.urls')),
     url(r'^admin/', admin.site.urls),

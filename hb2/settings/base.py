@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'leaflet',
     'routes',
     'importers',
+    'landingpage',
 ]
 
 MIDDLEWARE_CLASSES = [
