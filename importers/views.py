@@ -114,7 +114,7 @@ def switzerland_mobility_index(request):
     routes = SwitzerlandMobilityRoute.objects.filter(user=user)
     routes = routes.order_by('-created')
     if not routes:
-        pass
+        routes = SwitzerlandMobilityRoute.objects.get_routes_list_from_server(user)
     context = {
         'routes': routes,
     }

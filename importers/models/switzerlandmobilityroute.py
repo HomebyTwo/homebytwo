@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.contrib.gis.db import models
 from routes.models import Route
 from django.contrib.gis.geos import LineString, GEOSGeometry
@@ -11,9 +12,20 @@ import sys
 
 class SwitzerlandMobilityRouteManager(models.Manager):
 
-    # login to Switzerland Mobility and retrieve route list
-    def get_routes_list_from_server(self, credentials):
+    """
+    login to Switzerland Mobility and retrieve route list.
+    Takes the user from the request object.
+    """
+
+    def get_routes_list_from_server(self, user):
+
         login_url = 'https://map.wanderland.ch/user/login'
+
+        # TODO: store in the database for each user
+        credentials = {
+                        "username": settings.SWITZERLAND_MOBILITY_USERNAME,
+                        "password": settings.SWITZERLAND_MOBILITY_PASSWORD
+                    }
 
         # login to map.wanderland.ch
         r = requests.post(login_url, data=json.dumps(credentials))
@@ -68,6 +80,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
                             'geom': LineString((0, 0), (0, 0)),
                             'description': formatted_route['description'],
                             'switzerland_mobility_owner': 0,
+                            'user': user,
                         }
 
                 )
@@ -84,7 +97,11 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
 
 class SwitzerlandMobilityRoute(Route):
-    # Extends Route class with specific attributes and methods
+
+    """
+    Extends Route class with specific attributes and methods
+    """
+
     switzerland_mobility_id = models.BigIntegerField(unique=True)
     switzerland_mobility_owner = models.BigIntegerField('Wanderland user ID')
 
