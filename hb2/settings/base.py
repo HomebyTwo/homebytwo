@@ -102,6 +102,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Login Page
+LOGIN_URL = '/login/'
+
 # Internationalization
 
 LANGUAGE_CODE = 'en-us'
