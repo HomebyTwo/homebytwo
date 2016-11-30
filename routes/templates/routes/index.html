@@ -6,7 +6,7 @@
 {% block content %}
     <h1 class="text-center">Your Routes</h1>
     {% if routes %}
-        <ul class="list">
+        <ul class="mrgh list-stacked list-stacked--divided">
         {% for route in routes %}
             {% include "routes/card.html" %}
         {% endfor %}

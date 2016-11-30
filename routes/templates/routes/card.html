@@ -1,13 +1,18 @@
 {% load static %}
 
-<li class="mrgv box box--default">
+<li>
     <a href="/routes/{{ route.id }}/">
-        <img class="pull-left"
-        	 src="{% static route.get_poster_picture %}"
-        	 height="30px" width="30px"
-        	 alt="{{ route.name }} poster image"
-    	/>
-        <h2>{{ route.name }}</h2>
-        <p>{{ route.get_distance.km|floatformat:1}}km - {{ route.totalup|floatformat:"0" }}m+ - {{ route.totaldown|floatformat:"0" }}m-</p>
+        <div class="grid">
+            <div class="w-1/4 grid__item">
+                <img class="img-block"
+                     src="{% static route.get_poster_picture %}"
+                     alt="{{ route.name }} poster image"
+                />
+            </div>
+            <div class="w-3/4 grid__item">
+                <h3 class="mrg0">{{ route.name }}</h3>
+                <p class="mrg0">{{ route.get_distance.km|floatformat:1}}km - {{ route.totalup|floatformat:"0" }}m+ - {{ route.totaldown|floatformat:"0" }}m-</p>
+            </div>
+        </div>
     </a>
 </li>
