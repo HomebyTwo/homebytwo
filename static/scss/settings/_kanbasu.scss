@@ -13,7 +13,18 @@ $namespace:                         '';
  * Colors
  */
 
-$brand-color:                       #6ea644;
+
+$alpine-blue:                       #2170b3;
+$mountain-red:                      #cc0605;
+$hiking-yellow:                     #dc9d00;
+$hiking-green:                      #3ea01b;
+$biking-blue:                       #5d93d0;
+$skating-purple:                    #70538f;
+$canoeing-cyan:                     #068a84;
+$tourist-brown:                     #6c3a2a;
+
+
+$brand-color:                       $alpine-blue;
 $alt-color-lighter:                 #eee;
 $alt-color-light:                   #999;
 $alt-color:                         #777;
