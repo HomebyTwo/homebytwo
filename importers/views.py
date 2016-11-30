@@ -10,10 +10,7 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def index(request):
-    context = {
-        'nothing': 'Nothing',
-    }
-    return render(request, 'importers/index.html', context)
+    return render(request, 'importers/index.html')
 
 
 @login_required
