@@ -5,7 +5,10 @@ from .forms import EmailForm
 
 def home(request):
     # Project landing page
-    return render(request, 'landingpage/home.html')
+    context = {
+        'user': request.user,
+    }
+    return render(request, 'landingpage/home.html', context)
 
 
 def get_email(request):
