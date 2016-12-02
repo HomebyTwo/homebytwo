@@ -16,4 +16,4 @@ rcssmin==1.0.6            # via django-compressor
 requests==2.10.0          # via googlemaps
 rjsmin==1.0.12            # via django-compressor
 six==1.10.0               # via django-geojson, polyline
--e git+git@github.com:drixselecta/stravalib.git#egg=stravalib
+-e git://github.com/drixselecta/stravalib.git#egg=stravalib
