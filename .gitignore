@@ -3,3 +3,5 @@ vagrant_ansible_inventory_default
 .vagrant
 /envdir/*
 node_modules/
+/media/images/*
+/media/shapefiles/*
