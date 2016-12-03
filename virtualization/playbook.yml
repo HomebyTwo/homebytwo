@@ -31,11 +31,6 @@
     # - { role: php-apache }    # PHP using Apache and mod-php
     - { role: django }        # Django framework
 
-    ## Webserver, choose one of those only if you have not choosed a scripting language
-    ## above
-    # - { role: nginx }          # Nginx for basic HTML website
-    # - { role: apache }         # Apache for basic HTML website
-
     ## Install Compass in the box
     - { role: compass }
 
@@ -48,26 +43,13 @@
     ## Install Elasticsearch in the box
     # - { role: elasticsearch }
 
-    ## Install Composer in the box
-    # - { role: composer }
-
-    # If you want php xdebug in your local boxes, uncomment this
-    # The when clause prevents it to be installed on the CI_SERVER
-    # - { role: php-xdebug, when: "'{{ lookup('env','CI_SERVER') }}' != 'yes'" }
-
     ## Install some Gitlab CI scripts and .gitlab-ci.yml.
     ## See https://github.com/liip/drifter/blob/master/ci/README.md for details
     # - { role: gitlabci }
 
-    ## You can also creates your own role, just add a directory under the 'virtualization'
-    ## folder and refer to it like for other roles :
-
-
-# If needed, you can specify your own tasks, here is an example :
-#  tasks:
-#    - name: install project dev tools
-#      shell: cd {{ root_directory }} && composer.phar --quiet install
-#    - name: Copy application config file
-#      shell: cp -f {{ root_directory }}/config/server_config.php.vagrant {{ root_directory }}/config/server_config.php
-#    - name: Provision the database
-#      shell: cd {{ root_directory }} && ./console mysql:reset
+# Additional tasks
+  tasks:
+    - name: npm install sass and kanbasu
+      shell: cd {{ root_directory }} && npm install
+    - name: add ALLOWED_HOSTS setting
+      settings: {{ hosts }}
