@@ -1,38 +1,50 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block banner_image %} <img src="{% static 'images/banner-login.jpg' %}" class="img-block"> {% endblock banner_image %}
 
 {% block content %}
 
-{% if form.errors %}
-<p>Your username and password didn't match. Please try again.</p>
-{% endif %}
+{% include "header.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
 
-{% if next %}
-    {% if user.is_authenticated %}
-    <p>Your account doesn't have access to this page. To proceed,
-    please login with an account that has access.</p>
-    {% else %}
-    <p>Please login to see this page.</p>
-    {% endif %}
-{% endif %}
+<!-- Login form -->
+<div class="grid grid--center">
+    <div class="grid__item w-5/6 sm-w-3/4 md-w-2/3 lg-w-1/2 box">
 
-<form method="post" action="{% url 'login' %}">
-{% csrf_token %}
-<table>
-<tr>
-    <td>{{ form.username.label_tag }}</td>
-    <td>{{ form.username }}</td>
-</tr>
-<tr>
-    <td>{{ form.password.label_tag }}</td>
-    <td>{{ form.password }}</td>
-</tr>
-</table>
+        {% if form.errors %}
+            <div class="box alert alert--error"><p>Your username and password didn't match. Please try again.</p></div>
+        {% endif %}
 
-<input type="submit" value="login" />
-<input type="hidden" name="next" value="{{ next }}" />
-</form>
+        {% if next %}
+            {% if user.is_authenticated %}
+                <p>Your account doesn't have access to this page. To proceed,
+                please login with an account that has access:</p>
+            {% else %}
+                <p>Please login to see this page:</p>
+            {% endif %}
+        {% endif %}
 
-{# Assumes you setup the password_reset view in your URLconf #}
-<p><a href="{% url 'password_reset' %}">Lost password?</a></p>
+    <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div class="grid">
+            <div>
+                <div class="grid__item sm-w-1/4">{{ form.username.label_tag }}</div>
+                <div class="grid__item sm-w-3/4">{{ form.username }}</div>
+            </div>
+            <div class="mrgt">
+                <div class="grid__item sm-w-1/4">{{ form.password.label_tag }}</div>
+                <div class="grid__item sm-w-3/4">{{ form.password }}</div>
+            </div>
+        </div>
+        <div class="clearfix mrgv">
+            <div class="pull-right"><input class="btn btn--primary" type="submit" value="login" /></div>
+            <div class="pull-left"><a href="{% url 'password_reset' %}">Lost password?</a></div>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}" />
+    </form>
 
-{% endblock %}
+    {# Assumes you setup the password_reset view in your URLconf #}
+
+    </div>
+</div>
+{% endblock content %}
