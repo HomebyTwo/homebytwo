@@ -1,14 +1,9 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block title %}Home by Two{% endblock %}
 
 {% block content %}
-{% include "header.html" %}
-    <div class="grid grid--center">
-        <div class="xs-w-1/1 w-3/4 grid__item">
-            {% include "landingpage/pitch.html" %}
-            {% include "landingpage/signup.html" %}
-        </div>
-    </div>
+    {% include "header.html" with mastersize="big" banner_image="images/banner.jpg" %}
+    {% include "landingpage/pitch.html" %}
+    {% include "landingpage/signup.html" %}
 {% endblock content %}
