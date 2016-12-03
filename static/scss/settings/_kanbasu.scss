@@ -13,7 +13,6 @@ $namespace:                         '';
  * Colors
  */
 
-
 $alpine-blue:                       #2170b3;
 $mountain-red:                      #cc0605;
 $hiking-yellow:                     #dc9d00;
@@ -25,11 +24,23 @@ $tourist-brown:                     #6c3a2a;
 
 
 $brand-color:                       $alpine-blue;
+$white:                             #fff;
 $alt-color-lighter:                 #eee;
 $alt-color-light:                   #999;
 $alt-color:                         #777;
 $alt-color-dark:                    #555;
 $alt-color-darker:                  #333;
+$black:                             #000;
+
+
+$success:                           #dff0d8;
+$success-text:                      darken($success, 50%);
+$info:                              #d9edf7;
+$info-text:                         darken($info ,50%);
+$warning:                           #fcf8e3;
+$warning-text:                      darken($warning, 50%);
+$error:                             lighten($mountain-red, 50%);
+$error-text:                        darken($error, 50%);
 
 
 /**
