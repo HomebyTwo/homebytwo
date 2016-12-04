@@ -1,13 +1,11 @@
 # Home by Two
 
 This repository contains the Django source code for http://homebytwo.ch.
-Home by two is a hobby project to improve the planning of hiking, running and cycling outings, so that I can reliably tell my wife at what time I will return home.
+Home by two is a hobby project to plan the schedule of hiking, running and cycling outings, in order to reliably tell what time I will be back.
 
-I'm hoping to find other young fathers with a similar motivation to contribute.
+It would be great if other young fathers with a similar motivation could contribute to the vision.
 
-I am not really a web developer as you can probably tell. Enjoy!
-
-Installation Requirements
+## Installation Requirements
 
 ```
 Vagrant >= 1.8.4
@@ -55,8 +53,6 @@ Add setting files to envdir:
 - STRAVA_CLIENT_ID:
 - STRAVA_SECRET:
 - SWISS_PUBLIC_TRANSPORT_API_URL:
-- SWITZERLAN_MOBILITY_USERNAME:
-- SWITZERLAN_MOBILITY_PASSWORD:
 
 
 Open Home by two:
