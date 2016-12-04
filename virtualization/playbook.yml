@@ -51,6 +51,3 @@
   tasks:
     - name: npm install sass and kanbasu
       shell: cd {{ root_directory }} && npm install
-
-    - name: create ALLOWED_HOSTS file
-      copy: "dest={{ django_root }}/envdir/ALLOWED_HOSTS content={{ hostname }} "
