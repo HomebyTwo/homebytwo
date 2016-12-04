@@ -27,10 +27,10 @@ Optional dependencies:
 
 ## Installation
 
-Clone the repository on your machine:
+Clone the repository on your machine and open the project directory:
 
 ```sh
-$ git clone --recursive https://github.com/drixselecta/homebytwo.git
+$ git clone --recursive https://github.com/drixselecta/homebytwo.git && cd homebytwo
 ```
 
 Insall addition vagrant plugins:
@@ -45,8 +45,7 @@ Create and provision the virtual machine:
 $ vagrant up
 ```
 
-Add setting files to envdir:
-- ALLOWED_HOSTS:
+Add API setting files to envdir:
 - GOOGLEMAPS_API_KEY:
 - MAPBOX_ACCESS_TOKEN:
 - OPENTRANSPORTDATA_API_KEY:
@@ -54,18 +53,21 @@ Add setting files to envdir:
 - STRAVA_SECRET:
 - SWISS_PUBLIC_TRANSPORT_API_URL:
 
+## SSH into the box and run the development server:
 
-Open Home by two:
+```sh
+$ vagrant ssh
+$ ./manage.py runserver
+```
+
+Open Home by two in your browser:
 
 http://homebytwo.lo
 
-## SSH into the box:
-
-```
-$ vagrant ssh
-```
 
 ## Create superuser
+
+To create an initial user, you can user the create superuser function.
 
 ```
 $ ./manage.py createsuperuser
