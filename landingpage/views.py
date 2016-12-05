@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, HttpResponseRedirect
 
 from .forms import EmailForm
 
@@ -25,7 +25,14 @@ def get_email(request):
 
     # if a GET (or any other method) we'll create a blank form
     else:
-        form = NameForm()
+        form = EmailForm()
 
-    return render(request, 'name.html', {'form': form})
+    return render(request, 'home.html', {'form': form})
 
+
+def subsribe_user_to_mailchimp(request, email):
+    """
+    Subscribe user to mail chimp using Mail Chimp API v3
+    params: email
+    """
+    pass
