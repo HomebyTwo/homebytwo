@@ -105,6 +105,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Login Page
 LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/routes/'
 
 # Internationalization
 
