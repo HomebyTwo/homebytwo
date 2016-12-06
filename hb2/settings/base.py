@@ -131,6 +131,12 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
 
+#############
+# Mailchimp #
+#############
+
+MAILCHIMP_API_KEY = get_env_variable('MAILCHIMP_API_KEY', '')
+
 
 ##########
 # Mapbox #
