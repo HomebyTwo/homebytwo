@@ -1,9 +1,14 @@
 <div class="mrgt0 pdgt-- box box--default">
     <div class="grid grid--center">
-        <h2 class="sm-w-2/3 grid__item">Sign up and to know when we launch:</h2>
-        <form action="/your-name/" method="post">
-            <div class="sm-w-1/2 grid__item mrgb-"><input id="email" type="text" name="your_name" value="youremail@example.com"></div>
+        <div class="sm-w-2/3 grid__item">
+            <h4 class=>We are still working on it...</h4>
+            <p class="mrgt0">Sign up to find out when we launch and test the preview the app before everyone else:</p>
+        </div>
+        <form action="/" method="post">
+            {% csrf_token %}
+            <div class="sm-w-1/2 grid__item mrgb-">{{ form.email }}</div>
             <div class="sm-w-1/6 grid__item"><input class="btn btn--primary btn--block" type="submit" value="Sign up"></div>
+            {{ form.list_id }}
         </form>
     </div>
 </div>
