@@ -15,10 +15,10 @@
     <div id="content">
         {% block content %}{% endblock %}
     </div>
-    <!-- Base JavaScript
+    <!-- Main JavaScript
     ================================================== -->
-    <!-- Latest JQuery -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="{% static 'javascripts/main.js' %}"></script>
+
     {% block extrajs %}{% endblock %}
 </body>
 </html>
