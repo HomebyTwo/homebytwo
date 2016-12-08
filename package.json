@@ -22,5 +22,9 @@
     "kanbasu": "^1.4.0",
     "webpack": "^1.13.1",
     "yargs": "^4.7.0"
+  },
+  "dependencies": {
+    "jquery": "^2.2.4",
+    "jquery-match-height": "^0.7.0"
   }
 }
