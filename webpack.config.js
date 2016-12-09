@@ -19,7 +19,7 @@ module.exports = function(production) {
           exclude: /(node_modules|bower_components)/,
           test: /\.jsx?$/,
           query: {
-            presets: ['es2016', 'react']
+            presets: ['es2015']
           }
         }
       ]
