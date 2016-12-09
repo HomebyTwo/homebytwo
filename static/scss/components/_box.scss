@@ -1,0 +1,9 @@
+.box--match-height {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.box--match-height>:last-child {
+    margin-top: auto;
+}
