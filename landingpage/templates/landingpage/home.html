@@ -3,7 +3,7 @@
 {% block title %}Home by Two{% endblock %}
 
 {% block content %}
-    {% include "header.html" with mastersize="big" banner_image="images/banner.jpg" %}
-    {% include "landingpage/pitch.html" %}
-    {% include "landingpage/signup.html" %}
+    {% include "includes/_header.html" with mastersize="big" banner_image="images/banner.jpg" %}
+    {% include "landingpage/includes/_pitch.html" %}
+    {% include "landingpage/includes/_email_signup.html" %}
 {% endblock content %}
