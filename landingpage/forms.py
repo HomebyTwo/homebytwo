@@ -37,13 +37,14 @@ class EmailSubscriptionForm(forms.Form):
             search_url = api_base_url + '/search-members?query=%s' % email
             resp = requests.get(search_url, auth=auth)
 
-            # Suscribe to list if the member is not currently subscribed
+            # If the member is not currently subscribed, do it!
             if resp.json()['exact_matches']['members'][0]['status'] != 'subscribed':
                 member_id = resp.json()['exact_matches']['members'][0]['id']
                 put_url = post_url + member_id
                 resp = requests.put(put_url, json=payload, auth=auth)
                 return 'resubscribed'
 
+            # List member is already subscribed
             else:
                 return 'already subscribed'
 

@@ -6,16 +6,14 @@
         </div>
         <form action="/signup/" method="post">
             {% csrf_token %}
-            <div class="sm-w-1/2 grid__item mrgb-">{{ form.email }}</div>
-            <div class="sm-w-1/6 grid__item"><input class="btn btn--primary btn--block" type="submit" value="Sign up"></div>
+            <div class="sm-w-1/2 grid__item mrgb-">
+                {{ form.email }}
+            </div>
+            <div class="sm-w-1/6 grid__item">
+                <input class="btn btn--primary btn--block" type="submit" value="Sign up">
+            </div>
+            {# Mail Chimp List ID as hidden field #}
             {{ form.list_id }}
         </form>
     </div>
-    <script type="text/javascript">
-        // Submit post on submit
-        $('#post-form').on('submit', function(event){
-        event.preventDefault();
-        console.log("form submitted!")  // sanity check
-});
-    </script>
 </div>
