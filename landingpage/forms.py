@@ -10,7 +10,7 @@ class EmailSubscriptionForm(forms.Form):
     error_css_class = 'error'
     required_css_class = 'required'
 
-    def signup_user(self):
+    def signup_email(self):
         email = self.cleaned_data['email']
         list_id = self.cleaned_data['list_id']
 
