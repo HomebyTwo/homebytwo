@@ -5,6 +5,9 @@ import requests
 
 
 class EmailSubscriptionForm(forms.Form):
+    """
+    Email subscribtion form for Mailchimp using Mail Chimp API v3
+    """
     email = forms.EmailField(label='Email Address', max_length=100)
     list_id = forms.CharField(widget=forms.HiddenInput, initial='f1300adfdc')
     error_css_class = 'error'
