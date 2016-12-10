@@ -27,11 +27,3 @@ def email_signup(request):
         form = EmailSubscriptionForm()
 
     return render(request, 'home.html', {'form': form})
-
-
-def subsribe_user_to_mailchimp(request, email):
-    """
-    Subscribe user to mail chimp using Mail Chimp API v3
-    params: email
-    """
-    pass
