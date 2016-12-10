@@ -6,7 +6,7 @@ module.exports = {
     javascripts:    'static/javascripts/src/**/*.{js,jsx}',
     webpack:        ['./static/javascripts/src/main.js'],
     images:         'static/images/**/*.{gif,jpg,jpeg,png,svg}',
-    templates:      '**/*.html'
+    templates:      'hb2/templates/**/*.html'
   },
   dest: {
     css:            'static/stylesheets',
