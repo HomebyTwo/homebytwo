@@ -3,7 +3,17 @@
 {% block title %}Home by Two{% endblock %}
 
 {% block content %}
+    <!-- Header -->
     {% include "includes/_header.html" with mastersize="big" banner_image="images/banner.jpg" %}
+    <!-- Page Content -->
     {% include "landingpage/includes/_pitch.html" %}
-    {% include "landingpage/includes/_email_signup.html" %}
+    <!-- Email Signup -->
+    <div class="mrgt0 grid grid--center pdgt-- box box--default">
+    <div class="sm-w-2/3 grid__item">
+        <h4 class=>We are still working on it...</h4>
+        <p class="mrgt0">Sign up to find out when we launch and test the preview the app before everyone else:</p>
+    </div>
+    <div class="sm-w-2/3 grid__item">{% include "landingpage/includes/_email_signup.html" %}</div>
+</div>
+
 {% endblock content %}
