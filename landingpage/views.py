@@ -15,14 +15,17 @@ def home(request):
 
 def email_signup(request):
     # if this is a POST request we need to process the form data
-    if request.method == 'POST' and request.is_ajax():
+    if request.method == 'POST':
         # create a form instance and populate it with data from the request:
         form = EmailSubscriptionForm(request.POST)
         # check whether it's valid:
         if form.is_valid():
             response = form.signup_email()
-            return HttpResponse(json.dumps(response))
+            if request.is_ajax():
+                return HttpResponse(json.dumps(response))
+            else:
+                return render(request, 'landingpage/email_signup_confirm.html', response)
 
-    # if a GET (or any other method) we'll redirect to the homepage
+    # if a GET or not AJAX we'll redirect to the homepage
     else:
         return HttpResponseRedirect('/')
