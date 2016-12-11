@@ -8,8 +8,11 @@ class EmailSubscriptionForm(forms.Form):
     """
     Email subscribtion form for Mailchimp using Mail Chimp API v3
     """
-    email = forms.EmailField(label='Email Address', max_length=100)
-    list_id = forms.CharField(widget=forms.HiddenInput, initial='f1300adfdc')
+    email = forms.EmailField(label='Email Address', max_length=100,
+                             widget=forms.EmailInput(
+                                attrs={'placeholder': 'Email'}))
+    list_id = forms.CharField(initial='f1300adfdc',
+                              widget=forms.HiddenInput)
     error_css_class = 'error'
     required_css_class = 'required'
 
@@ -30,8 +33,12 @@ class EmailSubscriptionForm(forms.Form):
         post_url = '/'.join([api_base_url, 'lists', list_id, 'members/'])
         resp = requests.post(post_url, json=payload, auth=auth)
 
+        error = True
+        message = 'API error'
+
         if resp.status_code == 200:
-            return 'subscribed'
+            error = False
+            message = 'Subscribed'
 
         # Bad request email owner is already a subscriber
         if resp.status_code == 400:
@@ -40,16 +47,22 @@ class EmailSubscriptionForm(forms.Form):
             search_url = api_base_url + '/search-members?query=%s' % email
             resp = requests.get(search_url, auth=auth)
 
-            # If the member is not currently subscribed, do it!
-            if resp.json()['exact_matches']['members'][0]['status'] != 'subscribed':
+            # Find out if list member is subscribed
+            status = resp.json()['exact_matches']['members'][0]['status']
+
+            # List member is already subscribed
+            if status == 'subscribed':
+                error = False
+                message = 'Already subscribed'
+
+            # Member is not currently subscribed, do it!
+            else:
                 member_id = resp.json()['exact_matches']['members'][0]['id']
                 put_url = post_url + member_id
                 resp = requests.put(put_url, json=payload, auth=auth)
-                return 'resubscribed'
 
-            # List member is already subscribed
-            else:
-                return 'already subscribed'
+                if resp.status_code == 200:
+                    error = False
+                    message = 'Resubscribed'
 
-        else:
-            return 'API error'
+        return {'error': error, 'message': message}
