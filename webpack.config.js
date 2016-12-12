@@ -7,7 +7,7 @@ var path       = require('path'),
 module.exports = function(production) {
   var config = {
     resolve: {
-      root: [path.resolve(__dirname, 'static/javascripts')],
+      root: [path.resolve(__dirname, 'static/javascripts/src')],
       extensions: ['', '.jsx', '.js']
     },
     entry: gulpConfig.src.webpack,
