@@ -24,7 +24,9 @@ def email_signup(request):
             if request.is_ajax():
                 return HttpResponse(json.dumps(response))
             else:
-                return render(request, 'landingpage/email_signup_confirm.html', response)
+                return render(request,
+                              'landingpage/email_signup_confirm.html',
+                              response)
 
     # if a GET or not AJAX we'll redirect to the homepage
     else:
