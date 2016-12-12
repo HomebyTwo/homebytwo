@@ -10,7 +10,8 @@ class EmailSubscriptionForm(forms.Form):
     """
     email = forms.EmailField(label='Email Address', max_length=100,
                              widget=forms.EmailInput(
-                                attrs={'placeholder': 'Email'}))
+                                attrs={'placeholder': 'Email',
+                                       'required': True}))
     list_id = forms.CharField(initial='f1300adfdc',
                               widget=forms.HiddenInput)
     error_css_class = 'error'
