@@ -1,4 +1,4 @@
-<form class="grid" action="/email-signup/" method="post">
+<form class="grid js-ajax-submit" action="/email-signup/" method="post">
     {% csrf_token %}
     <div class="sm-w-2/3 grid__item mrgb-">
         {{ form.email }}

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "jquery": "^2.2.4",
+    "jquery-form": "^3.50.0",
     "jquery-match-height": "^0.7.0"
   }
 }
