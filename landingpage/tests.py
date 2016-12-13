@@ -27,6 +27,13 @@ class LandingpageTest(TestCase):
         self.assertTrue(content in str(resp.content))
         self.assertTrue(str(signup_form['email']) in str(resp.content))
 
+    def test_gtm_container_in_template(self):
+        container_id = settings.GTM_CONTAINER_ID
+        url = reverse("home")
+        resp = self.client.get(url)
+
+        self.assertTrue(container_id in str(resp.content))
+
     def test_get_email_signup_view(self):
         url = reverse("email-signup")
         resp = self.client.get(url)
