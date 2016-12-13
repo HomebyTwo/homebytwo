@@ -71,6 +71,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'hb2.context_processor.gtm_context_processor',
             ],
         },
     },
@@ -138,6 +139,11 @@ STATICFILES_DIRS = (
 MAILCHIMP_API_KEY = get_env_variable('MAILCHIMP_API_KEY', '')
 MAILCHIMP_LIST_ID = get_env_variable('MAILCHIMP_LIST_ID', '')
 
+######################
+# Google Tag Manager #
+######################
+
+GTM_CONTAINER_ID = get_env_variable('GTM_CONTAINER_ID', '')
 
 ##########
 # Mapbox #
