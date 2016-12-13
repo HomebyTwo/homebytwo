@@ -1,4 +1,4 @@
-# Home by Two  ![Build Status](https://travis-ci.org/drixselecta/homebytwo.svg?branch=master)](https://travis-ci.org/drixselecta/homebytwo)
+# Home by Two  [![Build Status](https://travis-ci.org/drixselecta/homebytwo.svg?branch=master)](https://travis-ci.org/drixselecta/homebytwo)
 
 This repository contains the Django source code for http://homebytwo.ch.
 Home by two is a hobby project to plan the schedule of hiking, running and cycling outings, in order to reliably tell what time I will be back.
