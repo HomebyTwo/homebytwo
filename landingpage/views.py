@@ -18,16 +18,28 @@ def email_signup(request):
     if request.method == 'POST':
         # create a form instance and populate it with data from the request:
         form = EmailSubscriptionForm(request.POST)
-        # check whether it's valid:
+
+        # Prepare the repsonse.
+        # The posted form data is valid, get the response from MailChimp!
         if form.is_valid():
             response = form.signup_email()
-            if request.is_ajax():
-                return HttpResponse(json.dumps(response))
-            else:
-                return render(request,
-                              'landingpage/email_signup_confirm.html',
-                              response)
 
-    # if a GET or not AJAX we'll redirect to the homepage
+        # The form data is invalid.
+        else:
+            response = {'error': True,
+                        'message': 'An error has occured '
+                                   'with your email subscription.'}
+
+        # If the POST was AJAX, return a JSON
+        if request.is_ajax():
+            return HttpResponse(json.dumps(response))
+
+        # If the POST is not AJAX, print the template
+        else:
+            return render(request,
+                          'landingpage/email_signup_confirm.html',
+                          response)
+
+    # if it was a GET request we just redirect to the homepage
     else:
         return HttpResponseRedirect('/')
