@@ -7,3 +7,4 @@ node_modules/
 /media/shapefiles/*
 .coverage
 htmlcov/
+.tox

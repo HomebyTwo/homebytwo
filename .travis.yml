@@ -1,0 +1,18 @@
+sudo: false
+language: python
+services: postgresql
+
+install:
+  - pip install tox
+
+env:
+  - TOXENV=py27 DATABASE_URL="postgis://postgres@localhost/travisdb"
+  - TOXENV=py34 DATABASE_URL="postgis://postgres@localhost/travisdb"
+
+before_script:
+  - psql -c "CREATE DATABASE mydb;" -U postgres
+  - psql -c 'CREATE EXTENSION postgis;' -U postgres
+  - psql -c 'CREATE EXTENSION postgis_topology;' -U postgres
+
+script:
+  - tox
