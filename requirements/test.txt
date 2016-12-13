@@ -1,0 +1,3 @@
+coverage==4.2
+httpretty==0.8.14
+tox==2.3.1
