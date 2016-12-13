@@ -12,10 +12,8 @@ class EmailSubscriptionForm(forms.Form):
                              widget=forms.EmailInput(
                                 attrs={'placeholder': 'Email',
                                        'required': True}))
-    list_id = forms.CharField(initial='f1300adfdc',
+    list_id = forms.CharField(initial=settings.MAILCHIMP_LIST_ID,
                               widget=forms.HiddenInput)
-    error_css_class = 'error'
-    required_css_class = 'required'
 
     def signup_email(self):
         email = self.cleaned_data['email']
