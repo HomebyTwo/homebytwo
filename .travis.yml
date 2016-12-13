@@ -6,8 +6,8 @@ install:
   - pip install tox
 
 env:
-  - TOXENV=py27 DATABASE_URL="postgis://postgres@localhost/travisdb"
-  - TOXENV=py34 DATABASE_URL="postgis://postgres@localhost/travisdb"
+  - TOXENV=py27 DATABASE_URL="postgis://postgres@localhost/travisdb" MAILCHIMP_API_KEY=dummy-usXX MAILCHIMP_LIST_ID=123456
+  - TOXENV=py34 DATABASE_URL="postgis://postgres@localhost/travisdb" MAILCHIMP_API_KEY=dummy-usXX MAILCHIMP_LIST_ID=123456
 
 before_script:
   - psql -c "CREATE DATABASE mydb;" -U postgres
