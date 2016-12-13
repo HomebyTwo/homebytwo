@@ -37,7 +37,7 @@ class EmailSubscriptionForm(forms.Form):
 
         if resp.status_code == 200:
             error = False
-            message = 'Thank you! You are now subscribed with %s' % email
+            message = 'Thank you! You are now subscribed with %s.' % email
 
         # Bad request email owner is already a subscriber
         if resp.status_code == 400:
@@ -62,6 +62,6 @@ class EmailSubscriptionForm(forms.Form):
 
                 if resp.status_code == 200:
                     error = False
-                    message = 'Thank you for signing up up again with %s' % email
+                    message = 'Thank you for signing up up again with %s.' % email
 
         return {'error': error, 'message': message}
