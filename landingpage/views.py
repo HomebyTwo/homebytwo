@@ -1,12 +1,21 @@
 from django.shortcuts import render, HttpResponse, HttpResponseRedirect
+from django.core.exceptions import ImproperlyConfigured
+from django.conf import settings
+
 
 from .forms import EmailSubscriptionForm
 import json
 
 
 def home(request):
+
+    # Do not include form if MAILCHIMP_LIST_ID is not set
+    if settings.MAILCHIMP_LIST_ID == '':
+        error_msg = "Set the MAILCHIMP_LIST_ID environment variable"
+        raise ImproperlyConfigured(error_msg)
+
+    # Include email signup form
     context = {
-        # Include email signup form
         'form': EmailSubscriptionForm(),
     }
 
@@ -16,6 +25,12 @@ def home(request):
 def email_signup(request):
     # if this is a POST request we need to process the form data
     if request.method == 'POST':
+
+        # Check for API key in env
+        if settings.MAILCHIMP_API_KEY == '':
+            error_msg = 'Set the MAILCHIMP_API_KEY environment variable'
+            raise ImproperlyConfigured(error_msg)
+
         # create a form instance and populate it with data from the request:
         form = EmailSubscriptionForm(request.POST)
 
