@@ -27,12 +27,23 @@ class LandingpageTest(TestCase):
         self.assertTrue(content in str(resp.content))
         self.assertTrue(str(signup_form['email']) in str(resp.content))
 
-    def test_gtm_container_in_template(self):
-        container_id = settings.GTM_CONTAINER_ID
+    def test_gtm_container_id_in_template(self):
+        settings.GTM_CONTAINER_ID = 'GTM-1234'
+
         url = reverse("home")
         resp = self.client.get(url)
 
-        self.assertTrue(container_id in str(resp.content))
+        self.assertTrue(settings.GTM_CONTAINER_ID in str(resp.content))
+
+    def test_empty_gtm_container_id_not_in_template(self):
+        settings.GTM_CONTAINER_ID = ''
+        gtm_url = 'https://www.googletagmanager.com/'
+
+        url = reverse("home")
+        resp = self.client.get(url)
+
+        self.assertFalse(gtm_url in str(resp.content))
+
 
     def test_get_email_signup_view(self):
         url = reverse("email-signup")
