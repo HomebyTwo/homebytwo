@@ -39,11 +39,15 @@ def email_signup(request):
         if form.is_valid():
             response = form.signup_email()
 
-        # The form data is invalid.
+        # The form data is invalid. Get the errors.
         else:
-            response = {'error': True,
-                        'message': 'An error has occured '
-                                   'with your email subscription.'}
+            message = 'An error has occured. '
+
+            for error in form.errors:
+                for error_message in form.errors[error]:
+                    message += error_message
+
+            response = {'error': True, 'message': message}
 
         # If the POST was AJAX, return a JSON
         if request.is_ajax():
