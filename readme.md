@@ -76,5 +76,6 @@ $ ./manage.py createsuperuser
 ## Run Tests
 
 ```sh
+$ vagrant ssh
 $ tox
 ```
