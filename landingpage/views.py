@@ -9,11 +9,6 @@ import json
 
 def home(request):
 
-    # Do not include form if MAILCHIMP_LIST_ID is not set
-    if settings.MAILCHIMP_LIST_ID == '':
-        error_msg = "Set the MAILCHIMP_LIST_ID environment variable"
-        raise ImproperlyConfigured(error_msg)
-
     # Include email signup form
     context = {
         'form': EmailSubscriptionForm(),
@@ -25,11 +20,6 @@ def home(request):
 def email_signup(request):
     # if this is a POST request we need to process the form data
     if request.method == 'POST':
-
-        # Check for API key in env
-        if settings.MAILCHIMP_API_KEY == '':
-            error_msg = 'Set the MAILCHIMP_API_KEY environment variable'
-            raise ImproperlyConfigured(error_msg)
 
         # create a form instance and populate it with data from the request:
         form = EmailSubscriptionForm(request.POST)
@@ -44,6 +34,7 @@ def email_signup(request):
             message = 'An error has occured. '
 
             for error in form.errors:
+                message += error + ': '
                 for error_message in form.errors[error]:
                     message += error_message
 

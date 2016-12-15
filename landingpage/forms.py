@@ -13,11 +13,19 @@ class EmailSubscriptionForm(forms.Form):
                                 attrs={'placeholder': 'Email',
                                        'required': True}))
     list_id = forms.CharField(initial=settings.MAILCHIMP_LIST_ID,
-                              widget=forms.HiddenInput)
+                              widget=forms.HiddenInput, required=False)
 
     def signup_email(self):
         email = self.cleaned_data['email']
         list_id = self.cleaned_data['list_id']
+
+        # Do not signup email if MAILCHIMP_LIST_ID is empty
+        if settings.MAILCHIMP_LIST_ID == '' or settings.MAILCHIMP_API_KEY == '':
+            error = True
+            message = ('Please set the MAILCHIMP_LIST_ID and MAILCHIMP_API_KEY '
+                       'environment variables.')
+
+            return {'error': error, 'message': message}
 
         # Prepare POST content
         payload = {'email_address': email, "status": "subscribed"}

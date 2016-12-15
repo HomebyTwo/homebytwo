@@ -59,13 +59,25 @@ class LandingpageTest(TestCase):
     # Mailchimp API
     def test_exception_if_mailchimp_list_id_not_set(self):
         with self.settings(MAILCHIMP_LIST_ID=''):
-            url = reverse("home")
-            self.assertRaises(ImproperlyConfigured, self.client.get, url)
+            data = {'email': 'example@example.com',
+                    'list_id': settings.MAILCHIMP_LIST_ID}
+            content = 'Please set the MAILCHIMP_LIST_ID and MAILCHIMP_API_KEY'
+            url = reverse("email-signup")
+            resp = self.client.post(url, data)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(content in str(resp.content))
 
     def test_exception_if_mailchimp_api_key_not_set(self):
         with self.settings(MAILCHIMP_API_KEY=''):
+            data = {'email': 'example@example.com',
+                    'list_id': settings.MAILCHIMP_LIST_ID}
+            content = 'Please set the MAILCHIMP_LIST_ID and MAILCHIMP_API_KEY'
             url = reverse("email-signup")
-            self.assertRaises(ImproperlyConfigured, self.client.post, url)
+            resp = self.client.post(url, data)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(content in str(resp.content))
 
     def test_post_email_signup_view_not_subscribed(self):
         api_base_url = self.get_api_base_url()
