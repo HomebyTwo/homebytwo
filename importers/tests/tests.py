@@ -16,7 +16,7 @@ class Importswissname3dTest(TestCase):
     shapefile = os.path.join(dir_path, 'data', 'MinSwissNAMES3D_PKT.shp')
 
     def test_command_output_inexistant_file(self):
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(OSError):
             call_command('importswissname3d', 'toto')
 
     def test_command_output_incorrect_shapefile(self):

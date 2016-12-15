@@ -51,7 +51,7 @@ class Command(BaseCommand):
         shapefile = os.path.abspath(options['shapefile'])
         if not os.path.exists(shapefile):
             error_msg = ('The file "%s" could not be found.' % shapefile)
-            raise FileNotFoundError(error_msg)
+            raise OSError(error_msg)
 
         # Define mapping between layer fields of the shapefile
         # and fields of Place Model
