@@ -1,34 +1,9 @@
-import os
-from django.contrib.gis.utils import LayerMapping
-from .models import Place
-from django.contrib import settings
+from __future__ import unicode_literals
+
 from routes.models import Place
-swissplaces_mapping = {
-    'type' : 'OBJEKTART',
-    'altitude' : 'HOEHE',
-    'name' : 'NAME',
-    'geom' : 'POINT25D',
-    'lang' : 'SPRACHCODE',
-}
 
-swissplaces_shp = os.path.abspath(
-    os.path.join(
-        settings.BASE_DIR,
-        'media',
-        'shapefiles',
-        'swissNAMES3D_PKT.shp',
-    ),
-)
-
-lang_translations = {
-    'Hochdeutsch inkl. Lokalsprachen':'de',
-    'Franzoesisch inkl. Lokalsprachen':'fr',
-    'Italienisch inkl. Lokalsprachen':'it',
-    'Rumantsch Grischun inkl. Lokalsprachen':'rm',
-    'Mehrsprachig':'multi',
-}
-
-type_translations = {
+# translation map for type of places
+TYPE_TRANSLATIONS = {
     'Flurname swisstopo': 'Place',
     'Lokalname swisstopo': 'Place',
     'Haltestelle Bus': 'Bus Station',
@@ -66,19 +41,20 @@ type_translations = {
     'Aussichtspunkt': 'Point of View',
     'Landesgrenzstein': 'Landmark',
 }
-def translate(column, dictionary, model='Place'):
-    '''Update inserted German values from Swissnames3d with English translations'''
-    for key, value in dictionary.iteritems():
-        Place.objects.filter(**{column: key}).update(**{column: value})
 
-def run(verbose=True):
-    lm = LayerMapping(
-        Place, swissplaces_shp, swissplaces_mapping,
-        transform=False, encoding='UTF-8',
-    )
 
-    lm.save(strict=True, verbose=verbose)
+class Swissname3dPlace(Place):
+    """
+    Extends Place Model with attributes and methods specific to SwissNAME3D.
+    swissNAMES3D is the most comprehensive collection of geographical names
+    for Switzerland and Liechtenstein.
+    https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung1
+    """
 
-    translate('lang', lang_translations)
-    translate('type', type_translations)
+    def save(self, *args, **kwargs):
+        self.place_type = TYPE_TRANSLATIONS[self.place_type]
 
+        if Swissname3dPlace.objects.filter(source_id=self.source_id).exists():
+            pass
+        else:
+            super(Swissname3dPlace, self).save(*args, **kwargs)
