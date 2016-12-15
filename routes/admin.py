@@ -12,7 +12,7 @@ admin.site.register(Route, LeafletGeoAdmin)
 class PlaceAdmin(LeafletGeoAdmin):
     # Custom administration for Place
     fieldsets = [
-        (None,   {'fields': ['name', 'description', 'type', 'altitude']}),
+        (None,   {'fields': ['name', 'description', 'place_type', 'altitude']}),
         ('Date', {'fields': ['geom']})
     ]
 

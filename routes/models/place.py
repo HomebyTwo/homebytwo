@@ -33,19 +33,22 @@ class PlaceManager(models.Manager):
 
 class Place(models.Model):
     """
-    Places are geographic points along routes.
+    Places are geographic points.
     They have a name, description and geom
     Places are used to create segments from routes and
     and for public transport connection.
-
     """
-    type = models.CharField(max_length=50)
-    altitude = models.FloatField()
-    name = models.CharField(max_length=250)
+
+    place_type = models.CharField(max_length=50)  # Could be moved to its own model
+    name = models.CharField('Name of the place', max_length=250)
     description = models.TextField('Text description of the Place', default='')
-    updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of last creation', auto_now_add=True)
+    altitude = models.FloatField(null=True)
     public_transport = models.BooleanField(default=False)
+    data_source = models.CharField('Where the place came from', max_length=50)
+    source_id = models.CharField('Place ID at the data source', max_length=50)
+
+    created_at = models.DateTimeField('Time of creation', auto_now_add=True)
+    updated_at = models.DateTimeField('Time of last update', auto_now=True)
 
     geom = models.PointField(srid=21781)
 
