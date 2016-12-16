@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from routes.models import Place
 
 # translation map for type of places
-TYPE_TRANSLATIONS = {
+PLACE_TYPE_TRANSLATIONS = {
     'Flurname swisstopo': 'Place',
     'Lokalname swisstopo': 'Place',
     'Haltestelle Bus': 'Bus Station',
@@ -52,9 +52,19 @@ class Swissname3dPlace(Place):
     """
 
     def save(self, *args, **kwargs):
-        self.place_type = TYPE_TRANSLATIONS[self.place_type]
+        """
+        Places from the SwissNAME3D_PKT file are imported
+        with the command './manage.py importswissname3d shapefile'.
+        If a place is already in the database, it is skipped.
+        To refresh the data, call the command with the '--delete' option
+        """
 
+        # Skip if the record is already in the Database
         if Swissname3dPlace.objects.filter(source_id=self.source_id).exists():
             pass
         else:
+            # Translate place type from German to English.
+            self.place_type = PLACE_TYPE_TRANSLATIONS[self.place_type]
+
+            # Save with the parent method
             super(Swissname3dPlace, self).save(*args, **kwargs)

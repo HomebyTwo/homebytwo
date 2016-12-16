@@ -124,6 +124,29 @@ class Command(BaseCommand):
         if limit > -1:
             feature_count = min(feature_count, limit)
 
+        # Delete all existing objects from the Database
+        if options['delete']:
+            places = Swissname3dPlace.objects.all()
+            place_count = places.count()
+
+            if options['interactive']:
+                self.stdout.write(
+                    'Deleting %d places from the Database' % (place_count)
+                )
+
+                if not self.query_yes_no('Do you want to continue?', 'no'):
+                    error_msg = (
+                        'You have canceled the operation.'
+                    )
+                    raise CommandError(error_msg)
+
+            # Delete all places
+            places.delete()
+
+            # Inform on successful deletion
+            msg = 'Successfully deleted %d places.' % place_count
+            self.stdout.write(self.style.SUCCESS(msg))
+
         # Save the mapped data to the Database
         if options['interactive']:
             self.stdout.write(
@@ -139,6 +162,6 @@ class Command(BaseCommand):
         layermapping.save(strict=True, fid_range=(0, feature_count),
                           stream=self.stdout, progress=True)
 
-        # Inform on success
+        # Inform on successful save
         msg = 'Successfully imported %d places.' % feature_count
         self.stdout.write(self.style.SUCCESS(msg))
