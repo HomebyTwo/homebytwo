@@ -14,39 +14,6 @@ class Command(BaseCommand):
 
     help = 'Import from the SwissNAME3D points shapefile to the Place Model'
 
-    def query_yes_no(self, question, default="yes"):
-        """Ask a yes/no question via raw_input() and return their answer.
-        http://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
-
-        "question" is a string that is presented to the user.
-        "default" is the presumed answer if the user just hits <Enter>.
-            It must be "yes" (the default), "no" or None (meaning
-            an answer is required of the user).
-
-        The "answer" return value is True for "yes" or False for "no".
-        """
-        valid = {"yes": True, "y": True, "ye": True,
-                 "no": False, "n": False}
-        if default is None:
-            prompt = " [y/n] "
-        elif default == "yes":
-            prompt = " [Y/n] "
-        elif default == "no":
-            prompt = " [y/N] "
-        else:
-            raise ValueError("invalid default answer: '%s'" % default)
-
-        while True:
-            self.stdout.write(question + prompt)
-            choice = input().lower()
-            if default is not None and choice == '':
-                return valid[default]
-            elif choice in valid:
-                return valid[choice]
-            else:
-                self.stdout.write("Please respond with 'yes' or 'no' "
-                                  "(or 'y' or 'n').\n")
-
     def add_arguments(self, parser):
 
         # path to the shapefile
@@ -82,6 +49,65 @@ class Command(BaseCommand):
             ),
         )
 
+    def query_yes_no(self, question, default="yes"):
+        """Ask a yes/no question via raw_input() and return their answer.
+        http://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
+
+        "question" is a string that is presented to the user.
+        "default" is the presumed answer if the user just hits <Enter>.
+            It must be "yes" (the default), "no" or None (meaning
+            an answer is required of the user).
+
+        The "answer" return value is True for "yes" or False for "no".
+        """
+        valid = {"yes": True, "y": True, "ye": True,
+                 "no": False, "n": False}
+        if default is None:
+            prompt = " [y/n] "
+        elif default == "yes":
+            prompt = " [Y/n] "
+        elif default == "no":
+            prompt = " [y/N] "
+        else:
+            raise ValueError("invalid default answer: '%s'" % default)
+
+        while True:
+            self.stdout.write(question + prompt)
+            choice = input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                self.stdout.write("Please respond with 'yes' or 'no' "
+                                  "(or 'y' or 'n').\n")
+
+    def delete(self, interactive):
+        """
+        Delete all existing objects from the Database
+        """
+
+        places = Swissname3dPlace.objects.all()
+        place_count = places.count()
+
+        if interactive:
+            self.stdout.write(
+                'Deleting %d places from the Database' % (place_count)
+            )
+
+            if not self.query_yes_no('Do you want to continue?', 'no'):
+                error_msg = (
+                    'You have canceled the operation.'
+                )
+                raise CommandError(error_msg)
+
+        # Delete all places
+        places.delete()
+
+        # Inform on successful deletion
+        msg = 'Successfully deleted %d places.' % place_count
+        self.stdout.write(self.style.SUCCESS(msg))
+
     def handle(self, *args, **options):
 
         # Generate path and make sure the file exists
@@ -114,6 +140,16 @@ class Command(BaseCommand):
             )
             raise CommandError(error_msg)
 
+        # Delete existing records if requested
+        if options['delete']:
+            self.delete(options['interactive'])
+
+        mapping_options = {
+                            'strict': True,
+                            'stream': self.stdout,
+                            'progress': True,
+                        }
+
         # Get the number of features
         datasource = DataSource(shapefile)
         layer = datasource[0]
@@ -123,29 +159,9 @@ class Command(BaseCommand):
         limit = options['limit']
         if limit > -1:
             feature_count = min(feature_count, limit)
-
-        # Delete all existing objects from the Database
-        if options['delete']:
-            places = Swissname3dPlace.objects.all()
-            place_count = places.count()
-
-            if options['interactive']:
-                self.stdout.write(
-                    'Deleting %d places from the Database' % (place_count)
-                )
-
-                if not self.query_yes_no('Do you want to continue?', 'no'):
-                    error_msg = (
-                        'You have canceled the operation.'
-                    )
-                    raise CommandError(error_msg)
-
-            # Delete all places
-            places.delete()
-
-            # Inform on successful deletion
-            msg = 'Successfully deleted %d places.' % place_count
-            self.stdout.write(self.style.SUCCESS(msg))
+            mapping_options['fid_range'] = (0, limit)
+        else:
+            mapping_options['step'] = 1000
 
         # Save the mapped data to the Database
         if options['interactive']:
@@ -159,8 +175,7 @@ class Command(BaseCommand):
                 )
                 raise CommandError(error_msg)
 
-        layermapping.save(strict=True, fid_range=(0, feature_count),
-                          stream=self.stdout, progress=True)
+        layermapping.save(**mapping_options)
 
         # Inform on successful save
         msg = 'Successfully imported %d places.' % feature_count
