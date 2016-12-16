@@ -5,10 +5,47 @@ from ...models import Swissname3dPlace
 from django.contrib.gis.utils import LayerMapping
 from django.contrib.gis.gdal import DataSource
 
+# Make input work in Python 2.7
+if hasattr(__builtins__, 'raw_input'):
+    input = raw_input
+
 
 class Command(BaseCommand):
 
     help = 'Import from the SwissNAME3D points shapefile to the Place Model'
+
+    def query_yes_no(self, question, default="yes"):
+        """Ask a yes/no question via raw_input() and return their answer.
+        http://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
+
+        "question" is a string that is presented to the user.
+        "default" is the presumed answer if the user just hits <Enter>.
+            It must be "yes" (the default), "no" or None (meaning
+            an answer is required of the user).
+
+        The "answer" return value is True for "yes" or False for "no".
+        """
+        valid = {"yes": True, "y": True, "ye": True,
+                 "no": False, "n": False}
+        if default is None:
+            prompt = " [y/n] "
+        elif default == "yes":
+            prompt = " [Y/n] "
+        elif default == "no":
+            prompt = " [y/N] "
+        else:
+            raise ValueError("invalid default answer: '%s'" % default)
+
+        while True:
+            self.stdout.write(question + prompt)
+            choice = input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                self.stdout.write("Please respond with 'yes' or 'no' "
+                                  "(or 'y' or 'n').\n")
 
     def add_arguments(self, parser):
 
@@ -92,6 +129,12 @@ class Command(BaseCommand):
             self.stdout.write(
                 'Saving %d places from %s' % (feature_count, shapefile)
             )
+
+            if not self.query_yes_no('Do you want to continue?'):
+                error_msg = (
+                    'You have canceled the operation.'
+                )
+                raise CommandError(error_msg)
 
         layermapping.save(strict=True, fid_range=(0, feature_count),
                           stream=self.stdout, progress=True)

@@ -25,15 +25,18 @@ class Importswissname3dTest(TestCase):
 
     def test_command_output_correct_shapefile(self):
         out = StringIO()
-        call_command('importswissname3d', self.shapefile, stdout=out)
+        call_command('importswissname3d', self.shapefile,
+                     '--no-input', stdout=out)
         self.assertIn('Successfully imported', out.getvalue())
 
     def test_command_limit_option(self):
         out = StringIO()
-        call_command('importswissname3d', '--limit', '10', self.shapefile, stdout=out)
+        call_command('importswissname3d', '--limit', '10',
+                     '--no-input', self.shapefile, stdout=out)
         self.assertIn('Successfully imported 10 places', out.getvalue())
 
     def test_command_limit_higher_than_feature_count(self):
         out = StringIO()
-        call_command('importswissname3d', '--limit', '100', self.shapefile, stdout=out)
+        call_command('importswissname3d', '--limit', '100',
+                     '--no-input', self.shapefile, stdout=out)
         self.assertIn('Successfully imported 56 places', out.getvalue())
