@@ -2,6 +2,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils.six import StringIO
+from ..models import Swissname3dPlace
 
 import os
 
@@ -27,16 +28,28 @@ class Importswissname3dTest(TestCase):
         out = StringIO()
         call_command('importswissname3d', self.shapefile,
                      '--no-input', stdout=out)
-        self.assertIn('Successfully imported', out.getvalue())
+        self.assertTrue('Successfully imported' in out.getvalue())
 
     def test_command_limit_option(self):
         out = StringIO()
         call_command('importswissname3d', '--limit', '10',
                      '--no-input', self.shapefile, stdout=out)
-        self.assertIn('Successfully imported 10 places', out.getvalue())
+        self.assertTrue('Successfully imported 10 places' in out.getvalue())
+        self.assertTrue(Swissname3dPlace.objects.all().count() == 10)
 
     def test_command_limit_higher_than_feature_count(self):
         out = StringIO()
         call_command('importswissname3d', '--limit', '100',
                      '--no-input', self.shapefile, stdout=out)
-        self.assertIn('Successfully imported 56 places', out.getvalue())
+        self.assertTrue('Successfully imported 56 places' in out.getvalue())
+        self.assertTrue(Swissname3dPlace.objects.all().count() == 56)
+
+    def test_command_limit_delete_replace_option(self):
+        out = StringIO()
+        call_command('importswissname3d', '--limit', '10',
+                     '--no-input', self.shapefile, stdout=out)
+        call_command('importswissname3d', '--delete',
+                     '--no-input', self.shapefile, stdout=out)
+        self.assertIn('Successfully deleted 10 places.', out.getvalue())
+        self.assertIn('Successfully imported 56 places.', out.getvalue())
+        self.assertTrue(Swissname3dPlace.objects.all().count() == 56)
