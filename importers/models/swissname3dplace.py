@@ -27,7 +27,7 @@ PLACE_TYPE_TRANSLATIONS = {
     'Wasserfall': 'Waterfall',
     'Turm': 'Tower',
     'Zollamt 24h 24h': 'Customhouse 24h 24h',
-    'Grotte: Hoehle': 'Grotto: Cave',
+    'Grotte, Hoehle': 'Grotto: Cave',
     'Quelle': 'Source',
     'Ein- und Ausfahrt': 'Entry and Exit',
     'Denkmal': 'Monument',
