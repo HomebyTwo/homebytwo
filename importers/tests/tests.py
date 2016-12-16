@@ -14,7 +14,7 @@ class Importswissname3dTest(TestCase):
     text_data = os.path.join(dir_path, 'data', 'text.txt')
 
     # Test file with 56 features only
-    shapefile = os.path.join(dir_path, 'data', 'MinSwissNAMES3D_PKT.shp')
+    shapefile = os.path.join(dir_path, 'data', 'TestSwissNAMES3D_PKT.shp')
 
     def test_command_output_inexistant_file(self):
         with self.assertRaises(OSError):
@@ -41,8 +41,8 @@ class Importswissname3dTest(TestCase):
         out = StringIO()
         call_command('importswissname3d', '--limit', '100',
                      '--no-input', self.shapefile, stdout=out)
-        self.assertTrue('Successfully imported 56 places' in out.getvalue())
-        self.assertTrue(Swissname3dPlace.objects.all().count() == 56)
+        self.assertTrue('Successfully imported 35 places' in out.getvalue())
+        self.assertTrue(Swissname3dPlace.objects.all().count() == 35)
 
     def test_command_limit_delete_replace_option(self):
         out = StringIO()
@@ -51,5 +51,5 @@ class Importswissname3dTest(TestCase):
         call_command('importswissname3d', '--delete',
                      '--no-input', self.shapefile, stdout=out)
         self.assertIn('Successfully deleted 10 places.', out.getvalue())
-        self.assertIn('Successfully imported 56 places.', out.getvalue())
-        self.assertTrue(Swissname3dPlace.objects.all().count() == 56)
+        self.assertIn('Successfully imported 35 places.', out.getvalue())
+        self.assertTrue(Swissname3dPlace.objects.all().count() == 35)
