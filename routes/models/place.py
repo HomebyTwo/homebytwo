@@ -18,38 +18,51 @@ class PlaceManager(models.Manager):
 
     def get_places_from_route(self, route, max_distance=100):
 
-        sql = ('SELECT routes_place.id,'
-               'ST_DISTANCE(routes_route.geom, routes_place.geom) AS distance_from_route, '
-               'ST_LineLocatePoint(routes_route.geom, routes_place.geom) AS line_location '
-               'FROM routes_route, routes_place '
-               'WHERE routes_route.id = %s '
-               'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
-               'ORDER BY ST_LineLocatePoint(routes_route.geom, routes_place.geom), '
-               'ST_DISTANCE(routes_route.geom, routes_place.geom);'
-               )
+        sql = (
+            'SELECT routes_place.id,'
+            'ST_DISTANCE(routes_route.geom, routes_place.geom) '
+            'AS distance_from_route, '
+            'ST_LineLocatePoint(routes_route.geom, routes_place.geom) '
+            'AS line_location '
+            'FROM routes_route, routes_place '
+            'WHERE routes_route.id = %s '
+            'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
+            'ORDER BY '
+            'ST_LineLocatePoint(routes_route.geom, routes_place.geom), '
+            'ST_DISTANCE(routes_route.geom, routes_place.geom);'
+        )
+
         # Execute the RAW query
         return self.raw(sql, [route.id, max_distance])
 
 
 class Place(models.Model):
     """
-    Places are geographic points along routes.
+    Places are geographic points.
     They have a name, description and geom
     Places are used to create segments from routes and
     and for public transport connection.
-
     """
-    type = models.CharField(max_length=50)
-    altitude = models.FloatField()
-    name = models.CharField(max_length=250)
+
+    place_type = models.CharField(max_length=50)  # move it to its own model?
+    name = models.CharField('Name of the place', max_length=250)
     description = models.TextField('Text description of the Place', default='')
-    updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of last creation', auto_now_add=True)
+    altitude = models.FloatField(null=True)
     public_transport = models.BooleanField(default=False)
+    data_source = models.CharField('Where the place came from',
+                                   default='homebytwo', max_length=50)
+    source_id = models.CharField('Place ID at the data source', max_length=50)
+
+    created_at = models.DateTimeField('Time of creation', auto_now_add=True)
+    updated_at = models.DateTimeField('Time of last update', auto_now=True)
 
     geom = models.PointField(srid=21781)
 
     objects = PlaceManager()
+
+    class Meta:
+        # The pair 'data_source' and 'source_id' should be unique together.
+        unique_together = ('data_source', 'source_id',)
 
     # Returns altitude for a place and updates the database entry
     def get_gmaps_elevation(self):
@@ -148,3 +161,20 @@ class Place(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        """
+        Source_id references the id at the data source.
+        The pair 'data_source' and 'source_id' should be unique together.
+        Places created in Homebytwo directly should thus have a source_id
+        set.
+        In other cases, e.g. importers.Swissname3dPlaces,
+        the source_id will be set by the importer model.
+
+        """
+        super(Place, self).save(*args, **kwargs)
+
+        # in case of manual homebytwo entries, the source_id will be empty.
+        if self.source_id == '':
+            self.source_id = str(self.id)
+            self.save()
