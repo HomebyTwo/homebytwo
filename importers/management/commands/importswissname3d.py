@@ -12,7 +12,7 @@ if hasattr(__builtins__, 'raw_input'):
 
 class Command(BaseCommand):
 
-    help = 'Import from the SwissNAME3D points shapefile to the Place Model'
+    help = 'Import places from the SwissNAME3D_PKT shapefile'
 
     def add_arguments(self, parser):
 

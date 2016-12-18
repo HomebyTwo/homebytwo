@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.contrib.gis.db import models
 from routes.models import Place
 
 # translation map for type of places
@@ -43,13 +44,26 @@ PLACE_TYPE_TRANSLATIONS = {
 }
 
 
+class Swissname3dManager(models.Manager):
+    def get_queryset(self):
+        return super(Swissname3dManager, self).get_queryset().filter(
+            data_source='swissname3d')
+
+
 class Swissname3dPlace(Place):
     """
-    Extends Place Model with attributes and methods specific to SwissNAME3D.
-    swissNAMES3D is the most comprehensive collection of geographical names
+    Extends the Place Model with methods specific to SwissNAME3D.
+    Model inheritance is achieved with a proxy model,
+    to preserve performance when importing >200'000 places from the shapefile.
+    SwissNAMES3D is the most comprehensive collection of geographical names
     for Switzerland and Liechtenstein.
     https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung1
     """
+
+    objects = Swissname3dManager()
+
+    class Meta:
+        proxy = True
 
     def save(self, *args, **kwargs):
         """
@@ -65,6 +79,6 @@ class Swissname3dPlace(Place):
         else:
             # Translate place type from German to English.
             self.place_type = PLACE_TYPE_TRANSLATIONS[self.place_type]
-
+            self.data_source = 'swissname3d'
             # Save with the parent method
             super(Swissname3dPlace, self).save(*args, **kwargs)
