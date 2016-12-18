@@ -160,10 +160,11 @@ class Command(BaseCommand):
         if limit > -1:
             feature_count = min(feature_count, limit)
             mapping_options['fid_range'] = (0, limit)
+            mapping_options['progress'] = False
         else:
             mapping_options['step'] = 1000
 
-        # Save the mapped data to the Database
+        # Ask for user confirmation
         if options['interactive']:
             self.stdout.write(
                 'Saving %d places from %s' % (feature_count, shapefile)
@@ -175,6 +176,8 @@ class Command(BaseCommand):
                 )
                 raise CommandError(error_msg)
 
+        # Save the mapped data to the Database
+        self.stdout.write('Importing places...')
         layermapping.save(**mapping_options)
 
         # Inform on successful save
