@@ -19,25 +19,10 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
     def get_routes_list_from_server(self, user):
 
-        login_url = 'https://map.wanderland.ch/user/login'
-
-        # TODO: store in the database for each user
-        credentials = {
-                        "username": settings.SWITZERLAND_MOBILITY_USERNAME,
-                        "password": settings.SWITZERLAND_MOBILITY_PASSWORD
-                    }
-
-        # login to map.wanderland.ch
-        r = requests.post(login_url, data=json.dumps(credentials))
-
-        # save cookies
-        if r.status_code == requests.codes.ok:
-            cookies = r.cookies
-        else:
-            sys.exit("Error: could not log-in to map.wanderland.ch")
+        cookies = user.cookies
 
         # retrieve route list
-        routes_list_url = 'https://map.wanderland.ch/tracks_list'
+        routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
 
         r = requests.post(routes_list_url, cookies=cookies)
 
@@ -68,17 +53,25 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
             formatted_routes.append(formatted_route)
 
+        return formatted_routes
+
+    def save_all_routes_to_database(self, user):
+
+        formatted_routes = self.get_routes_list_from_server()
+
+        for route in formatted_routes:
+
             # update routes list in the database
             objects = SwitzerlandMobilityRoute.objects
             switzerland_mobility_route, created = objects.get_or_create(
-                    switzerland_mobility_id=formatted_route['id'],
+                    switzerland_mobility_id=route['id'],
                     defaults={
-                            'name': formatted_route['name'],
+                            'name': route['name'],
                             'totalup': 0,
                             'totaldown': 0,
                             'length': 0,
                             'geom': LineString((0, 0), (0, 0)),
-                            'description': formatted_route['description'],
+                            'description': route['description'],
                             'switzerland_mobility_owner': 0,
                             'user': user,
                         }
@@ -88,12 +81,10 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             # update route name if it has changed
             if (
                 not(created) and
-                switzerland_mobility_route.name != formatted_route['name']
+                switzerland_mobility_route.name != route['name']
             ):
-                switzerland_mobility_route.name = formatted_route['name']
+                switzerland_mobility_route.name = route['name']
                 switzerland_mobility_route.save()
-
-        return formatted_routes
 
 
 class SwitzerlandMobilityRoute(Route):
