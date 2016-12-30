@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 
+from django.contrib.auth.decorators import login_required
+
 from .models import Route
 
 
@@ -28,6 +30,12 @@ def by_id(request, route_id):
     return render(request, 'routes/detail.html', context)
 
 
+@login_required
 def edit(request, route_id):
     response = "You are looking at the edit page of route %s"
     return HttpResponse(response % route_id)
+
+
+@login_required
+def importers(request):
+    return render(request, 'routes/importers.html')

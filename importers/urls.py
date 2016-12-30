@@ -3,8 +3,6 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    # http://homebytwo.ch/importers/
-    url(r'^$', views.index, name='index'),
 
     # http://homebytwo.ch/importers/strava/
     url(
@@ -29,7 +27,7 @@ urlpatterns = [
 
     # http://homebytwo.ch/importers/switzerland_mobility/
     url(
-            r'^switzerland_mobility/$',
+            r'^switzerland-mobility/$',
             views.switzerland_mobility_index,
             name='switzerland_mobility_index'
         ),
