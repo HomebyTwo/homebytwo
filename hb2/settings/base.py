@@ -170,7 +170,7 @@ LEAFLET_CONFIG = {
     'ATTRIBUTION_PREFIX': '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery &copy; <a href="http://mapbox.com">Mapbox</a>',
     'PLUGINS': {
         'Leaflet.encoded': {
-            'js': [STATIC_URL + '/js/Polyline.encoded.js'],
+            'js': [STATIC_URL + '/javascripts/Polyline.encoded.js'],
             'auto-include': True,
         },
     }
