@@ -1,16 +1,14 @@
 from django.conf import settings
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
+from django.core.urlresolvers import reverse
 from stravalib.client import Client as StravaClient
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from routes.models import Athlete
 from django.contrib.auth.decorators import login_required
 
-
-@login_required
-def index(request):
-    return render(request, 'importers/index.html')
+from .forms import SwitzerlandMobilityLogin
 
 
 @login_required
@@ -76,13 +74,13 @@ def strava_index(request):
 
     except Exception as e:
         # Bad Token: Destroy bad token and render Strava connect button button
-        print (e)
+        print(e)
         athlete.strava_token = ''
         athlete.save()
         return HttpResponseRedirect('/importers/strava/connect')
 
     except Exception as e:
-        print (e)
+        print(e)
         """Cannot connect to Strava API:
         Destroy bad token and render Strava connect button button"""
         return HttpResponseRedirect('/importers/strava/unavailable')
@@ -92,7 +90,7 @@ def strava_index(request):
         routes = StravaRoute.objects.filter(user=user)
 
     except Exception as e:
-        print (e)
+        print(e)
 
     if not routes:
         StravaRoute.objects.get_routes_list_from_server(user)
@@ -107,6 +105,9 @@ def strava_index(request):
 
 
 def switzerland_mobility_index(request):
+    # Check if logged-in to SWitzeland Mobility
+    if not request.session['switzerland_mobility_cookies']:
+        form = SwitzerlandMobilityLogin(request.POST)
     user = request.user
     routes = SwitzerlandMobilityRoute.objects.filter(user=user)
     routes = routes.order_by('-created')
@@ -116,3 +117,56 @@ def switzerland_mobility_index(request):
         'routes': routes,
     }
     return render(request, 'routes/index.html', context)
+
+
+def switzerland_mobility_login(request):
+    template = 'importers/switzerland_mobility/login.html'
+
+    # POST request, validate and login
+    if request.method == 'POST':
+
+        # instanciate login form and populate it with POST data:
+        form = SwitzerlandMobilityLogin(request.POST)
+
+        # If the form validates,
+        # try to retrieve the Switzerland Mobility cookies
+        if form.is_valid():
+                cookies, response = form.retrieve_authorization_cookie()
+
+                # cookies retrieved successfully
+                if not response['error']:
+                    # add cookies to the user session
+                    request.session['switzerland_mobility_cookies'] = cookies
+                    # redirect to the route list
+                    redirect_url = reverse('switzerland_mobility_index')
+                    return HttpResponseRedirect(redirect_url)
+                # something went wrong, render the login page with the error
+                else:
+                    context = {
+                        'form': form,
+                        'error': response['error'],
+                        'message': response['message'],
+                    }
+                    return render(request, template, context)
+
+        # form validation error, render the page with the errors
+        else:
+            error = True
+            message = 'An error has occured. '
+
+            for error in form.errors:
+                message += error + ': '
+                for error_message in form.errors[error]:
+                    message += error_message
+            context = {
+                'form': form,
+                'error': response['error'],
+                'message': response['message'],
+            }
+            return render(request, template, context)
+
+    # GET request, print the form
+    else:
+        form = SwitzerlandMobilityLogin()
+        context = {'form': form}
+        return render(request, template, context)

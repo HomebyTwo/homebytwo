@@ -1,13 +1,16 @@
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.conf import settings
 from django.test import TestCase
+from django.core.urlresolvers import reverse
 from django.utils.six import StringIO
 
 from ..models import Swissname3dPlace
+from ..forms import SwitzerlandMobilityLogin
 from routes.models import Place
 
 import os
-
+import httpretty
 
 def get_path_to_data(file_type='shp'):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -48,8 +51,11 @@ def get_place_data(data_source='swissname3d'):
     return data[data_source]
 
 
-# Models
 class Swissname3dModelTest(TestCase):
+    """
+    Test the Swissname3d Model,
+    a Proxy Model to import from the Swissname3d data set
+    """
 
     def test_create_instance(self):
         place3d = Swissname3dPlace(**get_place_data())
@@ -81,6 +87,101 @@ class Swissname3dModelTest(TestCase):
         place3d_3.source_id = '2'
         place3d_3.save()
         self.assertEqual(Place.objects.count(), 2)
+
+
+class SwitzerlandMobility(TestCase):
+    """
+    Test the Switzerland Mobility route importer
+    """
+
+    # Views
+    def test_switzerland_mobility_get_login_view(self):
+        url = reverse('switzerland_mobility_login')
+        content = 'action="%s"' % url
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(content in str(response.content))
+
+    def test_switzerland_mobility_login_successful(self):
+        url = reverse('switzerland_mobility_login')
+        data = {'username': 'testuser', 'password': 'testpassword'}
+
+        # intercept call to map.wandland.ch with httpretty
+        httpretty.enable()
+        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
+        # successful login response
+        json = '{"loginErrorMsg": "", "loginErrorCode": 200}'
+        adding_headers = {'Set-Cookie': 'mf-chmobil=xxx'}
+
+        httpretty.register_uri(
+            httpretty.POST, login_url,
+            content_type="application/json", body=json,
+            status=200, adding_headers=adding_headers
+        )
+        response = self.client.post(url, data)
+        httpretty.disable()
+
+        mobility_cookies = self.client.session['switzerland_mobility_cookies']
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('switzerland_mobility_index'))
+        self.assertEqual(mobility_cookies['mf-chmobil'], 'xxx')
+
+    def test_switzerland_mobility_login_failed(self):
+        url = reverse('switzerland_mobility_login')
+        data = {'username': 'testuser', 'password': 'testpassword'}
+
+        # intercept call to map.wandland.ch with httpretty
+        httpretty.enable()
+        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
+        # failed login response
+        json = '{"loginErrorMsg": "Incorrect login.", "loginErrorCode": 500}'
+
+        httpretty.register_uri(
+            httpretty.POST, login_url,
+            content_type="application/json", body=json,
+            status=200
+        )
+        response = self.client.post(url, data)
+        httpretty.disable()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue('Incorrect login.' in str(response.content))
+        with self.assertRaises(KeyError):
+            self.client.session['switzerland_mobility_cookies']
+
+    def test_switzerland_mobility_unreachable(self):
+        url = reverse('switzerland_mobility_login')
+        data = {'username': 'testuser', 'password': 'testpassword'}
+
+        # intercept call to map.wandland.ch with httpretty
+        httpretty.enable()
+        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
+        httpretty.register_uri(httpretty.POST, login_url, status=500)
+
+        response = self.client.post(url, data)
+        httpretty.disable()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue('Error connecting' in str(response.content))
+
+    # Forms
+    def test_switzerland_mobility_valid_login_form(self):
+        username = 'test@test.com'
+        password = '123456'
+        data = {'username': username, 'password': password}
+        form = SwitzerlandMobilityLogin(data=data)
+
+        self.assertTrue(form.is_valid())
+
+    def test_switzerland_mobility_invalid_login_form(self):
+        username = ''
+        password = ''
+        data = {'username': username, 'password': password}
+        form = SwitzerlandMobilityLogin(data=data)
+
+        self.assertFalse(form.is_valid())
 
 
 # Management Commands

@@ -191,10 +191,9 @@ STRAVA_CLIENT_SECRET = get_env_variable('STRAVA_CLIENT_SECRET', '')
 # Switzerland Mobility #
 ########################
 
-# Login to retrieve user route list from https://map.wanderland.ch/
+# Login URL to retrieve user route list from https://map.wanderland.ch/
 
-SWITZERLAND_MOBILITY_USERNAME = get_env_variable('SWITZERLAND_MOBILITY_USERNAME', '')
-SWITZERLAND_MOBILITY_PASSWORD = get_env_variable('SWITZERLAND_MOBILITY_PASSWORD', '')
+SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable('SWITZERLAND_MOBILITY_LOGIN_URL', '')
 
 
 ############################

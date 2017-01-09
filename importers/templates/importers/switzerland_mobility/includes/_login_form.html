@@ -1,0 +1,14 @@
+<div class="grid">
+        <h2 class="grid__item">Log-in</h2>
+
+        <form class="grid__item grid--tight grid" method="post" action="{% url 'switzerland_mobility_login' %}">
+            {% csrf_token %}
+                <div class="grid__item md-w-1/3">{{ form.username.label_tag }}</div>
+                <div class="grid__item md-w-2/3 mrgb">{{ form.username }}</div>
+                <div class="grid__item md-w-1/3">{{ form.password.label_tag }}</div>
+                <div class="grid__item md-w-2/3 mrgb">{{ form.password }}</div>
+            <div class="grid__item clearfix">
+                <div class="pull-right"><input class="btn btn--primary" type="submit" value="login" /></div>
+            </div>
+        </form>
+</div>
