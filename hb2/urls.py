@@ -21,6 +21,7 @@ from landingpage import views as landingpage_views
 urlpatterns = [
     url(r'^$', landingpage_views.home, name="home"),
     url(r'^email-signup/$', landingpage_views.email_signup, name="email-signup"),
+    url(r'^register/$', landingpage_views.register, name="register"),
     url(r'^routes/', include('routes.urls')),
     url(r'^importers/', include('importers.urls')),
     url(r'^admin/', admin.site.urls),
