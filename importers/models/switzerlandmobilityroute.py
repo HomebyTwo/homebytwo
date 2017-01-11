@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.contrib.gis.db import models
 from routes.models import Route
-from django.contrib.gis.geos import LineString, GEOSGeometry
+from django.contrib.gis.geos import GEOSGeometry
 
 import requests
 import json
@@ -13,34 +13,65 @@ import sys
 class SwitzerlandMobilityRouteManager(models.Manager):
 
     """
-    login to Switzerland Mobility and retrieve route list.
-    Takes the user from the request object.
+    Mainly used to retrieve route infos from the server
     """
 
-    def get_routes_list_from_server(self, user):
+    def get_remote_routes(self, session, user):
+        raw_routes, response = self.get_raw_remote_routes(session)
 
-        cookies = user.cookies
+        # could retrieve route list successfully
+        if not response['error']:
+
+            # format routes into dictionary
+            formatted_routes = self.format_raw_remote_routes(raw_routes)
+
+            # split into old and new routes
+            new_routes, old_routes = self.check_for_existing_routes(
+                formatted_routes, user)
+
+            return new_routes, old_routes, response
+
+        # there was an error retrieving the user's route list
+        else:
+
+            return False, False, response
+
+    def get_raw_remote_routes(self, session):
+        """
+        Use the authorization cookies saved in the session
+        to return a tuple with user's raw route list as json
+        and the request status.
+        """
+        cookies = session['switzerland_mobility_cookies']
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-
-        r = requests.post(routes_list_url, cookies=cookies)
+        r = requests.get(routes_list_url, cookies=cookies)
 
         # if request succeeds save json object
         if r.status_code == requests.codes.ok:
-            routes = r.json()
-        else:
-            sys.exit(
-                "Error: could not retrieve routes list from map.wanderland.ch"
-            )
+            raw_routes = r.json()
+            response = {'error': False, 'message': 'OK'}
 
-        # Take routes list returned by map.wanderland.ch as list of 3 values
-        # e.g. [2692136, u'Rochers de Nayes', None] and create a new
-        # dictionnary list with id, name and description
+            return raw_routes, response
+
+        else:
+            message = ("Error %d: could not retrieve your routes list "
+                       "from map.wanderland.ch" % r.status_code)
+            response = {'error': True, 'message': message}
+
+            return False, response
+
+    def format_raw_remote_routes(self, raw_routes):
+        """
+        Take routes list returned by map.wanderland.ch as list of 3 values
+        e.g. [2692136, u'Rochers de Nayes', None] and create a new
+        dictionnary list with id, name and description
+        """
         formatted_routes = []
 
         # Iterate through json object
-        for route in routes:
+        for route in raw_routes:
             formatted_route = {
                 'id': route[0],
                 'name': route[1],
@@ -55,36 +86,23 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return formatted_routes
 
-    def save_all_routes_to_database(self, user):
-
-        formatted_routes = self.get_routes_list_from_server()
+    def check_for_existing_routes(self, formatted_routes, user):
+        """
+        Split remote routes into old and new routes.
+        Old routes have already been imported by the user.
+        New routes have not been imported yet.
+        """
+        new_routes = []
+        old_routes = []
 
         for route in formatted_routes:
+            user_routes = self.filter(user=user)
+            if user_routes.filter(switzerland_mobility_id=route['id']).exists():
+                old_routes.append(route)
+            else:
+                new_routes.append(route)
 
-            # update routes list in the database
-            objects = SwitzerlandMobilityRoute.objects
-            switzerland_mobility_route, created = objects.get_or_create(
-                    switzerland_mobility_id=route['id'],
-                    defaults={
-                            'name': route['name'],
-                            'totalup': 0,
-                            'totaldown': 0,
-                            'length': 0,
-                            'geom': LineString((0, 0), (0, 0)),
-                            'description': route['description'],
-                            'switzerland_mobility_owner': 0,
-                            'user': user,
-                        }
-
-                )
-
-            # update route name if it has changed
-            if (
-                not(created) and
-                switzerland_mobility_route.name != route['name']
-            ):
-                switzerland_mobility_route.name = route['name']
-                switzerland_mobility_route.save()
+        return new_routes, old_routes
 
 
 class SwitzerlandMobilityRoute(Route):
@@ -94,7 +112,6 @@ class SwitzerlandMobilityRoute(Route):
     """
 
     switzerland_mobility_id = models.BigIntegerField(unique=True)
-    switzerland_mobility_owner = models.BigIntegerField('Wanderland user ID')
 
     # geographic information
     altitude = models.TextField('Altitude information as JSON', default='')
@@ -104,9 +121,8 @@ class SwitzerlandMobilityRoute(Route):
     def get_route_details_from_server(self):
         """ retrieve map.wanderland.ch detail information for a route """
 
-        route_base_url = 'https://map.wanderland.ch/track/'
-        route_id = str(self.switzerland_mobility_id)
-        route_url = route_base_url + route_id + "/show"
+        route_id = self.switzerland_mobility_id
+        route_url = 'https://map.wanderland.ch/track/%d/show' % route_id
 
         r = requests.get(route_url)
 
@@ -122,7 +138,6 @@ class SwitzerlandMobilityRoute(Route):
         self.totalup = route_json['properties']['meta']['totalup']
         self.totaldown = route_json['properties']['meta']['totaldown']
         self.length = route_json['properties']['meta']['length']
-        self.owner = route_json['properties']['owner']
 
         # Add GeoJSON line linestring from profile information in json
         polyline = {}
