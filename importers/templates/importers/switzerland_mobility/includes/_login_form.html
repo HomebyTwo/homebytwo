@@ -1,5 +1,8 @@
 <div class="grid">
-        <h2 class="grid__item">Log-in</h2>
+        <div  class="grid__item">
+            <h2>Connect to your Switzerland Mobility Account</h2>
+            <p>Your login details will not be saved into the Home by Two system.</p>
+        </div>
 
         <form class="grid__item grid--tight grid" method="post" action="{% url 'switzerland_mobility_login' %}">
             {% csrf_token %}

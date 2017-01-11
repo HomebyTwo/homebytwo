@@ -1,0 +1,24 @@
+{% load static %}
+
+<li>
+    {% if not update %}
+    <a href="{% url 'switzerland_mobility_detail' route.id %}">
+    {% endif %}
+        <div class="{{ MEDIA_URL }}x">
+            <div class="media__left">
+                <img
+                    {% if update %} src="{% static 'images/switzerland_mobility_muted.svg' %}" {% endif %}
+                    {% if not update %} src="{% static 'images/switzerland_mobility.svg' %}" {% endif %}
+                     alt="switzerland_mobility poster image"
+                />
+            </div>
+            <div class="media__body {% if update %} text-muted {% endif %}">
+                <h4 class="mrgb0">{{ route.name }}</h4>
+            {% if not update %}
+                <p class="mrgt0">import &rsaquo;</p>
+             {% endif %}
+        </div>
+    {% if not update %}
+    </a>
+    {% endif %}
+</li>

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Home by Two - Import from Switzerland Mobility{% endblock %}
+
+{% block content %}
+    <h1>Import routes from Switzerland Mobility Plus</h1>
+    {% if new_routes %}
+        <h2 class="mrg">New Routes</h2>
+        <ul class="mrgh list-stacked list-stacked--divided">
+        {% for route in new_routes %}
+            {% include "importers/switzerland_mobility/includes/_route_card.html" %}
+        {% endfor %}
+        </ul>
+    {% endif %}
+    {% if old_routes %}
+        <h2 class="mrg">Already Imported Routes</h2>
+        <ul class="mrgh list-stacked list-stacked--divided">
+        {% for route in old_routes %}
+            {% include "importers/switzerland_mobility/includes/_route_card.html" with update=True %}
+        {% endfor %}
+    {% endif %}
+    {% if not new_routes and not old_routes %}
+        <p>No route available.</p>
+    {% endif %}
+{% endblock content %}

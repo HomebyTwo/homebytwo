@@ -104,21 +104,33 @@ def strava_index(request):
     return render(request, 'importers/strava/index.html', context)
 
 
+@login_required
 def switzerland_mobility_index(request):
-    # Check if logged-in to SWitzeland Mobility
-    if not request.session['switzerland_mobility_cookies']:
-        form = SwitzerlandMobilityLogin(request.POST)
-    user = request.user
-    routes = SwitzerlandMobilityRoute.objects.filter(user=user)
-    routes = routes.order_by('-created')
-    if not routes:
-        routes = SwitzerlandMobilityRoute.objects.get_routes_list_from_server(user)
-    context = {
-        'routes': routes,
-    }
-    return render(request, 'routes/index.html', context)
+    # Check if logged-in to Switzeland Mobility
+    try:
+        request.session['switzerland_mobility_cookies']
+
+        # Retrieve remote routes from Switzerland Mobility
+        manager = SwitzerlandMobilityRoute.objects
+        new_routes, old_routes, response = manager.get_remote_routes(
+            request.session, request.user)
+
+        context = {
+            'new_routes': new_routes,
+            'old_routes': old_routes,
+            'response': response
+        }
+
+        return render(request, 'importers/switzerland_mobility/index.html', context)
+
+    # No login cookies
+    except KeyError:
+        # redirect to the switzeland mobility login page
+        redirect_url = reverse('switzerland_mobility_login')
+        return HttpResponseRedirect(redirect_url)
 
 
+@login_required
 def switzerland_mobility_login(request):
     template = 'importers/switzerland_mobility/login.html'
 
