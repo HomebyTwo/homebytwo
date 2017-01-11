@@ -53,3 +53,13 @@ def email_signup(request):
     # if it was a GET request we just redirect to the homepage
     else:
         return HttpResponseRedirect('/')
+
+
+def register(request):
+
+    # Include email signup form
+    context = {
+        'form': EmailSubscriptionForm(),
+    }
+
+    return render(request, 'landingpage/register.html', context)

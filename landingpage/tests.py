@@ -42,6 +42,17 @@ class LandingpageTest(TestCase):
             resp = self.client.get(url)
             self.assertFalse(gtm_url in str(resp.content))
 
+    # Register
+    def test_landingpage_register_view(self):
+        content = "Even though we would love you to register right now."
+        signup_form = EmailSubscriptionForm()
+        url = reverse("register")
+        resp = self.client.get(url)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(content in str(resp.content))
+        self.assertTrue(str(signup_form['email']) in str(resp.content))
+
     # Email signup
     def test_get_email_signup_view(self):
         url = reverse("email-signup")
