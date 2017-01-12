@@ -5,6 +5,14 @@
 
 {% block content %}
     <h1>Import routes from Switzerland Mobility Plus</h1>
+     {% if response.error %}
+        <div class="mrg">
+            <div class="box alert alert--error">
+                <p>{{ response.message }}</p>
+            </div>
+        </div>
+    {% endif %}
+
     {% if new_routes %}
         <h2 class="mrg">New Routes</h2>
         <ul class="mrgh list-stacked list-stacked--divided">
@@ -21,6 +29,6 @@
         {% endfor %}
     {% endif %}
     {% if not new_routes and not old_routes %}
-        <p>No route available.</p>
+        <p class="mrg">No route available.</p>
     {% endif %}
 {% endblock content %}
