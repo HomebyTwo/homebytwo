@@ -1,7 +1,7 @@
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 from django.utils.six import StringIO
@@ -91,6 +91,8 @@ class Swissname3dModelTest(TestCase):
         self.assertEqual(Place.objects.count(), 2)
 
 
+@override_settings(SWITZERLAND_MOBILITY_LOGIN_URL='https://example.com/login',
+                   SWITZERLAND_MOBILITY_LIST_URL='https://example.com/tracks')
 class SwitzerlandMobility(TestCase):
     """
     Test the Switzerland Mobility route importer
