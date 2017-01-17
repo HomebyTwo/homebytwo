@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from routes.models import Route
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import Distance, D
 
 import requests
 import json
@@ -16,7 +17,42 @@ class SwitzerlandMobilityRouteManager(models.Manager):
     Mainly used to retrieve route infos from the server
     """
 
+    def request_json(self, url, cookies=None):
+        """
+        Call the map.wanderland.ch website to retrieve a json.
+        Manage server and connection errors.
+        """
+        try:
+            r = requests.get(url, cookies=cookies)
+
+            # if request succeeds save json object
+            if r.status_code == requests.codes.ok:
+                json = r.json()
+                response = {'error': False, 'message': 'OK'}
+
+                return json, response
+
+            # display the server error
+            else:
+                message = ("Error %d: could not retrieve information from %s."
+                           % (r.status_code, url))
+                response = {'error': True, 'message': message}
+
+                return False, response
+
+        # catch the connection error and inform the user
+        except requests.exceptions.ConnectionError:
+            message = "Connection Error: could not connect to %s." % url
+            response = {'error': True, 'message': message}
+
+            return False, response
+
     def get_remote_routes(self, session, user):
+        """
+        This is the main workflow method to retrieve routes for a user
+        on Switzerland Mobility plus.
+        It requires the session with cookies (checked in the view)
+        """
         raw_routes, response = self.get_raw_remote_routes(session)
 
         # could retrieve route list successfully
@@ -46,21 +82,9 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        r = requests.get(routes_list_url, cookies=cookies)
+        raw_routes, response = self.request_json(routes_list_url, cookies)
 
-        # if request succeeds save json object
-        if r.status_code == requests.codes.ok:
-            raw_routes = r.json()
-            response = {'error': False, 'message': 'OK'}
-
-            return raw_routes, response
-
-        else:
-            message = ("Error %d: could not retrieve your routes list "
-                       "from map.wanderland.ch" % r.status_code)
-            response = {'error': True, 'message': message}
-
-            return False, response
+        return raw_routes, response
 
     def format_raw_remote_routes(self, raw_routes):
         """
@@ -96,8 +120,9 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         old_routes = []
 
         for route in formatted_routes:
+            id = route['id']
             user_routes = self.filter(user=user)
-            if user_routes.filter(switzerland_mobility_id=route['id']).exists():
+            if user_routes.filter(switzerland_mobility_id=id).exists():
                 old_routes.append(route)
             else:
                 new_routes.append(route)
