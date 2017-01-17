@@ -12,8 +12,16 @@ from routes.models import Place
 
 import os
 import httpretty
+import re
+import requests
 
 
+@override_settings(
+    SWITZERLAND_MOBILITY_LOGIN_URL='https://example.com/login',
+    SWITZERLAND_MOBILITY_LIST_URL='https://example.com/tracks',
+    SWITZERLAND_MOBILITY_META_URL='https://example.com/track/%d/getmeta',
+    SWITZERLAND_MOBILITY_ROUTE_URL='https://example.com/track/%d/show'
+)
 class SwitzerlandMobility(TestCase):
     """
     Test the Switzerland Mobility route importer
@@ -25,6 +33,11 @@ class SwitzerlandMobility(TestCase):
         session['switzerland_mobility_cookies'] = cookies
         session.save()
         return session
+
+    def raise_connection_error(self, request, uri, headers):
+
+        # raise connection error
+        raise requests.ConnectionError('Connection error.')
 
     def setUp(self):
         # Add user to the test database
@@ -65,7 +78,7 @@ class SwitzerlandMobility(TestCase):
 
         self.assertEqual(len(raw_routes), 4)
         self.assertEqual(response['error'], False)
-        self.assertEqual(response['message'], 'OK')
+        self.assertEqual(response['message'], 'OK. ')
 
     def test_get_raw_remote_routes_empty(self):
         # save cookies to session
@@ -86,9 +99,9 @@ class SwitzerlandMobility(TestCase):
 
         self.assertEqual(len(raw_routes), 0)
         self.assertEqual(response['error'], False)
-        self.assertEqual(response['message'], 'OK')
+        self.assertEqual(response['message'], 'OK. ')
 
-    def test_get_raw_remote_routes_error(self):
+    def test_get_raw_remote_routes_server_error(self):
         # save cookies to session
         session = self.add_cookies_to_session()
 
@@ -105,12 +118,41 @@ class SwitzerlandMobility(TestCase):
         raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(session)
         httpretty.disable()
 
+        expected_message = (
+            'Error 500: could not retrieve information from %s. '
+            % routes_list_url
+        )
+
         self.assertEqual(raw_routes, False)
         self.assertEqual(response['error'], True)
-        self.assertEqual(
-            response['message'],
-            'Error 500: could not retrieve your routes list from map.wanderland.ch'
+        self.assertEqual(response['message'], expected_message)
+
+    def test_get_raw_remote_routes_connection_error(self):
+
+        # save cookies to session
+        session = self.add_cookies_to_session()
+
+        # intercept call to map.wandland.ch with httpretty
+        httpretty.enable()
+        routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
+        body = self.raise_connection_error
+
+        httpretty.register_uri(
+            httpretty.GET, routes_list_url,
+            content_type="application/json", body=body
         )
+
+        raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(session)
+        httpretty.disable()
+
+        expected_message = (
+            'Connection Error: could not connect to %s. '
+            % routes_list_url
+        )
+
+        self.assertEqual(raw_routes, False)
+        self.assertEqual(response['error'], True)
+        self.assertEqual(response['message'], expected_message)
 
     def test_format_raw_remote_routes_success(self):
         raw_routes = [
@@ -135,6 +177,35 @@ class SwitzerlandMobility(TestCase):
 
         self.assertEqual(len(formatted_routes), 0)
         self.assertTrue(type(formatted_routes) is list)
+
+    def test_add_route_meta_success(self):
+        route = {'name': 'Haute Cime', 'id': 2191833, 'description': ''}
+        route_meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route['id']
+
+        # Turn the route meta URL into a regular expression
+        route_meta_url = re.compile(route_meta_url.replace(str(route['id']), '(\d+)'))
+
+        httpretty.enable()
+
+        route_json = (
+            '{"length": 12345.6,'
+            '"time":'
+            '    {"btime": 50.123456789,'
+            '    "wtime": 100.123456789},'
+            '"totalup": 1234.5,'
+            '"totaldown": 4321.0}'
+        )
+
+        httpretty.register_uri(
+            httpretty.GET, route_meta_url,
+            content_type="application/json", body=route_json,
+            status=200
+        )
+
+        route_with_meta, route_response = SwitzerlandMobilityRoute.objects.add_route_remote_meta(route)
+
+        self.assertEqual(route_with_meta['totalup'].m, 1234.5)
+        self.assertEqual(route_response['message'], 'OK. ')
 
     def test_check_for_existing_routes_success(self):
         formatted_routes = [
@@ -165,7 +236,7 @@ class SwitzerlandMobility(TestCase):
         route = SwitzerlandMobilityRoute(**self.route_data)
         route.save()
 
-        # intercept call to map.wandland.ch with httpretty
+        # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
         json = ('[[2191833, "Haute Cime", null], '
@@ -179,12 +250,31 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
+        # intercept getmeta call to map.wandland.ch with httpretty
+        # remove "https://
+        route_meta_url = settings.SWITZERLAND_MOBILITY_META_URL[8:]
+        # Turn the route meta URL into a regular expression
+        route_meta_url = re.compile(route_meta_url.replace('%d', '(\w+)'))
+
+        route_json = (
+            '{"length": 12345.6,'
+            '"totalup": 1234.5,'
+            '"totaldown": 4321.0}'
+        )
+
+        httpretty.register_uri(
+            httpretty.GET, route_meta_url,
+            content_type="application/json", body=route_json,
+            status=200
+        )
+
         new_routes, old_routes, response = SwitzerlandMobilityRoute.objects.get_remote_routes(session, user)
         httpretty.disable()
 
         self.assertEqual(len(new_routes), 3)
         self.assertEqual(len(old_routes), 1)
         self.assertEqual(response['error'], False)
+        self.assertEqual(new_routes[1]['length'].m, 12345.6)
 
     # Views
     def test_switzerland_mobility_index_success(self):
@@ -216,8 +306,6 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_index_error(self):
         url = reverse('switzerland_mobility_index')
         self.add_cookies_to_session()
-        content = ('Error 500: could not retrieve '
-                   'your routes list from map.wanderland.ch')
 
         # intercept call to map.wanderland.ch
         httpretty.enable()
@@ -233,6 +321,9 @@ class SwitzerlandMobility(TestCase):
         response = self.client.get(url)
 
         httpretty.disable()
+
+        content = ('Error 500: could not retrieve information from %s. '
+                   % routes_list_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))

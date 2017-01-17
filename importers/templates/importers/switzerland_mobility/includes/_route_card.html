@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 
 <li>
     {% if not update %}
@@ -14,8 +15,9 @@
             </div>
             <div class="media__body {% if update %} text-muted {% endif %}">
                 <h4 class="mrgb0">{{ route.name }}</h4>
+                <p class="mrgv0">{{ route.length.km|floatformat:1}}km - {{ route.totalup.m|floatformat:"0" }}m+ - {{ route.totaldown.m|floatformat:"0" }}m-</p>
             {% if not update %}
-                <p class="mrgt0">import &rsaquo;</p>
+                <p class="mrgt0 pull-right">import &rsaquo;</p>
              {% endif %}
         </div>
     {% if not update %}

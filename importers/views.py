@@ -110,24 +110,26 @@ def switzerland_mobility_index(request):
     try:
         request.session['switzerland_mobility_cookies']
 
-        # Retrieve remote routes from Switzerland Mobility
-        manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes, response = manager.get_remote_routes(
-            request.session, request.user)
-
-        context = {
-            'new_routes': new_routes,
-            'old_routes': old_routes,
-            'response': response
-        }
-
-        return render(request, 'importers/switzerland_mobility/index.html', context)
-
     # No login cookies
     except KeyError:
         # redirect to the switzeland mobility login page
         redirect_url = reverse('switzerland_mobility_login')
         return HttpResponseRedirect(redirect_url)
+
+    # Retrieve remote routes from Switzerland Mobility
+    manager = SwitzerlandMobilityRoute.objects
+    new_routes, old_routes, response = manager.get_remote_routes(
+        request.session, request.user)
+
+    template = 'importers/switzerland_mobility/index.html'
+    context = {
+        'new_routes': new_routes,
+        'old_routes': old_routes,
+        'response': response
+    }
+
+    return render(request, template, context)
+
 
 
 @login_required

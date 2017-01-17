@@ -28,13 +28,13 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             # if request succeeds save json object
             if r.status_code == requests.codes.ok:
                 json = r.json()
-                response = {'error': False, 'message': 'OK'}
+                response = {'error': False, 'message': 'OK. '}
 
                 return json, response
 
             # display the server error
             else:
-                message = ("Error %d: could not retrieve information from %s."
+                message = ("Error %d: could not retrieve information from %s. "
                            % (r.status_code, url))
                 response = {'error': True, 'message': message}
 
@@ -42,7 +42,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         # catch the connection error and inform the user
         except requests.exceptions.ConnectionError:
-            message = "Connection Error: could not connect to %s." % url
+            message = "Connection Error: could not connect to %s. " % url
             response = {'error': True, 'message': message}
 
             return False, response
@@ -60,6 +60,22 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
             # format routes into dictionary
             formatted_routes = self.format_raw_remote_routes(raw_routes)
+
+            # Add meta information about the route
+            routes_with_meta = []
+            routes_message = ''
+
+            for route in formatted_routes:
+                route_with_meta, route_response = self.add_route_remote_meta(route)
+                routes_with_meta.append(route_with_meta)
+
+                # If any, add errors to the main response message.
+                if route_response['error']:
+                    response['error'] = True
+                    routes_message += route_response['message']
+
+            if routes_message:
+                response['message'] = routes_message
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
@@ -129,6 +145,48 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return new_routes, old_routes
 
+    def add_route_remote_meta(self, route):
+        """
+        Gets a route's meta information from map.wanderland.ch
+        and ads them to an existing route.
+
+        Example response:
+        {"length": 6047.5,
+        "totalup": 214.3,
+        "totaldown": 48.7,
+        ...}
+        """
+        route_id = route['id']
+        meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route_id
+
+        # request metadata
+        route_meta_json, route_response = self.request_json(meta_url)
+
+        if not route_response['error']:
+            # save as distance objetcs for easy conversion, e.g. length.mi
+            length = Distance(m=route_meta_json['length'])
+            totalup = Distance(m=route_meta_json['totalup'])
+            totaldown = Distance(m=route_meta_json['totaldown'])
+
+            route_meta = {
+                'totalup': totalup,
+                'totaldown': totaldown,
+                'length': length,
+            }
+
+            # Update the route with meta information collected
+            route.update(route_meta)
+
+            error = route_response['error']
+            message = route_response['message']
+
+        # In case of error, return the original route and explain the error.
+        else:
+            error = True
+            message = ("Error: could not retrieve meta-information "
+                       "for route: '%s'. " % (route['name']))
+
+        return route, {'error': error, 'message': message}
 
 class SwitzerlandMobilityRoute(Route):
 
