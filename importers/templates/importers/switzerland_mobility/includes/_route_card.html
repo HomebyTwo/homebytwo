@@ -15,7 +15,9 @@
             </div>
             <div class="media__body {% if update %} text-muted {% endif %}">
                 <h4 class="mrgb0">{{ route.name }}</h4>
-                <p class="mrgv0">{{ route.length.km|floatformat:1}}km - {{ route.totalup.m|floatformat:"0" }}m+ - {{ route.totaldown.m|floatformat:"0" }}m-</p>
+                <p class="mrgv0">
+                    {% if route.length %}{{ route.length.km|floatformat:1|intcomma }}km - {% endif %}
+                    {% if route.totalup and route.totaldown %}{{ route.totalup.m|floatformat:"0"|intcomma }}m+ - {{ route.totaldown.m|floatformat:"0"|intcomma }}m-</p>{% endif %}
             {% if not update %}
                 <p class="mrgt0 pull-right">import &rsaquo;</p>
              {% endif %}
