@@ -3,8 +3,6 @@ from django.core.urlresolvers import reverse
 from .forms import EmailSubscriptionForm
 from django.conf import settings
 
-from django.core.exceptions import ImproperlyConfigured
-
 import httpretty
 
 
