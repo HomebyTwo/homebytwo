@@ -5,13 +5,8 @@
 
 {% block content %}
     <h1>Import routes from Switzerland Mobility Plus</h1>
-     {% if response.error %}
-        <div class="mrg">
-            <div class="box alert alert--error">
-                <p>{{ response.message }}</p>
-            </div>
-        </div>
-    {% endif %}
+
+    {% include "importers/switzerland_mobility/includes/_alert.html" %}
 
     {% if new_routes %}
         <h2 class="mrg">New Routes</h2>

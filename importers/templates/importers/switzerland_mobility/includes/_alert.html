@@ -1,0 +1,7 @@
+{% if response.error %}
+    <div class="mrg">
+        <div class="box alert alert--error">
+            <p>{{ response.message }}</p>
+        </div>
+    </div>
+{% endif %}
