@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from routes.models import Route
 from django.contrib.gis.geos import GEOSGeometry
-from django.contrib.gis.measure import Distance, D
+from django.contrib.gis.measure import Distance
 
 import requests
 import json
@@ -61,21 +61,21 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             # format routes into dictionary
             formatted_routes = self.format_raw_remote_routes(raw_routes)
 
-            # Add meta information about the route
-            routes_with_meta = []
-            routes_message = ''
+            # # Add meta information about the route
+            # routes_with_meta = []
+            # routes_message = ''
 
-            for route in formatted_routes:
-                route_with_meta, route_response = self.add_route_remote_meta(route)
-                routes_with_meta.append(route_with_meta)
+            # for route in formatted_routes:
+            #     route_with_meta, route_response = self.add_route_remote_meta(route)
+            #     routes_with_meta.append(route_with_meta)
 
-                # If any, add errors to the main response message.
-                if route_response['error']:
-                    response['error'] = True
-                    routes_message += route_response['message']
+            #     # If any, add errors to the main response message.
+            #     if route_response['error']:
+            #         response['error'] = True
+            #         routes_message += route_response['message']
 
-            if routes_message:
-                response['message'] = routes_message
+            # if routes_message:
+            #     response['message'] = routes_message
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
@@ -188,6 +188,61 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return route, {'error': error, 'message': message}
 
+    def get_remote_route(self, switzerland_mobility_id):
+        """
+        Workflow method to retrieve route details from Switzerland Mobility.
+        Return an Instance of the SwitzerlandMobilityRoute model
+        """
+
+        # retrieve the json details from the remote server
+        raw_route_json, response = self.get_raw_route_details(switzerland_mobility_id)
+
+        # if response is a success, format the route info
+        if not response['error']:
+            formatted_route = self.format_raw_route_details(raw_route_json)
+
+        return formatted_route, response
+
+    def get_raw_route_details(self, switzerland_mobility_id):
+        """
+        Fetches route details from map.wanderland.ch.
+        The retuned json has the following structure:
+
+        """
+        # Create the URL
+        route_id = switzerland_mobility_id
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+
+        # request from Switzerland Mobility
+        route_raw_json, response = self.request_json(route_url)
+
+        return route_raw_json, response
+
+    def format_raw_route_details(self, raw_route_json):
+        """
+        Converts the json returned by Switzerland mobility
+        into an instance of the SwitzerlandMobilityRoute model.
+        """
+
+        # Route name
+        name = raw_route_json['properties']['name']
+        length = raw_route_json['properties']['meta']['length']
+        totalup = raw_route_json['properties']['meta']['totalup']
+        totaldown = raw_route_json['properties']['meta']['totaldown']
+        geometry = raw_route_json['geometry']
+
+        formatted_route = SwitzerlandMobilityRoute(
+            name=name,
+            length=length,
+            totalup=totalup,
+            totaldown=totaldown,
+            # load GeoJSON using GEOSGeeometry
+            geom=GEOSGeometry(json.dumps(geometry), srid=21781)
+        )
+
+        return formatted_route
+
+
 class SwitzerlandMobilityRoute(Route):
 
     """
@@ -195,9 +250,6 @@ class SwitzerlandMobilityRoute(Route):
     """
 
     switzerland_mobility_id = models.BigIntegerField(unique=True)
-
-    # geographic information
-    altitude = models.TextField('Altitude information as JSON', default='')
 
     objects = SwitzerlandMobilityRouteManager()
 
