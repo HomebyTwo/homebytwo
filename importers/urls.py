@@ -32,6 +32,13 @@ urlpatterns = [
             name='switzerland_mobility_index'
         ),
 
+    # /importers/switzerland_mobility/
+    url(
+            r'^switzerland-mobility/(?P<switzerland_mobility_id>[0-9]+)/$',
+            views.switzerland_mobility_detail,
+            name='switzerland_mobility_detail'
+        ),
+
     # /importers/switzerland_mobility/login
     url(
             r'^switzerland-mobility/login/$',

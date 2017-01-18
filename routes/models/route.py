@@ -34,7 +34,7 @@ class Route(models.Model):
     geom = models.LineStringField('line geometry', srid=21781)
 
     # Each route is made of segments
-    segments = models.ManyToManyField(Segment)
+    # segments = models.ManyToManyField(Segment)
 
     # Returns poster picture for the list view
     def get_poster_picture(self):
@@ -43,8 +43,22 @@ class Route(models.Model):
         else:
             return 'routes/images/default.jpg'
 
-    def get_distance(self):
+    def get_length(self):
         return Distance(m=self.length)
+
+    def get_totalup(self):
+        return Distance(m=self.totalup)
+
+    def get_totaldown(self):
+        return Distance(m=self.totaldown)
+
+    def get_start_altitude(self):
+        start_altitude = self.get_point_elevation(0)
+        return Distance(m=start_altitude)
+
+    def get_end_altitude(self):
+        start_altitude = self.get_point_elevation(1)
+        return Distance(m=start_altitude)
 
     def get_point_elevation(self, location=0):
         point = self.geom.interpolate_normalized(location)

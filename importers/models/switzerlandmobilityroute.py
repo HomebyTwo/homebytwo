@@ -201,6 +201,9 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         if not response['error']:
             formatted_route = self.format_raw_route_details(raw_route_json)
 
+        else:
+            formatted_route = False
+
         return formatted_route, response
 
     def get_raw_route_details(self, switzerland_mobility_id):
@@ -225,6 +228,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         """
 
         # Route name
+        route_id = raw_route_json['id']
         name = raw_route_json['properties']['name']
         length = raw_route_json['properties']['meta']['length']
         totalup = raw_route_json['properties']['meta']['totalup']
@@ -232,6 +236,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         geometry = raw_route_json['geometry']
 
         formatted_route = SwitzerlandMobilityRoute(
+            switzerland_mobility_id=route_id,
             name=name,
             length=length,
             totalup=totalup,

@@ -131,6 +131,20 @@ def switzerland_mobility_index(request):
     return render(request, template, context)
 
 
+@login_required
+def switzerland_mobility_detail(request, switzerland_mobility_id):
+    template = 'importers/switzerland_mobility/detail.html'
+
+    id = int(switzerland_mobility_id)
+    route, response = SwitzerlandMobilityRoute.objects.get_remote_route(id)
+
+    context = {
+        'route': route,
+        'response': response
+    }
+
+    return render(request, template, context)
+
 
 @login_required
 def switzerland_mobility_login(request):
