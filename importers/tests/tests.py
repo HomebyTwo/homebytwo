@@ -14,6 +14,7 @@ import os
 import httpretty
 import re
 import requests
+import json
 
 
 @override_settings(
@@ -56,6 +57,90 @@ class SwitzerlandMobility(TestCase):
             }
 
     # Model
+    def test_request_json_success(self):
+        # save cookies to session
+        session = self.add_cookies_to_session()
+        cookies = session['switzerland_mobility_cookies']
+
+        url = 'https://testurl.ch'
+
+        # intercept call with httpretty
+        body = '[123456, "Test", null]'
+
+        httpretty.enable()
+
+        httpretty.register_uri(
+            httpretty.GET, url,
+            content_type="application/json", body=body,
+            status=200
+        )
+
+        json_response, response = SwitzerlandMobilityRoute.objects.request_json(url, cookies)
+
+        httpretty.disable()
+
+        self.assertEqual(response['error'], False)
+        self.assertEqual(response['message'], 'OK. ')
+        self.assertEqual(json.loads(body), json_response)
+
+    def test_request_json_server_error(self):
+        # save cookies to session
+        session = self.add_cookies_to_session()
+        cookies = session['switzerland_mobility_cookies']
+
+        url = 'https://testurl.ch'
+
+        # intercept call with httpretty
+        body = ('<html>'
+                '  <head>'
+                '   <title>500 Internal Server Error</title>'
+                '  </head>'
+                '  <body>'
+                '   <h1>500 Internal Server Error</h1>'
+                '   The server has either erred or is incapable of performing the requested operation.<br/><br/>'
+                '  </body>'
+                ' </html>')
+
+        httpretty.enable()
+
+        httpretty.register_uri(
+            httpretty.GET, url,
+            content_type="text/html", body=body,
+            status=500
+        )
+
+        json_response, response = SwitzerlandMobilityRoute.objects.request_json(url, cookies)
+
+        httpretty.disable()
+
+        self.assertEqual(response['error'], True)
+        self.assertTrue('500' in response['message'])
+        self.assertEqual(json_response, False)
+
+    def test_request_json_connection_error(self):
+        # save cookies to session
+        session = self.add_cookies_to_session()
+        cookies = session['switzerland_mobility_cookies']
+        url = 'https://testurl.ch'
+        message = "Connection Error: could not connect to %s. " % url
+
+        # intercept call with httpretty
+        body = self.raise_connection_error
+
+        httpretty.enable()
+
+        httpretty.register_uri(
+            httpretty.GET, url, body=body,
+        )
+
+        json_response, response = SwitzerlandMobilityRoute.objects.request_json(url, cookies)
+
+        httpretty.disable()
+
+        self.assertEqual(response['error'], True)
+        self.assertEqual(message, response['message'])
+        self.assertEqual(json_response, False)
+
     def test_get_raw_remote_routes_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
