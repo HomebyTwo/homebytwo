@@ -53,22 +53,27 @@ class Route(models.Model):
         return Distance(m=self.totaldown)
 
     def get_start_altitude(self):
-        start_altitude = self.get_point_elevation(0)
-        return Distance(m=start_altitude)
+        start_altitude = self.get_point_altitude_along_route(0)
+        return start_altitude
 
     def get_end_altitude(self):
-        start_altitude = self.get_point_elevation(1)
-        return Distance(m=start_altitude)
+        end_altitude = self.get_point_altitude_along_route(1)
+        return end_altitude
 
-    def get_point_elevation(self, location=0):
+    def get_point_altitude_along_route(self, location=0):
         point = self.geom.interpolate_normalized(location)
+
+        # format coordoinates for Google Maps API
         point.transform(4326)
         coords = (point.y, point.x)
 
+        # request altitude
         gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
         result = gmaps.elevation(coords)
+        altitude = result[0]['elevation']
 
-        return result[0]['elevation']
+        # return distance object
+        return Distance(m=altitude)
 
     def segment_route_with_points(self, places):
         """
