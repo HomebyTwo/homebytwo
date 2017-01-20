@@ -56,8 +56,7 @@ class SwitzerlandMobility(TestCase):
                 'geom': 'LINESTRING(0 0, 1 1)'
             }
 
-    def get_route_details_json(self):
-        route_details_json = (
+        self.route_details_json = (
             '{"geometry": {'
             '        "type": "LineString",'
             '        "coordinates": [[612190.0, 129403.0], [615424.648017, 129784.662852]]'
@@ -93,7 +92,32 @@ class SwitzerlandMobility(TestCase):
             '    "id": 2823968'
             '}')
 
-        return route_details_json
+        self.html_404 = (
+            '<!DOCTYPE html>'
+            '<html>'
+            '  <head>'
+            '    <title>404 not found</title>'
+            '  </head>'
+            '  <body>'
+            '    <h1>Error 404 not found</h1>'
+            '    <p>not found</p>'
+            '    <h3>Guru Meditation:</h3>'
+            '    <p>XID: 371278956</p>'
+            '    <hr>'
+            '    <p>Varnish cache server</p>'
+            '  </body>'
+            '</html>')
+
+        self.html_500 = (
+            '<html>'
+            '  <head>'
+            '   <title>500 Internal Server Error</title>'
+            '  </head>'
+            '  <body>'
+            '   <h1>500 Internal Server Error</h1>'
+            '   The server has either erred or is incapable of performing the requested operation.<br/><br/>'
+            '  </body>'
+            ' </html>')
 
     # Model
     def test_request_json_success(self):
@@ -130,21 +154,13 @@ class SwitzerlandMobility(TestCase):
         url = 'https://testurl.ch'
 
         # intercept call with httpretty
-        body = ('<html>'
-                '  <head>'
-                '   <title>500 Internal Server Error</title>'
-                '  </head>'
-                '  <body>'
-                '   <h1>500 Internal Server Error</h1>'
-                '   The server has either erred or is incapable of performing the requested operation.<br/><br/>'
-                '  </body>'
-                ' </html>')
+        html_response = self.html_500
 
         httpretty.enable()
 
         httpretty.register_uri(
             httpretty.GET, url,
-            content_type="text/html", body=body,
+            content_type="text/html", body=html_response,
             status=500
         )
 
@@ -407,7 +423,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        route_details_json = self.get_route_details_json()
+        route_details_json = self.route_details_json
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -429,26 +445,11 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        html = (
-            '<!DOCTYPE html>'
-            '<html>'
-            '  <head>'
-            '    <title>404 not found</title>'
-            '  </head>'
-            '  <body>'
-            '    <h1>Error 404 not found</h1>'
-            '    <p>not found</p>'
-            '    <h3>Guru Meditation:</h3>'
-            '    <p>XID: 371278956</p>'
-            '    <hr>'
-            '    <p>Varnish cache server</p>'
-            '  </body>'
-            '</html>'
-            )
+        html_response = self.html_404
 
         httpretty.register_uri(
             httpretty.GET, route_url,
-            content_type="text/html", body=html,
+            content_type="text/html", body=html_response,
             status=404
         )
 
@@ -469,7 +470,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.get_route_details_json()
+        json_response = self.route_details_json
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -492,15 +493,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        html_response = ('<html>'
-                         '  <head>'
-                         '   <title>500 Internal Server Error</title>'
-                         '  </head>'
-                         '  <body>'
-                         '   <h1>500 Internal Server Error</h1>'
-                         '   The server has either erred or is incapable of performing the requested operation.<br/><br/>'
-                         '  </body>'
-                         ' </html>')
+        html_response = self.html_500
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
