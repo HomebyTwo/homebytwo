@@ -132,9 +132,9 @@ def switzerland_mobility_index(request):
 
 
 @login_required
-def switzerland_mobility_detail(request, switzerland_mobility_id):
+def switzerland_mobility_detail(request, source_id):
     template = 'importers/switzerland_mobility/detail.html'
-    route_id = int(switzerland_mobility_id)
+    route_id = int(source_id)
 
     # if it is a POST request try to import the route
     if request.method == 'POST':

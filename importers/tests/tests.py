@@ -50,7 +50,7 @@ class SwitzerlandMobility(TestCase):
         self.route_data = {
                 'name': 'Haute-Cime',
                 'user': user,
-                'switzerland_mobility_id': 2191833,
+                'source_id': 2191833,
                 'totalup': 100,
                 'totaldown': 100,
                 'geom': 'LINESTRING(0 0, 1 1)'

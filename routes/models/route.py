@@ -33,6 +33,11 @@ class Route(models.Model):
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
 
+    # source and unique id at the source that the route was imported from
+    source_id = models.BigIntegerField()
+    data_source = models.CharField('Where the route came from',
+                                   default='homebytwo', max_length=50)
+
     # Each route is made of segments
     # segments = models.ManyToManyField(Segment)
 

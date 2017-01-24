@@ -8,7 +8,6 @@ from django.contrib.gis.measure import Distance
 
 import requests
 import json
-import sys
 
 
 class SwitzerlandMobilityRouteManager(models.Manager):
@@ -136,9 +135,9 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         old_routes = []
 
         for route in formatted_routes:
-            id = route['id']
+            route_id = route['id']
             user_routes = self.filter(user=user)
-            if user_routes.filter(switzerland_mobility_id=id).exists():
+            if user_routes.filter(source_id=route_id).exists():
                 old_routes.append(route)
             else:
                 new_routes.append(route)
@@ -188,14 +187,14 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return route, {'error': error, 'message': message}
 
-    def get_remote_route(self, switzerland_mobility_id):
+    def get_remote_route(self, source_id):
         """
         Workflow method to retrieve route details from Switzerland Mobility.
         Return an Instance of the SwitzerlandMobilityRoute model
         """
 
         # retrieve the json details from the remote server
-        raw_route_json, response = self.get_raw_route_details(switzerland_mobility_id)
+        raw_route_json, response = self.get_raw_route_details(source_id)
 
         # if response is a success, format the route info
         if not response['error']:
@@ -206,14 +205,14 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return formatted_route, response
 
-    def get_raw_route_details(self, switzerland_mobility_id):
+    def get_raw_route_details(self, source_id):
         """
         Fetches route details from map.wanderland.ch.
         The retuned json has the following structure:
 
         """
         # Create the URL
-        route_id = switzerland_mobility_id
+        route_id = source_id
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
         # request from Switzerland Mobility
@@ -236,7 +235,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         geometry = raw_route_json['geometry']
 
         formatted_route = SwitzerlandMobilityRoute(
-            switzerland_mobility_id=route_id,
+            source_id=route_id,
             name=name,
             length=length,
             totalup=totalup,
@@ -254,56 +253,14 @@ class SwitzerlandMobilityRoute(Route):
     Extends Route class with specific attributes and methods
     """
 
-    switzerland_mobility_id = models.BigIntegerField(unique=True)
-
+    # Custom manager
     objects = SwitzerlandMobilityRouteManager()
 
-    def get_route_details_from_server(self):
-        """ retrieve map.wanderland.ch detail information for a route """
+    def save(self, *args, **kwargs):
+        """
+        set the data_source of the route to switzerland_mobility
+        """
+        self.data_source = 'switzerland_mobility'
 
-        route_id = self.switzerland_mobility_id
-        route_url = 'https://map.wanderland.ch/track/%d/show' % route_id
-
-        r = requests.get(route_url)
-
-        if r.status_code == requests.codes.ok:
-            route_json = r.json()
-        else:
-            sys.exit(
-                "Error: could not retrieve route information "
-                "from map.wanderland.ch for route " + route_id
-            )
-
-        # Add route information
-        self.totalup = route_json['properties']['meta']['totalup']
-        self.totaldown = route_json['properties']['meta']['totaldown']
-        self.length = route_json['properties']['meta']['length']
-
-        # Add GeoJSON line linestring from profile information in json
-        polyline = {}
-
-        # Set geometry type to LineString
-        polyline['type'] = 'LineString'
-
-        coordinates = []
-
-        for point in json.loads(route_json['properties']['profile']):
-            position = [point[0], point[1]]
-            coordinates.append(position)
-
-        polyline['coordinates'] = coordinates
-
-        self.geom = GEOSGeometry(json.dumps(polyline), srid=21781)
-
-        # Record altitude infromation to a list as long as the LineString
-        altitude = []
-
-        for point in json.loads(route_json['properties']['profile']):
-            altitude.append(point[2])
-
-        self.altitude = json.dumps(altitude)
-
-        # Save to database
-        self.save()
-
-        return self
+        # Save with the parent method
+        super(SwitzerlandMobilityRoute, self).save(*args, **kwargs)
