@@ -1,7 +1,6 @@
-{% if response.error %}
-    <div class="mrg">
-        <div class="box alert alert--error">
-            <p>{{ response.message }}</p>
-        </div>
+<div class="mrg">
+    <div class="box alert alert--error">
+        <p>{{ response.message }}</p>
+        <p>&lsaquo; <a href="{% url 'switzerland_mobility_index' %}">Return to the Switzerland Mobility route list.</a></p>
     </div>
-{% endif %}
+</div>
