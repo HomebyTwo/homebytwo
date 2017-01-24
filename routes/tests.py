@@ -37,7 +37,7 @@ class PlaceTestCase(TestCase):
 
     # Views
     def test_importer_view_not_logged_redirected(self):
-        url = reverse('importers')
+        url = reverse('routes:importers')
         redirect_url = "/login/?next=" + url
         response = self.client.get(url)
 
@@ -46,7 +46,7 @@ class PlaceTestCase(TestCase):
 
     def test_importer_view_logged_in(self):
         content = 'Import routes'
-        url = reverse('importers')
+        url = reverse('routes:importers')
         self.client.login(username='testuser', password='test')
         response = self.client.get(url)
 

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Home by Two - Import from Switzerland Mobility{% endblock %}
+{% block title %}Home by Two - Import Switzerland Mobilit Routes{% endblock %}
 
 {% block content %}
-    <h1>Import routes from Switzerland Mobility Plus</h1>
-
-    {% include "importers/switzerland_mobility/includes/_alert.html" %}
-
+    <h1>Import Routes from Switzerland Mobility Plus</h1>
+    {% if response.error %}
+        {% include "importers/switzerland_mobility/includes/_alert.html" %}
+    {% endif %}
     {% if new_routes %}
         <h2 class="mrg">New Routes</h2>
         <ul class="mrgh list-stacked list-stacked--divided">

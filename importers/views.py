@@ -8,7 +8,7 @@ from .models import StravaRoute, SwitzerlandMobilityRoute
 from routes.models import Athlete
 from django.contrib.auth.decorators import login_required
 
-from .forms import SwitzerlandMobilityLogin
+from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
 
 
 @login_required
@@ -134,13 +134,46 @@ def switzerland_mobility_index(request):
 @login_required
 def switzerland_mobility_detail(request, switzerland_mobility_id):
     template = 'importers/switzerland_mobility/detail.html'
+    route_id = int(switzerland_mobility_id)
 
-    id = int(switzerland_mobility_id)
-    route, response = SwitzerlandMobilityRoute.objects.get_remote_route(id)
+    # if it is a POST request try to import the route
+    if request.method == 'POST':
+        form = SwitzerlandMobilityRouteForm(request.POST)
+
+        try:
+            new_route = form.save(commit=False)
+            new_route.user = request.user
+            new_route.save()
+
+            # redirect to the imported route page
+            redirect_url = reverse('routes:detail', args=(new_route.id,))
+            return HttpResponseRedirect(redirect_url)
+
+        # validation errors, print the message
+        except ValueError:
+            route = False
+            response = {
+                'error': True,
+                'message': str(form.errors),
+            }
+
+    # GET request
+    else:
+        # fetch route details from Switzerland Mobility
+        route, response = SwitzerlandMobilityRoute.objects.get_remote_route(route_id)
+
+        # route details succesfully retrieved
+        if route:
+            form = SwitzerlandMobilityRouteForm(instance=route)
+
+        # route details could not be retrieved
+        else:
+            form = False
 
     context = {
         'route': route,
-        'response': response
+        'response': response,
+        'form': form
     }
 
     return render(request, template, context)
