@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.six import StringIO
 
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
-from ..forms import SwitzerlandMobilityLogin
+from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
 from routes.models import Place
 
 import os
@@ -51,6 +51,7 @@ class SwitzerlandMobility(TestCase):
                 'name': 'Haute-Cime',
                 'user': user,
                 'source_id': 2191833,
+                'length': 10,
                 'totalup': 100,
                 'totaldown': 100,
                 'geom': 'LINESTRING(0 0, 1 1)'
@@ -520,6 +521,17 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
+    def test_switzerland_mobility_detail_post_success(self):
+        route_id = 2191833
+        post_data = self.route_data
+        url = reverse('switzerland_mobility_detail', args=[route_id])
+        redirect_url = reverse('routes:detail', args=[4])
+
+        response = self.client.post(url, post_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
     def test_switzerland_mobility_index_success(self):
         url = reverse('switzerland_mobility_index')
         content = '<h1>Import Routes from Switzerland Mobility Plus</h1>'
@@ -635,9 +647,10 @@ class SwitzerlandMobility(TestCase):
         with self.assertRaises(KeyError):
             self.client.session['switzerland_mobility_cookies']
 
-    def test_switzerland_mobility_unreachable(self):
+    def test_switzerland_mobility_login_server_error(self):
         url = reverse('switzerland_mobility_login')
         data = {'username': 'testuser', 'password': 'testpassword'}
+        content = 'Error 500: logging to Switzeland Mobility.'
 
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable()
@@ -648,7 +661,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue('Error connecting' in str(response.content))
+        self.assertTrue(content in str(response.content))
 
     #########
     # Forms #
@@ -670,6 +683,15 @@ class SwitzerlandMobility(TestCase):
 
         self.assertFalse(form.is_valid())
 
+    def test_switzerland_mobility_valid_model_form(self):
+        form = SwitzerlandMobilityRouteForm(data=self.route_data)
+        self.assertTrue(form.is_valid())
+
+    def test_switzerland_mobility_invalid_model_form(self):
+        data = self.route_data
+        del data['geom']
+        form = SwitzerlandMobilityRouteForm(data=data)
+        self.assertFalse(form.is_valid())
 
 class Swissname3dModelTest(TestCase):
     """
