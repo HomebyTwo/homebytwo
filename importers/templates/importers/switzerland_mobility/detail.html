@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static leaflet_tags geojson_tags humanize %}
 
-{% block title %}Home by Two - {{ route.name }}{% endblock %}
+{% block title %}Home by Two - Import Switzerland Mobility Route{% endblock %}
 
 {% block extralinks %}
     {% leaflet_js %}
@@ -9,20 +9,28 @@
 {% endblock extralinks %}
 
 {% block content %}
-
-    {% include "importers/switzerland_mobility/includes/_alert.html" %}
+    <h1>Import Route from Switzerland Mobility Plus</h1>
+    {% if response.error %}
+        {% include "importers/switzerland_mobility/includes/_alert.html" %}
+    {% endif %}
 
     {% if route %}
-        <h1 class="mrgt mrgb-- text-center">{{ route.name}}</h1>
-        <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
+        <h2 class="mrgt mrgb-- text-center">{{ route.name}}</h2>
+        <h3 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
         <div class="clearfix mrg">
-            <a class="pull-left" href="{% url "switzerland_mobility_index" %}" title="list of Switzerland Mobility routes">Back</a>
+            <div class="pull-left">&lsaquo; <a href="{% url "switzerland_mobility_index" %}" title="list of Switzerland Mobility routes">Back</a></div>
         </div>
 
         {% include 'importers/switzerland_mobility/includes/_checkpoints.html' %}
 
-    {% else %}
-        <p class="mrg">Route not found.</p>
+        <form method="post" action="{% url 'switzerland_mobility_detail' route.source_id %}">
+            {% csrf_token %}
+            <div>{{ form }}</div>
+            <div class="form-group text-center mrg">
+                <input type="submit" value="Import" class="btn btn--md btn--primary">
+            </div>
+        </form>
+
     {% endif %}
 
     {% if route.geom %}

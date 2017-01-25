@@ -1,8 +1,33 @@
 from django import forms
 from django.conf import settings
+from .models import SwitzerlandMobilityRoute
 
 import json
 import requests
+
+
+class SwitzerlandMobilityRouteForm(forms.ModelForm):
+    class Meta:
+        model = SwitzerlandMobilityRoute
+        fields = [
+            'source_id',
+            'name',
+            'totalup',
+            'totaldown',
+            'length',
+            'geom',
+        ]
+
+        # Do not display the following fields in the form.
+        # These values are retrieved from the original route
+        widgets = {
+            'source_id': forms.HiddenInput,
+            'name': forms.HiddenInput,
+            'totalup': forms.HiddenInput,
+            'totaldown': forms.HiddenInput,
+            'length': forms.HiddenInput,
+            'geom': forms.HiddenInput,
+        }
 
 
 class SwitzerlandMobilityLogin(forms.Form):

@@ -16,6 +16,10 @@ class SwitzerlandMobilityRouteManager(models.Manager):
     Mainly used to retrieve route infos from the server
     """
 
+    def get_queryset(self):
+        return super(SwitzerlandMobilityRouteManager, self). \
+            get_queryset().filter(data_source='switzerland_mobility')
+
     def request_json(self, url, cookies=None):
         """
         Call the map.wanderland.ch website to retrieve a json.
@@ -250,8 +254,11 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 class SwitzerlandMobilityRoute(Route):
 
     """
-    Extends Route class with specific attributes and methods
+    Proxy for Route Model with specific methods
     """
+
+    class Meta:
+        proxy = True
 
     # Custom manager
     objects = SwitzerlandMobilityRouteManager()
