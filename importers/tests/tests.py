@@ -465,7 +465,7 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_detail_success(self):
         route_id = 2823968
         url = reverse('switzerland_mobility_detail', args=[route_id])
-        content = '<h1 class="mrgt mrgb-- text-center">Leuk Bridge</h1>'
+        content = '<h2 class="mrgt mrgb-- text-center">Leuk Bridge</h2>'
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
@@ -510,7 +510,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_index_success(self):
         url = reverse('switzerland_mobility_index')
-        content = '<h1>Import routes from Switzerland Mobility Plus</h1>'
+        content = '<h1>Import Routes from Switzerland Mobility Plus</h1>'
         self.add_cookies_to_session()
 
         # intercept call to map.wanderland.ch
