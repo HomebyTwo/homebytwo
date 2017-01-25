@@ -72,29 +72,37 @@ class SwitzerlandMobilityLogin(forms.Form):
         }
 
         # Try to login to map.wanderland.ch
-        r = requests.post(login_url, data=json.dumps(credentials))
+        try:
+            r = requests.post(login_url, data=json.dumps(credentials))
 
-        if r.status_code == requests.codes.ok:
+            if r.status_code == requests.codes.ok:
 
-            # log-in was successful, return cookies
-            if r.json()['loginErrorCode'] == 200:
-                cookies = dict(r.cookies)
-                error = False
-                message = "Successfully logged in to Switzerland Mobility"
-                return cookies, {'error': error, 'message': message}
+                # log-in was successful, return cookies
+                if r.json()['loginErrorCode'] == 200:
+                    cookies = dict(r.cookies)
+                    error = False
+                    message = "Successfully logged in to Switzerland Mobility"
+                    return cookies, {'error': error, 'message': message}
 
-            # log-in failed
+                # log-in failed
+                else:
+                    error = True
+                    message = r.json()['loginErrorMsg']
+                    return False, {'error': error, 'message': message}
+
+            # Some other server error
             else:
                 error = True
-                message = r.json()['loginErrorMsg']
+                message = (
+                    'Error %s: logging to Switzeland Mobility. '
+                    'Try again later' % r.status_code
+                )
+
                 return False, {'error': error, 'message': message}
 
-        # Some other connection error
-        else:
-            error = True
-            message = (
-                'Error connecting to Switzeland Mobility. '
-                'Try again later'
-            )
+        # catch the connection error and inform the user
+        except requests.exceptions.ConnectionError:
+            message = "Connection Error: could not connect to %s. " % login_url
+            response = {'error': True, 'message': message}
 
-            return False, {'error': error, 'message': message}
+            return False, response
