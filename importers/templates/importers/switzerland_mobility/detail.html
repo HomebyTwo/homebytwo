@@ -27,12 +27,14 @@
             {% csrf_token %}
             <div>{{ form }}</div>
             <div class="form-group text-center mrg">
-                <input type="submit" value="Import" class="btn btn--md btn--primary">
+                {% if not route.already_imported %}
+                    <input type="submit" value="Import" class="btn btn--md btn--primary">
+                {% else %}
+                    <p class="btn btn--md btn--default" Disabled>Already Imported</p>
+                {% endif %}
             </div>
         </form>
-
     {% endif %}
-
     {% if route.geom %}
         {% leaflet_map "main" callback="route_map_init" %}
     {% endif %}

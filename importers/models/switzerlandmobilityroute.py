@@ -263,10 +263,20 @@ class SwitzerlandMobilityRoute(Route):
     # Custom manager
     objects = SwitzerlandMobilityRouteManager()
 
+    def already_imported(self):
+        """
+        check if route has already been imported to the database
+        """
+        imported_route = SwitzerlandMobilityRoute.objects. \
+            filter(source_id=self.source_id, user=self.user)
+
+        return imported_route.exists()
+
     def save(self, *args, **kwargs):
         """
-        set the data_source of the route to switzerland_mobility
+        Set the data_source of the route to switzerland_mobility when saving
         """
+        # set the data_source of the route to switzerland_mobility
         self.data_source = 'switzerland_mobility'
 
         # Save with the parent method

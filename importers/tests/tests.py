@@ -119,7 +119,10 @@ class SwitzerlandMobility(TestCase):
             '  </body>'
             ' </html>')
 
-    # Model
+    #########
+    # Model #
+    #########
+
     def test_request_json_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
@@ -461,7 +464,16 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response['error'], True)
         self.assertTrue('404' in response['message'])
 
-    # Views
+    def test_already_imported(self):
+        route = SwitzerlandMobilityRoute(**self.route_data)
+        self.assertEqual(route.already_imported(), False)
+        route.save()
+        self.assertEqual(route.already_imported(), True)
+
+    #########
+    # Views #
+    #########
+
     def test_switzerland_mobility_detail_success(self):
         route_id = 2823968
         url = reverse('switzerland_mobility_detail', args=[route_id])
@@ -638,7 +650,10 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue('Error connecting' in str(response.content))
 
-    # Forms
+    #########
+    # Forms #
+    #########
+
     def test_switzerland_mobility_valid_login_form(self):
         username = 'test@test.com'
         password = '123456'
