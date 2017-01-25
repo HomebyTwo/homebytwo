@@ -41,6 +41,9 @@ class Route(models.Model):
     # Each route is made of segments
     # segments = models.ManyToManyField(Segment)
 
+    class Meta:
+        unique_together = ('user', 'data_source', 'source_id')
+
     # Returns poster picture for the list view
     def get_poster_picture(self):
         if finders.find('routes/images/' + str(self.id) + '.jpg'):
