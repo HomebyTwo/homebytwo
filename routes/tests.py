@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 
@@ -54,6 +54,9 @@ class PlaceTestCase(TestCase):
         self.assertTrue(content in str(response.content))
 
 
+@override_settings(
+    GOOGLEMAPS_API_KEY='AIzabcdefghijklmnopqrstuvwxyz0123456789',
+)
 class RouteTestCase(TestCase):
 
     def setUp(self):
