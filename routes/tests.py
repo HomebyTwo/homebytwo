@@ -143,7 +143,7 @@ class RouteTestCase(TestCase):
 
         self.assertAlmostEqual(end_altitude.m, 123.456)
 
-    def test_get_point_altitude_along_route_success(self, location=0):
+    def test_get_point_altitude_along_track_success(self, location=0):
         route = self.route
 
         # intercept call to maps.googleapis.com with httpretty
@@ -159,13 +159,13 @@ class RouteTestCase(TestCase):
         )
 
         # make the call
-        point_altitude = route.get_point_altitude_along_route(0.5)
+        point_altitude = route.get_point_altitude_along_track(0.5)
 
         httpretty.disable()
 
         self.assertAlmostEqual(point_altitude.ft, 405.03937007874015)
 
-    def test_get_point_altitude_along_route_error(self, location=0):
+    def test_get_point_altitude_along_track_error(self, location=0):
         route = self.route
 
         # intercept call to maps.googleapis.com with httpretty
@@ -179,7 +179,7 @@ class RouteTestCase(TestCase):
             content_type="text/html", body=html_repsonse,
             status=500
         )
-        point_altitude = route.get_point_altitude_along_route(0.5)
+        point_altitude = route.get_point_altitude_along_track(0.5)
 
         httpretty.disable()
 

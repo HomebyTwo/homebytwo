@@ -161,11 +161,11 @@ def switzerland_mobility_detail(request, source_id):
     else:
         # fetch route details from Switzerland Mobility
         route, response = SwitzerlandMobilityRoute.objects.get_remote_route(route_id)
-        route.user = request.user
 
         # route details succesfully retrieved
         if route:
             form = SwitzerlandMobilityRouteForm(instance=route)
+            route.user = request.user
 
         # route details could not be retrieved
         else:
