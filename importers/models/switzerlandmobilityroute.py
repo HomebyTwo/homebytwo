@@ -13,29 +13,34 @@ import json
 class SwitzerlandMobilityRouteManager(models.Manager):
 
     """
-    Mainly used to retrieve route infos from the server
+    Custom manager used to retrieve data from Switzerland Mobility
     """
 
     def get_queryset(self):
+        """
+        Returns query_sets with Switzerland Mobility Routes only.
+        This method is required because SwitzerlandMobilityRoute
+        is a proxy class.
+        """
         return super(SwitzerlandMobilityRouteManager, self). \
             get_queryset().filter(data_source='switzerland_mobility')
 
     def request_json(self, url, cookies=None):
         """
-        Call the map.wanderland.ch website to retrieve a json.
-        Manage server and connection errors.
+        Makes get call the map.wanderland.ch website and retrieves a json
+        while managing server and connection errors.
         """
         try:
             r = requests.get(url, cookies=cookies)
 
-            # if request succeeds save json object
+            # if request is successful save json object
             if r.status_code == requests.codes.ok:
                 json = r.json()
                 response = {'error': False, 'message': 'OK. '}
 
                 return json, response
 
-            # display the server error
+            # server error: display the status code
             else:
                 message = ("Error %d: could not retrieve information from %s. "
                            % (r.status_code, url))
@@ -43,7 +48,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
                 return False, response
 
-        # catch the connection error and inform the user
+        # connection error and inform the user
         except requests.exceptions.ConnectionError:
             message = "Connection Error: could not connect to %s. " % url
             response = {'error': True, 'message': message}
@@ -64,22 +69,6 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             # format routes into dictionary
             formatted_routes = self.format_raw_remote_routes(raw_routes)
 
-            # # Add meta information about the route
-            # routes_with_meta = []
-            # routes_message = ''
-
-            # for route in formatted_routes:
-            #     route_with_meta, route_response = self.add_route_remote_meta(route)
-            #     routes_with_meta.append(route_with_meta)
-
-            #     # If any, add errors to the main response message.
-            #     if route_response['error']:
-            #         response['error'] = True
-            #         routes_message += route_response['message']
-
-            # if routes_message:
-            #     response['message'] = routes_message
-
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
                 formatted_routes, user)
@@ -94,8 +83,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
     def get_raw_remote_routes(self, session):
         """
         Use the authorization cookies saved in the session
-        to return a tuple with user's raw route list as json
-        and the request status.
+        to return the user's raw route list as json.
         """
         cookies = session['switzerland_mobility_cookies']
 
@@ -107,7 +95,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
     def format_raw_remote_routes(self, raw_routes):
         """
-        Take routes list returned by map.wanderland.ch as list of 3 values
+        Take routes list returned by Switzerland Mobility as list of 3 values
         e.g. [2692136, u'Rochers de Nayes', None] and create a new
         dictionnary list with id, name and description
         """
@@ -151,7 +139,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
     def add_route_remote_meta(self, route):
         """
         Gets a route's meta information from map.wanderland.ch
-        and ads them to an existing route.
+        and ads them to an existing route json.
 
         Example response:
         {"length": 6047.5,
@@ -195,6 +183,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         """
         Workflow method to retrieve route details from Switzerland Mobility.
         Return an Instance of the SwitzerlandMobilityRoute model
+        and the response status.
         """
 
         # retrieve the json details from the remote server
@@ -254,7 +243,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 class SwitzerlandMobilityRoute(Route):
 
     """
-    Proxy for Route Model with specific methods
+    Proxy for Route Model with specific methods and custom manager.
     """
 
     class Meta:
@@ -274,7 +263,8 @@ class SwitzerlandMobilityRoute(Route):
 
     def save(self, *args, **kwargs):
         """
-        Set the data_source of the route to switzerland_mobility when saving
+        Set the data_source of the route to switzerland_mobility
+        when saving the route.
         """
         # set the data_source of the route to switzerland_mobility
         self.data_source = 'switzerland_mobility'
