@@ -44,6 +44,26 @@ class SwitzerlandMobility(TestCase):
         # Add user to the test database
         user = User.objects.create_user('testuser', 'test@test.com', 'test')
 
+        start_place = Place(
+            place_type='Train Station',
+            name='Start_Place',
+            description='Place_description',
+            altitude=500,
+            public_transport=True,
+            geom='POINT(0 0)',
+        )
+        start_place.save()
+
+        end_place = Place(
+            place_type='Train Station',
+            name='End_Place',
+            description='Place_description',
+            altitude=1500,
+            public_transport=True,
+            geom='POINT(2000 2000)',
+        )
+        end_place.save()
+
         # Login the test user
         self.client.login(username='testuser', password='test')
 
@@ -54,7 +74,9 @@ class SwitzerlandMobility(TestCase):
                 'length': 10,
                 'totalup': 100,
                 'totaldown': 100,
-                'geom': 'LINESTRING(0 0, 1 1)'
+                'geom': 'LINESTRING(0 0, 2000 2000)',
+                'start_place': start_place,
+                'end_place': end_place,
             }
 
         self.route_details_json = (
@@ -524,9 +546,12 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_detail_post_success(self):
         route_id = 2191833
         post_data = self.route_data
+
+        post_data['start_place'] = self.route_data['start_place'].id
+        post_data['end_place'] = self.route_data['end_place'].id
+
         url = reverse('switzerland_mobility_detail', args=[route_id])
         redirect_url = reverse('routes:detail', args=[4])
-
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 302)
@@ -684,7 +709,19 @@ class SwitzerlandMobility(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_switzerland_mobility_valid_model_form(self):
-        form = SwitzerlandMobilityRouteForm(data=self.route_data)
+        start_place = Place.objects.get(name='Start_Place')
+        end_place = Place.objects.get(name='End_Place')
+
+
+        places = {
+            'start_place': start_place.id,
+            'end_place': end_place.id,
+        }
+
+        route_data = self.route_data
+        route_data.update(places)
+
+        form = SwitzerlandMobilityRouteForm(data=route_data)
         self.assertTrue(form.is_valid())
 
     def test_switzerland_mobility_invalid_model_form(self):
@@ -692,6 +729,7 @@ class SwitzerlandMobility(TestCase):
         del data['geom']
         form = SwitzerlandMobilityRouteForm(data=data)
         self.assertFalse(form.is_valid())
+
 
 class Swissname3dModelTest(TestCase):
     """

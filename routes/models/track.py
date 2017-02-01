@@ -4,7 +4,8 @@ from django.contrib.staticfiles import finders
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
 from .segment import Segment
-from django.contrib.gis.measure import Distance
+from .place import Place
+from django.contrib.gis.measure import D
 from django.contrib.gis.geos import Point
 
 import googlemaps
@@ -35,6 +36,19 @@ class Track(models.Model):
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
 
+    # Start and End-place
+    start_place = models.ForeignKey(
+        Place,
+        null=True,
+        related_name='starts_%(class)s'
+    )
+
+    end_place = models.ForeignKey(
+        Place,
+        null=True,
+        related_name='ends_%(class)s'
+    )
+
     # Returns poster picture for the list view
     def get_poster_picture(self):
         if finders.find('routes/images/' + str(self.id) + '.jpg'):
@@ -43,13 +57,13 @@ class Track(models.Model):
             return 'routes/images/default.jpg'
 
     def get_length(self):
-        return Distance(m=self.length)
+        return D(m=self.length)
 
     def get_totalup(self):
-        return Distance(m=self.totalup)
+        return D(m=self.totalup)
 
     def get_totaldown(self):
-        return Distance(m=self.totaldown)
+        return D(m=self.totaldown)
 
     def get_start_altitude(self):
         start_altitude = self.get_point_altitude_along_track(0)
@@ -59,8 +73,17 @@ class Track(models.Model):
         end_altitude = self.get_point_altitude_along_track(1)
         return end_altitude
 
-    def get_point_altitude_along_track(self, location=0):
-        point = self.geom.interpolate_normalized(location)
+    def get_closest_places_along_track(self, track_location=0, max_distance=100):
+        # create the point from location
+        point = self.geom.interpolate_normalized(track_location)
+
+        # get closest places to the point
+        places = Place.objects.get_places_within(point, max_distance)
+
+        return places
+
+    def get_point_altitude_along_track(self, track_location=0):
+        point = self.geom.interpolate_normalized(track_location)
 
         # format coordoinates for Google Maps API
         point.transform(4326)
@@ -72,7 +95,7 @@ class Track(models.Model):
         altitude = result[0]['elevation']
 
         # return distance object
-        return Distance(m=altitude)
+        return D(m=altitude)
 
     def segment_route_with_points(self, places):
         """

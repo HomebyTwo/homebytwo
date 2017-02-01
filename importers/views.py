@@ -166,6 +166,8 @@ def switzerland_mobility_detail(request, source_id):
         if route:
             form = SwitzerlandMobilityRouteForm(instance=route)
             route.user = request.user
+            form.fields['start_place'].queryset = route.get_closest_places_along_track(max_distance=500)
+            form.fields['end_place'].queryset = route.get_closest_places_along_track(track_location=1, max_distance=500)
 
         # route details could not be retrieved
         else:

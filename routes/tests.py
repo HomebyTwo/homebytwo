@@ -35,6 +35,34 @@ class PlaceTestCase(TestCase):
         self.assertEqual(place.data_source, 'homebytwo')
         self.assertEqual(place.source_id, str(place.id))
 
+    def test_get_places_within(self):
+        point = GEOSGeometry('POINT(1 1)')
+
+        place1 = Place(**self.data)
+        place1.save()
+
+        place2 = Place(**self.data)
+        place2.geom = 'POINT(4 4)'
+        place2.save()
+
+        place3 = Place(**self.data)
+        place3.geom = 'POINT(100 100)'
+        place3.save()
+
+        place4 = Place(**self.data)
+        place4.geom = 'POINT(10 10)'
+        place4.save()
+
+        places = Place.objects.get_places_within(point, 6)
+        self.assertEqual(places.count(), 2)
+
+        places = Place.objects.get_places_within(point, 200)
+        self.assertTrue(places[0].distance < places[1].distance)
+        self.assertTrue(places[2].distance < places[3].distance)
+
+        place = places[0]
+        self.assertAlmostEqual(place.distance.m, 2**(1/2))
+
     # Views
     def test_importer_view_not_logged_redirected(self):
         url = reverse('routes:importers')

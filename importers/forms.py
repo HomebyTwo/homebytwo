@@ -1,12 +1,21 @@
 from django import forms
 from django.conf import settings
 from .models import SwitzerlandMobilityRoute
+from routes.models import Place
 
 import json
 import requests
 
 
 class SwitzerlandMobilityRouteForm(forms.ModelForm):
+
+    class PlaceChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            return '%s - %d meters away.' % (obj.name, obj.distance.m)
+
+    start_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
+    end_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
+
     class Meta:
         model = SwitzerlandMobilityRoute
         fields = [
@@ -16,6 +25,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'totaldown',
             'length',
             'geom',
+            'start_place',
         ]
 
         # Do not display the following fields in the form.

@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
 from django.conf import settings
+from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance
 
 import googlemaps
 import requests
@@ -35,6 +37,21 @@ class PlaceManager(models.Manager):
         # Execute the RAW query
         return self.raw(sql, [route.id, max_distance])
 
+    def get_places_within(self, point, max_distance=100):
+        # make range a distance object
+        distance = D(m=max_distance)
+
+        # get places within range
+        places = self.filter(geom__distance_lte=(point, distance))
+
+        # annotate with distance
+        places_distance = places.annotate(distance=Distance('geom', point))
+
+        # sort by distance
+        places_sorted = places_distance.order_by('distance')
+
+        return places_sorted
+
 
 class Place(models.Model):
     """
@@ -63,6 +80,9 @@ class Place(models.Model):
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.
         unique_together = ('data_source', 'source_id',)
+
+    def get_altitude(self):
+        return D(m=self.altitude)
 
     # Returns altitude for a place and updates the database entry
     def get_gmaps_elevation(self):
