@@ -61,7 +61,7 @@ class PlaceTestCase(TestCase):
         self.assertTrue(places[2].distance < places[3].distance)
 
         place = places[0]
-        self.assertAlmostEqual(place.distance.m, 2**(1/2))
+        self.assertAlmostEqual(place.distance.m, 2**0.5)
 
     # Views
     def test_importer_view_not_logged_redirected(self):
