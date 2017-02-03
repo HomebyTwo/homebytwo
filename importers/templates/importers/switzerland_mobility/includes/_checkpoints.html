@@ -1,13 +1,15 @@
 {% load humanize %}
 
-<ul class="list">
+<ul class="list grid__item">
     <li class="mrgb box box--default place place-start">
-        <h3>Start Place <span class="altitude">{{ route.get_start_altitude.m|floatformat:0|intcomma }}m</span></h3>
+        {{ form.start_place.errors }}
+        <label for="{{ form.start_place.id_for_label }}">Starting Place:</label>
+        {{ form.start_place }}
     </li>
-    <li class="mrg">
-        <div class="segment-distance">{{ route.get_length.km|floatformat:1 }}km</div>
-    </li>
+
     <li class="mrgt box box--default place place-finish">
-        <h3>Finish Place <span class="altitude">{{ route.get_end_altitude.m|floatformat:0|intcomma }}m</span></h3>
+        {{ form.end_place.errors }}
+        <label for="{{ form.end_place.id_for_label }}">Finish Place:</label>
+        {{ form.end_place }}
     </li>
 </ul>

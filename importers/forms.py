@@ -11,7 +11,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
 
     class PlaceChoiceField(forms.ModelChoiceField):
         def label_from_instance(self, obj):
-            return '%s - %d meters away.' % (obj.name, obj.distance.m)
+            return '%s - %s, %d meters away.' % (obj.name, obj.place_type, obj.distance.m)
 
     start_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
     end_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
@@ -26,13 +26,13 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'length',
             'geom',
             'start_place',
+            'end_place',
         ]
 
         # Do not display the following fields in the form.
         # These values are retrieved from the original route
         widgets = {
             'source_id': forms.HiddenInput,
-            'name': forms.HiddenInput,
             'totalup': forms.HiddenInput,
             'totaldown': forms.HiddenInput,
             'length': forms.HiddenInput,

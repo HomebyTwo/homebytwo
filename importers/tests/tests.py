@@ -500,7 +500,7 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_detail_success(self):
         route_id = 2823968
         url = reverse('switzerland_mobility_detail', args=[route_id])
-        content = '<h2 class="mrgt mrgb-- text-center">Leuk Bridge</h2>'
+        content = '<title>Home by Two - Import Leuk Bridge</title>'
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
