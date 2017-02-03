@@ -93,15 +93,25 @@ class RouteTestCase(TestCase):
         # Add user to the test database
         user = User.objects.create_user('testuser', 'test@test.com', 'test')
 
-        self.route = Route(
-            name='Test Name',
-            description='Test description',
-            user=user,
-            totalup=1234,
-            totaldown=4321,
-            length=12345,
-            geom=GEOSGeometry(route_geojson, srid=21781)
+        start_place = Place(
+            place_type='Train Station',
+            name='Start_Place',
+            description='Place_description',
+            altitude=500,
+            public_transport=True,
+            geom='POINT(612190.0 129403.0)',
         )
+        start_place.save()
+
+        end_place = Place(
+            place_type='Train Station',
+            name='End_Place',
+            description='Place_description',
+            altitude=1500,
+            public_transport=True,
+            geom='POINT(615424.648017 129784.662852)',
+        )
+        end_place.save()
 
         self.google_elevation_json = (
             '{"status": "OK",'
@@ -110,6 +120,24 @@ class RouteTestCase(TestCase):
             '      "elevation": 123.456,'
             '      "resolution": 19.08790397644043}]'
             '}')
+
+        self.route = Route(
+            name='Test Name',
+            source_id=1,
+            data_source='homebytwo',
+            description='Test description',
+            user=user,
+            totalup=1234,
+            totaldown=4321,
+            length=12345,
+            geom=GEOSGeometry(route_geojson, srid=21781),
+            start_place=start_place,
+            end_place=end_place,
+        )
+
+    #########
+    # Model #
+    #########
 
     def test_get_length(self):
         route = self.route
@@ -215,3 +243,34 @@ class RouteTestCase(TestCase):
         httpretty.disable()
 
         self.assertAlmostEqual(point_altitude.ft, 405.03937007874015)
+
+    def test_get_start_and_end_places(self):
+        route = self.route
+        start_place = route.get_closest_places_along_track()[0]
+        end_place = route.get_closest_places_along_track(1)[0]
+
+        self.assertEqual(start_place.distance.m, 0)
+        self.assertEqual(start_place.name, 'Start_Place')
+
+        self.assertEqual(end_place.distance.m, 0)
+        self.assertEqual(end_place.name, 'End_Place')
+
+    #########
+    # Views #
+    #########
+
+    def test_route_detail_view_success(self):
+        route = self.route
+        route.save()
+
+        url = reverse('routes:detail', args=[route.id,])
+        name = route.name
+        start_place = route.start_place.name
+        end_place = route.end_place.name
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(name in str(response.content))
+        self.assertTrue(start_place in str(response.content))
+        self.assertTrue(end_place in str(response.content))
