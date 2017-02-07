@@ -2,7 +2,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import GEOSGeometry, fromstr
 from django.contrib.gis.measure import Distance
 
 from .models import Place, Route
@@ -62,6 +62,26 @@ class PlaceTestCase(TestCase):
 
         place = places[0]
         self.assertAlmostEqual(place.distance.m, 2**0.5)
+
+    def test_get_places_from_line(self):
+        line = fromstr(
+            'LINESTRING(612190.0 612190.0, 615424.648017 129784.662852)',
+            srid=21781
+        )
+
+        place1 = Place(**self.data)
+        place1.geom = fromstr('POINT(615424 129744.0)', srid=21781)
+        place1.save()
+
+        place2 = Place(**self.data)
+        place2.geom = fromstr('POINT(4.0 4.0)', srid=21781)
+        place2.save()
+
+        places = Place.objects.get_places_from_line(line, max_distance=50)
+
+        self.assertEqual(len(list(places)), 1)
+        self.assertTrue(places[0].line_location == 1.0)
+        self.assertTrue(places[0].distance_from_line > 0)
 
     # Views
     def test_importer_view_not_logged_redirected(self):
@@ -263,7 +283,7 @@ class RouteTestCase(TestCase):
         route = self.route
         route.save()
 
-        url = reverse('routes:detail', args=[route.id,])
+        url = reverse('routes:detail', args=[route.id])
         name = route.name
         start_place = route.start_place.name
         end_place = route.end_place.name

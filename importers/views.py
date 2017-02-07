@@ -5,7 +5,7 @@ from django.core.urlresolvers import reverse
 from stravalib.client import Client as StravaClient
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from routes.models import Athlete
+from routes.models import Athlete, Place
 from django.contrib.auth.decorators import login_required
 
 from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
@@ -164,19 +164,42 @@ def switzerland_mobility_detail(request, source_id):
 
         # route details succesfully retrieved
         if route:
+            # populate the form with route details
             form = SwitzerlandMobilityRouteForm(instance=route)
+            # add route owner
             route.user = request.user
-            form.fields['start_place'].queryset = route.get_closest_places_along_track(max_distance=500)
-            form.fields['end_place'].queryset = route.get_closest_places_along_track(track_location=1, max_distance=500)
+
+            # find places to display in the select
+            # for start and finish
+            form.fields['start_place'].queryset = \
+                route.get_closest_places_along_track(
+                    line_location=0,  # start
+                    max_distance=500,
+                )
+
+            form.fields['end_place'].queryset = \
+                route.get_closest_places_along_track(
+                    line_location=1,  # finish
+                    max_distance=500,
+                )
+
+            # find places along the route
+            places = Place.objects.get_places_from_line(
+                route.geom,
+                max_distance=50
+            )
+
 
         # route details could not be retrieved
         else:
+            places = False
             form = False
 
     context = {
         'route': route,
         'response': response,
-        'form': form
+        'places': places,
+        'form': form,
     }
 
     return render(request, template, context)

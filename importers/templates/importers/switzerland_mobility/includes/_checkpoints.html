@@ -7,6 +7,10 @@
         {{ form.start_place }}
     </li>
 
+    {% for place in places %}
+        <div>{{ place.name }}, {{ place.altitude.m }} m - {{ place.place_type }},  {{ place.distance_from_line|floatformat:0|intcomma }}m away from the route.</div>
+    {% endfor %}
+
     <li class="mrgt box box--default place place-finish">
         {{ form.end_place.errors }}
         <label for="{{ form.end_place.id_for_label }}">Finish Place:</label>

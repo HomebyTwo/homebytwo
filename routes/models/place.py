@@ -18,24 +18,27 @@ class PlaceManager(models.Manager):
     def get_public_transport(self):
         self.filter(public_transport=True)
 
-    def get_places_from_route(self, route, max_distance=100):
+    def get_places_from_line(self, line, max_distance=50):
+        """
+        returns places with a max_distance of a Linestring Geometry within
+        ordered by and annotated with location along the line
+        and distance from the line.
+        """
 
         sql = (
-            'SELECT routes_place.id,'
-            'ST_DISTANCE(routes_route.geom, routes_place.geom) '
-            'AS distance_from_route, '
-            'ST_LineLocatePoint(routes_route.geom, routes_place.geom) '
-            'AS line_location '
-            'FROM routes_route, routes_place '
-            'WHERE routes_route.id = %s '
-            'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
-            'ORDER BY '
-            'ST_LineLocatePoint(routes_route.geom, routes_place.geom), '
-            'ST_DISTANCE(routes_route.geom, routes_place.geom);'
+              "SELECT routes_place.id, "
+              "ST_DISTANCE(ST_GeomFromEWKT(%(line)s), routes_place.geom) "
+              "AS distance_from_line, "
+              "ST_LineLocatePoint(ST_GeomFromEWKT(%(line)s), routes_place.geom) "
+              "AS line_location "
+              "FROM routes_place "
+              "WHERE ST_DWithin(ST_GeomFromEWKT(%(line)s), routes_place.geom, %(max)s) "
+              "ORDER BY "
+              "ST_LineLocatePoint(ST_GeomFromEWKT(%(line)s), routes_place.geom), "
+              "ST_DISTANCE(ST_GeomFromEWKT(%(line)s), routes_place.geom);"
         )
 
-        # Execute the RAW query
-        return self.raw(sql, [route.id, max_distance])
+        return Place.objects.raw(sql, {'line': line.ewkt, 'max': max_distance})
 
     def get_places_within(self, point, max_distance=100):
         # make range a distance object
