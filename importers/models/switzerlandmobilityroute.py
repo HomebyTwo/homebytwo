@@ -8,6 +8,8 @@ from django.contrib.gis.measure import Distance
 
 import requests
 import json
+from pandas import DataFrame
+from ast import literal_eval
 
 
 class SwitzerlandMobilityRouteManager(models.Manager):
@@ -226,6 +228,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         totalup = raw_route_json['properties']['meta']['totalup']
         totaldown = raw_route_json['properties']['meta']['totaldown']
         geometry = raw_route_json['geometry']
+        data_list = literal_eval(raw_route_json['properties']['profile'])
 
         formatted_route = SwitzerlandMobilityRoute(
             source_id=route_id,
@@ -234,7 +237,11 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             totalup=totalup,
             totaldown=totaldown,
             # load GeoJSON using GEOSGeeometry
-            geom=GEOSGeometry(json.dumps(geometry), srid=21781)
+            geom=GEOSGeometry(json.dumps(geometry), srid=21781),
+            data=DataFrame(
+                data_list,
+                columns=['lat', 'lng', 'altitude', 'length']
+            )
         )
 
         return formatted_route

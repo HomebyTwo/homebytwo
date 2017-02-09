@@ -3,11 +3,11 @@
 <h2 class="text-center">Course Description</h2>
 <ul class="list">
     <li class="mrgv box box--default place place-start">
-        <h3>{{ route.start_place.name }}</h3>
+        <h3>{{ route.start_place.name }} <span class="altitude">{{ route.get_start_altitude.m|floatformat:0|intcomma }} m</span></h3>
     </li>
     <li class="mrgv box box--default segment segment-trail">
-        <div class="segment-distance">Distance: {{ route.get_length.km|floatformat:1 }}km</div>
-        <div class="segment-totalup">Elevation up: {{ route.get_totalup.m|floatformat:0|intcomma }}m</div>
+        <div class="segment-distance">Distance: {{ route.get_length.km|floatformat:1 }} km</div>
+        <div class="segment-totalup">Elevation up: {{ route.get_totalup.m|floatformat:0|intcomma }} m</div>
         <div class="segment-totaldown">Elevation down: {{ route.get_totaldown.m|floatformat:0|intcomma }} m</div>
     </li>
     <li><ul class="list">
@@ -16,6 +16,6 @@
         {% endfor %}
     </ul></li>
     <li class="mrgv box box--default place place-finish">
-        <h3>{{ route.end_place.name }}</h3>
+        <h3>{{ route.end_place.name }} <span class="altitude">{{ route.get_end_altitude.m|floatformat:0|intcomma }} m</span></h3>
     </li>
 </ul>
