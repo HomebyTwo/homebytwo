@@ -81,7 +81,7 @@ class PlaceTestCase(TestCase):
 
         self.assertEqual(len(list(places)), 1)
         self.assertTrue(places[0].line_location == 1.0)
-        self.assertTrue(places[0].distance_from_line > 0)
+        self.assertTrue(places[0].distance_from_line.m > 0)
 
     # Views
     def test_importer_view_not_logged_redirected(self):

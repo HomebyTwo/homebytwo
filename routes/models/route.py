@@ -11,6 +11,13 @@ class Route(Track):
     data_source = models.CharField('Where the route came from',
                                    default='homebytwo', max_length=50)
 
+    # A route can have checkpoints
+    places = models.ManyToManyField(
+            'Place',
+            through='PlaceRoute',
+            blank=True,
+        )
+
     # Each route is made of segments
     # segments = models.ManyToManyField(Segment)
 

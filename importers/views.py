@@ -160,45 +160,51 @@ def switzerland_mobility_detail(request, source_id):
     # GET request
     else:
         # fetch route details from Switzerland Mobility
-        route, response = SwitzerlandMobilityRoute.objects.get_remote_route(route_id)
+        route, response = SwitzerlandMobilityRoute.objects. \
+            get_remote_route(route_id)
 
         # route details succesfully retrieved
         if route:
             # populate the form with route details
             form = SwitzerlandMobilityRouteForm(instance=route)
+
             # add route owner
             route.user = request.user
 
             # find places to display in the select
-            # for start and finish
+            # for start, finish points.
             form.fields['start_place'].queryset = \
                 route.get_closest_places_along_track(
                     line_location=0,  # start
-                    max_distance=500,
+                    max_distance=200,
                 )
 
             form.fields['end_place'].queryset = \
                 route.get_closest_places_along_track(
                     line_location=1,  # finish
-                    max_distance=500,
+                    max_distance=200,
                 )
 
-            # find places along the route
-            places = Place.objects.get_places_from_line(
+            # find checkpoints along the route
+            checkpoints = Place.objects.get_places_from_line(
                 route.geom,
                 max_distance=50
             )
 
+            # populate the form with the checkpoints
+            form.fields['places'].queryset = checkpoints
+            # check all checkboxes by setting initial values
+            form.initial = {'places': [
+                id for id in checkpoints.values_list('id', flat=True)
+            ]}
 
         # route details could not be retrieved
         else:
-            places = False
             form = False
 
     context = {
         'route': route,
         'response': response,
-        'places': places,
         'form': form,
     }
 

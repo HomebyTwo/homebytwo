@@ -11,10 +11,34 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
 
     class PlaceChoiceField(forms.ModelChoiceField):
         def label_from_instance(self, obj):
-            return '%s - %s, %d meters away.' % (obj.name, obj.place_type, obj.distance.m)
+            return '%s - %s, %d meters away.' % (
+                obj.name,
+                obj.place_type,
+                obj.distance_from_line.m
+            )
 
-    start_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
-    end_place = PlaceChoiceField(queryset=Place.objects.all(), empty_label=None)
+    class PlacesChoiceField(forms.ModelMultipleChoiceField):
+        def label_from_instance(self, obj):
+            return '%s - %s' % (
+                obj.name,
+                obj.place_type
+            )
+
+    start_place = PlaceChoiceField(
+        queryset=Place.objects.all()[:100],  # prevent 200k+ entries in select
+        empty_label=None
+    )
+    end_place = PlaceChoiceField(
+        queryset=Place.objects.all()[:100],  # prevent 200k+ entries in select
+        empty_label=None
+    )
+    places = PlacesChoiceField(
+        queryset=Place.objects.all()[:100],
+        widget=forms.CheckboxSelectMultiple(
+            attrs={'class': 'list'}
+        ),
+
+    )
 
     class Meta:
         model = SwitzerlandMobilityRoute
@@ -27,6 +51,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'geom',
             'start_place',
             'end_place',
+            'places',
         ]
 
         # Do not display the following fields in the form.

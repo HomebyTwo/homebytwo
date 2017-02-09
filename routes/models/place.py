@@ -3,12 +3,33 @@ from __future__ import unicode_literals
 from django.contrib.gis.db import models
 from django.conf import settings
 from django.contrib.gis.measure import D
-from django.contrib.gis.db.models.functions import Distance
-
+from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
 import googlemaps
 import requests
 import json
 from datetime import datetime
+
+
+class LineLocatePoint(GeoFunc):
+    """
+    implements ST_LineLocatePoint that is still missing in GeoDjango
+    for some reason: https://code.djangoproject.com/ticket/12410.
+
+    This could be improved as I had no idea of how to tell GeoFunc
+    that the first arg was the one the treat as a geom,
+    unlike in GeoFuncWithGeoParam(GeoFunc).
+
+    At least, I learned something about list comprehensions.
+    """
+    def __init__(self, *expressions, **extra):
+        expressions = [
+            arg if isinstance(arg, str) else GeomValue(arg)
+            for arg in expressions
+        ]
+        super().__init__(*expressions, **extra)
+
+    output_field_class = models.FloatField
+    arity = 2
 
 
 class PlaceManager(models.Manager):
@@ -25,35 +46,37 @@ class PlaceManager(models.Manager):
         and distance from the line.
         """
 
-        sql = (
-              "SELECT routes_place.id, "
-              "ST_DISTANCE(ST_GeomFromEWKT(%(line)s), routes_place.geom) "
-              "AS distance_from_line, "
-              "ST_LineLocatePoint(ST_GeomFromEWKT(%(line)s), routes_place.geom) "
-              "AS line_location "
-              "FROM routes_place "
-              "WHERE ST_DWithin(ST_GeomFromEWKT(%(line)s), routes_place.geom, %(max)s) "
-              "ORDER BY "
-              "ST_LineLocatePoint(ST_GeomFromEWKT(%(line)s), routes_place.geom), "
-              "ST_DISTANCE(ST_GeomFromEWKT(%(line)s), routes_place.geom);"
-        )
+        # convert max_distance to Distance object
+        max_d = D(m=max_distance)
 
-        return Place.objects.raw(sql, {'line': line.ewkt, 'max': max_distance})
+        # find all places within max distance from line
+        places = Place.objects.filter(geom__dwithin=(line, max_d))
+
+        # annotate with distance to line
+        places = places.annotate(distance_from_line=Distance('geom', line))
+
+        # annotate with location along the line between 0 and 1
+        places = places.annotate(line_location=LineLocatePoint(line, 'geom'))
+
+        # order by location along the line and distance to the line
+        places.order_by('line_location', 'distance_from_line')
+
+        return places
 
     def get_places_within(self, point, max_distance=100):
         # make range a distance object
-        distance = D(m=max_distance)
+        max_d = D(m=max_distance)
 
         # get places within range
-        places = self.filter(geom__distance_lte=(point, distance))
+        places = self.filter(geom__distance_lte=(point, max_d))
 
         # annotate with distance
-        places_distance = places.annotate(distance=Distance('geom', point))
+        places = places.annotate(distance_from_line=Distance('geom', point))
 
         # sort by distance
-        places_sorted = places_distance.order_by('distance')
+        places = places.order_by('distance_from_line',)
 
-        return places_sorted
+        return places
 
 
 class Place(models.Model):
@@ -201,3 +224,15 @@ class Place(models.Model):
         if self.source_id == '':
             self.source_id = str(self.id)
             self.save()
+
+
+class PlaceRoute(models.Model):
+    # Intermediate model for route - place
+    place = models.ForeignKey('Place', on_delete=models.CASCADE)
+    route = models.ForeignKey('Route', on_delete=models.CASCADE)
+
+    # location on the route normalized 0=start 1=end
+    line_location = models.FloatField(default=0)
+
+    # Altitude at the route's closest point to the place
+    altitude_on_route = models.FloatField()

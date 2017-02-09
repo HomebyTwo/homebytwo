@@ -3,17 +3,21 @@
 <ul class="list grid__item">
     <li class="mrgb box box--default place place-start">
         {{ form.start_place.errors }}
-        <label for="{{ form.start_place.id_for_label }}">Starting Place:</label>
+        <label for="{{ form.start_place.id_for_label }}" class="h4">Starting Place:</label>
         {{ form.start_place }}
     </li>
-
-    {% for place in places %}
-        <div>{{ place.name }}, {{ place.altitude.m }} m - {{ place.place_type }},  {{ place.distance_from_line|floatformat:0|intcomma }}m away from the route.</div>
-    {% endfor %}
-
+    <li class="mrgl">
+        {{ form.places.errors }}
+        <h4>Checkpoints:</h4>
+        <ul class="list">
+            {% for place in form.places %}
+                <li>{{ place }}</li>
+            {% endfor %}
+        </ul>
+    </li>
     <li class="mrgt box box--default place place-finish">
         {{ form.end_place.errors }}
-        <label for="{{ form.end_place.id_for_label }}">Finish Place:</label>
+        <label for="{{ form.end_place.id_for_label }}" class="h4">Finish Place:</label>
         {{ form.end_place }}
     </li>
 </ul>
