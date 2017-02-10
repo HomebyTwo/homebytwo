@@ -4,6 +4,7 @@ from django.contrib.gis.db import models
 from django.conf import settings
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
+from django.utils import six
 import googlemaps
 import requests
 import json
@@ -23,10 +24,10 @@ class LineLocatePoint(GeoFunc):
     """
     def __init__(self, *expressions, **extra):
         expressions = [
-            arg if isinstance(arg, str) else GeomValue(arg)
+            arg if isinstance(arg, six.string_types) else GeomValue(arg)
             for arg in expressions
         ]
-        super().__init__(*expressions, **extra)
+        super(LineLocatePoint, self).__init__(*expressions, **extra)
 
     output_field_class = models.FloatField
     arity = 2

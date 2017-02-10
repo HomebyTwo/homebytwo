@@ -57,11 +57,13 @@ class PlaceTestCase(TestCase):
         self.assertEqual(places.count(), 2)
 
         places = Place.objects.get_places_within(point, 200)
-        self.assertTrue(places[0].distance < places[1].distance)
-        self.assertTrue(places[2].distance < places[3].distance)
+        self.assertTrue(
+            places[0].distance_from_line < places[1].distance_from_line)
+        self.assertTrue(
+            places[2].distance_from_line < places[3].distance_from_line)
 
         place = places[0]
-        self.assertAlmostEqual(place.distance.m, 2**0.5)
+        self.assertAlmostEqual(place.distance_from_line.m, 2**0.5)
 
     def test_get_places_from_line(self):
         line = fromstr(
@@ -269,10 +271,10 @@ class RouteTestCase(TestCase):
         start_place = route.get_closest_places_along_track()[0]
         end_place = route.get_closest_places_along_track(1)[0]
 
-        self.assertEqual(start_place.distance.m, 0)
+        self.assertEqual(start_place.distance_from_line.m, 0)
         self.assertEqual(start_place.name, 'Start_Place')
 
-        self.assertEqual(end_place.distance.m, 0)
+        self.assertEqual(end_place.distance_from_line.m, 0)
         self.assertEqual(end_place.name, 'End_Place')
 
     #########

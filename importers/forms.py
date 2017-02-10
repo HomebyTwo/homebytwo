@@ -25,18 +25,17 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             )
 
     start_place = PlaceChoiceField(
-        queryset=Place.objects.all()[:100],  # prevent 200k+ entries in select
+        queryset=Place.objects.all(),
         empty_label=None
     )
     end_place = PlaceChoiceField(
-        queryset=Place.objects.all()[:100],  # prevent 200k+ entries in select
+        queryset=Place.objects.all(),
         empty_label=None
     )
     places = PlacesChoiceField(
-        queryset=Place.objects.all()[:100],
-        widget=forms.CheckboxSelectMultiple(
-            attrs={'class': 'list'}
-        ),
+        queryset=Place.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
 
     )
 
@@ -57,6 +56,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
         # Do not display the following fields in the form.
         # These values are retrieved from the original route
         widgets = {
+            'name': forms.HiddenInput,
             'source_id': forms.HiddenInput,
             'totalup': forms.HiddenInput,
             'totaldown': forms.HiddenInput,

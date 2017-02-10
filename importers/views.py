@@ -175,13 +175,13 @@ def switzerland_mobility_detail(request, source_id):
             # for start, finish points.
             form.fields['start_place'].queryset = \
                 route.get_closest_places_along_track(
-                    line_location=0,  # start
+                    track_location=0,  # start
                     max_distance=200,
                 )
 
             form.fields['end_place'].queryset = \
                 route.get_closest_places_along_track(
-                    line_location=1,  # finish
+                    track_location=1,  # finish
                     max_distance=200,
                 )
 
@@ -193,10 +193,10 @@ def switzerland_mobility_detail(request, source_id):
 
             # populate the form with the checkpoints
             form.fields['places'].queryset = checkpoints
-            # check all checkboxes by setting initial values
-            form.initial = {'places': [
+            # check all checkboxes by setting initial values for places
+            form.initial.update({'places': [
                 id for id in checkpoints.values_list('id', flat=True)
-            ]}
+            ]})
 
         # route details could not be retrieved
         else:
