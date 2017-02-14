@@ -14,7 +14,7 @@ class Route(Track):
     # A route can have checkpoints
     places = models.ManyToManyField(
             'Place',
-            through='PlaceRoute',
+            through='RoutePlace',
             blank=True,
         )
 

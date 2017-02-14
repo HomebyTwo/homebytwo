@@ -25,12 +25,12 @@
             </div>
             {% csrf_token %}
             {% include 'importers/switzerland_mobility/includes/_checkpoints.html' %}
-            <div>{{ form.source_id }}</div>
-            <div>{{ form.name }}</div>
-            <div>{{ form.totalup }}</div>
-            <div>{{ form.totaldown }}</div>
-            <div>{{ form.length }}</div>
-            <div>{{ form.geom }}</div>
+            <div>{{ route_form.source_id }}</div>
+            <div>{{ route_form.name }}</div>
+            <div>{{ route_form.totalup }}</div>
+            <div>{{ route_form.totaldown }}</div>
+            <div>{{ route_form.length }}</div>
+            <div>{{ route_form.geom }}</div>
             <div class="form-group text-center mrg">
                 {% if not route.already_imported %}
                     <input type="submit" value="Import" class="btn btn--md btn--primary">

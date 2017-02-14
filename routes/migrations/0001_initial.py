@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name='PlaceRoute',
+            name='RoutePlace',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('line_location', models.FloatField(default=0)),
@@ -86,7 +86,7 @@ class Migration(migrations.Migration):
                 ('source_id', models.BigIntegerField()),
                 ('data_source', models.CharField(default='homebytwo', max_length=50, verbose_name='Where the route came from')),
                 ('end_place', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='ends_route', to='routes.Place')),
-                ('places', models.ManyToManyField(blank=True, through='routes.PlaceRoute', to='routes.Place')),
+                ('places', models.ManyToManyField(blank=True, through='routes.RoutePlace', to='routes.Place')),
                 ('start_place', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='starts_route', to='routes.Place')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
@@ -104,7 +104,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.AddField(
-            model_name='placeroute',
+            model_name='routeplace',
             name='route',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='routes.Route'),
         ),

@@ -17,26 +17,15 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
                 obj.distance_from_line.m
             )
 
-    class PlacesChoiceField(forms.ModelMultipleChoiceField):
-        def label_from_instance(self, obj):
-            return '%s - %s' % (
-                obj.name,
-                obj.place_type
-            )
-
     start_place = PlaceChoiceField(
         queryset=Place.objects.all(),
-        empty_label=None
+        empty_label=None,
+        required=False,
     )
     end_place = PlaceChoiceField(
         queryset=Place.objects.all(),
-        empty_label=None
-    )
-    places = PlacesChoiceField(
-        queryset=Place.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
+        empty_label=None,
         required=False,
-
     )
 
     class Meta:
@@ -50,7 +39,6 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'geom',
             'start_place',
             'end_place',
-            'places',
         ]
 
         # Do not display the following fields in the form.
@@ -69,7 +57,7 @@ class SwitzerlandMobilityLogin(forms.Form):
     """
     This form prompts the user for his Switzerland Mobility Login
     and retrieves a session cookie.
-    Credentials are not stored in the Database
+    Credentials are not stored in the Database.
     """
     username = forms.CharField(
         label='Username', max_length=100,

@@ -10,6 +10,11 @@
         <div class="segment-totalup">Elevation up: {{ route.get_totalup.m|floatformat:0|intcomma }}m</div>
         <div class="segment-totaldown">Elevation down: {{ route.get_totaldown.m|floatformat:0|intcomma }} m</div>
     </li>
+    <li><ul class="list">
+        {% for place in places %}
+            <li class="mrgv box box--default place">{{ place.place.name }}, {{ place.altitude_on_route|floatformat:0|intcomma }} m</li>
+        {% endfor %}
+    </ul></li>
     <li class="mrgv box box--default place place-finish">
         <h3>{{ route.end_place.name }}</h3>
     </li>

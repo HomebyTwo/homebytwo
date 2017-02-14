@@ -73,7 +73,9 @@ class Track(models.Model):
         end_altitude = self.get_point_altitude_along_track(1)
         return end_altitude
 
-    def get_closest_places_along_track(self, track_location=0, max_distance=100):
+    def get_closest_places_along_track(self, track_location=0,
+                                       max_distance=100):
+
         # create the point from location
         point = self.geom.interpolate_normalized(track_location)
 

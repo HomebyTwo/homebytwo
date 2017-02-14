@@ -3,7 +3,7 @@ from django.http import HttpResponse
 
 from django.contrib.auth.decorators import login_required
 
-from .models import Route
+from .models import Route, RoutePlace
 
 
 def index(request):
@@ -16,8 +16,10 @@ def index(request):
 
 def detail(request, route_id):
     route = Route.objects.get(id=route_id)
+    places = RoutePlace.objects.filter(route=route_id)
     context = {
         'route': route,
+        'places': places
     }
     return render(request, 'routes/detail.html', context)
 

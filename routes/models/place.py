@@ -60,7 +60,7 @@ class PlaceManager(models.Manager):
         places = places.annotate(line_location=LineLocatePoint(line, 'geom'))
 
         # order by location along the line and distance to the line
-        places.order_by('line_location', 'distance_from_line')
+        places = places.order_by('line_location', 'distance_from_line')
 
         return places
 
@@ -227,13 +227,19 @@ class Place(models.Model):
             self.save()
 
 
-class PlaceRoute(models.Model):
+class RoutePlace(models.Model):
     # Intermediate model for route - place
-    place = models.ForeignKey('Place', on_delete=models.CASCADE)
     route = models.ForeignKey('Route', on_delete=models.CASCADE)
+    place = models.ForeignKey('Place', on_delete=models.CASCADE)
 
     # location on the route normalized 0=start 1=end
     line_location = models.FloatField(default=0)
 
     # Altitude at the route's closest point to the place
     altitude_on_route = models.FloatField()
+
+    def __str__(self):
+        return self.place.name
+
+    def __unicode__(self):
+        return self.place.name
