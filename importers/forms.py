@@ -1,12 +1,34 @@
 from django import forms
 from django.conf import settings
 from .models import SwitzerlandMobilityRoute
+from routes.models import Place
 
 import json
 import requests
 
 
 class SwitzerlandMobilityRouteForm(forms.ModelForm):
+
+    class PlaceChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            return '%s - %s, %d meters away.' % (
+                obj.name,
+                obj.place_type,
+                obj.distance_from_line.m
+            )
+
+    start_place = PlaceChoiceField(
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
+    )
+
+    end_place = PlaceChoiceField(
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
+    )
+
     class Meta:
         model = SwitzerlandMobilityRoute
         fields = [
@@ -16,13 +38,15 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'totaldown',
             'length',
             'geom',
+            'start_place',
+            'end_place',
         ]
 
         # Do not display the following fields in the form.
         # These values are retrieved from the original route
         widgets = {
-            'source_id': forms.HiddenInput,
             'name': forms.HiddenInput,
+            'source_id': forms.HiddenInput,
             'totalup': forms.HiddenInput,
             'totaldown': forms.HiddenInput,
             'length': forms.HiddenInput,
@@ -34,7 +58,7 @@ class SwitzerlandMobilityLogin(forms.Form):
     """
     This form prompts the user for his Switzerland Mobility Login
     and retrieves a session cookie.
-    Credentials are not stored in the Database
+    Credentials are not stored in the Database.
     """
     username = forms.CharField(
         label='Username', max_length=100,

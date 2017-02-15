@@ -2,13 +2,15 @@ from django.conf import settings
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.core.urlresolvers import reverse
-from stravalib.client import Client as StravaClient
-
-from .models import StravaRoute, SwitzerlandMobilityRoute
-from routes.models import Athlete
+from django.forms import modelformset_factory, HiddenInput
+from django.db import transaction, IntegrityError
 from django.contrib.auth.decorators import login_required
 
+from .models import StravaRoute, SwitzerlandMobilityRoute
 from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
+from routes.models import Athlete, Place, RoutePlace
+
+from stravalib.client import Client as StravaClient
 
 
 @login_required
@@ -133,49 +135,183 @@ def switzerland_mobility_index(request):
 
 @login_required
 def switzerland_mobility_detail(request, source_id):
-    template = 'importers/switzerland_mobility/detail.html'
-    route_id = int(source_id)
+    """
+    Main import page for Switzerland Mobility.
+    There is a modelform for the route and a modelformset
+    for the places found along the route.
 
-    # if it is a POST request try to import the route
+    The route form is instanciated with the json data retrieved from
+    Switzerland Mobility.
+
+    The places_form is populated with places found along the retrieved route
+    using a query to the database.
+    """
+
+    # cast route id from url to integer
+    source_id = int(source_id)
+
+    # default values for variables passed to the request context
+    route = False
+    places = False
+    route_form = False
+    places_form = False
+    response = {
+        'error': False,
+        'message': '',
+    }
+
+    # define fields of the places modelformset used in both GET and POST
+    places_form_fields = ['place', 'line_location', 'altitude_on_route']
+
+    # with a POST request try to import route and places
     if request.method == 'POST':
-        form = SwitzerlandMobilityRouteForm(request.POST)
 
-        try:
-            new_route = form.save(commit=False)
+        # populate the route form with POST data
+        route_form = SwitzerlandMobilityRouteForm(
+            request.POST,
+            prefix='route',
+        )
+
+        # validate route form and return errors if any
+        if not route_form.is_valid():
+            response['error'] = True
+            response['message'] += str(route_form.errors)
+
+        # Places form
+        # create form class with modelformset_factory
+        PlacesForm = modelformset_factory(
+            RoutePlace,
+            fields=places_form_fields,
+        )
+
+        # intstantiate form with modelformset Class and POST data
+        places_form = PlacesForm(
+            request.POST,
+            prefix='places',
+        )
+
+        # validate places form and return errors if any
+        if not places_form.is_valid():
+            response['error'] = True
+            response['message'] += str(places_form.errors)
+
+        # If both forms validate, save the route and places
+        if not response['error']:
+
+            # create the route with the route_form
+            new_route = route_form.save(commit=False)
+            # set user for route
             new_route.user = request.user
-            new_route.save()
 
-            # redirect to the imported route page
+            # create the route places from the places_form
+            route_places = places_form.save(commit=False)
+
+            try:
+                with transaction.atomic():
+                    new_route.save()
+
+                    for route_place in route_places:
+                        # set RoutePlace.route to newly saved route
+                        route_place.route = new_route
+                        route_place.save()
+
+            except IntegrityError as error:
+                response = {
+                    'error': True,
+                    'message': 'Integrity Error: %s. ' % error,
+                }
+
+        # Success! redirect to the page of the newly imported route
+        if not response['error']:
             redirect_url = reverse('routes:detail', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
-
-        # validation errors, print the message
-        except ValueError:
-            route = False
-            response = {
-                'error': True,
-                'message': str(form.errors),
-            }
 
     # GET request
     else:
         # fetch route details from Switzerland Mobility
-        route, response = SwitzerlandMobilityRoute.objects.get_remote_route(route_id)
+        route, response = SwitzerlandMobilityRoute.objects. \
+            get_remote_route(source_id)
 
         # route details succesfully retrieved
         if route:
-            form = SwitzerlandMobilityRouteForm(instance=route)
+
+            # add user to check if route has already been imported
             route.user = request.user
 
-        # route details could not be retrieved
-        else:
-            form = False
+            # populate the route_form with route details
+            route_form = SwitzerlandMobilityRouteForm(
+                instance=route,
+                prefix='route',
+            )
+
+            # find places to display in the select
+            # for start, finish points.
+            route_form.fields['start_place'].queryset = \
+                route.get_closest_places_along_track(
+                    track_location=0,  # start
+                    max_distance=200,
+                )
+
+            route_form.fields['end_place'].queryset = \
+                route.get_closest_places_along_track(
+                    track_location=1,  # finish
+                    max_distance=200,
+                )
+
+            # find checkpoints along the route
+            checkpoints = Place.objects.get_places_from_line(
+                route.geom,
+                max_distance=50
+            )
+
+            # convert checkpoints to RoutePlace objects
+            route_places = [
+                RoutePlace(
+                    place=place,
+                    line_location=place.line_location,
+                    altitude_on_route=123,
+                )
+                for place in checkpoints
+            ]
+
+            # create form class with modelformset_factory
+            PlacesForm = modelformset_factory(
+                RoutePlace,
+                fields=places_form_fields,
+                extra=len(route_places),
+                can_delete=True,
+                widgets={
+                    'place': HiddenInput,
+                    'line_location': HiddenInput,
+                    'altitude_on_route': HiddenInput,
+                }
+            )
+
+            # instantiate form with initial data
+            places_form = PlacesForm(
+                prefix='places',
+                queryset=RoutePlace.objects.none(),
+                initial=[
+                    {
+                        'place': route_place.place,
+                        'line_location': route_place.line_location,
+                        'altitude_on_route': route_place.altitude_on_route,
+                    }
+                    for route_place in route_places
+                ],
+            )
+
+            places = zip(checkpoints, places_form.forms)
 
     context = {
-        'route': route,
         'response': response,
-        'form': form
+        'route': route,
+        'route_form': route_form,
+        'places': places,
+        'places_form': places_form,
     }
+
+    template = 'importers/switzerland_mobility/detail.html'
 
     return render(request, template, context)
 

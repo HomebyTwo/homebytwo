@@ -2,11 +2,35 @@ from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
 from django.conf import settings
-
+from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
+from django.utils import six
 import googlemaps
 import requests
 import json
 from datetime import datetime
+
+
+class LineLocatePoint(GeoFunc):
+    """
+    implements ST_LineLocatePoint that is still missing in GeoDjango
+    for some reason: https://code.djangoproject.com/ticket/12410.
+
+    This could be improved as I had no idea of how to tell GeoFunc
+    that the first arg was the one the treat as a geom,
+    unlike in GeoFuncWithGeoParam(GeoFunc).
+
+    At least, I learned something about list comprehensions.
+    """
+    def __init__(self, *expressions, **extra):
+        expressions = [
+            arg if isinstance(arg, six.string_types) else GeomValue(arg)
+            for arg in expressions
+        ]
+        super(LineLocatePoint, self).__init__(*expressions, **extra)
+
+    output_field_class = models.FloatField
+    arity = 2
 
 
 class PlaceManager(models.Manager):
@@ -16,24 +40,44 @@ class PlaceManager(models.Manager):
     def get_public_transport(self):
         self.filter(public_transport=True)
 
-    def get_places_from_route(self, route, max_distance=100):
+    def get_places_from_line(self, line, max_distance=50):
+        """
+        returns places with a max_distance of a Linestring Geometry within
+        ordered by and annotated with location along the line
+        and distance from the line.
+        """
 
-        sql = (
-            'SELECT routes_place.id,'
-            'ST_DISTANCE(routes_route.geom, routes_place.geom) '
-            'AS distance_from_route, '
-            'ST_LineLocatePoint(routes_route.geom, routes_place.geom) '
-            'AS line_location '
-            'FROM routes_route, routes_place '
-            'WHERE routes_route.id = %s '
-            'AND ST_DWithin(routes_route.geom, routes_place.geom, %s) '
-            'ORDER BY '
-            'ST_LineLocatePoint(routes_route.geom, routes_place.geom), '
-            'ST_DISTANCE(routes_route.geom, routes_place.geom);'
-        )
+        # convert max_distance to Distance object
+        max_d = D(m=max_distance)
 
-        # Execute the RAW query
-        return self.raw(sql, [route.id, max_distance])
+        # find all places within max distance from line
+        places = Place.objects.filter(geom__dwithin=(line, max_d))
+
+        # annotate with distance to line
+        places = places.annotate(distance_from_line=Distance('geom', line))
+
+        # annotate with location along the line between 0 and 1
+        places = places.annotate(line_location=LineLocatePoint(line, 'geom'))
+
+        # order by location along the line and distance to the line
+        places = places.order_by('line_location', 'distance_from_line')
+
+        return places
+
+    def get_places_within(self, point, max_distance=100):
+        # make range a distance object
+        max_d = D(m=max_distance)
+
+        # get places within range
+        places = self.filter(geom__distance_lte=(point, max_d))
+
+        # annotate with distance
+        places = places.annotate(distance_from_line=Distance('geom', point))
+
+        # sort by distance
+        places = places.order_by('distance_from_line',)
+
+        return places
 
 
 class Place(models.Model):
@@ -63,6 +107,9 @@ class Place(models.Model):
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.
         unique_together = ('data_source', 'source_id',)
+
+    def get_altitude(self):
+        return D(m=self.altitude)
 
     # Returns altitude for a place and updates the database entry
     def get_gmaps_elevation(self):
@@ -178,3 +225,21 @@ class Place(models.Model):
         if self.source_id == '':
             self.source_id = str(self.id)
             self.save()
+
+
+class RoutePlace(models.Model):
+    # Intermediate model for route - place
+    route = models.ForeignKey('Route', on_delete=models.CASCADE)
+    place = models.ForeignKey('Place', on_delete=models.CASCADE)
+
+    # location on the route normalized 0=start 1=end
+    line_location = models.FloatField(default=0)
+
+    # Altitude at the route's closest point to the place
+    altitude_on_route = models.FloatField()
+
+    def __str__(self):
+        return self.place.name
+
+    def __unicode__(self):
+        return self.place.name

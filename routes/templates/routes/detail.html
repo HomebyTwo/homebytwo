@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static leaflet_tags geojson_tags %}
+{% load static leaflet_tags geojson_tags humanize %}
 
 {% block title %}Home by Two - {{ route.name }}{% endblock %}
 
@@ -10,15 +10,17 @@
 
 {% block content %}
     <h1 class="mrg text-center">{{ route.name}}</h1>
+    <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
     <div class="clearfix mrg">
-        <a class="pull-left" href="/routes" title="list of routes">Back</a>
-        <a class="pull-right" href="edit" title="list of routes">Edit</a>
+        <div class="pull-left" >&lsaquo; <a href="{% url 'routes:index' %}">All Routes</a></div>
+        <a class="pull-right" href="{% url 'routes:edit' route.id %}">Edit</a>
     </div>
+
+    {% include 'routes/includes/_course.html' %}
+
     {% if route.geom %}
         {% leaflet_map "main" callback="detail_map_init" %}
     {% endif %}
-
-    {% include 'routes/course.html' %}
 
 {% endblock content %}
 

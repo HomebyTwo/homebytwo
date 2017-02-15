@@ -1,13 +1,28 @@
 {% load humanize %}
 
-<ul class="list">
+<ul class="list grid__item">
     <li class="mrgb box box--default place place-start">
-        <h3>Start Place <span class="altitude">{{ route.get_start_altitude.m|floatformat:0|intcomma }}m</span></h3>
+        {{ route_form.start_place.errors }}
+        <label for="{{ route_form.start_place.id_for_label }}" class="h4">Starting Place:</label>
+        {{ route_form.start_place }}
     </li>
-    <li class="mrg">
-        <div class="segment-distance">{{ route.get_length.km|floatformat:1 }}km</div>
+    <li class="mrgl">
+        <h4>Checkpoints:</h4>
+        {{ places_form.management_form }}
+        <ul class="list">
+            {% for place, form in places %}
+                <li>
+                    {% for field in form %}
+                        {{ field }}
+                    {% endfor %}
+                    {{ place.name }} - {{ place.place_type }}
+                </li>
+            {% endfor %}
+        </ul>
     </li>
     <li class="mrgt box box--default place place-finish">
-        <h3>Finish Place <span class="altitude">{{ route.get_end_altitude.m|floatformat:0|intcomma }}m</span></h3>
+        {{ route_form.end_place.errors }}
+        <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
+        {{ route_form.end_place }}
     </li>
 </ul>
