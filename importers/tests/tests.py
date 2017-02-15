@@ -682,6 +682,49 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(required_field in str(response.content))
         self.assertTrue(not_a_number in str(response.content))
 
+    def test_switzerland_mobility_detail_post_integrity(self):
+
+        route = SwitzerlandMobilityRoute(**self.route_data)
+        route.save()
+
+        route_id = 2191833
+        post_data = {
+            'route-'+key: value
+            for key, value in self.route_data.items()
+        }
+
+        start_place = Place.objects.get(name='Start_Place')
+        end_place = Place.objects.get(name='End_Place')
+
+        post_data.update({
+            'route-start_place': start_place.id,
+            'route-end_place': end_place.id,
+            'places-TOTAL_FORMS': 2,
+            'places-INITIAL_FORMS': 0,
+            'places-MIN_NUM_FORMS': 0,
+            'places-MAX_NUM_FORMS': 1000,
+            'places-0-place': start_place.id,
+            'places-0-line_location': 0.0207291870756597,
+            'places-0-altitude_on_route': 123,
+            'places-0-id': '',
+            'places-1-place': end_place.id,
+            'places-1-line_location': 0.039107325861928,
+            'places-1-altitude_on_route': 123,
+            'places-1-id': '',
+        })
+
+        url = reverse('switzerland_mobility_detail', args=[route_id])
+        response = self.client.post(url, post_data)
+
+        alert_box = '<div class="box alert alert--error">'
+        integrity_error = (
+            'Integrity Error: duplicate key value violates unique constraint'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(alert_box in str(response.content))
+        self.assertTrue(integrity_error in str(response.content))
+
     def test_switzerland_mobility_index_success(self):
         url = reverse('switzerland_mobility_index')
         content = '<h1>Import Routes from Switzerland Mobility Plus</h1>'
@@ -839,7 +882,6 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_valid_model_form(self):
         start_place = Place.objects.get(name='Start_Place')
         end_place = Place.objects.get(name='End_Place')
-
 
         places = {
             'start_place': start_place.id,
