@@ -8,7 +8,7 @@ from django.utils.six import StringIO
 
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
 from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
-from routes.models import Place
+from routes.models import Place, RoutePlace
 
 import os
 import httpretty
@@ -639,9 +639,12 @@ class SwitzerlandMobility(TestCase):
         url = reverse('switzerland_mobility_detail', args=[route_id])
         response = self.client.post(url, post_data)
 
+        # a new route has been created
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        redirect_url = reverse('routes:detail', args=[route.id])
+        route_places = RoutePlace.objects.filter(route=route.id)
+        self.assertEqual(route_places.count(), 2)
 
+        redirect_url = reverse('routes:detail', args=[route.id])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
@@ -682,7 +685,7 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(required_field in str(response.content))
         self.assertTrue(not_a_number in str(response.content))
 
-    def test_switzerland_mobility_detail_post_integrity(self):
+    def test_switzerland_mobility_detail_post_integrity_error(self):
 
         route = SwitzerlandMobilityRoute(**self.route_data)
         route.save()
