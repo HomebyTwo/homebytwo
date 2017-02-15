@@ -307,8 +307,8 @@ def switzerland_mobility_detail(request, source_id):
         'response': response,
         'route': route,
         'route_form': route_form,
-        'places_form': places_form,
         'places': places,
+        'places_form': places_form,
     }
 
     template = 'importers/switzerland_mobility/detail.html'

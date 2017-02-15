@@ -2,7 +2,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 
-from django.contrib.gis.geos import GEOSGeometry, fromstr
+from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
 from .models import Place, Route
@@ -22,7 +22,11 @@ class PlaceTestCase(TestCase):
         }
 
         # Add user to the test database
-        user = User.objects.create_user('testuser', 'test@test.com', 'test')
+        self.user = User.objects.create_user(
+            'testuser',
+            'test@test.com',
+            'test'
+        )
 
     def test_string_method(self):
         name = 'place_name'
@@ -66,17 +70,17 @@ class PlaceTestCase(TestCase):
         self.assertAlmostEqual(place.distance_from_line.m, 2**0.5)
 
     def test_get_places_from_line(self):
-        line = fromstr(
+        line = GEOSGeometry(
             'LINESTRING(612190.0 612190.0, 615424.648017 129784.662852)',
             srid=21781
         )
 
         place1 = Place(**self.data)
-        place1.geom = fromstr('POINT(615424 129744.0)', srid=21781)
+        place1.geom = GEOSGeometry('POINT(615424 129744.0)', srid=21781)
         place1.save()
 
         place2 = Place(**self.data)
-        place2.geom = fromstr('POINT(4.0 4.0)', srid=21781)
+        place2.geom = GEOSGeometry('POINT(4.0 4.0)', srid=21781)
         place2.save()
 
         places = Place.objects.get_places_from_line(line, max_distance=50)
@@ -111,9 +115,18 @@ class RouteTestCase(TestCase):
 
     def setUp(self):
 
-        route_geojson = ('{"type": "LineString", "coordinates": [[612190.0, 129403.0], [615424.648017, 129784.662852]]}')
+        route_geojson = (
+            '{"type": "LineString", '
+            '"coordinates": [[612190.0, 129403.0], '
+            '[615424.648017, 129784.662852]]}'
+        )
+
         # Add user to the test database
-        user = User.objects.create_user('testuser', 'test@test.com', 'test')
+        self.user = User.objects.create_user(
+            'testuser',
+            'test@test.com',
+            'test'
+        )
 
         start_place = Place(
             place_type='Train Station',
@@ -148,7 +161,7 @@ class RouteTestCase(TestCase):
             source_id=1,
             data_source='homebytwo',
             description='Test description',
-            user=user,
+            user=self.user,
             totalup=1234,
             totaldown=4321,
             length=12345,

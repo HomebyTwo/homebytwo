@@ -22,6 +22,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
         empty_label=None,
         required=False,
     )
+
     end_place = PlaceChoiceField(
         queryset=Place.objects.all(),
         empty_label=None,
