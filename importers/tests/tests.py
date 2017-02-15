@@ -42,7 +42,11 @@ class SwitzerlandMobility(TestCase):
 
     def setUp(self):
         # Add user to the test database
-        user = User.objects.create_user('testuser', 'test@test.com', 'test')
+        self.user = User.objects.create_user(
+            'testuser',
+            'test@test.com',
+            'test'
+        )
 
         start_place = Place(
             place_type='Train Station',
@@ -69,7 +73,7 @@ class SwitzerlandMobility(TestCase):
 
         self.route_data = {
                 'name': 'Haute-Cime',
-                'user': user,
+                'user': self.user,
                 'source_id': 2191833,
                 'length': 10,
                 'totalup': 100,
@@ -112,7 +116,7 @@ class SwitzerlandMobility(TestCase):
             '        "owner": "100000026329",'
             '        "velospeed": 15'
             '    },'
-            '    "id": 2823968'
+            '    "id": 2191833'
             '}')
 
         self.html_404 = (
@@ -500,7 +504,6 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_detail_success(self):
         route_id = 2823968
         url = reverse('switzerland_mobility_detail', args=[route_id])
-        content = '<title>Home by Two - Import Leuk Bridge</title>'
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
@@ -517,6 +520,44 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
+        title = '<title>Home by Two - Import Leuk Bridge</title>'
+        start_place_form = (
+            '<select id="id_route-start_place" '
+            'name="route-start_place">'
+        )
+        places_formset = (
+            '<input id="id_places-TOTAL_FORMS" '
+            'name="places-TOTAL_FORMS" type="hidden" value="0" />'
+        )
+
+        map_data = '<div id="main" class="leaflet-container-default"></div>'
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(title in str(response.content))
+        self.assertTrue(start_place_form in str(response.content))
+        self.assertTrue(places_formset in str(response.content))
+        self.assertTrue(map_data in str(response.content))
+
+    def test_switzerland_mobility_detail_already_imported(self):
+        route = SwitzerlandMobilityRoute(**self.route_data)
+        route.save()
+
+        route_id = 2191833
+        url = reverse('switzerland_mobility_detail', args=[route_id])
+        content = 'Already Imported'
+
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable()
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        json_response = self.route_details_json
+
+        httpretty.register_uri(
+            httpretty.GET, details_json_url,
+            content_type="application/json", body=json_response,
+            status=200
+        )
+
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
@@ -543,19 +584,103 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
-    def test_switzerland_mobility_detail_post_success(self):
+    def test_switzerland_mobility_detail_post_success_no_places(self):
         route_id = 2191833
-        post_data = self.route_data
+        post_data = {
+            'route-'+key: value
+            for key, value in self.route_data.items()
+        }
 
-        post_data['start_place'] = self.route_data['start_place'].id
-        post_data['end_place'] = self.route_data['end_place'].id
+        post_data.update({
+            'route-start_place': Place.objects.get(name='Start_Place').id,
+            'route-end_place': Place.objects.get(name='End_Place').id,
+            'places-TOTAL_FORMS': 0,
+            'places-INITIAL_FORMS': 0,
+            'places-MIN_NUM_FORMS': 0,
+            'places-MAX_NUM_FORMS': 1000,
+        })
 
         url = reverse('switzerland_mobility_detail', args=[route_id])
-        redirect_url = reverse('routes:detail', args=[4])
         response = self.client.post(url, post_data)
+
+        route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
+        redirect_url = reverse('routes:detail', args=[route.id])
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
+
+    def test_switzerland_mobility_detail_post_success_place(self):
+        route_id = 2191833
+        post_data = {
+            'route-'+key: value
+            for key, value in self.route_data.items()
+        }
+
+        start_place = Place.objects.get(name='Start_Place')
+        end_place = Place.objects.get(name='End_Place')
+
+        post_data.update({
+            'route-start_place': start_place.id,
+            'route-end_place': end_place.id,
+            'places-TOTAL_FORMS': 2,
+            'places-INITIAL_FORMS': 0,
+            'places-MIN_NUM_FORMS': 0,
+            'places-MAX_NUM_FORMS': 1000,
+            'places-0-place': start_place.id,
+            'places-0-line_location': 0.0207291870756597,
+            'places-0-altitude_on_route': 123,
+            'places-0-id': '',
+            'places-1-place': end_place.id,
+            'places-1-line_location': 0.039107325861928,
+            'places-1-altitude_on_route': 123,
+            'places-1-id': '',
+        })
+
+        url = reverse('switzerland_mobility_detail', args=[route_id])
+        response = self.client.post(url, post_data)
+
+        route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
+        redirect_url = reverse('routes:detail', args=[route.id])
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_switzerland_mobility_detail_post_no_validation_places(self):
+        route_id = 2191833
+        post_data = {
+            'route-'+key: value
+            for key, value in self.route_data.items()
+        }
+
+        start_place = Place.objects.get(name='Start_Place')
+        end_place = Place.objects.get(name='End_Place')
+
+        post_data.update({
+            'route-start_place': start_place.id,
+            'route-end_place': end_place.id,
+            'places-TOTAL_FORMS': 2,
+            'places-INITIAL_FORMS': 0,
+            'places-MIN_NUM_FORMS': 0,
+            'places-MAX_NUM_FORMS': 1000,
+            'places-0-place': start_place.id,
+            'places-0-altitude_on_route': 'not a number',
+            'places-0-id': '',
+            'places-1-place': end_place.id,
+            'places-1-line_location': 0.039107325861928,
+            'places-1-altitude_on_route': 123,
+            'places-1-id': '',
+        })
+
+        url = reverse('switzerland_mobility_detail', args=[route_id])
+        response = self.client.post(url, post_data)
+        alert_box = '<div class="box alert alert--error">'
+        required_field = 'This field is required.'
+        not_a_number = 'Enter a number.'
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(alert_box in str(response.content))
+        self.assertTrue(required_field in str(response.content))
+        self.assertTrue(not_a_number in str(response.content))
 
     def test_switzerland_mobility_index_success(self):
         url = reverse('switzerland_mobility_index')
@@ -657,7 +782,10 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
         # failed login response
-        json_response = '{"loginErrorMsg": "Incorrect login.", "loginErrorCode": 500}'
+        json_response = (
+            '{"loginErrorMsg": "Incorrect login.", '
+            '"loginErrorCode": 500}'
+        )
 
         httpretty.register_uri(
             httpretty.POST, login_url,

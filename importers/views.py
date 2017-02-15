@@ -234,6 +234,10 @@ def switzerland_mobility_detail(request, source_id):
 
         # route details succesfully retrieved
         if route:
+
+            # add user to check if route has already been imported
+            route.user = request.user
+
             # populate the route_form with route details
             route_form = SwitzerlandMobilityRouteForm(
                 instance=route,
