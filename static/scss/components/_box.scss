@@ -7,3 +7,8 @@
 .box--match-height>:last-child {
     margin-top: auto;
 }
+
+.box--secondary {
+    background-color: $alt-color-darker;
+    color: $white;
+}

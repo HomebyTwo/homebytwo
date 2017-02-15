@@ -3,6 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% if gtm_container_id %}
         <!-- Google Tag Manager -->
         <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -30,6 +31,7 @@
     <div id="content">
         {% block content %}{% endblock %}
     </div>
+    {% include 'includes/_footer.html' %}
     <!-- JavaScript -->
     <script src="{% static 'javascripts/main.js' %}"></script>
     {% block extrajs %}{% endblock %}
