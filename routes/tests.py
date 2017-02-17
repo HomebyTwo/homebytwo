@@ -1,11 +1,18 @@
 from django.test import TestCase, override_settings
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.urlresolvers import reverse
-
+from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
+import pandas as pd
+import numpy as np
+
 from .models import Place, Route
+from .models.track import DataFrameFileField
+
+import os
 import httpretty
 
 
@@ -106,6 +113,42 @@ class PlaceTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
+
+
+@override_settings(
+    MEDIA_ROOT='/vagrant/media',
+)
+class DataFrameFileFieldTestCase(TestCase):
+    def test_write_hdf5(self):
+        data = pd.DataFrame(np.random.randn(10, 2))
+        field = DataFrameFileField(upload_to='test')
+        filename = field.get_prep_value(data)
+        fullpath = field.get_fullpath(filename)
+
+        self.assertEqual(len(filename), 35)  # = 32 + '.h5'
+        self.assertTrue(os.path.exists(fullpath))
+
+        os.remove(fullpath)
+
+    def test_read_hdf5(self):
+        random_data = pd.DataFrame(np.random.randn(10, 2))
+        filename = 'testdata.h5'
+        fullpath = os.path.join(settings.MEDIA_ROOT, 'test', filename)
+        random_data.to_hdf(fullpath, 'df')
+
+        field = DataFrameFileField(upload_to='test')
+        data = field.to_python(filename)
+
+        self.assertEqual(str(random_data), str(data))
+        self.assertTrue(hasattr(data, 'filename'))
+
+        os.remove(fullpath)
+
+    def test_invalid_input(self):
+        test_str = 'coucou!'
+        field = DataFrameFileField(upload_to='test')
+        with self.assertRaises(ValidationError):
+            field.get_prep_value(test_str)
 
 
 @override_settings(

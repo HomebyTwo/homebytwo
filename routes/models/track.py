@@ -3,12 +3,121 @@ from django.contrib.staticfiles import finders
 
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from .segment import Segment
 from .place import Place
 from django.contrib.gis.measure import D
 from django.contrib.gis.geos import Point
+from django.utils.translation import gettext_lazy as _
 
 import googlemaps
+from pandas import read_hdf, DataFrame
+import uuid
+import os
+
+
+class DataFrameFileField(models.FileField):
+    """
+    Custom Filefield to save the DataFramen to the hdf5 file format as adviced
+    here: http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
+    """
+
+    default_error_messages = {
+        'invalid': _('Provide a DataFrame'),
+        'io_error': _('Could not write to file')
+    }
+
+    def generate_unique_filename(self):
+        """
+        generate a unique filename for the saved file.
+        """
+        filename = uuid.uuid4().hex + '.h5'
+
+        return filename
+
+    def get_fullpath(self, filename):
+        """
+        returns the full os path based on the MEDIA_ROOT setting,
+        the upload_to attribute of the Model Field and the filename.
+        """
+        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
+        fullpath = os.path.join(dirname, filename)
+
+        return fullpath
+
+    def write_hdf5(self, data, filename):
+        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
+        fullpath = self.get_fullpath(filename)
+
+        if not isinstance(data, DataFrame):
+            raise ValidationError(
+                self.error_messages['invalid'],
+                code='invalid',
+            )
+
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        try:
+            data.to_hdf(fullpath, 'df', mode='w', format='fixed')
+        except Exception as exc:
+            raise IOError(
+                self.error_messages['io_error']
+            ) from exc
+
+    def get_prep_value(self, value):
+        """
+        let's save the DataFrame as a file with in the MEDIA_ROOT folder
+        and put the filename in the valuebase.
+        """
+
+        if value is None:
+            return value
+
+        if not isinstance(value, DataFrame):
+            raise ValidationError(
+                self.error_messages['invalid'],
+                code='invalid',
+            )
+
+        # if the valueframe was loaded from the database before,
+        # it will has a filename attribute.
+        if hasattr(value, 'filename'):
+            filename = value.filename
+
+        else:
+            # create a new filename
+            filename = self.generate_unique_filename()
+
+        self.write_hdf5(value, filename)
+
+        return filename
+
+    def to_python(self, filename):
+        """
+        get the file location from the database
+        and load the DataFrame from the file.
+        """
+        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
+        fullpath = os.path.join(dirname, filename)
+
+        # try to load the pandas DataFrame into memory
+        try:
+            data = read_hdf(fullpath)
+
+        except Exception:
+            raise
+
+        if not isinstance(data, DataFrame):
+            raise ValidationError(
+                self.error_messages['invalid'],
+                code='invalid',
+            )
+
+        # set attribute on for saving later
+        data.filename = filename
+
+        return data
 
 
 class Track(models.Model):
@@ -48,6 +157,9 @@ class Track(models.Model):
         null=True,
         related_name='ends_%(class)s'
     )
+
+    # track data as a pandas DataFrame
+    # data = DataFrameField(save_to='data/')
 
     # Returns poster picture for the list view
     def get_poster_picture(self):
