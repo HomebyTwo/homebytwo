@@ -244,6 +244,8 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             )
         )
 
+        formatted_route.calculate_cummulative_elevation_differences()
+
         return formatted_route
 
 

@@ -192,6 +192,28 @@ class Track(models.Model):
 
         return value
 
+    def calculate_cummulative_elevation_differences(self):
+        """
+        Calculates two colums from the altitude data:
+        - cum_up: cummulative sum of positive elevation data
+        - cum_down: cummulative sum of negative elevation data
+        """
+        data = self.data
+
+        # add or update cum_up and cum_down columns based on altitude data
+        data['total_up'] = data['altitude']. \
+            diff()[data['altitude'].diff() >= 0].cumsum()
+
+        data['total_down'] = data['altitude']. \
+            diff()[data['altitude'].diff() <= 0].cumsum()
+
+        # replace NaN with the last valid value of the series
+        # then, replace the remainng NaN (at the beginning) with 0
+        data[['total_up', 'total_down']] = data[['total_up', 'total_down']]. \
+            fillna(method='ffill').fillna(value=0)
+
+        self.data = data
+
     def get_length(self):
         """
         returns track length as a Distance object
