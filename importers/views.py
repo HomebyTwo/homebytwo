@@ -247,14 +247,14 @@ def switzerland_mobility_detail(request, source_id):
             # find places to display in the select
             # for start, finish points.
             route_form.fields['start_place'].queryset = \
-                route.get_closest_places_along_track(
-                    track_location=0,  # start
+                route.get_closest_places_along_line(
+                    line_location=0,  # start
                     max_distance=200,
                 )
 
             route_form.fields['end_place'].queryset = \
-                route.get_closest_places_along_track(
-                    track_location=1,  # finish
+                route.get_closest_places_along_line(
+                    line_location=1,  # finish
                     max_distance=200,
                 )
 
@@ -269,7 +269,8 @@ def switzerland_mobility_detail(request, source_id):
                 RoutePlace(
                     place=place,
                     line_location=place.line_location,
-                    altitude_on_route=123,
+                    altitude_on_route=route.get_point_altitude_along_track(
+                        place.line_location).m,
                 )
                 for place in checkpoints
             ]

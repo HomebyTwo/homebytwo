@@ -238,6 +238,13 @@ class RoutePlace(models.Model):
     # Altitude at the route's closest point to the place
     altitude_on_route = models.FloatField()
 
+    def get_altitude_on_route(self, save=True):
+        track = self.route
+        altitude = track.get_point_altitude_along_track(self.line_location)
+        self.altitude_on_route = altitude.m
+
+        return altitude
+
     def __str__(self):
         return self.place.name
 

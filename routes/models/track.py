@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.contrib.staticfiles import finders
 
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
@@ -10,22 +9,26 @@ from django.contrib.gis.measure import D
 from django.contrib.gis.geos import Point
 from django.utils.translation import gettext_lazy as _
 
-import googlemaps
 from pandas import read_hdf, DataFrame
 import uuid
 import os
 
 
-class DataFrameFileField(models.FileField):
+class DataFrameField(models.CharField):
     """
     Custom Filefield to save the DataFramen to the hdf5 file format as adviced
     here: http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
     """
-
     default_error_messages = {
         'invalid': _('Provide a DataFrame'),
         'io_error': _('Could not write to file')
     }
+
+    def __init__(self, max_length, save_to='', *args, **kwargs):
+        self.save_to = save_to
+        self.max_length = max_length
+        super(DataFrameField, self).__init__(
+            max_length=max_length, *args, **kwargs)
 
     def generate_unique_filename(self):
         """
@@ -35,19 +38,14 @@ class DataFrameFileField(models.FileField):
 
         return filename
 
-    def get_fullpath(self, filename):
-        """
-        returns the full os path based on the MEDIA_ROOT setting,
-        the upload_to attribute of the Model Field and the filename.
-        """
-        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
-        fullpath = os.path.join(dirname, filename)
-
-        return fullpath
-
     def write_hdf5(self, data, filename):
-        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
-        fullpath = self.get_fullpath(filename)
+        dirname = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            self.save_to
+        )
+
+        fullpath = os.path.join(dirname, filename)
 
         if not isinstance(data, DataFrame):
             raise ValidationError(
@@ -70,7 +68,6 @@ class DataFrameFileField(models.FileField):
         let's save the DataFrame as a file with in the MEDIA_ROOT folder
         and put the filename in the valuebase.
         """
-
         if value is None:
             return value
 
@@ -98,7 +95,12 @@ class DataFrameFileField(models.FileField):
         get the file location from the database
         and load the DataFrame from the file.
         """
-        dirname = os.path.join(settings.MEDIA_ROOT, self.upload_to)
+        dirname = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            self.save_to
+        )
+
         fullpath = os.path.join(dirname, filename)
 
         # try to load the pandas DataFrame into memory
@@ -159,22 +161,26 @@ class Track(models.Model):
     )
 
     # track data as a pandas DataFrame
-    # data = DataFrameField(save_to='data/')
+    data = DataFrameField(null=True, max_length=100, save_to='data')
 
     # Returns poster picture for the list view
-    def get_poster_picture(self):
-        if finders.find('routes/images/' + str(self.id) + '.jpg'):
-            return 'routes/images/' + str(self.id) + '.jpg'
-        else:
-            return 'routes/images/default.jpg'
 
     def get_length(self):
+        """
+        returns track length as a Distance object
+        """
         return D(m=self.length)
 
     def get_totalup(self):
+        """
+        returns cummalive altitude gain as a Distance object
+        """
         return D(m=self.totalup)
 
     def get_totaldown(self):
+        """
+        returns cummalive altitude loss as a Distance object
+        """
         return D(m=self.totaldown)
 
     def get_start_altitude(self):
@@ -185,31 +191,34 @@ class Track(models.Model):
         end_altitude = self.get_point_altitude_along_track(1)
         return end_altitude
 
-    def get_closest_places_along_track(self, track_location=0,
-                                       max_distance=100):
+    def get_closest_places_along_line(self, line_location=0, max_distance=100):
 
         # create the point from location
-        point = self.geom.interpolate_normalized(track_location)
+        point = self.geom.interpolate_normalized(line_location)
 
         # get closest places to the point
         places = Place.objects.get_places_within(point, max_distance)
 
         return places
 
-    def get_point_altitude_along_track(self, track_location=0):
-        point = self.geom.interpolate_normalized(track_location)
-
-        # format coordoinates for Google Maps API
-        point.transform(4326)
-        coords = (point.y, point.x)
-
-        # request altitude
-        gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
-        result = gmaps.elevation(coords)
-        altitude = result[0]['elevation']
+    def get_point_altitude_along_track(self, line_location=0):
+        # transform line_location in data index
+        altitude = self.get_data_from_line_location(
+            line_location,
+            'altitude'
+        )
 
         # return distance object
         return D(m=altitude)
+
+    def get_point_distance_from_start(self, line_location=0):
+        distance_from_start = self.get_data_from_line_location(
+            line_location,
+            'length'
+        )
+
+        # return distance object
+        return D(m=distance_from_start)
 
     def segment_route_with_points(self, places):
         """

@@ -236,7 +236,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
             length=length,
             totalup=totalup,
             totaldown=totaldown,
-            # load GeoJSON using GEOSGeeometry
+            # load GeoJSON using GEOSGeometry
             geom=GEOSGeometry(json.dumps(geometry), srid=21781),
             data=DataFrame(
                 data_list,

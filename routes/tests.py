@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 from .models import Place, Route
-from .models.track import DataFrameFileField
+from .models.track import DataFrameField
 
 import os
 import httpretty
@@ -118,12 +118,17 @@ class PlaceTestCase(TestCase):
 @override_settings(
     MEDIA_ROOT='/vagrant/media',
 )
-class DataFrameFileFieldTestCase(TestCase):
+class DataFrameFieldTestCase(TestCase):
     def test_write_hdf5(self):
         data = pd.DataFrame(np.random.randn(10, 2))
-        field = DataFrameFileField(upload_to='test')
+        field = DataFrameField(max_length=100, save_to='test')
         filename = field.get_prep_value(data)
-        fullpath = field.get_fullpath(filename)
+        fullpath = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            field.save_to,
+            filename,
+        )
 
         self.assertEqual(len(filename), 35)  # = 32 + '.h5'
         self.assertTrue(os.path.exists(fullpath))
@@ -136,7 +141,7 @@ class DataFrameFileFieldTestCase(TestCase):
         fullpath = os.path.join(settings.MEDIA_ROOT, 'test', filename)
         random_data.to_hdf(fullpath, 'df')
 
-        field = DataFrameFileField(upload_to='test')
+        field = DataFrameField(max_length=100, save_to='test')
         data = field.to_python(filename)
 
         self.assertEqual(str(random_data), str(data))
@@ -146,7 +151,7 @@ class DataFrameFileFieldTestCase(TestCase):
 
     def test_invalid_input(self):
         test_str = 'coucou!'
-        field = DataFrameFileField(upload_to='test')
+        field = DataFrameField(max_length=100, save_to='test')
         with self.assertRaises(ValidationError):
             field.get_prep_value(test_str)
 
@@ -157,6 +162,41 @@ class DataFrameFileFieldTestCase(TestCase):
 class RouteTestCase(TestCase):
 
     def setUp(self):
+        route_profile = [
+            [568013.411408, 113191.647718, 448.54, 0],
+            [568013.255765, 113191.426207, 448.54, 0.270724790281],
+            [568007.927619, 113220.802611, 448.5, 30.1264144543],
+            [567991.117585, 113298.81999, 448.66, 109.93423817],
+            [567997.554327, 113303.788421, 448.84, 118.065471914],
+            [567992.670315, 113329.49396, 448.84, 144.230875445],
+            [567982.142681, 113324.991885, 448.66, 155.680755432],
+            [567825.108411, 113263.572455, 448.95, 324.298987629],
+            [567805.006096, 113259.566356, 449.54, 344.79659528],
+            [567756.065116, 113264.385232, 453.52, 393.974243719],
+            [567753.982811, 113264.952183, 454.16, 396.132351085],
+            [567697.087589, 113269.925166, 467.42, 453.244493654],
+            [567654.720749, 113247.584864, 489.67, 501.140612288],
+            [567634.952208, 113248.246574, 498.52, 520.920225531],
+            [567622.41276, 113257.540659, 509.16, 536.528485133],
+            [567594.644631, 113221.115459, 526.1, 582.330933093],
+            [567581.65074, 113232.079578, 536.52, 599.332495338],
+            [567561.742847, 113221.180862, 540.88, 622.028447225],
+            [567561.085718, 113242.639704, 550.11, 643.497348344],
+            [567554.022114, 113250.459356, 557.67, 654.034969345],
+            [567527.847037, 113237.482232, 565.25, 683.250382751],
+            [567508.595677, 113248.146643, 578.16, 705.258211983],
+            [567496.774919, 113247.432056, 586.32, 717.100548893],
+            [567465.134759, 113209.249599, 606.3, 766.688851865],
+            [567465.610755, 113168.559752, 616.7, 807.381482224],
+            [567434.435383, 113173.730251, 628.39, 838.982714121],
+            [567414.473182, 113167.16784, 637.7, 859.995918235],
+            [567448.051134, 113134.859436, 650.49, 906.593255683],
+            [567447.402683, 113114.85279, 656.18, 926.610407955],
+            [567426.861904, 113101.289904, 668.13, 951.224945855],
+            [567392.265872, 113116.706468, 678.69, 989.100477199],
+            [567344.864798, 113135.082782, 683.39, 1039.93895385],
+            [567346.535866, 113201.329552, 689.27, 1106.20679664],
+        ]
 
         route_geojson = (
             '{"type": "LineString", '
@@ -211,6 +251,10 @@ class RouteTestCase(TestCase):
             geom=GEOSGeometry(route_geojson, srid=21781),
             start_place=start_place,
             end_place=end_place,
+            data=pd.DataFrame(
+                route_profile,
+                columns=['lat', 'lng', 'altitude', 'length']
+            )
         )
 
     #########
@@ -257,7 +301,7 @@ class RouteTestCase(TestCase):
 
         httpretty.disable()
 
-        self.assertAlmostEqual(start_altitude.m, 123.456)
+        self.assertAlmostEqual(start_altitude.m, 448.54)
 
     def test_get_end_altitude(self):
         route = self.route
@@ -278,7 +322,7 @@ class RouteTestCase(TestCase):
 
         httpretty.disable()
 
-        self.assertAlmostEqual(end_altitude.m, 123.456)
+        self.assertAlmostEqual(end_altitude.m, 689.27)
 
     def test_get_point_altitude_along_track_success(self, location=0):
         route = self.route
@@ -300,7 +344,7 @@ class RouteTestCase(TestCase):
 
         httpretty.disable()
 
-        self.assertAlmostEqual(point_altitude.ft, 405.03937007874015)
+        self.assertAlmostEqual(point_altitude.ft, 1760.23622047244095)
 
     def test_get_point_altitude_along_track_error(self, location=0):
         route = self.route
@@ -320,12 +364,12 @@ class RouteTestCase(TestCase):
 
         httpretty.disable()
 
-        self.assertAlmostEqual(point_altitude.ft, 405.03937007874015)
+        self.assertAlmostEqual(point_altitude.ft, 1760.2362204724409)
 
     def test_get_start_and_end_places(self):
         route = self.route
-        start_place = route.get_closest_places_along_track()[0]
-        end_place = route.get_closest_places_along_track(1)[0]
+        start_place = route.get_closest_places_along_line()[0]
+        end_place = route.get_closest_places_along_line(1)[0]
 
         self.assertEqual(start_place.distance_from_line.m, 0)
         self.assertEqual(start_place.name, 'Start_Place')
@@ -343,12 +387,12 @@ class RouteTestCase(TestCase):
 
         url = reverse('routes:detail', args=[route.id])
         name = route.name
-        start_place = route.start_place.name
-        end_place = route.end_place.name
+        start_place_name = route.start_place.name
+        end_place_name = route.end_place.name
 
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(name in str(response.content))
-        self.assertTrue(start_place in str(response.content))
-        self.assertTrue(end_place in str(response.content))
+        self.assertTrue(start_place_name in str(response.content))
+        self.assertTrue(end_place_name in str(response.content))
