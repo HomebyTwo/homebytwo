@@ -164,10 +164,32 @@ class Track(models.Model):
     # track data as a pandas DataFrame
     data = DataFrameField(null=True, max_length=100, save_to='data')
 
+    def calculate_cummulative_elevation_differences(self):
+        """
+        Calculates two colums from the altitude data:
+        - total_up: cummulative sum of positive elevation data
+        - total_down: cummulative sum of negative elevation data
+        """
+        data = self.data
+
+        # add or update total_up and total_down columns based on altitude data
+        data['total_up'] = data['altitude']. \
+            diff()[data['altitude'].diff() >= 0].cumsum()
+
+        data['total_down'] = data['altitude']. \
+            diff()[data['altitude'].diff() <= 0].cumsum()
+
+        # replace NaN with the last valid value of the series
+        # then, replace the remainng NaN (at the beginning) with 0
+        data[['total_up', 'total_down']] = data[['total_up', 'total_down']]. \
+            fillna(method='ffill').fillna(value=0)
+
+        self.data = data
+
     # Returns poster picture for the list view
     def get_data_from_line_location(self, line_location, column):
         """
-        returns the index of a row in the DataFrame
+        return the index of a row in the DataFrame
         based on the line_location.
         """
 
@@ -192,27 +214,28 @@ class Track(models.Model):
 
         return value
 
-    def calculate_cummulative_elevation_differences(self):
+    def get_distance_data_from_line_location(self, line_location, data_column):
         """
-        Calculates two colums from the altitude data:
-        - cum_up: cummulative sum of positive elevation data
-        - cum_down: cummulative sum of negative elevation data
+        wrap around the get_data_from_line_location method
+        to return a Distance object.
         """
-        data = self.data
+        distance_data = self.get_data_from_line_location(
+            line_location,
+            data_column
+        )
 
-        # add or update cum_up and cum_down columns based on altitude data
-        data['total_up'] = data['altitude']. \
-            diff()[data['altitude'].diff() >= 0].cumsum()
+        # return distance object
+        return D(m=distance_data)
 
-        data['total_down'] = data['altitude']. \
-            diff()[data['altitude'].diff() <= 0].cumsum()
+    def get_start_altitude(self):
+        start_altitude = self.get_distance_data_from_line_location(
+            0, 'altitude')
+        return start_altitude
 
-        # replace NaN with the last valid value of the series
-        # then, replace the remainng NaN (at the beginning) with 0
-        data[['total_up', 'total_down']] = data[['total_up', 'total_down']]. \
-            fillna(method='ffill').fillna(value=0)
-
-        self.data = data
+    def get_end_altitude(self):
+        end_altitude = self.get_distance_data_from_line_location(
+            1, 'altitude')
+        return end_altitude
 
     def get_length(self):
         """
@@ -232,14 +255,6 @@ class Track(models.Model):
         """
         return D(m=self.totaldown)
 
-    def get_start_altitude(self):
-        start_altitude = self.get_point_altitude_along_track(0)
-        return start_altitude
-
-    def get_end_altitude(self):
-        end_altitude = self.get_point_altitude_along_track(1)
-        return end_altitude
-
     def get_closest_places_along_line(self, line_location=0, max_distance=100):
 
         # create the point from location
@@ -249,91 +264,3 @@ class Track(models.Model):
         places = Place.objects.get_places_within(point, max_distance)
 
         return places
-
-    def get_point_altitude_along_track(self, line_location=0):
-        # transform line_location in data index
-        altitude = self.get_data_from_line_location(
-            line_location,
-            'altitude'
-        )
-
-        # return distance object
-        return D(m=altitude)
-
-    def get_point_distance_from_start(self, line_location=0):
-        distance_from_start = self.get_data_from_line_location(
-            line_location,
-            'length'
-        )
-
-        # return distance object
-        return D(m=distance_from_start)
-
-    def segment_route_with_points(self, places):
-        """
-        Creates segments from a list of places.
-
-        The list of places should be annotated with their location
-        along the line: line_location a float between 0 and 1.
-        """
-        # SQL to create a subline along a route using ST_Line_Substring
-        sql = ('SELECT id, ST_Line_Substring(routes_route.geom, %s, %s) as geom'
-               'FROM routes_route WHERE routes_route.id = %s')
-
-        # Calculate distance between route start and first place
-        first_place = places[0]
-        starting_point = Point(self.geom[0])
-        distance_to_first_place = starting_point.distance(first_place.geom)
-
-        # Create a private first segment if start
-        # is more than 50m away from first place.
-        if distance_to_first_place > 50:
-            rawquery = self.objects.raw(sql, [0, first_place.line_location,
-                                              self.id])
-
-            # First result returns the geometry
-            geom = rawquery[0].geom
-            name = 'start of %s to %s' % [self.name, first_place.name]
-            args = {
-                'name': name,
-                'start_place': None,
-                'end_place': first_place,
-                'geom': geom,
-                'elevation_up': 0,
-                'elevation_down': 0,
-                'private': True
-            }
-
-            segment = Segment.objects.create(args)
-            segment.get_elevation_data()
-
-        # Save segments
-        for i, place in enumerate(places[:-1]):
-            # Raw query to create the segment geom
-            rawquery = self.objects.raw(sql, [place.line_location,
-                                              places[i+1].line_location,
-                                              self.id])
-
-            # First result returns the geometry
-            geom = rawquery[0].geom
-
-            # By default, the name of the segment is 'Start Place - End Place'
-            name = place.name + ' - ' + places[i+1].name
-            args = {
-                    'name': name,
-                    'start_place': place,
-                    'end_place': places[i+1],
-                    'geom': geom,
-                    'elevation_up': 0,
-                    'elevation_down': 0,
-                    'private': False,
-            }
-
-            segment = Segment.objects.create(args)
-            segment.get_elevation_data()
-
-    def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.name
