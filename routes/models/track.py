@@ -9,6 +9,7 @@ from django.contrib.gis.measure import D
 from django.contrib.gis.geos import Point
 from django.utils.translation import gettext_lazy as _
 
+from math import floor, ceil
 from pandas import read_hdf, DataFrame
 import uuid
 import os
@@ -164,6 +165,32 @@ class Track(models.Model):
     data = DataFrameField(null=True, max_length=100, save_to='data')
 
     # Returns poster picture for the list view
+    def get_data_from_line_location(self, line_location, column):
+        """
+        returns the index of a row in the DataFrame
+        based on the line_location.
+        """
+
+        # get the number of rows in the data
+        nb_rows, nb_columns = self.data.shape
+
+        # interpolate the position in the data series
+        float_index = line_location * (nb_rows - 1)
+
+        # find the previous value in the series
+        previous_index = floor(float_index)
+        previous_value = self.data.iloc[previous_index][column]
+
+        # find the next index in the series
+        next_index = ceil(float_index)
+        next_value = self.data.iloc[next_index][column]
+
+        # calculate the weighting of the previous value
+        weight = float_index - previous_index
+
+        value = (previous_value * weight) + ((1-weight) * next_value)
+
+        return value
 
     def get_length(self):
         """
