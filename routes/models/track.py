@@ -3,10 +3,8 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .segment import Segment
 from .place import Place
 from django.contrib.gis.measure import D
-from django.contrib.gis.geos import Point
 from django.utils.translation import gettext_lazy as _
 
 from math import floor, ceil

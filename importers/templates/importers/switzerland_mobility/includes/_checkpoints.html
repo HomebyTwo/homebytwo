@@ -15,7 +15,7 @@
                     {% for field in form %}
                         {{ field }}
                     {% endfor %}
-                    {{ place.name }} - {{ place.place_type }}
+                    {{ place.distance_from_start.km|floatformat:1|intcomma }} km: {{ place.name }}, {{ place.altitude_on_route.m|floatformat:0|intcomma }} m - {{ place.place_type }}. {{ place.total_up.m|floatformat:0|intcomma }} m+, {{ place.total_down.m|floatformat:0|intcomma }} m-.
                 </li>
             {% endfor %}
         </ul>

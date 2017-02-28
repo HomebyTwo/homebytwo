@@ -259,10 +259,33 @@ def switzerland_mobility_detail(request, source_id):
                 )
 
             # find checkpoints along the route
-            checkpoints = Place.objects.get_places_from_line(
+            places = Place.objects.get_places_from_line(
                 route.geom,
                 max_distance=50
             )
+
+            checkpoints = []
+            for place in places:
+
+                altitude_on_route = route.get_point_altitude_along_track(
+                    place.line_location)
+                place.altitude_on_route = altitude_on_route
+
+                distance_from_start = route.get_point_distance_from_start(
+                    place.line_location)
+                place.distance_from_start = distance_from_start
+
+                # get cummulative altitude gain
+                total_up = route.get_distance_data_from_line_location(
+                    place.line_location, 'total_up')
+                place.total_up = total_up
+
+                # get cummulative altitude loss
+                total_down = -route.get_distance_data_from_line_location(
+                    place.line_location, 'total_down')
+                place.total_down = total_down
+
+                checkpoints.append(place)
 
             # convert checkpoints to RoutePlace objects
             route_places = [

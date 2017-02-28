@@ -3,7 +3,7 @@ from leaflet.admin import LeafletGeoAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 
-from .models import Route, Place, Segment, Athlete, ActivityType
+from .models import Route, Place, Athlete, ActivityType
 
 # Route admin
 admin.site.register(Route, LeafletGeoAdmin)
@@ -12,14 +12,18 @@ admin.site.register(Route, LeafletGeoAdmin)
 class PlaceAdmin(LeafletGeoAdmin):
     # Custom administration for Place
     fieldsets = [
-        (None,   {'fields': ['name', 'description', 'place_type', 'altitude']}),
-        ('Date', {'fields': ['geom']})
+        (
+            None,
+            {'fields': ['name', 'description', 'place_type', 'altitude']}
+        ),
+        (
+            'Date',
+            {'fields': ['geom']}
+        )
     ]
 
-admin.site.register(Place, PlaceAdmin)
 
-# Segment
-admin.site.register(Segment, LeafletGeoAdmin)
+admin.site.register(Place, PlaceAdmin)
 
 # Activity admin
 admin.site.register(ActivityType, LeafletGeoAdmin)
