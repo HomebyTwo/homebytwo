@@ -238,6 +238,10 @@ def switzerland_mobility_detail(request, source_id):
             # add user to check if route has already been imported
             route.user = request.user
 
+            # compute elevation and schedule data
+            route.calculate_cummulative_elevation_differences()
+            route.calculate_projected_time_schedule()
+
             # populate the route_form with route details
             route_form = SwitzerlandMobilityRouteForm(
                 instance=route,
@@ -264,16 +268,17 @@ def switzerland_mobility_detail(request, source_id):
                 max_distance=50
             )
 
+            # enrich checkpoint data with information
             checkpoints = []
             for place in places:
 
-                altitude_on_route = route.get_point_altitude_along_track(
-                    place.line_location)
+                altitude_on_route = route.get_distance_data_from_line_location(
+                    place.line_location, 'altitude')
                 place.altitude_on_route = altitude_on_route
 
-                distance_from_start = route.get_point_distance_from_start(
-                    place.line_location)
-                place.distance_from_start = distance_from_start
+                length_from_start = route.get_distance_data_from_line_location(
+                    place.line_location, 'length')
+                place.distance_from_start = length_from_start
 
                 # get cummulative altitude gain
                 total_up = route.get_distance_data_from_line_location(
@@ -281,19 +286,24 @@ def switzerland_mobility_detail(request, source_id):
                 place.total_up = total_up
 
                 # get cummulative altitude loss
-                total_down = -route.get_distance_data_from_line_location(
+                total_down = route.get_distance_data_from_line_location(
                     place.line_location, 'total_down')
                 place.total_down = total_down
 
-                checkpoints.append(place)
+                # get projected time schedula at place
+                schedule = route.get_time_data_from_line_location(
+                    place.line_location, 'schedule')
+                place.schedule = schedule
 
+                checkpoints.append(place)
+                import pdb; pdb.set_trace()
             # convert checkpoints to RoutePlace objects
             route_places = [
                 RoutePlace(
                     place=place,
                     line_location=place.line_location,
-                    altitude_on_route=route.get_point_altitude_along_track(
-                        place.line_location).m,
+                    altitude_on_route=route.get_distance_data_from_line_location(
+                        place.line_location, 'altitude').m,
                 )
                 for place in checkpoints
             ]

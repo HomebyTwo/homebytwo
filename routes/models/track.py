@@ -7,6 +7,7 @@ from .place import Place
 from django.contrib.gis.measure import D
 from django.utils.translation import gettext_lazy as _
 
+from datetime import timedelta
 from math import floor, ceil
 from pandas import read_hdf, DataFrame
 import uuid
@@ -171,16 +172,38 @@ class Track(models.Model):
         data = self.data
 
         # add or update total_up and total_down columns based on altitude data
-        data['total_up'] = data['altitude']. \
+        data['total_up'] = data['altitude'].\
             diff()[data['altitude'].diff() >= 0].cumsum()
 
-        data['total_down'] = data['altitude']. \
+        data['total_down'] = data['altitude'].\
             diff()[data['altitude'].diff() <= 0].cumsum()
 
         # replace NaN with the last valid value of the series
         # then, replace the remainng NaN (at the beginning) with 0
         data[['total_up', 'total_down']] = data[['total_up', 'total_down']]. \
             fillna(method='ffill').fillna(value=0)
+
+        self.data = data
+
+    def calculate_projected_time_schedule(self):
+        """
+        Calculates a time schedule based on activity, distance and
+        elevation gain/loss.
+        """
+
+        data = self.data
+
+        # flat pace as second per meter
+        flat_pace = 3600/4000  # 1 hour for 4km = 0.9s for each m
+
+        # pace going up as second per meter
+        up_pace = 3600/400  # 1 hour for 400m up = 9s for each m
+
+        # flat distance / flat_speed + elevation_gain / up_speed
+        data['schedule'] = (
+            (data['length'] * flat_pace)
+            + (data['total_up'] * up_pace)
+        )
 
         self.data = data
 
@@ -224,6 +247,19 @@ class Track(models.Model):
 
         # return distance object
         return D(m=distance_data)
+
+    def get_time_data_from_line_location(self, line_location, data_column):
+        """
+        wrap around the get_data_from_line_location method
+        to return a timedelta object.
+        """
+        time_data = self.get_data_from_line_location(
+            line_location,
+            data_column
+        )
+
+        # return distance object
+        return timedelta(seconds=int(time_data))
 
     def get_start_altitude(self):
         start_altitude = self.get_distance_data_from_line_location(
