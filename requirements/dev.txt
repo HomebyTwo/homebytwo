@@ -16,7 +16,8 @@ django-leaflet==0.18.1
 django==1.10.3
 first==2.0.1              # via pip-tools
 googlemaps==2.4.4
-numpy==1.12.0             # via pandas
+numexpr==2.6.2            # via tables
+numpy==1.12.0             # via numexpr, pandas, tables
 pandas==0.19.2
 pillow==3.2.0
 pip-tools==1.8.0
@@ -28,8 +29,9 @@ python-dateutil==2.6.0    # via arrow, pandas
 pytz==2016.10             # via pandas
 rcssmin==1.0.6
 requests==2.10.0
-six==1.10.0               # via django-extensions, django-geojson, pip-tools, polyline, python-dateutil
+six==1.10.0               # via django-extensions, django-geojson, pip-tools, polyline, python-dateutil, tables
 sqlparse==0.1.19          # via django-debug-toolbar
+tables==3.3.0
 tox==2.3.1
 units==0.7
 virtualenv==15.0.2        # via tox
