@@ -324,47 +324,17 @@ class RouteTestCase(TestCase):
 
         self.assertAlmostEqual(end_altitude.m, 689.27)
 
-    def test_get_point_altitude_along_track_success(self, location=0):
+    def test_get_distance_data_from_line_location(self):
         route = self.route
-
-        # intercept call to maps.googleapis.com with httpretty
-        httpretty.enable()
-
-        googleapis_url = 'https://maps.googleapis.com/maps/api/elevation/json'
-        json_repsonse = self.google_elevation_json
-
-        httpretty.register_uri(
-            httpretty.GET, googleapis_url,
-            content_type="application/json", body=json_repsonse,
-            status=200
-        )
 
         # make the call
-        point_altitude = route.get_point_altitude_along_track(0.5)
-
-        httpretty.disable()
-
-        self.assertAlmostEqual(point_altitude.ft, 1760.23622047244095)
-
-    def test_get_point_altitude_along_track_error(self, location=0):
-        route = self.route
-
-        # intercept call to maps.googleapis.com with httpretty
-        httpretty.enable()
-
-        googleapis_url = 'https://maps.googleapis.com/maps/api/elevation/json'
-        html_repsonse = '<h1>Server Error</h1>'
-
-        httpretty.register_uri(
-            httpretty.GET, googleapis_url,
-            content_type="text/html", body=html_repsonse,
-            status=500
+        point_altitude = route.get_distance_data_from_line_location(
+            0.5,
+            'altitude'
         )
-        point_altitude = route.get_point_altitude_along_track(0.5)
 
-        httpretty.disable()
-
-        self.assertAlmostEqual(point_altitude.ft, 1760.2362204724409)
+        self.assertTrue(isinstance(point_altitude, Distance))
+        self.assertAlmostEqual(point_altitude.ft, 1760.23622047244095)
 
     def test_get_start_and_end_places(self):
         route = self.route
