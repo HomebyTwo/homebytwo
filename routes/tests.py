@@ -115,9 +115,6 @@ class PlaceTestCase(TestCase):
         self.assertTrue(content in str(response.content))
 
 
-@override_settings(
-    MEDIA_ROOT='/vagrant/media',
-)
 class DataFrameFieldTestCase(TestCase):
     def test_write_hdf5(self):
         data = pd.DataFrame(np.random.randn(10, 2))
