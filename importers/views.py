@@ -296,7 +296,7 @@ def switzerland_mobility_detail(request, source_id):
                 place.schedule = schedule
 
                 checkpoints.append(place)
-                import pdb; pdb.set_trace()
+
             # convert checkpoints to RoutePlace objects
             route_places = [
                 RoutePlace(
