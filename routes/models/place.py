@@ -126,6 +126,7 @@ class Place(models.Model):
                 ('RPS', 'Road Pass'),
                 ('ICG', 'Interchange'),
                 ('LST', 'Loading Station'),
+                ('PKG', 'Parking'),
             )
          ),
         ('Customs', (
@@ -133,6 +134,15 @@ class Place(models.Model):
                 ('C24LT', 'Customhouse 24h limited'),
                 ('CLT', 'Customhouse limited'),
                 ('LMK', 'Landmark'),
+            )
+         ),
+        ('Personal', (
+                ('HOM', 'Home'),
+                ('WRK', 'Work'),
+                ('GYM', 'Gym'),
+                ('HOL', 'Holiday Place'),
+                ('FRD', 'Friend\'s place'),
+                ('CST', 'Other place'),
             )
          ),
     )
