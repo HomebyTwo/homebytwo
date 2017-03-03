@@ -3,46 +3,6 @@ from __future__ import unicode_literals
 from django.contrib.gis.db import models
 from routes.models import Place
 
-# translation map for type of places
-PLACE_TYPE_TRANSLATIONS = {
-    'Flurname swisstopo': 'Place',
-    'Lokalname swisstopo': 'Place',
-    'Haltestelle Bus': 'Bus Station',
-    'Gebaeude Einzelhaus': 'Single Building',
-    'Haltestelle Bahn': 'Train Station',
-    'Hauptgipfel': 'Main Summit',
-    'Pass': 'Pass',
-    'Gipfel': 'Summit',
-    'Huegel': 'Hill',
-    'Haupthuegel': 'Main Hill',
-    'Felskopf': 'Belay',
-    'Uebrige Bahnen': 'Other Station',
-    'Ausfahrt': 'Exit',
-    'Haltestelle Schiff': 'Boat Station',
-    'Alpiner Gipfel': 'Alpine Summit',
-    'Kapelle': 'Chapel',
-    'Offenes Gebaeude': 'Open Building',
-    'Strassenpass': 'Road Pass',
-    'Verzweigung': 'Interchange',
-    'Sakrales Gebaeude': 'Sacred Building',
-    'Wasserfall': 'Waterfall',
-    'Turm': 'Tower',
-    'Zollamt 24h 24h': 'Customhouse 24h 24h',
-    'Grotte, Hoehle': 'Grotto: Cave',
-    'Quelle': 'Source',
-    'Ein- und Ausfahrt': 'Entry and Exit',
-    'Denkmal': 'Monument',
-    'Bildstock': 'Wayside shrine',
-    'Felsblock': 'Boulder',
-    'Erratischer Block': 'Erratic Boulder',
-    'Zollamt 24h eingeschraenkt': 'Customhouse 24h limited',
-    'Brunnen': 'Fountain',
-    'Zollamt eingeschraenkt': 'Customhouse limited',
-    'Verladestation': 'Loading Station',
-    'Aussichtspunkt': 'Point of View',
-    'Landesgrenzstein': 'Landmark',
-}
-
 
 class Swissname3dManager(models.Manager):
     def get_queryset(self):
@@ -60,6 +20,46 @@ class Swissname3dPlace(Place):
     https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung1
     """
 
+    # translation map for type of places
+    PLACE_TYPE_TRANSLATIONS = {
+        'Flurname swisstopo': 'PLA',
+        'Lokalname swisstopo': 'PLA',
+        'Haltestelle Bus': 'BUS',
+        'Gebaeude Einzelhaus': 'BDG',
+        'Haltestelle Bahn': 'TRA',
+        'Hauptgipfel': 'SUM',
+        'Pass': 'PAS',
+        'Gipfel': 'SUM',
+        'Huegel': 'HIL',
+        'Haupthuegel': 'HIL',
+        'Felskopf': 'BEL',
+        'Uebrige Bahnen': 'OTH',
+        'Ausfahrt': 'EXT',
+        'Haltestelle Schiff': 'BOA',
+        'Alpiner Gipfel': 'SUM',
+        'Kapelle': 'CPL',
+        'Offenes Gebaeude': 'OBG',
+        'Strassenpass': 'RPS',
+        'Verzweigung': 'ICG',
+        'Sakrales Gebaeude': 'SBG',
+        'Wasserfall': 'WTF',
+        'Turm': 'TWR',
+        'Zollamt 24h 24h': 'C24',
+        'Grotte, Hoehle': 'CAV',
+        'Quelle': 'SRC',
+        'Ein- und Ausfahrt': 'EAE',
+        'Denkmal': 'MNT',
+        'Bildstock': 'SHR',
+        'Felsblock': 'BLD',
+        'Erratischer Block': 'BLD',
+        'Zollamt 24h eingeschraenkt': 'C24LT',
+        'Brunnen': 'FTN',
+        'Zollamt eingeschraenkt': 'CLT',
+        'Verladestation': 'LST',
+        'Aussichtspunkt': 'POV',
+        'Landesgrenzstein': 'LMK',
+    }
+
     objects = Swissname3dManager()
 
     class Meta:
@@ -67,7 +67,7 @@ class Swissname3dPlace(Place):
 
     def save(self, *args, **kwargs):
         """
-        Places from the SwissNAME3D_PKT file are imported
+        PLAs from the SwissNAME3D_PKT file are imported
         with the command './manage.py importswissname3d shapefile'.
         If a place is already in the database, it is skipped.
         To refresh the data, call the command with the '--delete' option
@@ -78,7 +78,8 @@ class Swissname3dPlace(Place):
             pass
         else:
             # Translate place type from German to English.
-            self.place_type = PLACE_TYPE_TRANSLATIONS[self.place_type]
+            self.place_type = self.PLACE_TYPE_TRANSLATIONS[self.place_type]
+            # set datasource to swissname3d
             self.data_source = 'swissname3d'
             # Save with the parent method
             super(Swissname3dPlace, self).save(*args, **kwargs)

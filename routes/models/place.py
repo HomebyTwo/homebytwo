@@ -88,7 +88,56 @@ class Place(models.Model):
     and for public transport connection.
     """
 
-    place_type = models.CharField(max_length=50)  # move it to its own model?
+    PLACE_TYPE_CHOICES = (
+        ('PLA', 'Place'),
+        ('Constructions', (
+                ('BDG', 'Single Building'),
+                ('OBG', 'Open Building'),
+                ('TWR', 'Tower'),
+                ('SBG', 'Sacred Building'),
+                ('CPL', 'Chapel'),
+                ('SHR', 'Wayside Shrine'),
+                ('MNT', 'Monument'),
+                ('FTN', 'Fountain'),
+            )
+         ),
+        ('Features', (
+                ('SUM', 'Summit'),
+                ('HIL', 'Hill'),
+                ('PAS', 'Pass'),
+                ('BEL', 'Belay'),
+                ('WTF', 'Waterfall'),
+                ('CAV', 'Cave'),
+                ('SRC', 'Source'),
+                ('BLD', 'Boulder'),
+                ('POV', 'Point of View')
+            )
+         ),
+        ('Public Transport', (
+                ('BUS', 'Bus Station'),
+                ('TRA', 'Train Station'),
+                ('OTH', 'Other Station'),
+                ('BOA', 'Boat Station'),
+            )
+         ),
+        ('Roads', (
+                ('EXT', 'Exit'),
+                ('EAE', 'Entry and Exit'),
+                ('RPS', 'Road Pass'),
+                ('ICG', 'Interchange'),
+                ('LST', 'Loading Station'),
+            )
+         ),
+        ('Customs', (
+                ('C24', 'Customhouse 24h'),
+                ('C24LT', 'Customhouse 24h limited'),
+                ('CLT', 'Customhouse limited'),
+                ('LMK', 'Landmark'),
+            )
+         ),
+    )
+
+    place_type = models.CharField(max_length=26, choices=PLACE_TYPE_CHOICES)
     name = models.CharField('Name of the place', max_length=250)
     description = models.TextField('Text description of the Place', default='')
     altitude = models.FloatField(null=True)

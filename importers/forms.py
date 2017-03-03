@@ -13,7 +13,7 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
         def label_from_instance(self, obj):
             return '%s - %s, %d meters away.' % (
                 obj.name,
-                obj.place_type,
+                obj.get_place_type_display(),
                 obj.distance_from_line.m
             )
 
