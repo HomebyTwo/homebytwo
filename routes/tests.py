@@ -135,7 +135,16 @@ class DataFrameFieldTestCase(TestCase):
     def test_read_hdf5(self):
         random_data = pd.DataFrame(np.random.randn(10, 2))
         filename = 'testdata.h5'
-        fullpath = os.path.join(settings.MEDIA_ROOT, 'test', filename)
+        dirname = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            'test',
+        )
+
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        fullpath = os.path.join(dirname, filename)
         random_data.to_hdf(fullpath, 'df')
 
         field = DataFrameField(max_length=100, save_to='test')
