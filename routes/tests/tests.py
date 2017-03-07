@@ -8,8 +8,8 @@ from django.contrib.gis.measure import Distance
 import pandas as pd
 import numpy as np
 
-from .models import Place
-from .models.track import DataFrameField
+from routes.models import Place
+from routes.models.track import DataFrameField
 
 from . import factories
 
