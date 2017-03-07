@@ -1,7 +1,7 @@
 from django import forms
 from django.conf import settings
 from .models import SwitzerlandMobilityRoute
-from routes.models import Place
+from apps.routes.models import Place
 
 import json
 import requests

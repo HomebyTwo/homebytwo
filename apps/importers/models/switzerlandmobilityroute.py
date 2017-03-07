@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 from django.contrib.gis.db import models
-from routes.models import Route
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
+
+from apps.routes.models import Route
 
 import requests
 import json

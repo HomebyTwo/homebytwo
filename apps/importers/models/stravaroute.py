@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
-from routes.models import Route
 from django.contrib.gis.geos import LineString
+
+from apps.routes.models import Route
 
 from stravalib.client import Client
 from stravalib import unithelper

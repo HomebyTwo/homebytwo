@@ -2,7 +2,7 @@ import factory
 import factory.fuzzy
 import factory.django
 
-from routes import models
+from apps.routes import models
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 

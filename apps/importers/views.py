@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
-from routes.models import Athlete, Place, RoutePlace
+from apps.routes.models import Athlete, Place, RoutePlace
 
 from stravalib.client import Client as StravaClient
 

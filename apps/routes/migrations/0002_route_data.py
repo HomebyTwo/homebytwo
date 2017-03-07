@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-import routes.models.track
+import apps.routes.models.track
 
 
 class Migration(migrations.Migration):
@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='route',
             name='data',
-            field=routes.models.track.DataFrameField(max_length=100, null=True),
+            field=apps.routes.models.track.DataFrameField(max_length=100, null=True),
         ),
     ]

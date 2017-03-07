@@ -8,7 +8,7 @@ from django.utils.six import StringIO
 
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
 from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
-from routes.models import Place, RoutePlace
+from apps.routes.models import Place, RoutePlace
 
 import os
 import httpretty

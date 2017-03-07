@@ -40,9 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'djgeojson',
     'leaflet',
-    'routes',
-    'importers',
-    'landingpage',
+    'apps.routes',
+    'apps.importers',
+    'apps.landingpage',
 ]
 
 MIDDLEWARE_CLASSES = [
