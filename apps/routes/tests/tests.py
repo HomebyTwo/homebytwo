@@ -5,13 +5,15 @@ from django.core.exceptions import ValidationError
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
-import pandas as pd
-import numpy as np
-
 from apps.routes.models import Place
 from apps.routes.models.track import DataFrameField
 
 from . import factories
+from hb2.utils.factories import UserFactory
+
+import pandas as pd
+import numpy as np
+
 
 import os
 
@@ -20,7 +22,7 @@ class PlaceTestCase(TestCase):
 
     def setUp(self):
         # Add user to the test database
-        self.user = factories.UserFactory()
+        self.user = UserFactory()
 
     def test_string_method(self):
         name = 'place_name'
@@ -84,7 +86,7 @@ class PlaceTestCase(TestCase):
     def test_importer_view_logged_in(self):
         content = 'Import routes'
         url = reverse('routes:importers')
-        user = factories.UserFactory(password='testpassword')
+        user = UserFactory(password='testpassword')
         self.client.login(username=user.username, password='testpassword')
         response = self.client.get(url)
 
@@ -145,7 +147,7 @@ class DataFrameFieldTestCase(TestCase):
 class RouteTestCase(TestCase):
 
     def setUp(self):
-        self.user = factories.UserFactory()
+        self.user = UserFactory()
 
     #########
     # Model #

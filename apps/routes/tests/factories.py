@@ -3,26 +3,10 @@ import factory.fuzzy
 import factory.django
 
 from apps.routes import models
-from django.contrib.auth.models import User
+from hb2.utils.factories import UserFactory
 from django.contrib.gis.geos import GEOSGeometry
 
 import pandas as pd
-
-
-class UserFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = User
-
-    username = factory.Sequence(lambda n: 'testuser%s' % n)
-    email = factory.LazyAttribute(lambda o: '%s@example.org' % o.username)
-    password = 'testpassword'
-
-    @classmethod
-    def _create(cls, model_class, *args, **kwargs):
-        """Override the default ``_create`` with our custom call."""
-        manager = cls._get_manager(model_class)
-        # The default would use ``manager.create(*args, **kwargs)``
-        return manager.create_user(*args, **kwargs)
 
 
 class PlaceFactory(factory.django.DjangoModelFactory):
@@ -69,8 +53,14 @@ class RouteFactory(factory.django.DjangoModelFactory):
     totaldown = factory.fuzzy.FuzzyInteger(5000)
     length = factory.fuzzy.FuzzyInteger(50000)
     geom = GEOSGeometry(route_geojson, srid=21781)
-    start_place = factory.SubFactory(PlaceFactory)
-    end_place = factory.SubFactory(PlaceFactory)
+    start_place = factory.SubFactory(
+        PlaceFactory,
+        geom='POINT (%s %s)' % geom.coords[0]
+    )
+    end_place = factory.SubFactory(
+        PlaceFactory,
+        geom='POINT (%s %s)' % geom.coords[-1]
+    )
     data = pd.DataFrame(
         route_profile,
         columns=['lat', 'lng', 'altitude', 'length']

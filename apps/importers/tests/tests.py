@@ -1,23 +1,22 @@
+from django.forms.models import model_to_dict
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.conf import settings
 from django.test import TestCase, override_settings
 from django.core.urlresolvers import reverse
-from django.contrib.auth.models import User
 from django.utils.six import StringIO
 
+from . import factories
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
 from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
 from apps.routes.models import Place, RoutePlace
-from apps.routes.tests import factories
+from hb2.utils.factories import UserFactory
 
 import os
 import httpretty
 import re
 import requests
 import json
-import pandas as pd
-import numpy as np
 
 
 @override_settings(
@@ -57,65 +56,9 @@ class SwitzerlandMobility(TestCase):
             return open(json_path).read()
 
     def setUp(self):
-        # Add user to the test database
-        self.user = factories.UserFactory(password='testpassword')
-
-        # Login the test user
+        # Add user to the test database and log him in
+        self.user = UserFactory(password='testpassword')
         self.client.login(username=self.user.username, password='testpassword')
-
-        start_place = factories.PlaceFactory(
-            name='Start_Place',
-            description='Start_Place_description',
-        )
-
-        end_place = factories.PlaceFactory(
-            name='End_Place',
-            description='Place_description',
-        )
-
-        self.route_data = {
-                'name': 'Haute-Cime',
-                'user': self.user,
-                'source_id': 2191833,
-                'length': 10,
-                'totalup': 100,
-                'totaldown': 100,
-                'geom': 'LINESTRING(0 0, 2000 2000)',
-                'start_place': start_place,
-                'end_place': end_place,
-                'data': pd.DataFrame(
-                    np.random.randn(8, 4),
-                    columns=['lat', 'lng', 'altitude', 'length']
-                )
-        }
-
-        self.html_404 = (
-            '<!DOCTYPE html>'
-            '<html>'
-            '  <head>'
-            '    <title>404 not found</title>'
-            '  </head>'
-            '  <body>'
-            '    <h1>Error 404 not found</h1>'
-            '    <p>not found</p>'
-            '    <h3>Guru Meditation:</h3>'
-            '    <p>XID: 371278956</p>'
-            '    <hr>'
-            '    <p>Varnish cache server</p>'
-            '  </body>'
-            '</html>')
-
-        self.html_500 = (
-            '<html>'
-            '  <head>'
-            '   <title>500 Internal Server Error</title>'
-            '  </head>'
-            '  <body>'
-            '   <h1>500 Internal Server Error</h1>'
-            '   The server has either erred or '
-            'is incapable of performing the requested operation.<br/><br/>'
-            '  </body>'
-            ' </html>')
 
     #########
     # Model #
@@ -156,7 +99,7 @@ class SwitzerlandMobility(TestCase):
         url = 'https://testurl.ch'
 
         # intercept call with httpretty
-        html_response = self.html_500
+        html_response = self.load_data(file='500.html')
 
         httpretty.enable()
 
@@ -346,7 +289,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_check_for_existing_routes_success(self):
 
-        user = factories.UserFactory()
+        user = UserFactory()
 
         # save an existing route
         factories.RouteFactory(
@@ -374,13 +317,10 @@ class SwitzerlandMobility(TestCase):
     def test_get_remote_routes_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
-        user = factories.UserFactory()
+        user = UserFactory()
 
         # save an existing route
-        factories.RouteFactory(
-            name='Haute Cime',
-            source_id=2191833,
-            data_source='switzerland_mobility',
+        factories.SwitzerlandMobilityRouteFactory(
             user=user,
         )
 
@@ -424,7 +364,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        route_details_json = self.load_data()
+        route_details_json = self.load_data(file='2191833_show.json')
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -447,7 +387,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        html_response = self.html_404
+        html_response = self.load_data(file='404.html')
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -465,9 +405,9 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue('404' in response['message'])
 
     def test_already_imported(self):
-        route = SwitzerlandMobilityRoute(**self.route_data)
+        route = factories.SwitzerlandMobilityRouteFactory.build()
         self.assertEqual(route.already_imported(), False)
-        route.save()
+        route = factories.SwitzerlandMobilityRouteFactory()
         self.assertEqual(route.already_imported(), True)
 
     #########
@@ -481,7 +421,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.load_data()
+        json_response = self.load_data(file='2191833_show.json')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -512,17 +452,19 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(map_data in str(response.content))
 
     def test_switzerland_mobility_detail_already_imported(self):
-        route = SwitzerlandMobilityRoute(**self.route_data)
-        route.save()
+        route_id = 2733343
+        factories.SwitzerlandMobilityRouteFactory(
+            source_id=route_id,
+            user=self.user,
+        )
 
-        route_id = 2191833
         url = reverse('switzerland_mobility_detail', args=[route_id])
         content = 'Already Imported'
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.load_data()
+        json_response = self.load_data(file='2733343_show.json')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -542,7 +484,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        html_response = self.html_500
+        html_response = self.load_data(file='500.html')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -559,14 +501,25 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_detail_post_success_no_places(self):
         route_id = 2191833
+        route = factories.SwitzerlandMobilityRouteFactory.build(
+            source_id=route_id
+        )
+
+        start_place = route.start_place
+        start_place.save()
+        end_place = route.end_place
+        end_place.save()
+
+        route_data = model_to_dict(route)
         post_data = {
             'route-'+key: value
-            for key, value in self.route_data.items()
+            for key, value in route_data.items()
         }
 
         post_data.update({
-            'route-start_place': Place.objects.get(name='Start_Place').id,
-            'route-end_place': Place.objects.get(name='End_Place').id,
+            'route-start_place': start_place.id,
+            'route-end_place': end_place.id,
+            'route-geom': route.geom.wkt,
             'places-TOTAL_FORMS': 0,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -584,17 +537,24 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_detail_post_success_place(self):
         route_id = 2191833
+        route = factories.SwitzerlandMobilityRouteFactory.build(
+            source_id=route_id
+        )
+
+        start_place = route.start_place
+        start_place.save()
+        end_place = route.end_place
+        end_place.save()
+
+        route_data = model_to_dict(route)
         post_data = {
             'route-'+key: value
-            for key, value in self.route_data.items()
+            for key, value in route_data.items()
         }
-
-        start_place = Place.objects.get(name='Start_Place')
-        end_place = Place.objects.get(name='End_Place')
-
         post_data.update({
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
+            'route-geom': route.geom.wkt,
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -625,17 +585,25 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_detail_post_no_validation_places(self):
         route_id = 2191833
+        route = factories.SwitzerlandMobilityRouteFactory.build(
+            source_id=route_id
+        )
+
+        start_place = route.start_place
+        start_place.save()
+        end_place = route.end_place
+        end_place.save()
+
+        route_data = model_to_dict(route)
         post_data = {
             'route-'+key: value
-            for key, value in self.route_data.items()
+            for key, value in route_data.items()
         }
-
-        start_place = Place.objects.get(name='Start_Place')
-        end_place = Place.objects.get(name='End_Place')
 
         post_data.update({
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
+            'route-geom': route.geom.wkt,
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -661,22 +629,25 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(not_a_number in str(response.content))
 
     def test_switzerland_mobility_detail_post_integrity_error(self):
-
-        route = SwitzerlandMobilityRoute(**self.route_data)
-        route.save()
-
         route_id = 2191833
+        route = factories.SwitzerlandMobilityRouteFactory(
+            source_id=route_id,
+            user=self.user,
+        )
+
+        start_place = route.start_place
+        end_place = route.end_place
+
+        route_data = model_to_dict(route)
         post_data = {
             'route-'+key: value
-            for key, value in self.route_data.items()
+            for key, value in route_data.items()
         }
-
-        start_place = Place.objects.get(name='Start_Place')
-        end_place = Place.objects.get(name='End_Place')
 
         post_data.update({
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
+            'route-geom': route.geom.wkt,
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -711,10 +682,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to map.wanderland.ch
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = ('[[2191833, "Haute Cime", null], '
-                         '[2433141, "Grammont", null], '
-                         '[2692136, "Rochers de Nayes", null], '
-                         '[3011765, "Villeneuve - Leysin", null]]')
+        json_response = self.load_data(file='tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -858,24 +826,26 @@ class SwitzerlandMobility(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_switzerland_mobility_valid_model_form(self):
-        start_place = Place.objects.get(name='Start_Place')
-        end_place = Place.objects.get(name='End_Place')
-
-        places = {
-            'start_place': start_place.id,
-            'end_place': end_place.id,
-        }
-
-        route_data = self.route_data
-        route_data.update(places)
-
+        route = factories.SwitzerlandMobilityRouteFactory.build()
+        route_data = model_to_dict(route)
+        route_data.update({
+            'geom': route.geom.wkt,
+            'start_place': route.start_place.id,
+            'end_place': route.end_place.id
+        })
         form = SwitzerlandMobilityRouteForm(data=route_data)
         self.assertTrue(form.is_valid())
 
     def test_switzerland_mobility_invalid_model_form(self):
-        data = self.route_data
-        del data['geom']
-        form = SwitzerlandMobilityRouteForm(data=data)
+        route = factories.SwitzerlandMobilityRouteFactory.build()
+        route_data = model_to_dict(route)
+        route_data.update({
+            'geom': route.geom.wkt,
+            'start_place': route.start_place.id,
+            'end_place': route.end_place.id
+        })
+        del route_data['geom']
+        form = SwitzerlandMobilityRouteForm(data=route_data)
         self.assertFalse(form.is_valid())
 
 
