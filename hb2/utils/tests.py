@@ -31,4 +31,6 @@ class TempMediaMixin(object):
 
 
 class CustomTestSuiteRunner(TempMediaMixin, DiscoverRunner):
-    "Local test suite runner."
+    """
+    Local test suite runner.
+    """

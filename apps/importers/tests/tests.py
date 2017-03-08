@@ -9,6 +9,7 @@ from django.utils.six import StringIO
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
 from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
 from apps.routes.models import Place, RoutePlace
+from apps.routes.tests import factories
 
 import os
 import httpretty
@@ -42,36 +43,35 @@ class SwitzerlandMobility(TestCase):
         # raise connection error
         raise requests.ConnectionError('Connection error.')
 
+    def load_data(self, file='2191833_show.json'):
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            data_dir = 'data'
+            json_file = file
+
+            json_path = os.path.join(
+                dir_path,
+                data_dir,
+                json_file,
+            )
+
+            return open(json_path).read()
+
     def setUp(self):
         # Add user to the test database
-        self.user = User.objects.create_user(
-            'testuser',
-            'test@test.com',
-            'test'
-        )
-
-        start_place = Place(
-            place_type='Train Station',
-            name='Start_Place',
-            description='Place_description',
-            altitude=500,
-            public_transport=True,
-            geom='POINT(0 0)',
-        )
-        start_place.save()
-
-        end_place = Place(
-            place_type='Train Station',
-            name='End_Place',
-            description='Place_description',
-            altitude=1500,
-            public_transport=True,
-            geom='POINT(2000 2000)',
-        )
-        end_place.save()
+        self.user = factories.UserFactory(password='testpassword')
 
         # Login the test user
-        self.client.login(username='testuser', password='test')
+        self.client.login(username=self.user.username, password='testpassword')
+
+        start_place = factories.PlaceFactory(
+            name='Start_Place',
+            description='Start_Place_description',
+        )
+
+        end_place = factories.PlaceFactory(
+            name='End_Place',
+            description='Place_description',
+        )
 
         self.route_data = {
                 'name': 'Haute-Cime',
@@ -88,45 +88,6 @@ class SwitzerlandMobility(TestCase):
                     columns=['lat', 'lng', 'altitude', 'length']
                 )
         }
-
-        self.route_details_json = (
-            '{"geometry": {'
-            '        "type": "LineString",'
-            '        "coordinates": [[612190.0, 129403.0], '
-            '[615424.648017, 129784.662852]]'
-            '    },'
-            '    "type": "Feature",'
-            '    "properties": {'
-            '        "profile": "[[612190, 129403, 727.9, 0], '
-            '[612190.643986, 129401.568195, 727.200081846, 1.56996290599]]",'
-            '        "gpspoints": 0,'
-            '        "imported": null,'
-            '        "opacity": 100,'
-            '        "name": "Leuk Bridge",'
-            '        "original_id": 1596570,'
-            '        "via_points": "[[612190, 129403], '
-            '[612190.643986, 129401.568195]]",'
-            '        "timetype": "velo",'
-            '        "meta": {'
-            '            "heightdiff": 220.7,'
-            '            "walking": 95.7930478068,'
-            '            "elemax": 893.53,'
-            '            "length": 6047.5,'
-            '            "time": {'
-            '                "btime": 52.5323191067,'
-            '                "wtime": 103.274652268'
-            '            },'
-            '            "elevationmodels": "ElevationModel Snapped",'
-            '            "totalup": 214.3,'
-            '            "biking": 68.075451661,'
-            '            "elemin": 724.200006399,'
-            '            "totaldown": 48.7'
-            '        },'
-            '        "owner": "100000026329",'
-            '        "velospeed": 15'
-            '    },'
-            '    "id": 2191833'
-            '}')
 
         self.html_404 = (
             '<!DOCTYPE html>'
@@ -246,12 +207,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = (
-            '[[2191833, "Haute Cime", null], '
-            '[2433141, "Grammont", null], '
-            '[2692136, "Rochers de Nayes", null], '
-            '[3011765, "Villeneuve - Leysin", null]]'
-        )
+        json_response = self.load_data('tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -262,7 +218,7 @@ class SwitzerlandMobility(TestCase):
             get_raw_remote_routes(session)
         httpretty.disable()
 
-        self.assertEqual(len(raw_routes), 4)
+        self.assertEqual(len(raw_routes), 37)
         self.assertEqual(response['error'], False)
         self.assertEqual(response['message'], 'OK. ')
 
@@ -344,18 +300,13 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response['message'], expected_message)
 
     def test_format_raw_remote_routes_success(self):
-        raw_routes = [
-            [2191833, 'Haute Cime', None],
-            [2433141, 'Grammont', None],
-            [2692136, 'Rochers de Nayes', None],
-            [3011765, 'Villeneuve - Leysin', None]
-        ]
+        raw_routes = json.loads(self.load_data(file='tracks_list.json'))
 
         formatted_routes = SwitzerlandMobilityRoute.objects.\
             format_raw_remote_routes(raw_routes)
 
         self.assertTrue(type(formatted_routes) is list)
-        self.assertEqual(len(formatted_routes), 4)
+        self.assertEqual(len(formatted_routes), 37)
         for route in formatted_routes:
             self.assertTrue(type(route) is dict)
             self.assertEqual(route['description'], '')
@@ -379,14 +330,7 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.enable()
 
-        route_json = (
-            '{"length": 12345.6,'
-            '"time":'
-            '    {"btime": 50.123456789,'
-            '    "wtime": 100.123456789},'
-            '"totalup": 1234.5,'
-            '"totaldown": 4321.0}'
-        )
+        route_json = self.load_data('track_info.json')
 
         httpretty.register_uri(
             httpretty.GET, route_meta_url,
@@ -401,17 +345,22 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(route_response['message'], 'OK. ')
 
     def test_check_for_existing_routes_success(self):
+
+        user = factories.UserFactory()
+
+        # save an existing route
+        factories.RouteFactory(
+            source_id=2191833,
+            data_source='switzerland_mobility',
+            name='Haute Cime',
+            user=user,
+        )
+
         formatted_routes = [
             {'name': 'Haute Cime', 'id': 2191833, 'description': ''},
             {'name': 'Grammont', 'id': 2433141, 'description': ''},
             {'name': 'Rochers de Nayes', 'id': 2692136, 'description': ''},
             {'name': 'Villeneuve - Leysin', 'id': 3011765, 'description': ''}]
-
-        user = User.objects.filter(username='testuser')
-
-        # save an existing route
-        route = SwitzerlandMobilityRoute(**self.route_data)
-        route.save()
 
         new_routes, old_routes = SwitzerlandMobilityRoute.objects.\
             check_for_existing_routes(
@@ -425,20 +374,20 @@ class SwitzerlandMobility(TestCase):
     def test_get_remote_routes_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
-
-        user = User.objects.filter(username='testuser')
+        user = factories.UserFactory()
 
         # save an existing route
-        route = SwitzerlandMobilityRoute(**self.route_data)
-        route.save()
+        factories.RouteFactory(
+            name='Haute Cime',
+            source_id=2191833,
+            data_source='switzerland_mobility',
+            user=user,
+        )
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = ('[[2191833, "Haute Cime", null], '
-                         '[2433141, "Grammont", null], '
-                         '[2692136, "Rochers de Nayes", null], '
-                         '[3011765, "Villeneuve - Leysin", null]]')
+        json_response = self.load_data('tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -452,11 +401,7 @@ class SwitzerlandMobility(TestCase):
         # Turn the route meta URL into a regular expression
         route_meta_url = re.compile(route_meta_url.replace('%d', '(\w+)'))
 
-        route_json = (
-            '{"length": 12345.6,'
-            '"totalup": 1234.5,'
-            '"totaldown": 4321.0}'
-        )
+        route_json = self.load_data('track_info.json')
 
         httpretty.register_uri(
             httpretty.GET, route_meta_url,
@@ -468,10 +413,9 @@ class SwitzerlandMobility(TestCase):
             get_remote_routes(session, user)
         httpretty.disable()
 
-        self.assertEqual(len(new_routes), 3)
+        self.assertEqual(len(new_routes), 36)
         self.assertEqual(len(old_routes), 1)
         self.assertEqual(response['error'], False)
-        # self.assertEqual(new_routes[1]['length'].m, 12345.6)
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
@@ -480,7 +424,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        route_details_json = self.route_details_json
+        route_details_json = self.load_data()
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -493,7 +437,7 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-        self.assertEqual('Leuk Bridge', route_raw_json['properties']['name'])
+        self.assertEqual('Haute Cime', route_raw_json['properties']['name'])
         self.assertEqual(response['error'], False)
 
     def test_get_raw_route_details_error(self):
@@ -537,7 +481,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.route_details_json
+        json_response = self.load_data()
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -549,7 +493,7 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-        title = '<title>Home by Two - Import Leuk Bridge</title>'
+        title = '<title>Home by Two - Import Haute Cime</title>'
         start_place_form = (
             '<select id="id_route-start_place" '
             'name="route-start_place">'
@@ -578,7 +522,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.route_details_json
+        json_response = self.load_data()
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -659,10 +603,12 @@ class SwitzerlandMobility(TestCase):
             'places-0-line_location': 0.0207291870756597,
             'places-0-altitude_on_route': 123,
             'places-0-id': '',
+            'places-0-include': True,
             'places-1-place': end_place.id,
             'places-1-line_location': 0.039107325861928,
             'places-1-altitude_on_route': 123,
             'places-1-id': '',
+            'places-1-include': True,
         })
 
         url = reverse('switzerland_mobility_detail', args=[route_id])

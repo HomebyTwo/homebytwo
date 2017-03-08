@@ -1,7 +1,7 @@
 from django import forms
 from django.conf import settings
 from .models import SwitzerlandMobilityRoute
-from apps.routes.models import Place
+from apps.routes.models import Place, RoutePlace
 
 import json
 import requests
@@ -52,6 +52,17 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'length': forms.HiddenInput,
             'geom': forms.HiddenInput,
         }
+
+
+class RoutePlaceForm(forms.ModelForm):
+    class Meta:
+        model = RoutePlace
+        fields = ['place', 'line_location', 'altitude_on_route', 'include']
+
+    include = forms.BooleanField(
+        required=False,
+        initial=True,
+    )
 
 
 class SwitzerlandMobilityLogin(forms.Form):

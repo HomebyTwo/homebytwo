@@ -7,7 +7,7 @@ from django.db import transaction, IntegrityError
 from django.contrib.auth.decorators import login_required
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
+from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm, RoutePlaceForm  # NOQA
 from apps.routes.models import Athlete, Place, RoutePlace
 
 from stravalib.client import Client as StravaClient
@@ -154,14 +154,11 @@ def switzerland_mobility_detail(request, source_id):
     route = False
     places = False
     route_form = False
-    places_form = False
+    route_places_formset = False
     response = {
         'error': False,
         'message': '',
     }
-
-    # define fields of the places modelformset used in both GET and POST
-    places_form_fields = ['place', 'line_location', 'altitude_on_route']
 
     # with a POST request try to import route and places
     if request.method == 'POST':
@@ -179,21 +176,21 @@ def switzerland_mobility_detail(request, source_id):
 
         # Places form
         # create form class with modelformset_factory
-        PlacesForm = modelformset_factory(
+        RoutePlaceFormset = modelformset_factory(
             RoutePlace,
-            fields=places_form_fields,
+            form=RoutePlaceForm,
         )
 
         # intstantiate form with modelformset Class and POST data
-        places_form = PlacesForm(
+        route_places_formset = RoutePlaceFormset(
             request.POST,
             prefix='places',
         )
 
         # validate places form and return errors if any
-        if not places_form.is_valid():
+        if not route_places_formset.is_valid():
             response['error'] = True
-            response['message'] += str(places_form.errors)
+            response['message'] += str(route_places_formset.errors)
 
         # If both forms validate, save the route and places
         if not response['error']:
@@ -203,17 +200,17 @@ def switzerland_mobility_detail(request, source_id):
             # set user for route
             new_route.user = request.user
 
-            # create the route places from the places_form
-            route_places = places_form.save(commit=False)
-
             try:
                 with transaction.atomic():
+                    # save the route
                     new_route.save()
 
-                    for route_place in route_places:
-                        # set RoutePlace.route to newly saved route
-                        route_place.route = new_route
-                        route_place.save()
+                    # create the route places from the route_place_forms
+                    for form in route_places_formset:
+                        if form.cleaned_data['include']:
+                            route_place = form.save(commit=False)
+                            route_place.route = new_route
+                            route_place.save()
 
             except IntegrityError as error:
                 response = {
@@ -309,11 +306,10 @@ def switzerland_mobility_detail(request, source_id):
             ]
 
             # create form class with modelformset_factory
-            PlacesForm = modelformset_factory(
+            RoutePlaceFormset = modelformset_factory(
                 RoutePlace,
-                fields=places_form_fields,
+                form=RoutePlaceForm,
                 extra=len(route_places),
-                can_delete=True,
                 widgets={
                     'place': HiddenInput,
                     'line_location': HiddenInput,
@@ -322,7 +318,7 @@ def switzerland_mobility_detail(request, source_id):
             )
 
             # instantiate form with initial data
-            places_form = PlacesForm(
+            route_places_formset = RoutePlaceFormset(
                 prefix='places',
                 queryset=RoutePlace.objects.none(),
                 initial=[
@@ -335,14 +331,14 @@ def switzerland_mobility_detail(request, source_id):
                 ],
             )
 
-            places = zip(checkpoints, places_form.forms)
+            places = zip(checkpoints, route_places_formset.forms)
 
     context = {
         'response': response,
         'route': route,
         'route_form': route_form,
         'places': places,
-        'places_form': places_form,
+        'places_form': route_places_formset,
     }
 
     template = 'importers/switzerland_mobility/detail.html'
