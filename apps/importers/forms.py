@@ -1,33 +1,13 @@
 from django import forms
 from django.conf import settings
 from .models import SwitzerlandMobilityRoute
-from apps.routes.models import Place, RoutePlace
+from apps.routes.forms import RouteForm
 
 import json
 import requests
 
 
-class SwitzerlandMobilityRouteForm(forms.ModelForm):
-
-    class PlaceChoiceField(forms.ModelChoiceField):
-        def label_from_instance(self, obj):
-            return '%s - %s, %d meters away.' % (
-                obj.name,
-                obj.get_place_type_display(),
-                obj.distance_from_line.m
-            )
-
-    start_place = PlaceChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False,
-    )
-
-    end_place = PlaceChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False,
-    )
+class SwitzerlandMobilityRouteForm(RouteForm):
 
     class Meta:
         model = SwitzerlandMobilityRoute
@@ -52,17 +32,6 @@ class SwitzerlandMobilityRouteForm(forms.ModelForm):
             'length': forms.HiddenInput,
             'geom': forms.HiddenInput,
         }
-
-
-class RoutePlaceForm(forms.ModelForm):
-    class Meta:
-        model = RoutePlace
-        fields = ['place', 'line_location', 'altitude_on_route', 'include']
-
-    include = forms.BooleanField(
-        required=False,
-        initial=True,
-    )
 
 
 class SwitzerlandMobilityLogin(forms.Form):

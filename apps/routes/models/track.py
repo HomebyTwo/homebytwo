@@ -13,6 +13,8 @@ from pandas import read_hdf, DataFrame
 import uuid
 import os
 
+import pandas as pd
+
 
 class DataFrameField(models.CharField):
     """
@@ -20,7 +22,7 @@ class DataFrameField(models.CharField):
     here: http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
     """
     default_error_messages = {
-        'invalid': _('Provide a DataFrame'),
+        'invalid': _('Please provide a DataFrame object'),
         'io_error': _('Could not write to file')
     }
 
@@ -62,6 +64,17 @@ class DataFrameField(models.CharField):
             raise IOError(
                 self.error_messages['io_error']
             ) from exc
+
+        return fullpath
+
+    def json(self, data):
+        """
+        Writes a json object
+        """
+        return data.to_json(orient='records')
+
+    def read_json(self, json):
+        return pd.read_json(json, orient='records')
 
     def get_prep_value(self, value):
         """

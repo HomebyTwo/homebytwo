@@ -7,8 +7,9 @@ from django.db import transaction, IntegrityError
 from django.contrib.auth.decorators import login_required
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm, RoutePlaceForm  # NOQA
 from apps.routes.models import Athlete, Place, RoutePlace
+from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
+from apps.routes.forms import RoutePlaceForm
 
 from stravalib.client import Client as StravaClient
 

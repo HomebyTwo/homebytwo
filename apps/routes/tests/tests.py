@@ -140,6 +140,22 @@ class DataFrameFieldTestCase(TestCase):
         with self.assertRaises(ValidationError):
             field.get_prep_value(test_str)
 
+    def test_write_read_json(self):
+        df = pd.DataFrame(
+            [['a', 'b'], ['c', 'd']],
+            columns=['col 1', 'col 2'])
+
+        json = df.to_json(orient='records')
+        new_df = pd.read_json(json, orient='records')
+
+        self.assertTrue((df.all() == new_df.all()).all())
+
+        field = DataFrameField(max_length=100, save_to='test')
+        json = field.json(df)
+        new_df = field.read_json(json)
+
+        self.assertTrue((df.all() == new_df.all()).all())
+
 
 @override_settings(
     GOOGLEMAPS_API_KEY='AIzabcdefghijklmnopqrstuvwxyz0123456789',
