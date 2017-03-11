@@ -72,6 +72,27 @@ class DataFrameField(models.CharField):
 
         return fullpath
 
+    def _parse_filename(self, filename):
+        dirname = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            self.save_to
+        )
+
+        fullpath = os.path.join(dirname, filename)
+
+        # try to load the pandas DataFrame into memory
+        try:
+            data = read_hdf(fullpath)
+
+        except Exception:
+            raise
+
+        # set attribute on for saving later
+        data.filename = filename
+
+        return data
+
     def get_prep_value(self, value):
         """
         save the DataFrame as a file in the MEDIA_ROOT folder
@@ -99,6 +120,16 @@ class DataFrameField(models.CharField):
 
         return filename
 
+    def from_db_value(self, value, expression, connection, context):
+        """
+        use the filename from the database to load the DataFrame from file.
+        """
+        if value in self.empty_values:
+            return None
+
+        # try to load the pandas DataFrame into memory
+        return self._parse_filename(value)
+
     def to_python(self, value):
         """
         if the value is a Dataframe object, return it.
@@ -106,7 +137,7 @@ class DataFrameField(models.CharField):
         and load the DataFrame from the file.
         """
         if value is None:
-            return None
+            return value
 
         if isinstance(value, DataFrame):
             return value
@@ -114,26 +145,7 @@ class DataFrameField(models.CharField):
         if isinstance(value, str):
             if value in self.empty_values:
                 return None
-
-            dirname = os.path.join(
-                settings.BASE_DIR,
-                settings.MEDIA_ROOT,
-                self.save_to
-            )
-
-        fullpath = os.path.join(dirname, value)
-
-        # try to load the pandas DataFrame into memory
-        try:
-            data = read_hdf(fullpath)
-
-        except Exception:
-            raise
-
-        # set attribute on for saving later
-        data.filename = value
-
-        return data
+            return self._parse_filename(value)
 
     def validate(self, value, model_instance):
         if not isinstance(value, DataFrame):
@@ -344,6 +356,9 @@ class Track(models.Model):
         return the index of a row in the DataFrame
         based on the line_location.
         """
+        # return none if data field is empty
+        if self.data is None:
+            return None
 
         # get the number of rows in the data
         nb_rows, nb_columns = self.data.shape
@@ -377,7 +392,10 @@ class Track(models.Model):
         )
 
         # return distance object
-        return D(m=distance_data)
+        if distance_data is not None:
+            return D(m=distance_data)
+
+        return
 
     def get_time_data_from_line_location(self, line_location, data_column):
         """
@@ -389,8 +407,11 @@ class Track(models.Model):
             data_column
         )
 
-        # return distance object
-        return timedelta(seconds=int(time_data))
+        # return time object
+        if time_data is not None:
+            return timedelta(seconds=int(time_data))
+
+        return
 
     def get_start_altitude(self):
         start_altitude = self.get_distance_data_from_line_location(
