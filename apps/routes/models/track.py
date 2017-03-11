@@ -1,19 +1,19 @@
+from django import forms
 from django.conf import settings
 
-from django.contrib.gis.db import models
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from .place import Place
+from django.contrib.auth.models import User
+from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 from django.utils.translation import gettext_lazy as _
 
+from . import Place
+
 from datetime import timedelta
 from math import floor, ceil
-from pandas import read_hdf, DataFrame
+from pandas import read_hdf, read_json, DataFrame
 import uuid
 import os
-
-import pandas as pd
 
 
 class DataFrameField(models.CharField):
@@ -32,7 +32,7 @@ class DataFrameField(models.CharField):
         super(DataFrameField, self).__init__(
             max_length=max_length, *args, **kwargs)
 
-    def generate_unique_filename(self):
+    def _generate_unique_filename(self):
         """
         generate a unique filename for the saved file.
         """
@@ -40,7 +40,12 @@ class DataFrameField(models.CharField):
 
         return filename
 
-    def write_hdf5(self, data, filename):
+    def _write_hdf5(self, data, filename):
+        """
+        write the file to the media directory. This should be improved
+        to use the storage instead of using os methods.
+        I just could not figure out how to do it with pandas' to_hdf method.
+        """
         dirname = os.path.join(
             settings.BASE_DIR,
             settings.MEDIA_ROOT,
@@ -67,19 +72,10 @@ class DataFrameField(models.CharField):
 
         return fullpath
 
-    def json(self, data):
-        """
-        Writes a json object
-        """
-        return data.to_json(orient='records')
-
-    def read_json(self, json):
-        return pd.read_json(json, orient='records')
-
     def get_prep_value(self, value):
         """
-        let's save the DataFrame as a file with in the MEDIA_ROOT folder
-        and put the filename in the valuebase.
+        save the DataFrame as a file in the MEDIA_ROOT folder
+        and put the filename in the database.
         """
         if value is None:
             return value
@@ -97,24 +93,35 @@ class DataFrameField(models.CharField):
 
         else:
             # create a new filename
-            filename = self.generate_unique_filename()
+            filename = self._generate_unique_filename()
 
-        self.write_hdf5(value, filename)
+        self._write_hdf5(value, filename)
 
         return filename
 
-    def to_python(self, filename):
+    def to_python(self, value):
         """
-        get the file location from the database
+        if the value is a Dataframe object, return it.
+        otherwise, get the file location from the database
         and load the DataFrame from the file.
         """
-        dirname = os.path.join(
-            settings.BASE_DIR,
-            settings.MEDIA_ROOT,
-            self.save_to
-        )
+        if value is None:
+            return None
 
-        fullpath = os.path.join(dirname, filename)
+        if isinstance(value, DataFrame):
+            return value
+
+        if isinstance(value, str):
+            if value in self.empty_values:
+                return None
+
+            dirname = os.path.join(
+                settings.BASE_DIR,
+                settings.MEDIA_ROOT,
+                self.save_to
+            )
+
+        fullpath = os.path.join(dirname, value)
 
         # try to load the pandas DataFrame into memory
         try:
@@ -123,16 +130,127 @@ class DataFrameField(models.CharField):
         except Exception:
             raise
 
-        if not isinstance(data, DataFrame):
+        # set attribute on for saving later
+        data.filename = value
+
+        return data
+
+    def validate(self, value, model_instance):
+        if not isinstance(value, DataFrame):
             raise ValidationError(
                 self.error_messages['invalid'],
                 code='invalid',
             )
 
-        # set attribute on for saving later
-        data.filename = filename
+    def run_validators(self, value):
+        pass
 
-        return data
+    def formfield(self, **kwargs):
+        defaults = {'form_class': DataFrameFormField}
+        defaults.update(kwargs)
+        return super(DataFrameField, self).formfield(**defaults)
+
+
+class DataFrameFormField(forms.CharField):
+
+    widget = forms.widgets.HiddenInput
+
+    def prepare_value(self, value):
+        """
+        serialize DataFrame objects to json using pandas native function.
+        for inclusion in forms.
+        """
+        try:
+            return value.to_json(orient='records') if value is not None else ''
+        except:
+            raise ValidationError(
+                _("Could serialize '%(value)s' to json."),
+                code='invalid',
+                params={'value': value},
+            )
+
+    def to_python(self, value):
+        """
+        serialize DataFrame objects to json using pandas native function.
+        for inclusion in forms.
+        """
+        if value is None:
+            return None
+
+        if isinstance(value, DataFrame):
+            return value
+
+        if isinstance(value, str):
+            if value in self.empty_values:
+                return None
+            try:
+                return read_json(value, orient='records')
+            except:
+                raise ValidationError(
+                    _("Could not read json: '%(value)s' into a DataFrame."),
+                    code='invalid',
+                    params={'value': value},
+                )
+
+        return None
+
+    def validate(self, value):
+        """
+        override validation because DataFrame objects
+        suck at being compared. See:
+        http://pandas.pydata.org/pandas-docs/stable/gotchas.html#gotchas-truth
+        """
+        if value is None:
+            return
+
+        if not isinstance(value, DataFrame):
+            raise ValidationError(
+                _("'%(value)s' does not seem to be a DataFrame."),
+                code='invalid',
+                params={'value': value},
+            )
+
+    def run_validators(self, value):
+        """
+        again, because of comparisons, the native methode must be overridden.
+        """
+        if value is None:
+            return
+
+        errors = []
+        for v in self.validators:
+            try:
+                v(value)
+            except ValidationError as e:
+                if hasattr(e, 'code') and e.code in self.error_messages:
+                    e.message = self.error_messages[e.code]
+                    errors.extend(e.error_list)
+        if errors:
+            raise ValidationError(errors)
+
+    def has_changed(self, initial, data):
+        if self.disabled:
+            return False
+        try:
+            data = self.to_python(data)
+        except ValidationError:
+            return True
+
+        initial_value = initial if initial is not None else ''
+        data_value = data if data is not None else ''
+
+        if (isinstance(initial_value, DataFrame) and
+                isinstance(data_value, DataFrame)):
+            try:
+                return (initial_value != data_value).any().any()
+            except ValueError:
+                return True
+
+        if (not isinstance(initial_value, DataFrame) and
+                not isinstance(data_value, DataFrame)):
+            return initial_value != data_value
+
+        return True
 
 
 class Track(models.Model):

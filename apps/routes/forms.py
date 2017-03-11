@@ -35,6 +35,7 @@ class RouteForm(forms.ModelForm):
             'geom',
             'start_place',
             'end_place',
+            'data',
         ]
 
 

@@ -20,6 +20,7 @@ class SwitzerlandMobilityRouteForm(RouteForm):
             'geom',
             'start_place',
             'end_place',
+            'data',
         ]
 
         # Do not display the following fields in the form.

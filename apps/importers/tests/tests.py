@@ -520,6 +520,7 @@ class SwitzerlandMobility(TestCase):
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
+            'route-data': route.data.to_json(orient='records'),
             'places-TOTAL_FORMS': 0,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -555,6 +556,7 @@ class SwitzerlandMobility(TestCase):
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
+            'route-data': route.data.to_json(orient='records'),
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -604,6 +606,7 @@ class SwitzerlandMobility(TestCase):
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
+            'route-data': route.data.to_json(orient='records'),
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -648,6 +651,7 @@ class SwitzerlandMobility(TestCase):
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
+            'route-data': route.data.to_json(orient='records'),
             'places-TOTAL_FORMS': 2,
             'places-INITIAL_FORMS': 0,
             'places-MIN_NUM_FORMS': 0,
@@ -830,6 +834,7 @@ class SwitzerlandMobility(TestCase):
         route_data = model_to_dict(route)
         route_data.update({
             'geom': route.geom.wkt,
+            'data': route.data.to_json(orient='records'),
             'start_place': route.start_place.id,
             'end_place': route.end_place.id
         })
