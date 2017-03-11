@@ -155,7 +155,23 @@ class DataFrameField(models.CharField):
             )
 
     def run_validators(self, value):
-        pass
+        """
+        Because of comparisons of DataFrame,
+        the native methode must be overridden.
+        """
+        if value is None:
+            return
+
+        errors = []
+        for v in self.validators:
+            try:
+                v(value)
+            except ValidationError as e:
+                if hasattr(e, 'code') and e.code in self.error_messages:
+                    e.message = self.error_messages[e.code]
+                    errors.extend(e.error_list)
+        if errors:
+            raise ValidationError(errors)
 
     def formfield(self, **kwargs):
         defaults = {'form_class': DataFrameFormField}
@@ -183,8 +199,7 @@ class DataFrameFormField(forms.CharField):
 
     def to_python(self, value):
         """
-        serialize DataFrame objects to json using pandas native function.
-        for inclusion in forms.
+        convert json values to DataFrame using pandas native function.
         """
         if value is None:
             return None
