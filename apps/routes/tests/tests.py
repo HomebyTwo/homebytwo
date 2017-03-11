@@ -261,6 +261,10 @@ class RouteTestCase(TestCase):
 
         self.assertAlmostEqual(start_altitude.m, 0)
 
+        route.data = None
+        end_altitude = route.get_end_altitude()
+        self.assertEqual(end_altitude, None)
+
     def test_get_end_altitude(self):
         data = DataFrame(
             [[0, 0, 0, 0], [600000, 0, 1234, 600000]],
@@ -271,6 +275,10 @@ class RouteTestCase(TestCase):
         end_altitude = route.get_end_altitude()
 
         self.assertAlmostEqual(end_altitude.m, 1234)
+
+        route.data = None
+        end_altitude = route.get_end_altitude()
+        self.assertEqual(end_altitude, None)
 
     def test_get_distance_data_from_line_location(self):
         data = DataFrame(

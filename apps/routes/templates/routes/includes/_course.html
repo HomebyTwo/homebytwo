@@ -11,7 +11,7 @@
     </li>
     <li><ul class="list">
         {% for place in places %}
-            <li class="mrgv box box--default place h4">{{ place.place.name }}, {{ place.altitude_on_route|floatformat:0|intcomma }} m</li>
+            <li class="mrgv box box--default place h4">{{ place.schedule }} - {{ place.place.name }}, {{ place.altitude_on_route|floatformat:0|intcomma }} m</li>
         {% endfor %}
     </ul></li>
     <li class="mrgv box box--default place place-finish">

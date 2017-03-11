@@ -17,6 +17,12 @@ def index(request):
 def detail(request, route_id):
     route = Route.objects.get(id=route_id)
     places = RoutePlace.objects.filter(route=route_id)
+    for place in places:
+        place.schedule = route.get_time_data_from_line_location(
+                    place.line_location,
+                    'schedule'
+        )
+
     context = {
         'route': route,
         'places': places
