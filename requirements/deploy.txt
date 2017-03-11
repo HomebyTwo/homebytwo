@@ -4,10 +4,9 @@
 #
 #    pip-compile --output-file requirements/deploy.txt requirements/deploy.in
 #
-
 dj-database-url==0.4.1
 ecdsa==0.13               # via paramiko
-Fabric==1.11.1
+fabric==1.11.1
 gitric==0.3
 paramiko==1.17.1          # via fabric
 pycrypto==2.6.1           # via paramiko

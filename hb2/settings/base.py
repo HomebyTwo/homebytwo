@@ -40,9 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'djgeojson',
     'leaflet',
-    'routes',
-    'importers',
-    'landingpage',
+    'apps.routes',
+    'apps.importers',
+    'apps.landingpage',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -131,6 +131,9 @@ STATIC_ROOT = get_env_variable('STATIC_ROOT', '/tmp/static')
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
+
+# Absolute path to the directory where media files should be collected to.
+MEDIA_ROOT = get_env_variable('MEDIA_ROOT',  os.path.join(BASE_DIR, 'media'))
 
 #############
 # Mailchimp #

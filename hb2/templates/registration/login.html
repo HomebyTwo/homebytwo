@@ -12,19 +12,19 @@
     <div class="grid__item w-5/6 sm-w-3/4 md-w-2/3 lg-w-1/2 box">
 
         {% if form.errors %}
-            <div class="box alert alert--error">
+            <div class="box alert alert--error mrgb">
                 <p>Your username and password didn't match. Please try again.</p>
             </div>
         {% endif %}
 
         {% if next %}
             {% if user.is_authenticated %}
-                <div class="box alert alert--info">
+                <div class="box alert alert--info mrgb">
                     <p>Your account doesn't have access to this page.
                        To proceed, please login with an account that has access:</p>
                 </div>
             {% else %}
-                <div class="box alert alert--info">
+                <div class="box alert alert--info mrgb">
                     <p>Please login to see this page:</p>
                 </div>
             {% endif %}

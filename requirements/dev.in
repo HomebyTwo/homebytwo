@@ -1,0 +1,9 @@
+-r base.in
+
+django-appconf
+django-debug-toolbar
+django-extensions
+pip-tools
+tox
+werkzeug
+

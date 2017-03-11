@@ -5,4 +5,5 @@ vagrant_ansible_inventory_default
 node_modules/
 /media/images/*
 /media/shapefiles/*
+/media/data/*
 .tox

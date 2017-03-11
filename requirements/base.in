@@ -1,0 +1,13 @@
+dj-database-url
+django-geojson
+django-leaflet
+django
+googlemaps
+pillow
+polyline
+psycopg2
+rcssmin
+pandas
+tables
+requests
+-e git://github.com/drixselecta/stravalib.git#egg=stravalib

@@ -4,16 +4,23 @@
 #
 #    pip-compile --output-file requirements/base.txt requirements/base.in
 #
+-e git+git://github.com/drixselecta/stravalib.git#egg=stravalib
+arrow==0.10.0
 dj-database-url==0.4.1
 django-geojson==2.9.0
 django-leaflet==0.18.1
 django==1.10.3
 googlemaps==2.4.4
+numexpr==2.6.2            # via tables
+numpy==1.12.0             # via numexpr, pandas, tables
+pandas==0.19.2
 pillow==3.2.0
 polyline==1.3.1
 psycopg2==2.6.1
-rcssmin==1.0.6            # via django-compressor
-requests==2.10.0          # via googlemaps
-rjsmin==1.0.12            # via django-compressor
-six==1.10.0               # via django-geojson, polyline
--e git://github.com/drixselecta/stravalib.git#egg=stravalib
+python-dateutil==2.6.0    # via arrow, pandas
+pytz==2016.10             # via pandas
+rcssmin==1.0.6
+requests==2.10.0
+six==1.10.0               # via django-geojson, polyline, python-dateutil, tables
+tables==3.3.0
+units==0.7

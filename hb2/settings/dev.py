@@ -1,6 +1,9 @@
 from . import get_env_variable
 from .base import *  # NOQA
 
+
+TEST_RUNNER = 'hb2.utils.tests.CustomTestSuiteRunner'
+
 DEBUG = bool(get_env_variable('DEBUG', True))
 DEBUG_TOOLBAR_CONFIG = {"INTERCEPT_REDIRECTS": False}
 MIDDLEWARE_CLASSES += (
