@@ -86,6 +86,8 @@ DATABASES = {
     "default": dj_database_url.parse(get_env_variable('DATABASE_URL'))
 }
 
+# Custom Test Runner to write test media files to tmp
+TEST_RUNNER = 'hb2.utils.tests.CustomTestSuiteRunner'
 
 # Password validation
 
