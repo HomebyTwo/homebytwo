@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
-from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
-from apps.routes.models import Route
+from apps.routes.models import Route, RouteManager
 
 import requests
 import json
@@ -13,8 +12,7 @@ from pandas import DataFrame
 from ast import literal_eval
 
 
-class SwitzerlandMobilityRouteManager(models.Manager):
-
+class SwitzerlandMobilityRouteManager(RouteManager):
     """
     Custom manager used to retrieve data from Switzerland Mobility
     """
@@ -74,7 +72,10 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
-                formatted_routes, user)
+                user=user,
+                routes=formatted_routes,
+                data_source='switzerland_mobility',
+            )
 
             return new_routes, old_routes, response
 
@@ -106,38 +107,19 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         # Iterate through json object
         for route in raw_routes:
-            formatted_route = {
-                'id': route[0],
-                'name': route[1],
-                'description': route[2],
-            }
+            formatted_route = SwitzerlandMobilityRoute(
+                source_id=route[0],
+                name=route[1],
+                description=route[2],
+            )
 
             # If description is None convert it to empty
-            if formatted_route['description'] is None:
-                formatted_route['description'] = ''
+            if formatted_route.description is None:
+                formatted_route.description = ''
 
             formatted_routes.append(formatted_route)
 
         return formatted_routes
-
-    def check_for_existing_routes(self, formatted_routes, user):
-        """
-        Split remote routes into old and new routes.
-        Old routes have already been imported by the user.
-        New routes have not been imported yet.
-        """
-        new_routes = []
-        old_routes = []
-
-        for route in formatted_routes:
-            route_id = route['id']
-            user_routes = self.filter(user=user)
-            if user_routes.filter(source_id=route_id).exists():
-                old_routes.append(route)
-            else:
-                new_routes.append(route)
-
-        return new_routes, old_routes
 
     def add_route_remote_meta(self, route):
         """

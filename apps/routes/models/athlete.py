@@ -8,7 +8,6 @@ class Athlete(models.Model):
 
     # Save remote authentications
     strava_token = models.CharField(max_length=100, null=True)
-    switzerland_mobility_cookie = models.CharField(max_length=100, null=True)
 
     # activities that the athlete practices with personal performance
     activies = models.ManyToManyField(

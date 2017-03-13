@@ -4,6 +4,29 @@ from django.contrib.gis.db import models
 from .track import Track
 
 
+class RouteManager(models.Manager):
+    def check_for_existing_routes(self, user, routes, data_source):
+        """
+        Split remote routes into old and new routes.
+        Old routes have already been imported by the user.
+        New routes have not been imported yet.
+        """
+        new_routes = []
+        old_routes = []
+
+        for route in routes:
+            source_id = route.source_id
+            user_routes = self.filter(user=user)
+            data_source_user_routes = user_routes.filter(
+                data_source=data_source)
+            if data_source_user_routes.filter(source_id=source_id).exists():
+                old_routes.append(route)
+            else:
+                new_routes.append(route)
+
+        return new_routes, old_routes
+
+
 class Route(Track):
 
     # source and unique id at the source that the route was imported from

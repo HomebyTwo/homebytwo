@@ -5,18 +5,59 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from django.core.urlresolvers import reverse
 from django.utils.six import StringIO
+from django.utils.html import escape
 
 from . import factories
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
 from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
-from apps.routes.models import Place, RoutePlace
+from apps.routes.models import Place, RoutePlace, Athlete
 from hb2.utils.factories import UserFactory
+
 
 import os
 import httpretty
 import re
 import requests
 import json
+
+
+@override_settings(
+    # STRAVA_CLIENT_TOKEN='1234567890123456789012345678901234567890'
+)
+class Strava(TestCase):
+    """
+    Test the Strava route importer.
+    """
+    def authorize_strava(self):
+        pass
+
+    #########
+    # views #
+    #########
+
+    def setUp(self):
+        # Add user to the test database and log him in
+        self.user = UserFactory(password='testpassword')
+        self.client.login(username=self.user.username, password='testpassword')
+        Athlete.objects.create(
+            user=self.user,
+            strava_token=settings.STRAVA_CLIENT_TOKEN,
+        )
+
+    def test_strava_index_(self):
+        url = reverse('strava_index')
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+        source_name = 'Strava'
+        route_name = escape("Tout d'Aï")
+        length = '12.9km'
+        totalup = '1,880m+'
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(source_name in response_content)
+        self.assertTrue(route_name in response_content)
+        self.assertTrue(length in response_content)
+        self.assertTrue(totalup in response_content)
 
 
 @override_settings(

@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import LineString
 
-from apps.routes.models import Route
+from apps.routes.models import Route, RouteManager
 
 from stravalib.client import Client
 from stravalib import unithelper
@@ -11,44 +11,34 @@ from stravalib import unithelper
 from polyline import decode
 
 
-class StravaRouteManager(models.Manager):
+class StravaRouteManager(RouteManager):
 
     # login to Switzerland Mobility and retrieve route list
-    def get_routes_list_from_server(self, user):
-        # Initialize Stravalib client
-        client = Client()
+    def get_routes_list_from_server(self, user, strava_client):
 
-        # Get Strava access token
-        client.access_token = user.athlete.strava_token
-        routes = client.get_routes()
+        # retrieve routes from strava
+        strava_routes = strava_client.get_routes()
 
-        for route in routes:
+        # create model instances with Strava routes data
+        routes = []
 
-            coords = decode(route.map.summary_polyline)
+        for strava_route in strava_routes:
+            route = StravaRoute(
+                source_id=strava_route.id,
+                data_source='strava',
+                name=strava_route.name,
+                totalup=unithelper.meters(strava_route.elevation_gain).num,
+                length=unithelper.meters(strava_route.distance).num,
+            )
 
-            # Inverse tupple because Google Maps works in lat, lng
-            coords = [(lng, lat) for lat, lng in coords]
+            routes.append(route)
 
-            # Create line string and specify SRID
-            line = LineString(coords)
-            line.srid = 4326
-
-            strava_route, created = StravaRoute.objects.get_or_create(
-                strava_route_id=route.id,
-                defaults={
-                        'name': route.name,
-                        'totalup': unithelper.meters(route.elevation_gain),
-                        'totaldown': 0,
-                        'length': unithelper.meters(route.distance),
-                        'geom': line,
-                        'description': route.description,
-                        'type': route.type,
-                        'sub_type': route.sub_type,
-                        'strava_timestamp': route.timestamp,
-                        'user': user,
-                    }
-
-                )
+        # split into new and existing routes
+        return self.check_for_existing_routes(
+            user=user,
+            routes=routes,
+            data_source='strava'
+        )
 
 
 class StravaRoute(Route):

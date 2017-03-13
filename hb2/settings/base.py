@@ -188,6 +188,7 @@ LEAFLET_CONFIG = {
 
 STRAVA_CLIENT_ID = get_env_variable('STRAVA_CLIENT_ID', '')
 STRAVA_CLIENT_SECRET = get_env_variable('STRAVA_CLIENT_SECRET', '')
+STRAVA_CLIENT_TOKEN = get_env_variable('STRAVA_CLIENT_TOKEN', '')
 
 
 ########################

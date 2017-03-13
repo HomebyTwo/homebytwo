@@ -14,22 +14,50 @@ from apps.routes.forms import RoutePlaceForm
 from stravalib.client import Client as StravaClient
 
 
+def get_strava_token_or_redirect(user):
+    # find or create the athlete related to the user
+    athlete, created = Athlete.objects.get_or_create(user=user)
+
+    # if user has no token, redirect to Strava connect
+    if not athlete.strava_token:
+        redirect_url = reverse('strava_connect')
+        return HttpResponseRedirect(redirect_url)
+
+    # return the token
+    return athlete.strava_token
+
+
+def set_strava_token(user, token):
+    # find or create the athlete related to the user
+    athlete, created = Athlete.objects.get_or_create(user=user)
+
+    # save the token to the athlete
+    athlete.strava_token = token
+    athlete.save()
+
+
 @login_required
 def strava_connect(request):
+    """
+    generate the Strava connect button.
+    """
     # Initialize stravalib client
     strava_client = StravaClient()
 
-    # Get user from request
-    redirect = request.build_absolute_uri('/importers/strava/authorized/')
+    # generate the absolute redirect url
+    redirect_url = reverse('strava_authorized')
+    absolute_redirect_url = request.build_absolute_uri(redirect_url)
+
     # Generate Strava authorization URL
     strava_authorize_url = strava_client.authorization_url(
         client_id=settings.STRAVA_CLIENT_ID,
-        redirect_uri=redirect,
+        redirect_uri=absolute_redirect_url,
     )
 
     context = {
         'strava_authorize_url': strava_authorize_url,
     }
+
     # Render the Strava connect button
     return render(request, 'importers/strava/connect.html', context)
 
@@ -48,63 +76,68 @@ def strava_authorized(request):
                     )
 
     # Save access token to athlete
-    user = request.user
-    user.athlete.strava_token = access_token
-    user.athlete.save()
+    set_strava_token(request.user, access_token)
 
-    return HttpResponseRedirect('/importers/strava')
+    # redirect to the Strava routes page
+    redirect_url = reverse('strava_index')
+    return HttpResponseRedirect(redirect_url)
 
 
 @login_required
 def strava_index(request):
-    # Get user from request
-    user = request.user
-
     # Initialize stravalib client
     strava_client = StravaClient()
 
-    athlete, created = Athlete.objects.get_or_create(user=user)
+    # retrieve the API token saved with the Athlete Model
+    strava_client.access_token = get_strava_token_or_redirect(request.user)
 
-    # No token, athlete has never connected
-    if not athlete.strava_token:
-        return HttpResponseRedirect('/importers/strava/connect')
-
-    else:
-        strava_client.access_token = athlete.strava_token
-
+    # Retrieve athlete from Strava
     try:
-        athlete = strava_client.get_athlete()
+        strava_athlete = strava_client.get_athlete()
+    except:
+        raise
 
-    except Exception as e:
-        # Bad Token: Destroy bad token and render Strava connect button button
-        print(e)
-        athlete.strava_token = ''
-        athlete.save()
-        return HttpResponseRedirect('/importers/strava/connect')
+    # Retrieve routes from Strava
+    new_routes, old_routes = StravaRoute.objects. \
+        get_routes_list_from_server(
+            user=request.user,
+            strava_client=strava_client
+        )
 
-    except Exception as e:
-        print(e)
-        """Cannot connect to Strava API:
-        Destroy bad token and render Strava connect button button"""
-        return HttpResponseRedirect('/importers/strava/unavailable')
-
-    # Retrieve routes from DB
-    try:
-        routes = StravaRoute.objects.filter(user=user)
-
-    except Exception as e:
-        print(e)
-
-    if not routes:
-        StravaRoute.objects.get_routes_list_from_server(user)
-
-    routes = StravaRoute.objects.filter(user=user)
+    # Strava info for the template.
+    source = {
+        'name': 'Strava',
+        'svg': 'images/strava.svg',
+        'muted_svg': 'images/strava_muted.svg',
+        'detail_view': 'strava_detail',
+    }
 
     context = {
-        'athlete': athlete,
-        'routes': routes,
+        'source': source,
+        'strava_athlete': strava_athlete,
+        'new_routes': new_routes,
+        'old_routes': old_routes,
     }
-    return render(request, 'importers/strava/index.html', context)
+
+    template = 'importers/index.html'
+
+    return render(request, template, context)
+
+
+@login_required
+def strava_detail(request, source_id):
+
+    context = {
+        'response': False,
+        'route': False,
+        'route_form': False,
+        'places': False,
+        'places_form': False,
+    }
+
+    template = 'importers/switzerland_mobility/detail.html'
+
+    return render(request, template, context)
 
 
 @login_required
@@ -124,11 +157,20 @@ def switzerland_mobility_index(request):
     new_routes, old_routes, response = manager.get_remote_routes(
         request.session, request.user)
 
-    template = 'importers/switzerland_mobility/index.html'
+    # Switzerland Mobility info for the template.
+    source = {
+        'name': 'Switzerland Mobility Plus',
+        'svg': 'images/switzerland_mobility.svg',
+        'muted_svg': 'images/switzerland_mobility_muted.svg',
+        'detail_view': 'switzerland_mobility_detail',
+    }
+
+    template = 'importers/index.html'
     context = {
+        'source': source,
         'new_routes': new_routes,
         'old_routes': old_routes,
-        'response': response
+        'response': response,
     }
 
     return render(request, template, context)

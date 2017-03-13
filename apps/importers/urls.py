@@ -11,6 +11,13 @@ urlpatterns = [
             name='strava_index'
         ),
 
+    # /importers/strava/1234567/
+    url(
+            r'^strava/(?P<source_id>[0-9]+)/$',
+            views.strava_detail,
+            name='strava_detail'
+        ),
+
     # /importers/strava/connect/
     url(
             r'^strava/connect/$',
