@@ -292,8 +292,8 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(type(formatted_routes) is list)
         self.assertEqual(len(formatted_routes), 37)
         for route in formatted_routes:
-            self.assertTrue(type(route) is dict)
-            self.assertEqual(route['description'], '')
+            self.assertTrue(isinstance(route, SwitzerlandMobilityRoute))
+            self.assertEqual(route.description, '')
 
     def test_format_raw_remote_routes_empty(self):
         raw_routes = []
@@ -341,15 +341,32 @@ class SwitzerlandMobility(TestCase):
         )
 
         formatted_routes = [
-            {'name': 'Haute Cime', 'id': 2191833, 'description': ''},
-            {'name': 'Grammont', 'id': 2433141, 'description': ''},
-            {'name': 'Rochers de Nayes', 'id': 2692136, 'description': ''},
-            {'name': 'Villeneuve - Leysin', 'id': 3011765, 'description': ''}]
+            SwitzerlandMobilityRoute(
+                name='Haute Cime',
+                source_id=2191833,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Grammont',
+                source_id=2433141,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Rochers de Nayes',
+                source_id=2692136,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Villeneuve - Leysin',
+                source_id=3011765,
+                description=''
+            )]
 
         new_routes, old_routes = SwitzerlandMobilityRoute.objects.\
             check_for_existing_routes(
-                formatted_routes,
-                user,
+                user=user,
+                routes=formatted_routes,
+                data_source='switzerland_mobility'
             )
 
         self.assertEqual(len(new_routes), 3)
