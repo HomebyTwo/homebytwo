@@ -9,7 +9,8 @@ from django.utils.html import escape
 
 from . import factories
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
-from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
+from ..models.switzerlandmobilityroute import request_json
+from ..forms import SwitzerlandMobilityLogin, ImportersRouteForm
 from apps.routes.models import Place, RoutePlace, Athlete
 from hb2.utils.factories import UserFactory
 
@@ -123,8 +124,7 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -150,8 +150,7 @@ class SwitzerlandMobility(TestCase):
             status=500
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -175,8 +174,7 @@ class SwitzerlandMobility(TestCase):
             httpretty.GET, url, body=body,
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -417,6 +415,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
+        route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
@@ -430,8 +429,7 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        route_raw_json, response = SwitzerlandMobilityRoute.objects.\
-            get_raw_route_details(route_id)
+        route_raw_json, response = route.get_raw_route_details(route_id)
 
         httpretty.disable()
 
@@ -439,7 +437,8 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response['error'], False)
 
     def test_get_raw_route_details_error(self):
-        route_id = 9999999
+        route_id = 999999999
+        route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
@@ -453,8 +452,7 @@ class SwitzerlandMobility(TestCase):
             status=404
         )
 
-        route_raw_json, response = SwitzerlandMobilityRoute.objects.\
-            get_raw_route_details(route_id)
+        route_raw_json, response = route.get_raw_route_details(route_id)
 
         httpretty.disable()
 
@@ -896,7 +894,7 @@ class SwitzerlandMobility(TestCase):
             'start_place': route.start_place.id,
             'end_place': route.end_place.id
         })
-        form = SwitzerlandMobilityRouteForm(data=route_data)
+        form = ImportersRouteForm(data=route_data)
         self.assertTrue(form.is_valid())
 
     def test_switzerland_mobility_invalid_model_form(self):
@@ -908,7 +906,7 @@ class SwitzerlandMobility(TestCase):
             'end_place': route.end_place.id
         })
         del route_data['geom']
-        form = SwitzerlandMobilityRouteForm(data=route_data)
+        form = ImportersRouteForm(data=route_data)
         self.assertFalse(form.is_valid())
 
 

@@ -2,38 +2,34 @@ from django.conf import settings
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.core.urlresolvers import reverse
-from django.forms import modelformset_factory, HiddenInput
+from django.forms import modelform_factory, modelformset_factory, HiddenInput
 from django.db import transaction, IntegrityError
 from django.contrib.auth.decorators import login_required
 
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from apps.routes.models import Athlete, Place, RoutePlace
-from .forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
+from .forms import SwitzerlandMobilityLogin, ImportersRouteForm
 from apps.routes.forms import RoutePlaceForm
 
 from stravalib.client import Client as StravaClient
 
+# Switzerland Mobility info for the templates.
+SWITZERLAND_MOBILITY_SOURCE_INFO = {
+    'name': 'Switzerland Mobility Plus',
+    'svg': 'images/switzerland_mobility.svg',
+    'muted_svg': 'images/switzerland_mobility_muted.svg',
+    'detail_view': 'switzerland_mobility_detail',
+    'index_view': 'switzerland_mobility_index',
+}
 
-def get_strava_token_or_redirect(user):
-    # find or create the athlete related to the user
-    athlete, created = Athlete.objects.get_or_create(user=user)
-
-    # if user has no token, redirect to Strava connect
-    if not athlete.strava_token:
-        redirect_url = reverse('strava_connect')
-        return HttpResponseRedirect(redirect_url)
-
-    # return the token
-    return athlete.strava_token
-
-
-def set_strava_token(user, token):
-    # find or create the athlete related to the user
-    athlete, created = Athlete.objects.get_or_create(user=user)
-
-    # save the token to the athlete
-    athlete.strava_token = token
-    athlete.save()
+# Strava info for templates.
+STRAVA_SOURCE_INFO = {
+    'name': 'Strava',
+    'svg': 'images/strava.svg',
+    'muted_svg': 'images/strava_muted.svg',
+    'detail_view': 'strava_detail',
+    'index_view': 'strava_index',
+}
 
 
 @login_required
@@ -76,7 +72,7 @@ def strava_authorized(request):
                     )
 
     # Save access token to athlete
-    set_strava_token(request.user, access_token)
+    _set_strava_token(request.user, access_token)
 
     # redirect to the Strava routes page
     redirect_url = reverse('strava_index')
@@ -85,11 +81,10 @@ def strava_authorized(request):
 
 @login_required
 def strava_index(request):
-    # Initialize stravalib client
-    strava_client = StravaClient()
 
-    # retrieve the API token saved with the Athlete Model
-    strava_client.access_token = get_strava_token_or_redirect(request.user)
+    # retrieve the API client from athlete token
+    # or redirect to connect
+    strava_client = _get_strava_client_or_redirect(request.user)
 
     # Retrieve athlete from Strava
     try:
@@ -104,16 +99,8 @@ def strava_index(request):
             strava_client=strava_client
         )
 
-    # Strava info for the template.
-    source = {
-        'name': 'Strava',
-        'svg': 'images/strava.svg',
-        'muted_svg': 'images/strava_muted.svg',
-        'detail_view': 'strava_detail',
-    }
-
     context = {
-        'source': source,
+        'source': STRAVA_SOURCE_INFO,
         'strava_athlete': strava_athlete,
         'new_routes': new_routes,
         'old_routes': old_routes,
@@ -126,16 +113,82 @@ def strava_index(request):
 
 @login_required
 def strava_detail(request, source_id):
+    """
+    Detail view to import a route from Strava.
+    """
 
-    context = {
-        'response': False,
-        'route': False,
-        'route_form': False,
-        'places': False,
-        'places_form': False,
+    # default values for variables passed to the request context
+    places = False
+    route_form = False
+    route_places_formset = False
+    response = {
+        'error': False,
+        'message': '',
     }
 
-    template = 'importers/switzerland_mobility/detail.html'
+    # model instance from source_id
+    route = StravaRoute(source_id=int(source_id))
+
+    if request.method == 'POST':
+
+        # populate route_form with POST data
+        route_form = _post_route_form(request, route)
+
+        # populate the route_places_formset with POST data
+        route_places_formset = _post_route_places_formset(request, route)
+
+        # validate forms and save the route and places
+        if not response['error']:
+            new_route, response = _save_detail_forms(
+                request,
+                response,
+                route_form,
+                route_places_formset
+            )
+
+        # Success! redirect to the page of the newly imported route
+        if not response['error']:
+            redirect_url = reverse('routes:detail', args=(new_route.id,))
+            return HttpResponseRedirect(redirect_url)
+
+        route = route_form.save(commit=False)
+        checkpoints = _get_checkpoints(route)
+        places = zip(checkpoints, route_places_formset.forms)
+
+    if request.method == 'GET':
+
+        # instantiate Strava API client
+        strava_client = _get_strava_client_or_redirect(request.user)
+
+        # get route details from Strava API
+        route.get_route_details(strava_client)
+
+        # add user information to route.
+        # to check if the route has already been imported.
+        route.user = request.user
+
+        # populate the route_form with route details
+        route_form = _get_route_form(route)
+
+        # get checkpoints along the way
+        checkpoints = _get_checkpoints(route)
+
+        # get form to save places along the route
+        route_places_formset = _get_route_places_formset(route, checkpoints)
+
+        # prepare zipped list for the template
+        places = zip(checkpoints, route_places_formset.forms)
+
+    context = {
+        'response': response,
+        'route': route,
+        'route_form': route_form,
+        'places': places,
+        'places_form': route_places_formset,
+        'source': STRAVA_SOURCE_INFO
+    }
+
+    template = 'importers/detail.html'
 
     return render(request, template, context)
 
@@ -157,17 +210,9 @@ def switzerland_mobility_index(request):
     new_routes, old_routes, response = manager.get_remote_routes(
         request.session, request.user)
 
-    # Switzerland Mobility info for the template.
-    source = {
-        'name': 'Switzerland Mobility Plus',
-        'svg': 'images/switzerland_mobility.svg',
-        'muted_svg': 'images/switzerland_mobility_muted.svg',
-        'detail_view': 'switzerland_mobility_detail',
-    }
-
     template = 'importers/index.html'
     context = {
-        'source': source,
+        'source': SWITZERLAND_MOBILITY_SOURCE_INFO,
         'new_routes': new_routes,
         'old_routes': old_routes,
         'response': response,
@@ -190,12 +235,8 @@ def switzerland_mobility_detail(request, source_id):
     using a query to the database.
     """
 
-    # cast route id from url to integer
-    source_id = int(source_id)
-
     # default values for variables passed to the request context
-    route = False
-    places = False
+    places = []
     route_form = False
     route_places_formset = False
     response = {
@@ -203,175 +244,57 @@ def switzerland_mobility_detail(request, source_id):
         'message': '',
     }
 
+    # model instance with source_id
+    route = SwitzerlandMobilityRoute(source_id=int(source_id))
+
     # with a POST request try to import route and places
     if request.method == 'POST':
 
-        # populate the route form with POST data
-        route_form = SwitzerlandMobilityRouteForm(
-            request.POST,
-            prefix='route',
-        )
+        # populate the route_form with POST data
+        route_form = _post_route_form(request, route)
 
-        # validate route form and return errors if any
-        if not route_form.is_valid():
-            response['error'] = True
-            response['message'] += str(route_form.errors)
+        # populate the route_places_formset with POST data
+        route_places_formset = _post_route_places_formset(request, route)
 
-        # Places form
-        # create form class with modelformset_factory
-        RoutePlaceFormset = modelformset_factory(
-            RoutePlace,
-            form=RoutePlaceForm,
-        )
-
-        # intstantiate form with modelformset Class and POST data
-        route_places_formset = RoutePlaceFormset(
-            request.POST,
-            prefix='places',
-        )
-
-        # validate places form and return errors if any
-        if not route_places_formset.is_valid():
-            response['error'] = True
-            response['message'] += str(route_places_formset.errors)
-
-        # If both forms validate, save the route and places
+        # validate forms and save the route and places
         if not response['error']:
-
-            # create the route with the route_form
-            new_route = route_form.save(commit=False)
-            # set user for route
-            new_route.user = request.user
-
-            try:
-                with transaction.atomic():
-                    # save the route
-                    new_route.save()
-
-                    # create the route places from the route_place_forms
-                    for form in route_places_formset:
-                        if form.cleaned_data['include']:
-                            route_place = form.save(commit=False)
-                            route_place.route = new_route
-                            route_place.save()
-
-            except IntegrityError as error:
-                response = {
-                    'error': True,
-                    'message': 'Integrity Error: %s. ' % error,
-                }
+            new_route, response = _save_detail_forms(
+                request,
+                response,
+                route_form,
+                route_places_formset
+            )
 
         # Success! redirect to the page of the newly imported route
         if not response['error']:
             redirect_url = reverse('routes:detail', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
 
+        checkpoints = _get_checkpoints(route)
+        places = zip(checkpoints, route_places_formset.forms)
+
     # GET request
-    else:
+    if request.method == 'GET':
+
         # fetch route details from Switzerland Mobility
-        route, response = SwitzerlandMobilityRoute.objects. \
-            get_remote_route(source_id)
+        response = route.get_route_details()
 
         # route details succesfully retrieved
-        if route:
+        if not response['error']:
 
             # add user to check if route has already been imported
             route.user = request.user
 
-            # compute elevation and schedule data
-            route.calculate_cummulative_elevation_differences()
-            route.calculate_projected_time_schedule()
-
             # populate the route_form with route details
-            route_form = SwitzerlandMobilityRouteForm(
-                instance=route,
-                prefix='route',
-            )
-
-            # find places to display in the select
-            # for start, finish points.
-            route_form.fields['start_place'].queryset = \
-                route.get_closest_places_along_line(
-                    line_location=0,  # start
-                    max_distance=200,
-                )
-
-            route_form.fields['end_place'].queryset = \
-                route.get_closest_places_along_line(
-                    line_location=1,  # finish
-                    max_distance=200,
-                )
+            route_form = _get_route_form(route)
 
             # find checkpoints along the route
-            places = Place.objects.get_places_from_line(
-                route.geom,
-                max_distance=50
-            )
+            checkpoints = _get_checkpoints(route)
 
-            # enrich checkpoint data with information
-            checkpoints = []
-            for place in places:
-
-                altitude_on_route = route.get_distance_data_from_line_location(
-                    place.line_location, 'altitude')
-                place.altitude_on_route = altitude_on_route
-
-                length_from_start = route.get_distance_data_from_line_location(
-                    place.line_location, 'length')
-                place.distance_from_start = length_from_start
-
-                # get cummulative altitude gain
-                total_up = route.get_distance_data_from_line_location(
-                    place.line_location, 'total_up')
-                place.total_up = total_up
-
-                # get cummulative altitude loss
-                total_down = route.get_distance_data_from_line_location(
-                    place.line_location, 'total_down')
-                place.total_down = total_down
-
-                # get projected time schedula at place
-                schedule = route.get_time_data_from_line_location(
-                    place.line_location, 'schedule')
-                place.schedule = schedule
-
-                checkpoints.append(place)
-
-            # convert checkpoints to RoutePlace objects
-            route_places = [
-                RoutePlace(
-                    place=place,
-                    line_location=place.line_location,
-                    altitude_on_route=route.get_distance_data_from_line_location(
-                        place.line_location, 'altitude').m,
-                )
-                for place in checkpoints
-            ]
-
-            # create form class with modelformset_factory
-            RoutePlaceFormset = modelformset_factory(
-                RoutePlace,
-                form=RoutePlaceForm,
-                extra=len(route_places),
-                widgets={
-                    'place': HiddenInput,
-                    'line_location': HiddenInput,
-                    'altitude_on_route': HiddenInput,
-                }
-            )
-
-            # instantiate form with initial data
-            route_places_formset = RoutePlaceFormset(
-                prefix='places',
-                queryset=RoutePlace.objects.none(),
-                initial=[
-                    {
-                        'place': route_place.place,
-                        'line_location': route_place.line_location,
-                        'altitude_on_route': route_place.altitude_on_route,
-                    }
-                    for route_place in route_places
-                ],
+            # get form set to save route places
+            route_places_formset = _get_route_places_formset(
+                route,
+                checkpoints
             )
 
             places = zip(checkpoints, route_places_formset.forms)
@@ -382,9 +305,10 @@ def switzerland_mobility_detail(request, source_id):
         'route_form': route_form,
         'places': places,
         'places_form': route_places_formset,
+        'source': SWITZERLAND_MOBILITY_SOURCE_INFO
     }
 
-    template = 'importers/switzerland_mobility/detail.html'
+    template = 'importers/detail.html'
 
     return render(request, template, context)
 
@@ -402,23 +326,23 @@ def switzerland_mobility_login(request):
         # If the form validates,
         # try to retrieve the Switzerland Mobility cookies
         if form.is_valid():
-                cookies, response = form.retrieve_authorization_cookie()
+            cookies, response = form.retrieve_authorization_cookie()
 
-                # cookies retrieved successfully
-                if not response['error']:
-                    # add cookies to the user session
-                    request.session['switzerland_mobility_cookies'] = cookies
-                    # redirect to the route list
-                    redirect_url = reverse('switzerland_mobility_index')
-                    return HttpResponseRedirect(redirect_url)
-                # something went wrong, render the login page with the error
-                else:
-                    context = {
-                        'form': form,
-                        'error': response['error'],
-                        'message': response['message'],
-                    }
-                    return render(request, template, context)
+            # cookies retrieved successfully
+            if not response['error']:
+                # add cookies to the user session
+                request.session['switzerland_mobility_cookies'] = cookies
+                # redirect to the route list
+                redirect_url = reverse('switzerland_mobility_index')
+                return HttpResponseRedirect(redirect_url)
+            # something went wrong, render the login page with the error
+            else:
+                context = {
+                    'form': form,
+                    'error': response['error'],
+                    'message': response['message'],
+                }
+                return render(request, template, context)
 
         # form validation error, render the page with the errors
         else:
@@ -441,3 +365,230 @@ def switzerland_mobility_login(request):
         form = SwitzerlandMobilityLogin()
         context = {'form': form}
         return render(request, template, context)
+
+
+def _get_strava_client_or_redirect(user):
+    # find or create the athlete related to the user
+    athlete, created = Athlete.objects.get_or_create(user=user)
+
+    # if user has no token, redirect to Strava connect
+    if not athlete.strava_token:
+        redirect_url = reverse('strava_connect')
+        return HttpResponseRedirect(redirect_url)
+
+    # create the client
+    return StravaClient(access_token=athlete.strava_token)
+
+
+def _set_strava_token(user, token):
+    # find or create the athlete related to the user
+    athlete, created = Athlete.objects.get_or_create(user=user)
+
+    # save the token to the athlete
+    athlete.strava_token = token
+    athlete.save()
+
+
+def _get_route_form(route):
+    """
+    GET detail view: instanciate route_form with model instance and
+    set he query for start and end places.
+    """
+    RouteForm = modelform_factory(
+        type(route),
+        form=ImportersRouteForm,
+    )
+
+    route_form = RouteForm(
+                instance=route,
+                prefix='route',
+            )
+
+    # find places to display in the select
+    # for start, finish points.
+    route_form.fields['start_place'].queryset = \
+        route.get_closest_places_along_line(
+            line_location=0,  # start
+            max_distance=200,
+        )
+
+    route_form.fields['end_place'].queryset = \
+        route.get_closest_places_along_line(
+            line_location=1,  # finish
+            max_distance=200,
+        )
+
+    return route_form
+
+
+def _post_route_form(request, route):
+    """
+    POST detail view: instanciate route form with POST values.
+    """
+    RouteForm = modelform_factory(
+        type(route),
+        form=ImportersRouteForm,
+    )
+
+    return RouteForm(
+        request.POST,
+        prefix='route',
+    )
+
+
+def _get_checkpoints(route):
+    """
+    retrieve checkpoints within 50m of the route and
+    enrich them with information retrieved from the route data.
+    """
+    places = Place.objects.get_places_from_line(
+        route.geom,
+        max_distance=50
+    )
+
+    # enrich checkpoint data with information
+    checkpoints = []
+
+    for place in places:
+
+        altitude_on_route = route.get_distance_data_from_line_location(
+            place.line_location, 'altitude')
+        place.altitude_on_route = altitude_on_route
+
+        length_from_start = route.get_distance_data_from_line_location(
+            place.line_location, 'length')
+        place.distance_from_start = length_from_start
+
+        # get cummulative altitude gain
+        total_up = route.get_distance_data_from_line_location(
+            place.line_location, 'total_up')
+        place.total_up = total_up
+
+        # get cummulative altitude loss
+        total_down = route.get_distance_data_from_line_location(
+            place.line_location, 'total_down')
+        place.total_down = total_down
+
+        # get projected time schedula at place
+        schedule = route.get_time_data_from_line_location(
+            place.line_location, 'schedule')
+        place.schedule = schedule
+
+        checkpoints.append(place)
+
+    return checkpoints
+
+
+def _get_route_places_formset(route, checkpoints):
+        """
+        GET detail view creates a Model Formset populated with all the
+        checkpoints found along the route.
+        the user can select and save the relevant places to the imported route.
+
+        This is used in both the Strava and Switzerland Mobility
+        detail import page.
+
+        """
+
+        # convert checkpoints to RoutePlace objects
+        route_places = [
+            RoutePlace(
+                place=place,
+                line_location=place.line_location,
+                altitude_on_route=route.get_distance_data_from_line_location(
+                    place.line_location, 'altitude').m,
+            )
+            for place in checkpoints
+        ]
+
+        # create form class with modelformset_factory
+        RoutePlaceFormset = modelformset_factory(
+            RoutePlace,
+            form=RoutePlaceForm,
+            extra=len(route_places),
+            widgets={
+                'place': HiddenInput,
+                'line_location': HiddenInput,
+                'altitude_on_route': HiddenInput,
+            }
+        )
+
+        # instantiate form with initial data
+        return RoutePlaceFormset(
+            prefix='places',
+            queryset=RoutePlace.objects.none(),
+            initial=[
+                {
+                    'place': route_place.place,
+                    'line_location': route_place.line_location,
+                    'altitude_on_route': route_place.altitude_on_route,
+                }
+                for route_place in route_places
+            ],
+        )
+
+
+def _post_route_places_formset(request, route):
+    """
+    POST detail view: return the route_places model_formset
+    populated with POST data.
+    """
+    # create form class with modelformset_factory
+    RoutePlaceFormset = modelformset_factory(
+        RoutePlace,
+        form=RoutePlaceForm,
+        widgets={
+            'place': HiddenInput,
+            'line_location': HiddenInput,
+            'altitude_on_route': HiddenInput,
+        }
+    )
+
+    return RoutePlaceFormset(
+        request.POST,
+        prefix='places',
+    )
+
+
+def _save_detail_forms(request, response, route_form, route_places_formset):
+    """
+    POST detail view: if the forms validate, try to save the routes
+    and route places.
+    """
+    # validate places form and return errors if any
+    if not route_places_formset.is_valid():
+        response['error'] = True
+        response['message'] += str(route_places_formset.errors)
+
+    # validate route form and return errors if any
+    if not route_form.is_valid():
+        response['error'] = True
+        response['message'] += str(route_form.errors)
+
+    if response['error']:
+        return False, response
+
+    # create the route with the route_form
+    new_route = route_form.save(commit=False)
+    # set user for route
+    new_route.user = request.user
+
+    try:
+        with transaction.atomic():
+            # save the route
+            new_route.save()
+
+            # create the route places from the route_place_forms
+            for form in route_places_formset:
+                if form.cleaned_data['include']:
+                    route_place = form.save(commit=False)
+                    route_place.route = new_route
+                    route_place.save()
+
+    except IntegrityError as error:
+        response = {
+            'error': True,
+            'message': 'Integrity Error: %s. ' % error,
+        }
+
+    return new_route, response

@@ -1,17 +1,24 @@
 from __future__ import unicode_literals
 
-from django.contrib.gis.db import models
 from django.contrib.gis.geos import LineString
 
 from apps.routes.models import Route, RouteManager
 
-from stravalib.client import Client
-from stravalib import unithelper
-
+from pandas import DataFrame
 from polyline import decode
+from stravalib import unithelper
 
 
 class StravaRouteManager(RouteManager):
+
+    def get_queryset(self):
+        """
+        Returns query_sets with Strava Routes only.
+        This method is required because StravaRoute
+        is a proxy class.
+        """
+        return super(StravaRouteManager, self). \
+            get_queryset().filter(data_source='strava')
 
     # login to Switzerland Mobility and retrieve route list
     def get_routes_list_from_server(self, user, strava_client):
@@ -42,53 +49,103 @@ class StravaRouteManager(RouteManager):
 
 
 class StravaRoute(Route):
-    # Extends Route class with Strava attributes and methods
-    strava_route_id = models.BigIntegerField(unique=True)
 
-    # Type 1 for ride, 2 for run
-    type = models.CharField(max_length=1)
+    """
+    Proxy for Route Model with specific methods and custom manager.
+    """
 
-    # Sub-type 1 for ride, 2 for run
-    sub_type = models.CharField(max_length=1)
+    class Meta:
+        proxy = True
 
-    # Time of last updated as unix timestamp
-    strava_timestamp = models.IntegerField()
-
+    # custom manager
     objects = StravaRouteManager()
 
-    # retrieve map.wanderland.ch information for a route
-    def get_route_details_from_server(self, user):
-        # Initialize Stravalib client
-        client = Client()
+    # retrieve strava information for a route
+    def get_route_details(self, client):
+        """
+        retrieve route details including streams from strava.
+        the source_id of the model instance must be set.
+        """
 
-        # Get Strava access token
-        client.access_token = user.athlete.strava_token
+        # Retrieve route detail and streams
+        strava_route = client.get_route(self.source_id)
+        raw_streams = client.get_route_streams(self.source_id)
 
-        # Retrieve route detail
-        route = client.get_route(self.strava_route_id)
+        self.name = strava_route.name
+        self.description = strava_route.description
+        self.totalup = unithelper.meters(strava_route.elevation_gain).num
+        self.length = unithelper.meters(strava_route.distance).num
+        self.geom = self._polyline_to_linestring(strava_route.map.polyline)
+        self.data = self._data_from_streams(raw_streams)
 
-        # Decode polyline
-        coords = decode(route.map.polyline)
+        # transform geom coords to CH1903 / LV03
+        self._transform_coords(self.geom)
+
+        # compute elevation and schedule data
+        self.calculate_cummulative_elevation_differences()
+        self.calculate_projected_time_schedule()
+
+    def _polyline_to_linestring(self, polyline):
+        """
+        by default, Strava returns a geometry encoded as a polyline.
+        convert the polyline into a linestring for import into postgis
+        with the correct srid.
+        """
+
+        # decode the polyline.
+        coords = decode(polyline)
 
         # Inverse tupple because Google Maps works in lat, lng
         coords = [(lng, lat) for lat, lng in coords]
 
         # Create line string and specify SRID
-        line = LineString(coords)
-        line.srid = 4326
+        linestring = LineString(coords)
+        linestring.srid = 4326
 
-        if len(self.geom) != len(line):
-            self.geom = line
+        # return the linestring with the correct SRID
+        return linestring
 
-        if route.timestamp != self.strava_timestamp:
-            self.name = route.name
-            self.totalup = unithelper.meters(route.elevation_gain)
-            self.totaldown = 0
-            self.length = unithelper.meters(route.distance)
-            self.geom = line
-            self.description = route.description
-            self.type = route.type
-            self.sub_type = route.sub_type
-            self.strava_timestamp = route.timestamp
+    def _data_from_streams(self, streams):
+        """
+        convert route raw streams into a pandas DataFrame.
+        the stravalib client creates a list of dicts:
+        `[stream_type: <Stream object>, stream_type: <Stream object>, ...]`
+        """
 
-        self.save()
+        data = DataFrame()
+
+        for key, stream in streams.items():
+
+            # split latlng in two columns
+            if key == 'latlng':
+                data['lat'], data['lng'] = zip(
+                    *[(coords[0], coords[1]) for coords in stream.data]
+                )
+
+            # rename distance to length
+            if key == 'distance':
+                data['length'] = stream.data
+            else:
+                data[key] = stream.data
+
+        return data
+
+    def _transform_coords(self, geom, target_srid=21781):
+        """
+        transform coordinates from one system to the other.
+        defaults: from WGS 84 to CH1903 / LV03
+        """
+
+        # transform geometry to target srid
+        geom.transform(target_srid)
+
+    def save(self, *args, **kwargs):
+        """
+        Set the data_source of the route to strava
+        when saving the route.
+        """
+        # set the data_source of the route to switzerland_mobility
+        self.data_source = 'strava'
+
+        # Save with the parent method
+        super(StravaRoute, self).save(*args, **kwargs)

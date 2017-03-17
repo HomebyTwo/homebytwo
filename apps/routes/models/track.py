@@ -93,7 +93,7 @@ class DataFrameField(models.CharField):
 
         return data
 
-    def get_prep_value(self, value):
+    def get_db_prep_save(self, value, connection):
         """
         save the DataFrame as a file in the MEDIA_ROOT folder
         and put the filename in the database.
@@ -457,7 +457,6 @@ class Track(models.Model):
         return D(m=self.totaldown)
 
     def get_closest_places_along_line(self, line_location=0, max_distance=100):
-
         # create the point from location
         point = self.geom.interpolate_normalized(line_location)
 

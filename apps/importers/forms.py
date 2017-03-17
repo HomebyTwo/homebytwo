@@ -1,16 +1,16 @@
 from django import forms
 from django.conf import settings
-from .models import SwitzerlandMobilityRoute
+from apps.routes.models import Route, Place
 from apps.routes.forms import RouteForm
 
 import json
 import requests
 
 
-class SwitzerlandMobilityRouteForm(RouteForm):
+class ImportersRouteForm(RouteForm):
 
     class Meta:
-        model = SwitzerlandMobilityRoute
+        model = Route
         fields = [
             'source_id',
             'name',
@@ -33,6 +33,25 @@ class SwitzerlandMobilityRouteForm(RouteForm):
             'length': forms.HiddenInput,
             'geom': forms.HiddenInput,
         }
+
+    class PlaceChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            return '%s - %s.' % (
+                obj.name,
+                obj.get_place_type_display()
+            )
+
+    start_place = PlaceChoiceField(
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
+    )
+
+    end_place = PlaceChoiceField(
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
+    )
 
 
 class SwitzerlandMobilityLogin(forms.Form):
