@@ -168,10 +168,6 @@ class DataFrameFieldTestCase(TestCase):
         json = form_field.prepare_value(value)
         self.assertTrue((value == form_field.to_python(json)).all().all())
 
-        value = ''
-        with self.assertRaises(ValidationError):
-            json = form_field.prepare_value(value)
-
     def test_form_field_has_changed(self):
         form_field = DataFrameFormField()
 
@@ -216,6 +212,9 @@ class DataFrameFieldTestCase(TestCase):
         self.assertTrue(form_field.to_python(empty_df).empty)
 
         self.assertEqual(form_field.to_python(''), None)
+
+    def test_data_to_form(self):
+        pass
 
 
 @override_settings(

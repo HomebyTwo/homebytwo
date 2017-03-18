@@ -7,3 +7,10 @@ class SwitzerlandMobilityRouteFactory(RouteFactory):
         model = models.SwitzerlandMobilityRoute
 
     source_id = 2191833
+
+
+class StravaRouteFactory(RouteFactory):
+    class Meta:
+        model = models.StravaRoute
+
+    source_id = 2325453

@@ -151,10 +151,6 @@ def strava_detail(request, source_id):
             redirect_url = reverse('routes:detail', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
 
-        route = route_form.save(commit=False)
-        checkpoints = _get_checkpoints(route)
-        places = zip(checkpoints, route_places_formset.forms)
-
     if request.method == 'GET':
 
         # instantiate Strava API client
@@ -269,9 +265,6 @@ def switzerland_mobility_detail(request, source_id):
         if not response['error']:
             redirect_url = reverse('routes:detail', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
-
-        checkpoints = _get_checkpoints(route)
-        places = zip(checkpoints, route_places_formset.forms)
 
     # GET request
     if request.method == 'GET':
