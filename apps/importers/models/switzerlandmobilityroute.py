@@ -178,15 +178,6 @@ class SwitzerlandMobilityRoute(Route):
     # Custom manager
     objects = SwitzerlandMobilityRouteManager()
 
-    def already_imported(self):
-        """
-        check if route has already been imported to the database
-        """
-        imported_route = SwitzerlandMobilityRoute.objects. \
-            filter(source_id=self.source_id, user=self.user)
-
-        return imported_route.exists()
-
     def get_route_details(self):
         """
         Workflow method to retrieve route details from Switzerland Mobility.

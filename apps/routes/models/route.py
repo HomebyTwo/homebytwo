@@ -46,3 +46,13 @@ class Route(Track):
 
     class Meta:
         unique_together = ('user', 'data_source', 'source_id')
+
+    def already_imported(self):
+        """
+        check if route has already been imported to the database
+        """
+        route_class = type(self)
+        imported_route = route_class.objects.\
+            filter(source_id=self.source_id, user=self.user)
+
+        return imported_route.exists()
