@@ -85,6 +85,12 @@ class StravaRoute(Route):
         self.calculate_cummulative_elevation_differences()
         self.calculate_projected_time_schedule()
 
+        # retrieve totaldown from computed data
+        self.totaldown = abs(self.get_data_from_line_location(
+            1,  # line location of the last datapoint
+            'totaldown',
+        ))
+
     def _polyline_to_linestring(self, polyline):
         """
         by default, Strava returns a geometry encoded as a polyline.
@@ -115,7 +121,6 @@ class StravaRoute(Route):
         data = DataFrame()
 
         for key, stream in streams.items():
-
             # split latlng in two columns
             if key == 'latlng':
                 data['lat'], data['lng'] = zip(
@@ -123,8 +128,9 @@ class StravaRoute(Route):
                 )
 
             # rename distance to length
-            if key == 'distance':
+            elif key == 'distance':
                 data['length'] = stream.data
+
             else:
                 data[key] = stream.data
 

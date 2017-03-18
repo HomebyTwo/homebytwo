@@ -460,14 +460,14 @@ def _get_checkpoints(route):
         place.distance_from_start = length_from_start
 
         # get cummulative altitude gain
-        total_up = route.get_distance_data_from_line_location(
-            place.line_location, 'total_up')
-        place.total_up = total_up
+        totalup = route.get_distance_data_from_line_location(
+            place.line_location, 'totalup')
+        place.totalup = totalup
 
         # get cummulative altitude loss
-        total_down = route.get_distance_data_from_line_location(
-            place.line_location, 'total_down')
-        place.total_down = total_down
+        totaldown = route.get_distance_data_from_line_location(
+            place.line_location, 'totaldown')
+        place.totaldown = totaldown
 
         # get projected time schedula at place
         schedule = route.get_time_data_from_line_location(

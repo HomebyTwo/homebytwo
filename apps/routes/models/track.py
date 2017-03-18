@@ -93,7 +93,7 @@ class DataFrameField(models.CharField):
 
         return data
 
-    def get_db_prep_save(self, value, connection):
+    def get_prep_value(self, value):
         """
         save the DataFrame as a file in the MEDIA_ROOT folder
         and put the filename in the database.
@@ -188,14 +188,17 @@ class DataFrameFormField(forms.CharField):
         serialize DataFrame objects to json using pandas native function.
         for inclusion in forms.
         """
-        try:
-            return value.to_json(orient='records') if value is not None else ''
-        except:
-            raise ValidationError(
-                _("Could serialize '%(value)s' to json."),
-                code='invalid',
-                params={'value': value},
-            )
+        if isinstance(value, DataFrame):
+            try:
+                return value.to_json(orient='records') if value is not None else ''
+            except:
+                raise ValidationError(
+                    _("Could serialize '%(value)s' to json."),
+                    code='invalid',
+                    params={'value': value},
+                )
+
+        return value if value not in self.empty_values else ''
 
     def to_python(self, value):
         """
@@ -324,21 +327,21 @@ class Track(models.Model):
     def calculate_cummulative_elevation_differences(self):
         """
         Calculates two colums from the altitude data:
-        - total_up: cummulative sum of positive elevation data
-        - total_down: cummulative sum of negative elevation data
+        - totalup: cummulative sum of positive elevation data
+        - totaldown: cummulative sum of negative elevation data
         """
         data = self.data
 
-        # add or update total_up and total_down columns based on altitude data
-        data['total_up'] = data['altitude'].\
+        # add or update totalup and totaldown columns based on altitude data
+        data['totalup'] = data['altitude'].\
             diff()[data['altitude'].diff() >= 0].cumsum()
 
-        data['total_down'] = data['altitude'].\
+        data['totaldown'] = data['altitude'].\
             diff()[data['altitude'].diff() <= 0].cumsum()
 
         # replace NaN with the last valid value of the series
         # then, replace the remainng NaN (at the beginning) with 0
-        data[['total_up', 'total_down']] = data[['total_up', 'total_down']]. \
+        data[['totalup', 'totaldown']] = data[['totalup', 'totaldown']]. \
             fillna(method='ffill').fillna(value=0)
 
         self.data = data
@@ -360,13 +363,13 @@ class Track(models.Model):
         # flat distance / flat_speed + elevation_gain / up_speed
         data['schedule'] = (
             (data['length'] * flat_pace)
-            + (data['total_up'] * up_pace)
+            + (data['totalup'] * up_pace)
         )
 
         self.data = data
 
     # Returns poster picture for the list view
-    def get_data_from_line_location(self, line_location, column):
+    def get_data_from_line_location(self, line_location, data_column):
         """
         return the index of a row in the DataFrame
         based on the line_location.
@@ -383,11 +386,11 @@ class Track(models.Model):
 
         # find the previous value in the series
         previous_index = floor(float_index)
-        previous_value = self.data.iloc[previous_index][column]
+        previous_value = self.data.iloc[previous_index][data_column]
 
         # find the next index in the series
         next_index = ceil(float_index)
-        next_value = self.data.iloc[next_index][column]
+        next_value = self.data.iloc[next_index][data_column]
 
         # calculate the weighting of the previous value
         weight = float_index - previous_index
