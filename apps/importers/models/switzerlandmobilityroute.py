@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
-from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
-from apps.routes.models import Route
+from apps.routes.models import Route, RouteManager
 
 import requests
 import json
@@ -13,8 +12,38 @@ from pandas import DataFrame
 from ast import literal_eval
 
 
-class SwitzerlandMobilityRouteManager(models.Manager):
+def request_json(url, cookies=None):
+    """
+    Makes get call the map.wanderland.ch website and retrieves a json
+    while managing server and connection errors.
+    """
+    try:
+        r = requests.get(url, cookies=cookies)
 
+        # if request is successful save json object
+        if r.status_code == requests.codes.ok:
+            json = r.json()
+            response = {'error': False, 'message': 'OK. '}
+
+            return json, response
+
+        # server error: display the status code
+        else:
+            message = ("Error %d: could not retrieve information from %s. "
+                       % (r.status_code, url))
+            response = {'error': True, 'message': message}
+
+            return False, response
+
+    # connection error and inform the user
+    except requests.exceptions.ConnectionError:
+        message = "Connection Error: could not connect to %s. " % url
+        response = {'error': True, 'message': message}
+
+        return False, response
+
+
+class SwitzerlandMobilityRouteManager(RouteManager):
     """
     Custom manager used to retrieve data from Switzerland Mobility
     """
@@ -27,36 +56,6 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         """
         return super(SwitzerlandMobilityRouteManager, self). \
             get_queryset().filter(data_source='switzerland_mobility')
-
-    def request_json(self, url, cookies=None):
-        """
-        Makes get call the map.wanderland.ch website and retrieves a json
-        while managing server and connection errors.
-        """
-        try:
-            r = requests.get(url, cookies=cookies)
-
-            # if request is successful save json object
-            if r.status_code == requests.codes.ok:
-                json = r.json()
-                response = {'error': False, 'message': 'OK. '}
-
-                return json, response
-
-            # server error: display the status code
-            else:
-                message = ("Error %d: could not retrieve information from %s. "
-                           % (r.status_code, url))
-                response = {'error': True, 'message': message}
-
-                return False, response
-
-        # connection error and inform the user
-        except requests.exceptions.ConnectionError:
-            message = "Connection Error: could not connect to %s. " % url
-            response = {'error': True, 'message': message}
-
-            return False, response
 
     def get_remote_routes(self, session, user):
         """
@@ -74,7 +73,10 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
-                formatted_routes, user)
+                user=user,
+                routes=formatted_routes,
+                data_source='switzerland_mobility',
+            )
 
             return new_routes, old_routes, response
 
@@ -92,7 +94,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        raw_routes, response = self.request_json(routes_list_url, cookies)
+        raw_routes, response = request_json(routes_list_url, cookies)
 
         return raw_routes, response
 
@@ -106,38 +108,19 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         # Iterate through json object
         for route in raw_routes:
-            formatted_route = {
-                'id': route[0],
-                'name': route[1],
-                'description': route[2],
-            }
+            formatted_route = SwitzerlandMobilityRoute(
+                source_id=route[0],
+                name=route[1],
+                description=route[2],
+            )
 
             # If description is None convert it to empty
-            if formatted_route['description'] is None:
-                formatted_route['description'] = ''
+            if formatted_route.description is None:
+                formatted_route.description = ''
 
             formatted_routes.append(formatted_route)
 
         return formatted_routes
-
-    def check_for_existing_routes(self, formatted_routes, user):
-        """
-        Split remote routes into old and new routes.
-        Old routes have already been imported by the user.
-        New routes have not been imported yet.
-        """
-        new_routes = []
-        old_routes = []
-
-        for route in formatted_routes:
-            route_id = route['id']
-            user_routes = self.filter(user=user)
-            if user_routes.filter(source_id=route_id).exists():
-                old_routes.append(route)
-            else:
-                new_routes.append(route)
-
-        return new_routes, old_routes
 
     def add_route_remote_meta(self, route):
         """
@@ -154,7 +137,7 @@ class SwitzerlandMobilityRouteManager(models.Manager):
         meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route_id
 
         # request metadata
-        route_meta_json, route_response = self.request_json(meta_url)
+        route_meta_json, route_response = request_json(meta_url)
 
         if not route_response['error']:
             # save as distance objetcs for easy conversion, e.g. length.mi
@@ -182,71 +165,6 @@ class SwitzerlandMobilityRouteManager(models.Manager):
 
         return route, {'error': error, 'message': message}
 
-    def get_remote_route(self, source_id):
-        """
-        Workflow method to retrieve route details from Switzerland Mobility.
-        Return an Instance of the SwitzerlandMobilityRoute model
-        and the response status.
-        """
-
-        # retrieve the json details from the remote server
-        raw_route_json, response = self.get_raw_route_details(source_id)
-
-        # if response is a success, format the route info
-        if not response['error']:
-            formatted_route = self.format_raw_route_details(raw_route_json)
-
-        else:
-            formatted_route = False
-
-        return formatted_route, response
-
-    def get_raw_route_details(self, source_id):
-        """
-        Fetches route details from map.wanderland.ch.
-        The retuned json has the following structure:
-
-        """
-        # Create the URL
-        route_id = source_id
-        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-
-        # request from Switzerland Mobility
-        route_raw_json, response = self.request_json(route_url)
-
-        return route_raw_json, response
-
-    def format_raw_route_details(self, raw_route_json):
-        """
-        Converts the json returned by Switzerland mobility
-        into an instance of the SwitzerlandMobilityRoute model.
-        """
-
-        # Route name
-        route_id = raw_route_json['id']
-        name = raw_route_json['properties']['name']
-        length = raw_route_json['properties']['meta']['length']
-        totalup = raw_route_json['properties']['meta']['totalup']
-        totaldown = raw_route_json['properties']['meta']['totaldown']
-        geometry = raw_route_json['geometry']
-        data_list = literal_eval(raw_route_json['properties']['profile'])
-
-        formatted_route = SwitzerlandMobilityRoute(
-            source_id=route_id,
-            name=name,
-            length=length,
-            totalup=totalup,
-            totaldown=totaldown,
-            # load GeoJSON using GEOSGeometry
-            geom=GEOSGeometry(json.dumps(geometry), srid=21781),
-            data=DataFrame(
-                data_list,
-                columns=['lat', 'lng', 'altitude', 'length']
-            )
-        )
-
-        return formatted_route
-
 
 class SwitzerlandMobilityRoute(Route):
 
@@ -260,14 +178,61 @@ class SwitzerlandMobilityRoute(Route):
     # Custom manager
     objects = SwitzerlandMobilityRouteManager()
 
-    def already_imported(self):
+    def get_route_details(self):
         """
-        check if route has already been imported to the database
+        Workflow method to retrieve route details from Switzerland Mobility.
+        Return an Instance of the SwitzerlandMobilityRoute model
+        and the response status.
         """
-        imported_route = SwitzerlandMobilityRoute.objects. \
-            filter(source_id=self.source_id, user=self.user)
 
-        return imported_route.exists()
+        # retrieve the json details from the remote server
+        raw_route_json, response = self.get_raw_route_details(self.source_id)
+
+        # if response is a success, format the route info
+        if not response['error']:
+            self.format_raw_route_details(raw_route_json)
+
+        return response
+
+    def get_raw_route_details(self, source_id):
+        """
+        Fetches route details from map.wanderland.ch.
+        The retuned json has the following structure:
+
+        """
+        # Create the URL
+        route_id = source_id
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+
+        # request from Switzerland Mobility
+        route_raw_json, response = request_json(route_url)
+
+        return route_raw_json, response
+
+    def format_raw_route_details(self, raw_route_json):
+        """
+        Converts the json returned by Switzerland mobility
+        into an instance of the SwitzerlandMobilityRoute model.
+        """
+
+        self.name = raw_route_json['properties']['name']
+        self.length = raw_route_json['properties']['meta']['length']
+        self.totalup = raw_route_json['properties']['meta']['totalup']
+        self.totaldown = raw_route_json['properties']['meta']['totaldown']
+
+        # create geom from GeoJSON
+        self.geom = GEOSGeometry(
+            json.dumps(raw_route_json['geometry']),
+            srid=21781)
+
+        # save profile data to pandas DataFrame
+        self.data = DataFrame(
+            literal_eval(raw_route_json['properties']['profile']),
+            columns=['lat', 'lng', 'altitude', 'length'])
+
+        # compute elevation and schedule data
+        self.calculate_cummulative_elevation_differences()
+        self.calculate_projected_time_schedule()
 
     def save(self, *args, **kwargs):
         """

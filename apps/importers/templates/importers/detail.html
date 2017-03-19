@@ -11,7 +11,7 @@
 {% block content %}
     <h1>Import Route</h1>
     {% if response.error %}
-        {% include "importers/switzerland_mobility/includes/_alert.html" %}
+        {% include "importers/includes/_alert.html" %}
     {% endif %}
 
     {% if route %}
@@ -19,12 +19,12 @@
             <h2>{{ route.name }}</h2>
             <h3 class="mrgv0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
         </div>
-        <form class="box" method="post" action="{% url 'switzerland_mobility_detail' route.source_id %}">
+        <form class="box" method="post" action="{% url source.detail_view route.source_id %}">
             <div class="clearfix mrg">
-                <div class="pull-left">&lsaquo; <a href="{% url "switzerland_mobility_index" %}" title="list of Switzerland Mobility routes">Back</a></div>
+                <div class="pull-left">&lsaquo; <a href="{% url source.index_view %}" title="list of {{ source.name }} routes">Back</a></div>
             </div>
             {% csrf_token %}
-            {% include 'importers/switzerland_mobility/includes/_checkpoints.html' %}
+            {% include 'importers/includes/_checkpoints.html' %}
             <div>{{ route_form.source_id }}</div>
             <div>{{ route_form.name }}</div>
             <div>{{ route_form.totalup }}</div>

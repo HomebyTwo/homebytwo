@@ -5,18 +5,180 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from django.core.urlresolvers import reverse
 from django.utils.six import StringIO
+from django.utils.html import escape
 
 from . import factories
 from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
-from ..forms import SwitzerlandMobilityLogin, SwitzerlandMobilityRouteForm
-from apps.routes.models import Place, RoutePlace
+from ..models.switzerlandmobilityroute import request_json
+from ..forms import SwitzerlandMobilityLogin, ImportersRouteForm
+from apps.routes.models import Place, RoutePlace, Athlete
 from hb2.utils.factories import UserFactory
+
 
 import os
 import httpretty
 import re
 import requests
 import json
+from stravalib import Client as StravaClient
+from pandas import DataFrame
+
+
+def load_data(file='2191833_show.json'):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        data_dir = 'data'
+        json_file = file
+
+        json_path = os.path.join(
+            dir_path,
+            data_dir,
+            json_file,
+        )
+
+        return open(json_path).read()
+
+
+@override_settings(
+    STRAVA_CLIENT_TOKEN='1234567890123456789012345678901234567890'
+)
+class Strava(TestCase):
+    """
+    Test the Strava route importer.
+    """
+
+    def setUp(self):
+        # Add user to the test database and log him in
+        self.user = UserFactory(password='testpassword')
+        self.client.login(username=self.user.username, password='testpassword')
+        Athlete.objects.create(
+            user=self.user,
+            strava_token=settings.STRAVA_CLIENT_TOKEN,
+        )
+    #########
+    # Model #
+    #########
+
+    def test_data_from_streams(self):
+        source_id = 2325453
+        strava_client = StravaClient()
+        strava_client.access_token = self.user.athlete.strava_token
+
+        # intercept url with httpretty
+        url = 'https://www.strava.com/api/v3/routes/%d/streams' % source_id
+        streams_json = load_data('strava_streams.json')
+
+        httpretty.enable()
+        httpretty.register_uri(
+            httpretty.GET, url,
+            content_type="application/json", body=streams_json,
+            status=200
+        )
+
+        streams = strava_client.get_route_streams(source_id)
+
+        strava_route = factories.StravaRouteFactory()
+        data = strava_route._data_from_streams(streams)
+        nb_rows, nb_columns = data.shape
+
+        httpretty.disable()
+
+        self.assertIsInstance(data, DataFrame)
+        self.assertEqual(nb_columns, 4)
+
+    #########
+    # views #
+    #########
+
+    def test_strava_index_success(self):
+        strava_athlete_id = 4679628
+        source_name = 'Strava'
+        route_name = escape("Tout d'Aï")
+        length = '12.9km'
+        totalup = '1,880m+'
+
+        # intercept API calls with httpretty
+        httpretty.enable()
+
+        # athlete API call
+        athlete_url = 'https://www.strava.com/api/v3/athlete'
+        athlete_json = load_data('strava_athlete.json')
+        httpretty.register_uri(
+            httpretty.GET, athlete_url,
+            content_type="application/json", body=athlete_json,
+            status=200
+        )
+
+        # route list API call
+        route_list_url = ('https://www.strava.com/api/v3/athletes/%d/routes'
+                          % strava_athlete_id)
+        route_list_json = load_data('strava_route_list.json')
+        httpretty.register_uri(
+            httpretty.GET, route_list_url,
+            content_type="application/json", body=route_list_json,
+            status=200
+        )
+
+        url = reverse('strava_index')
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        httpretty.disable()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(source_name in response_content)
+        self.assertTrue(route_name in response_content)
+        self.assertTrue(length in response_content)
+        self.assertTrue(totalup in response_content)
+
+    def test_strava_detail_success(self):
+        source_id = 2325453
+
+        httpretty.enable()
+        route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
+                            % source_id)
+        route_detail_json = load_data('strava_route_detail.json')
+
+        httpretty.register_uri(
+            httpretty.GET, route_detail_url,
+            content_type="application/json", body=route_detail_json,
+            status=200
+        )
+
+        url = reverse('strava_detail', args=[source_id])
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+        httpretty.disable()
+
+        route_name = escape("Tout d'Aï")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(route_name, response_content)
+
+    def test_strava_detail_already_imported(self):
+        source_id = 2325453
+        factories.StravaRouteFactory(
+            source_id=source_id,
+            user=self.user,
+        )
+        httpretty.enable()
+        route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
+                            % source_id)
+        route_detail_json = load_data('strava_route_detail.json')
+
+        httpretty.register_uri(
+            httpretty.GET, route_detail_url,
+            content_type="application/json", body=route_detail_json,
+            status=200
+        )
+
+        url = reverse('strava_detail', args=[source_id])
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        httpretty.disable()
+
+        already_imported = 'Already Imported'
+        self.assertIn(already_imported, response_content)
 
 
 @override_settings(
@@ -41,19 +203,6 @@ class SwitzerlandMobility(TestCase):
 
         # raise connection error
         raise requests.ConnectionError('Connection error.')
-
-    def load_data(self, file='2191833_show.json'):
-            dir_path = os.path.dirname(os.path.realpath(__file__))
-            data_dir = 'data'
-            json_file = file
-
-            json_path = os.path.join(
-                dir_path,
-                data_dir,
-                json_file,
-            )
-
-            return open(json_path).read()
 
     def setUp(self):
         # Add user to the test database and log him in
@@ -82,8 +231,7 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -99,7 +247,7 @@ class SwitzerlandMobility(TestCase):
         url = 'https://testurl.ch'
 
         # intercept call with httpretty
-        html_response = self.load_data(file='500.html')
+        html_response = load_data(file='500.html')
 
         httpretty.enable()
 
@@ -109,8 +257,7 @@ class SwitzerlandMobility(TestCase):
             status=500
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -134,8 +281,7 @@ class SwitzerlandMobility(TestCase):
             httpretty.GET, url, body=body,
         )
 
-        json_response, response = SwitzerlandMobilityRoute.objects.\
-            request_json(url, cookies)
+        json_response, response = request_json(url, cookies)
 
         httpretty.disable()
 
@@ -150,7 +296,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = self.load_data('tracks_list.json')
+        json_response = load_data('tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -243,7 +389,7 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response['message'], expected_message)
 
     def test_format_raw_remote_routes_success(self):
-        raw_routes = json.loads(self.load_data(file='tracks_list.json'))
+        raw_routes = json.loads(load_data(file='tracks_list.json'))
 
         formatted_routes = SwitzerlandMobilityRoute.objects.\
             format_raw_remote_routes(raw_routes)
@@ -251,8 +397,8 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(type(formatted_routes) is list)
         self.assertEqual(len(formatted_routes), 37)
         for route in formatted_routes:
-            self.assertTrue(type(route) is dict)
-            self.assertEqual(route['description'], '')
+            self.assertTrue(isinstance(route, SwitzerlandMobilityRoute))
+            self.assertEqual(route.description, '')
 
     def test_format_raw_remote_routes_empty(self):
         raw_routes = []
@@ -273,7 +419,7 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.enable()
 
-        route_json = self.load_data('track_info.json')
+        route_json = load_data('track_info.json')
 
         httpretty.register_uri(
             httpretty.GET, route_meta_url,
@@ -300,15 +446,32 @@ class SwitzerlandMobility(TestCase):
         )
 
         formatted_routes = [
-            {'name': 'Haute Cime', 'id': 2191833, 'description': ''},
-            {'name': 'Grammont', 'id': 2433141, 'description': ''},
-            {'name': 'Rochers de Nayes', 'id': 2692136, 'description': ''},
-            {'name': 'Villeneuve - Leysin', 'id': 3011765, 'description': ''}]
+            SwitzerlandMobilityRoute(
+                name='Haute Cime',
+                source_id=2191833,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Grammont',
+                source_id=2433141,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Rochers de Nayes',
+                source_id=2692136,
+                description=''
+            ),
+            SwitzerlandMobilityRoute(
+                name='Villeneuve - Leysin',
+                source_id=3011765,
+                description=''
+            )]
 
         new_routes, old_routes = SwitzerlandMobilityRoute.objects.\
             check_for_existing_routes(
-                formatted_routes,
-                user,
+                user=user,
+                routes=formatted_routes,
+                data_source='switzerland_mobility'
             )
 
         self.assertEqual(len(new_routes), 3)
@@ -327,7 +490,7 @@ class SwitzerlandMobility(TestCase):
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = self.load_data('tracks_list.json')
+        json_response = load_data('tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -341,7 +504,7 @@ class SwitzerlandMobility(TestCase):
         # Turn the route meta URL into a regular expression
         route_meta_url = re.compile(route_meta_url.replace('%d', '(\w+)'))
 
-        route_json = self.load_data('track_info.json')
+        route_json = load_data('track_info.json')
 
         httpretty.register_uri(
             httpretty.GET, route_meta_url,
@@ -359,12 +522,13 @@ class SwitzerlandMobility(TestCase):
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
+        route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        route_details_json = self.load_data(file='2191833_show.json')
+        route_details_json = load_data(file='2191833_show.json')
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -372,8 +536,7 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        route_raw_json, response = SwitzerlandMobilityRoute.objects.\
-            get_raw_route_details(route_id)
+        route_raw_json, response = route.get_raw_route_details(route_id)
 
         httpretty.disable()
 
@@ -381,13 +544,14 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response['error'], False)
 
     def test_get_raw_route_details_error(self):
-        route_id = 9999999
+        route_id = 999999999
+        route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
 
-        html_response = self.load_data(file='404.html')
+        html_response = load_data(file='404.html')
 
         httpretty.register_uri(
             httpretty.GET, route_url,
@@ -395,8 +559,7 @@ class SwitzerlandMobility(TestCase):
             status=404
         )
 
-        route_raw_json, response = SwitzerlandMobilityRoute.objects.\
-            get_raw_route_details(route_id)
+        route_raw_json, response = route.get_raw_route_details(route_id)
 
         httpretty.disable()
 
@@ -421,7 +584,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.load_data(file='2191833_show.json')
+        json_response = load_data(file='2191833_show.json')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -464,7 +627,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        json_response = self.load_data(file='2733343_show.json')
+        json_response = load_data(file='2733343_show.json')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -484,7 +647,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
-        html_response = self.load_data(file='500.html')
+        html_response = load_data(file='500.html')
 
         httpretty.register_uri(
             httpretty.GET, details_json_url,
@@ -686,7 +849,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call to map.wanderland.ch
         httpretty.enable()
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = self.load_data(file='tracks_list.json')
+        json_response = load_data(file='tracks_list.json')
 
         httpretty.register_uri(
             httpretty.GET, routes_list_url,
@@ -838,7 +1001,7 @@ class SwitzerlandMobility(TestCase):
             'start_place': route.start_place.id,
             'end_place': route.end_place.id
         })
-        form = SwitzerlandMobilityRouteForm(data=route_data)
+        form = ImportersRouteForm(data=route_data)
         self.assertTrue(form.is_valid())
 
     def test_switzerland_mobility_invalid_model_form(self):
@@ -850,7 +1013,7 @@ class SwitzerlandMobility(TestCase):
             'end_place': route.end_place.id
         })
         del route_data['geom']
-        form = SwitzerlandMobilityRouteForm(data=route_data)
+        form = ImportersRouteForm(data=route_data)
         self.assertFalse(form.is_valid())
 
 

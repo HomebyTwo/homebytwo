@@ -20,8 +20,8 @@
                     {{ place.name }},
                     {{ place.altitude_on_route.m|floatformat:0|intcomma }} m -
                     {{ place.get_place_type_display }}.
-                    {{ place.total_up.m|floatformat:0|intcomma }} m+,
-                    {{ place.total_down.m|floatformat:0|intcomma }} m-.
+                    {{ place.totalup.m|floatformat:0|intcomma }} m+,
+                    {{ place.totaldown.m|floatformat:0|intcomma }} m-.
                 </li>
             {% endfor %}
         </ul>
