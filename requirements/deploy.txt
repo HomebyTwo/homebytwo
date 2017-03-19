@@ -4,9 +4,20 @@
 #
 #    pip-compile --output-file requirements/deploy.txt requirements/deploy.in
 #
-dj-database-url==0.4.1
-ecdsa==0.13               # via paramiko
-fabric==1.11.1
-gitric==0.3
-paramiko==1.17.1          # via fabric
-pycrypto==2.6.1           # via paramiko
+appdirs==1.4.3            # via setuptools
+asn1crypto==0.22.0        # via cryptography
+cffi==1.9.1               # via cryptography
+cryptography==1.8.1       # via paramiko
+dj-database-url==0.4.2
+Fabric==1.13.1
+gitric==0.4
+idna==2.5                 # via cryptography
+packaging==16.8           # via cryptography, setuptools
+paramiko==2.1.2           # via fabric
+pyasn1==0.2.3             # via paramiko
+pycparser==2.17           # via cffi
+pyparsing==2.2.0          # via packaging
+six==1.10.0               # via cryptography, packaging, setuptools
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools                # via cryptography
