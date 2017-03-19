@@ -19,7 +19,7 @@ from gitric import api as gitric
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
     'prod': {
-        'root': '/var/www/homebytwo/prod/',
+        'root': '/home/homebytwo/',
         'hosts': ['homebytwo@homebytwo.ch'],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
@@ -62,7 +62,7 @@ def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return os.path.join(env.root, 'venv')
+    return os.path.join(env.root, 'Env', env.project_name)
 
 
 def run_in_virtualenv(cmd, args):
@@ -162,7 +162,11 @@ def bootstrap():
     execute(git_push, commit='master')
 
     required_settings = set(['DATABASE_URL', 'MEDIA_ROOT', 'STATIC_ROOT',
-                            'MEDIA_URL', 'STATIC_URL', 'ALLOWED_HOSTS'])
+                             'MEDIA_URL', 'STATIC_URL', 'ALLOWED_HOSTS',
+                             'MAILCHIMP_API_KEY', 'MAILCHIMP_LIST_ID',
+                             'SWITZERLAND_MOBILITY_LIST_URL',
+                             'SWITZERLAND_MOBILITY_LOGIN_URL',
+                             'SWITZERLAND_MOBILITY_ROUTE_URL'])
 
     if hasattr(env, 'settings'):
         for setting, value in env.settings.items():
