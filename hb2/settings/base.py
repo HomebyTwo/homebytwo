@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'djgeojson',
     'leaflet',
+    'easy_thumbnails',
     'apps.routes',
     'apps.importers',
     'apps.landingpage',
@@ -137,6 +138,22 @@ STATICFILES_DIRS = (
 # Absolute path to the directory where media files should be collected to.
 MEDIA_ROOT = get_env_variable('MEDIA_ROOT',  os.path.join(BASE_DIR, 'media'))
 MEDIA_URL = get_env_variable('MEDIA_URL',  '/media/')
+
+THUMBNAIL_ALIASES = {
+    '': {
+        'thumb': {
+            'size': (90, 90),
+            'crop': True,
+            'sharpen': True,
+        },
+        'poster': {
+            'size': (1434, 600),
+            'crop': True,
+            'details': True,
+            'quality': 95,
+        },
+    },
+}
 
 #############
 # Mailchimp #

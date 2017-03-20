@@ -14,6 +14,7 @@ from math import floor, ceil
 from pandas import read_hdf, read_json, DataFrame
 import uuid
 import os
+from easy_thumbnails.fields import ThumbnailerImageField
 
 
 class DataFrameField(models.CharField):
@@ -303,8 +304,8 @@ class Track(models.Model):
 
     name = models.CharField(max_length=100)
     description = models.TextField('Textual description', default='')
-    image = models.ImageField(upload_to=get_image_path,
-                              blank=True, null=True)
+    image = ThumbnailerImageField(upload_to=get_image_path,
+                                  blank=True, null=True)
 
     # link to user
     user = models.ForeignKey(User, on_delete=models.CASCADE)

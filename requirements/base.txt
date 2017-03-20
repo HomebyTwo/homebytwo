@@ -10,6 +10,7 @@ dj-database-url==0.4.2
 django-geojson==2.10.0
 django-leaflet==0.21.0
 django==1.10.6
+easy-thumbnails==2.3
 googlemaps==2.4.6
 numexpr==2.6.2            # via tables
 numpy==1.12.1             # via numexpr, pandas, tables

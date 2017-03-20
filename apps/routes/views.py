@@ -4,8 +4,8 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView
 
-
 from .models import Route, RoutePlace
+from .forms import RouteImageForm
 
 
 def index(request):
@@ -34,16 +34,12 @@ def detail(request, pk):
 
 @method_decorator(login_required, name='dispatch')
 class ImageFormView(UpdateView):
+    """
+    Playing around with class based views.
+    """
     model = Route
-    fields = ['name', 'image']
-
+    form_class = RouteImageForm
     template_name_suffix = '_image_form'
-
-    def form_valid(self, form):
-        # This method is called when valid form data has been POSTed.
-        # It should return an HttpResponse.
-        import pdb; pdb.set_trace()
-        return super(ImageFormView, self).form_valid(form)
 
 
 @login_required
