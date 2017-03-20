@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.urlresolvers import reverse
 from django.contrib.gis.db import models
 from .track import Track
 
@@ -46,6 +47,9 @@ class Route(Track):
 
     class Meta:
         unique_together = ('user', 'data_source', 'source_id')
+
+    def get_absolute_url(self):
+        return reverse('routes:detail', kwargs={'pk': self.pk})
 
     def already_imported(self):
         """

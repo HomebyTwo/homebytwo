@@ -283,6 +283,19 @@ class DataFrameFormField(forms.CharField):
         return True
 
 
+def get_image_path(instance, filename):
+    """
+    callable to define the image upload path according
+    to the type of object: segment, route, etc.. and the id of the object.
+    """
+    return os.path.join(
+        'images',
+        instance.__class__.__name__,
+        str(instance.id),
+        filename
+    )
+
+
 class Track(models.Model):
 
     class Meta:
@@ -290,6 +303,8 @@ class Track(models.Model):
 
     name = models.CharField(max_length=100)
     description = models.TextField('Textual description', default='')
+    image = models.ImageField(upload_to=get_image_path,
+                              blank=True, null=True)
 
     # link to user
     user = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -136,6 +136,7 @@ STATICFILES_DIRS = (
 
 # Absolute path to the directory where media files should be collected to.
 MEDIA_ROOT = get_env_variable('MEDIA_ROOT',  os.path.join(BASE_DIR, 'media'))
+MEDIA_URL = get_env_variable('MEDIA_URL',  '/media/')
 
 #############
 # Mailchimp #

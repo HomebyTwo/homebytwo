@@ -1,0 +1,17 @@
+<div class="grid">
+    <div class="grid__item">
+        {% if route.image %}
+            <div class="box">
+                <p>
+                    <img class="img-block"
+                    src="{{ route.image.url }}"
+                    alt="{{ route.name }} image" />
+                </p>
+            </div>
+        {% else %}
+            <div class="box box--default">
+                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--block">Add route image</a></p>
+            </div>
+        {% endif %}
+    </div>
+</div>

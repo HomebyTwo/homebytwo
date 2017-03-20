@@ -38,6 +38,12 @@ class RouteForm(forms.ModelForm):
         ]
 
 
+class RouteImageForm(forms.ModelForm):
+    class Meta:
+        model = Route
+        fields = ['image']
+
+
 class RoutePlaceForm(forms.ModelForm):
     class Meta:
         model = RoutePlace

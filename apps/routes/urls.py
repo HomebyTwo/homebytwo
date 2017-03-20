@@ -14,9 +14,13 @@ urlpatterns = [
 
     # route detail by id
     # example: /routes/5/
-    url(r'^(?P<route_id>[0-9]+)/$', views.detail, name='detail'),
+    url(r'^(?P<pk>[0-9]+)/$', views.detail, name='detail'),
 
     # route edit
     # ex: /routes/5/edit/
-    url(r'^(?P<route_id>[0-9]+)/edit/$', views.edit, name='edit'),
+    url(r'^(?P<pk>[0-9]+)/edit/$', views.edit, name='edit'),
+
+    # route image
+    # ex: /routes/5/image/
+    url(r'^(?P<pk>[0-9]+)/image/$', views.ImageFormView.as_view(), name='image'),
 ]

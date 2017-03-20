@@ -15,7 +15,7 @@
         <div class="pull-left" >&lsaquo; <a href="{% url 'routes:index' %}">All Routes</a></div>
         <a class="pull-right" href="{% url 'routes:edit' route.id %}">Edit</a>
     </div>
-
+    {% include 'routes/includes/_image.html' %}
     {% include 'routes/includes/_course.html' %}
 
     {% if route.geom %}
