@@ -8,15 +8,15 @@ from .models import Route, RoutePlace
 from .forms import RouteImageForm
 
 
-def index(request):
+def routes(request):
     routes = Route.objects.order_by('name')
     context = {
         'routes': routes,
     }
-    return render(request, 'routes/index.html', context)
+    return render(request, 'routes/routes.html', context)
 
 
-def detail(request, pk):
+def route(request, pk):
     route = Route.objects.get(id=pk)
     places = RoutePlace.objects.filter(route=pk)
     for place in places:
@@ -29,7 +29,7 @@ def detail(request, pk):
         'route': route,
         'places': places
     }
-    return render(request, 'routes/detail.html', context)
+    return render(request, 'routes/route.html', context)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -46,8 +46,3 @@ class ImageFormView(UpdateView):
 def edit(request, route_id):
     response = "You are looking at the edit page of route %s"
     return HttpResponse(response % route_id)
-
-
-@login_required
-def importers(request):
-    return render(request, 'routes/importers.html')

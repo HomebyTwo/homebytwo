@@ -6,15 +6,11 @@ app_name = 'routes'
 
 urlpatterns = [
     # index
-    url(r'^$', views.index, name='index'),
-
-    # Importers index
-    # importers: /import/
-    url(r'^import/$', views.importers, name='importers'),
+    url(r'^$', views.routes, name='routes'),
 
     # route detail by id
     # example: /routes/5/
-    url(r'^(?P<pk>[0-9]+)/$', views.detail, name='detail'),
+    url(r'^(?P<pk>[0-9]+)/$', views.route, name='route'),
 
     # route edit
     # ex: /routes/5/edit/

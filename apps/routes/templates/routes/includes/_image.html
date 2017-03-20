@@ -6,17 +6,14 @@
                     <img class="img-block"
                     src="{{ route.image.poster.url }}"
                     alt="{{ route.name }} image" />
+                    {% if route.user == request.user %}
+                        <a href="#" class="btn btn--default btn--small">Delete image</a>
+                    {% endif %}
                 </p>
-
-                {% if route.is_owner %}
-                <p class="pull-right">
-                    <a href="#" class="btn btn--default">Delete image</a>
-                </p>
-                {% endif %}
             </div>
-        {% elif route.is_owner %}
-            <div class="box box--default text-center">
-                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary">Add route image</a></p>
+        {% elif route.user == request.user %}
+            <div class="box box--default">
+                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--small">Add route image</a></p>
             </div>
         {% endif %}
     </div>

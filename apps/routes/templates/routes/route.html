@@ -12,7 +12,7 @@
     <h1 class="mrg text-center">{{ route.name}}</h1>
     <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
     <div class="clearfix mrg">
-        <div class="pull-left" >&lsaquo; <a href="{% url 'routes:index' %}">All Routes</a></div>
+        <div class="pull-left" >&lsaquo; <a href="{% url 'routes:routes' %}">All Routes</a></div>
         <a class="pull-right" href="{% url 'routes:edit' route.id %}">Edit</a>
     </div>
     {% include 'routes/includes/_image.html' %}

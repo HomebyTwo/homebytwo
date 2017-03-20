@@ -49,7 +49,7 @@ class Route(Track):
         unique_together = ('user', 'data_source', 'source_id')
 
     def get_absolute_url(self):
-        return reverse('routes:detail', kwargs={'pk': self.pk})
+        return reverse('routes:route', kwargs={'pk': self.pk})
 
     def already_imported(self):
         """

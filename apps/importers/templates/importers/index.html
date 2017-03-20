@@ -1,29 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Home by Two - Import {{ source.name }} Routes{% endblock %}
-
 {% block content %}
-    <h1>Import Routes from {{ source.name }}</h1>
-    {% if response.error %}
-        {% include "importers/includes/_alert.html" %}
-    {% endif %}
-    {% if new_routes %}
-        <h2 class="mrg">New Routes</h2>
-        <ul class="mrgh list-stacked list-stacked--divided">
-        {% for route in new_routes %}
-            {% include "importers/includes/_route_card.html" with new=True %}
-        {% endfor %}
-        </ul>
-    {% endif %}
-    {% if old_routes %}
-        <h2 class="mrg">Already Imported Routes</h2>
-        <ul class="mrgh list-stacked list-stacked--divided">
-        {% for route in old_routes %}
-            {% include "importers/includes/_route_card.html" %}
-        {% endfor %}
-    {% endif %}
-    {% if not new_routes and not old_routes %}
-        <p class="mrg">No route available.</p>
-    {% endif %}
+<h1 class="text-center">Import routes from your favorite applications</h1>
+<ul class="list">
+    <li class="mrg box box--default">
+        <a class="btn btn--primary" href="{% url 'strava_routes' %}" title="Import from Strava">Import from Strava</a>
+    </li>
+    <li class="mrg box box--default">
+        <a class="btn btn--primary" href="{% url 'switzerland_mobility_routes' %}" title="Import from Switzerland Mobility">Import from Switzerland Mobility</a>
+    </li>
+</ul>
 {% endblock content %}

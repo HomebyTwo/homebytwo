@@ -577,9 +577,9 @@ class SwitzerlandMobility(TestCase):
     # Views #
     #########
 
-    def test_switzerland_mobility_detail_success(self):
+    def test_switzerland_mobility_route_success(self):
         route_id = 2823968
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
@@ -614,14 +614,14 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(places_formset in str(response.content))
         self.assertTrue(map_data in str(response.content))
 
-    def test_switzerland_mobility_detail_already_imported(self):
+    def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         factories.SwitzerlandMobilityRouteFactory(
             source_id=route_id,
             user=self.user,
         )
 
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         content = 'Already Imported'
 
         # intercept call to Switzerland Mobility with httpretty
@@ -639,9 +639,9 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
-    def test_switzerland_mobility_detail_server_error(self):
+    def test_switzerland_mobility_route_server_error(self):
         route_id = 999999999999
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         content = 'Error 500'
 
         # intercept call to Switzerland Mobility with httpretty
@@ -662,7 +662,7 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
-    def test_switzerland_mobility_detail_post_success_no_places(self):
+    def test_switzerland_mobility_route_post_success_no_places(self):
         route_id = 2191833
         route = factories.SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
@@ -690,16 +690,16 @@ class SwitzerlandMobility(TestCase):
             'places-MAX_NUM_FORMS': 1000,
         })
 
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
 
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        redirect_url = reverse('routes:detail', args=[route.id])
+        redirect_url = reverse('routes:route', args=[route.id])
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_detail_post_success_place(self):
+    def test_switzerland_mobility_route_post_success_place(self):
         route_id = 2191833
         route = factories.SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
@@ -736,7 +736,7 @@ class SwitzerlandMobility(TestCase):
             'places-1-include': True,
         })
 
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
 
         # a new route has been created
@@ -744,11 +744,11 @@ class SwitzerlandMobility(TestCase):
         route_places = RoutePlace.objects.filter(route=route.id)
         self.assertEqual(route_places.count(), 2)
 
-        redirect_url = reverse('routes:detail', args=[route.id])
+        redirect_url = reverse('routes:route', args=[route.id])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_detail_post_no_validation_places(self):
+    def test_switzerland_mobility_route_post_no_validation_places(self):
         route_id = 2191833
         route = factories.SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
@@ -783,7 +783,7 @@ class SwitzerlandMobility(TestCase):
             'places-1-id': '',
         })
 
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
         alert_box = '<div class="box alert alert--error">'
         required_field = 'This field is required.'
@@ -794,7 +794,7 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(required_field in str(response.content))
         self.assertTrue(not_a_number in str(response.content))
 
-    def test_switzerland_mobility_detail_post_integrity_error(self):
+    def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
         route = factories.SwitzerlandMobilityRouteFactory(
             source_id=route_id,
@@ -829,7 +829,7 @@ class SwitzerlandMobility(TestCase):
             'places-1-id': '',
         })
 
-        url = reverse('switzerland_mobility_detail', args=[route_id])
+        url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
 
         alert_box = '<div class="box alert alert--error">'

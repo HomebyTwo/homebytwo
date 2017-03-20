@@ -318,9 +318,9 @@ class RouteTestCase(TestCase):
     # Views #
     #########
 
-    def test_route_detail_view_success(self):
+    def test_route_route_view_success(self):
         route = factories.RouteFactory()
-        url = reverse('routes:detail', args=[route.id])
+        url = reverse('routes:route', args=[route.id])
         route_name = route.name
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name

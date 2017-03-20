@@ -11,7 +11,7 @@ urlpatterns = [
     url(r'^email-signup/$', landingpage_views.email_signup, name="email-signup"),
     url(r'^register/$', landingpage_views.register, name="register"),
     url(r'^routes/', include('apps.routes.urls')),
-    url(r'^importers/', include('apps.importers.urls')),
+    url(r'^import/', include('apps.importers.urls')),
     url(r'^admin/', admin.site.urls),
     url('^', include('django.contrib.auth.urls')),
 ]
