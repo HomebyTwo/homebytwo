@@ -24,6 +24,17 @@
         {% endfor %}
     {% endif %}
     {% if not new_routes and not old_routes %}
-        <p class="mrg">No route available.</p>
+        <div class="box">
+            <p class="mrg">No route found.</p>
+            <p>You should start by importing some:</p>
+            <ul class="list">
+                <li class="mrg box box--default">
+                    <a class="btn btn--primary" href="{% url 'strava_routes' %}" title="Import from Strava">Import from Strava</a>
+                </li>
+                <li class="mrg box box--default">
+                    <a class="btn btn--primary" href="{% url 'switzerland_mobility_routes' %}" title="Import from Switzerland Mobility">Import from Switzerland Mobility</a>
+                </li>
+            </ul>
+        </div>
     {% endif %}
 {% endblock content %}

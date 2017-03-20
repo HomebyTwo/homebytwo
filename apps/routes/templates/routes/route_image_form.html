@@ -1,10 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Home by Two - {{ route.name }}{% endblock %}
+{% block title %}Home by Two - Edit image for {{ route.name }}{% endblock %}
 
 {% block content %}
-<form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Update" />
-</form>
+<div class="box">
+    <h3>Edit image for {{ route.name }}</h3>
+    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+        <div>{{ form.image }}</div>
+        <div class="mrgt text-center">
+            <a href="{% url 'routes:route' route.pk %}" class="btn btn--default">Cancel</a>
+            <input class="btn btn--primary" type="submit" value="Update image" />
+        </div>
+    </form>
+</div>
 {% endblock content %}
+
+

@@ -12,6 +12,17 @@
         {% endfor %}
         </ul>
     {% else %}
-        <p>No route available.</p>
+        <div class="box">
+            <h3>No route found at all.</h3>
+            <p>Maybe now is a good time to import one?</p>
+            <ul class="list">
+                <li class="box box--default text-center mrgv">
+                    <a class="btn btn--primary" href="{% url 'strava_routes' %}" title="Import from Strava">Import from Strava</a>
+                </li>
+                <li class="box box--default text-center mrgv">
+                    <a class="btn btn--primary" href="{% url 'switzerland_mobility_routes' %}" title="Import from Switzerland Mobility Plus">Import from Switzerland Mobility Plus</a>
+                </li>
+            </ul>
+        </div>
     {% endif %}
 {% endblock content %}

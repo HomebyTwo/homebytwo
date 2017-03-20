@@ -2,8 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
-from django.views.generic.edit import UpdateView
+from django.views.generic.edit import UpdateView, DeleteView
 
 from .models import Route, RoutePlace
 from .forms import RouteImageForm
@@ -51,7 +52,16 @@ class ImageFormView(UpdateView):
     template_name_suffix = '_image_form'
 
 
-@login_required
-def edit(request, route_id):
-    response = "You are looking at the edit page of route %s"
-    return HttpResponse(response % route_id)
+@method_decorator(login_required, name='dispatch')
+class RouteDelete(DeleteView):
+    """
+    Playing around with class based views.
+    """
+    model = Route
+    success_url = reverse_lazy('routes:routes')
+
+
+@method_decorator(login_required, name='dispatch')
+class RouteEdit(UpdateView):
+    model = Route
+    fields = ['name', 'description', 'image']

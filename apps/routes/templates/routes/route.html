@@ -9,11 +9,13 @@
 {% endblock extralinks %}
 
 {% block content %}
-    <h1 class="mrg text-center">{{ route.name}}</h1>
+    <h1 class="mrgt mrgb0 text-center">{{ route.name}}</h1>
     <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
     <div class="clearfix mrg">
-        <div class="pull-left" >&lsaquo; <a href="{% url 'routes:routes' %}">All Routes</a></div>
-        <a class="pull-right" href="{% url 'routes:edit' route.id %}">Edit</a>
+        <div class="pull-left" >&lsaquo; <a href="{% url 'routes:routes' %}">Routes list</a></div>
+        {% if request.user == route.user %}
+            <a class="pull-right" href="{% url 'routes:edit' route.id %}">Edit</a>
+        {% endif %}
     </div>
     {% include 'routes/includes/_image.html' %}
     {% include 'routes/includes/_course.html' %}
