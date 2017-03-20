@@ -340,6 +340,12 @@ class Track(models.Model):
     # track data as a pandas DataFrame
     data = DataFrameField(null=True, max_length=100, save_to='data')
 
+    def is_owner(self):
+        """
+        determines wether a route is owned by the currently logged in user
+        """
+        return True
+
     def calculate_cummulative_elevation_differences(self):
         """
         Calculates two colums from the altitude data:

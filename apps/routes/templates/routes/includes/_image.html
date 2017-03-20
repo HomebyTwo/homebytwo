@@ -1,16 +1,22 @@
 <div class="grid">
     <div class="grid__item">
         {% if route.image %}
-            <div class="box">
+            <div class="box box--tight">
                 <p>
                     <img class="img-block"
-                    src="{{ route.image.url }}"
+                    src="{{ route.image.poster.url }}"
                     alt="{{ route.name }} image" />
                 </p>
+
+                {% if route.is_owner %}
+                <p class="pull-right">
+                    <a href="#" class="btn btn--default">Delete image</a>
+                </p>
+                {% endif %}
             </div>
-        {% else %}
-            <div class="box box--default">
-                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--block">Add route image</a></p>
+        {% elif route.is_owner %}
+            <div class="box box--default text-center">
+                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary">Add route image</a></p>
             </div>
         {% endif %}
     </div>
