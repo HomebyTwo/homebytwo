@@ -449,26 +449,26 @@ def _get_checkpoints(route):
 
     for place in places:
 
-        altitude_on_route = route.get_distance_data_from_line_location(
+        altitude_on_route = route.get_distance_data(
             place.line_location, 'altitude')
         place.altitude_on_route = altitude_on_route
 
-        length_from_start = route.get_distance_data_from_line_location(
+        length_from_start = route.get_distance_data(
             place.line_location, 'length')
         place.distance_from_start = length_from_start
 
         # get cummulative altitude gain
-        totalup = route.get_distance_data_from_line_location(
+        totalup = route.get_distance_data(
             place.line_location, 'totalup')
         place.totalup = totalup
 
         # get cummulative altitude loss
-        totaldown = route.get_distance_data_from_line_location(
+        totaldown = route.get_distance_data(
             place.line_location, 'totaldown')
         place.totaldown = totaldown
 
         # get projected time schedula at place
-        schedule = route.get_time_data_from_line_location(
+        schedule = route.get_time_data(
             place.line_location, 'schedule')
         place.schedule = schedule
 
@@ -493,7 +493,7 @@ def _get_route_places_formset(route, checkpoints):
             RoutePlace(
                 place=place,
                 line_location=place.line_location,
-                altitude_on_route=route.get_distance_data_from_line_location(
+                altitude_on_route=route.get_distance_data(
                     place.line_location, 'altitude').m,
             )
             for place in checkpoints

@@ -279,7 +279,7 @@ class RouteTestCase(TestCase):
         end_altitude = route.get_end_altitude()
         self.assertEqual(end_altitude, None)
 
-    def test_get_distance_data_from_line_location(self):
+    def test_get_distance_data(self):
         data = DataFrame(
             [[0, 0, 0, 0], [1000, 1000, 1000, 1414.2135624]],
             columns=['lat', 'lng', 'altitude', 'length']
@@ -287,7 +287,7 @@ class RouteTestCase(TestCase):
         route = factories.RouteFactory.build(data=data)
 
         # make the call
-        point_altitude = route.get_distance_data_from_line_location(
+        point_altitude = route.get_distance_data(
             0.5,
             'altitude'
         )
