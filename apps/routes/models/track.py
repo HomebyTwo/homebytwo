@@ -10,10 +10,12 @@ from django.utils.translation import gettext_lazy as _
 from . import Place
 
 from datetime import timedelta
-from math import floor, ceil
 from pandas import read_hdf, read_json, DataFrame
+from numpy import interp
+
 import uuid
 import os
+from easy_thumbnails.fields import ThumbnailerImageField
 
 
 class DataFrameField(models.CharField):
@@ -283,6 +285,19 @@ class DataFrameFormField(forms.CharField):
         return True
 
 
+def get_image_path(instance, filename):
+    """
+    callable to define the image upload path according
+    to the type of object: segment, route, etc.. and the id of the object.
+    """
+    return os.path.join(
+        'images',
+        instance.__class__.__name__,
+        str(instance.id),
+        filename
+    )
+
+
 class Track(models.Model):
 
     class Meta:
@@ -290,16 +305,27 @@ class Track(models.Model):
 
     name = models.CharField(max_length=100)
     description = models.TextField('Textual description', default='')
+    image = ThumbnailerImageField(upload_to=get_image_path,
+                                  blank=True, null=True)
 
     # link to user
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # elevation gain in m
-    totalup = models.FloatField('Total elevation gain in m', default=0)
+    totalup = models.FloatField(
+        'Total elevation gain in m',
+        default=0
+    )
     # elevation loss in m
-    totaldown = models.FloatField('Total elevation loss in m', default=0)
+    totaldown = models.FloatField(
+        'Total elevation loss in m',
+        default=0
+    )
     # route distance in m
-    length = models.FloatField('Total length of the track in m', default=0)
+    length = models.FloatField(
+        'Total length of the track in m',
+        default=0
+    )
 
     # creation and update date
     updated = models.DateTimeField('Time of last update', auto_now=True)
@@ -323,6 +349,12 @@ class Track(models.Model):
 
     # track data as a pandas DataFrame
     data = DataFrameField(null=True, max_length=100, save_to='data')
+
+    def is_owner(self):
+        """
+        determines wether a route is owned by the currently logged in user
+        """
+        return True
 
     def calculate_cummulative_elevation_differences(self):
         """
@@ -369,42 +401,29 @@ class Track(models.Model):
         self.data = data
 
     # Returns poster picture for the list view
-    def get_data_from_line_location(self, line_location, data_column):
+    def get_data(self, line_location, data_column):
         """
-        return the index of a row in the DataFrame
-        based on the line_location.
+        interpolate the value of a given column in the DataFrame
+        based on the line_location and the distance column.
         """
         # return none if data field is empty
         if self.data is None:
             return None
 
-        # get the number of rows in the data
-        nb_rows, nb_columns = self.data.shape
+        # calculate the distance value to interpolate with
+        # based on line location and the total length of the track.
+        interp_x = line_location * self.length
 
-        # interpolate the position in the data series
-        float_index = line_location * (nb_rows - 1)
+        # interpolate the value, see:
+        # https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html
+        return interp(interp_x, self.data['length'], self.data[data_column])
 
-        # find the previous value in the series
-        previous_index = floor(float_index)
-        previous_value = self.data.iloc[previous_index][data_column]
-
-        # find the next index in the series
-        next_index = ceil(float_index)
-        next_value = self.data.iloc[next_index][data_column]
-
-        # calculate the weighting of the previous value
-        weight = float_index - previous_index
-
-        value = (previous_value * weight) + ((1-weight) * next_value)
-
-        return value
-
-    def get_distance_data_from_line_location(self, line_location, data_column):
+    def get_distance_data(self, line_location, data_column):
         """
-        wrap around the get_data_from_line_location method
+        wrap around the get_data method
         to return a Distance object.
         """
-        distance_data = self.get_data_from_line_location(
+        distance_data = self.get_data(
             line_location,
             data_column
         )
@@ -415,12 +434,12 @@ class Track(models.Model):
 
         return
 
-    def get_time_data_from_line_location(self, line_location, data_column):
+    def get_time_data(self, line_location, data_column):
         """
-        wrap around the get_data_from_line_location method
+        wrap around the get_data method
         to return a timedelta object.
         """
-        time_data = self.get_data_from_line_location(
+        time_data = self.get_data(
             line_location,
             data_column
         )
@@ -432,12 +451,12 @@ class Track(models.Model):
         return
 
     def get_start_altitude(self):
-        start_altitude = self.get_distance_data_from_line_location(
+        start_altitude = self.get_distance_data(
             0, 'altitude')
         return start_altitude
 
     def get_end_altitude(self):
-        end_altitude = self.get_distance_data_from_line_location(
+        end_altitude = self.get_distance_data(
             1, 'altitude')
         return end_altitude
 

@@ -14,6 +14,7 @@ django-extensions==1.7.7
 django-geojson==2.10.0
 django-leaflet==0.21.0
 django==1.10.6
+easy-thumbnails==2.3
 first==2.0.1              # via pip-tools
 googlemaps==2.4.6
 numexpr==2.6.2            # via tables

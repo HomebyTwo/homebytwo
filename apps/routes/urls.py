@@ -6,17 +6,21 @@ app_name = 'routes'
 
 urlpatterns = [
     # index
-    url(r'^$', views.index, name='index'),
+    url(r'^$', views.routes, name='routes'),
 
-    # Importers index
-    # importers: /import/
-    url(r'^import/$', views.importers, name='importers'),
-
-    # route detail by id
+    # display route details by id
     # example: /routes/5/
-    url(r'^(?P<route_id>[0-9]+)/$', views.detail, name='detail'),
+    url(r'^(?P<pk>[0-9]+)/$', views.route, name='route'),
 
-    # route edit
+    # edit route
     # ex: /routes/5/edit/
-    url(r'^(?P<route_id>[0-9]+)/edit/$', views.edit, name='edit'),
+    url(r'^(?P<pk>[0-9]+)/edit/$', views.RouteEdit.as_view(), name='edit'),
+
+    # change the route image
+    # ex: /routes/5/image/
+    url(r'^(?P<pk>[0-9]+)/image/$', views.ImageFormView.as_view(), name='image'),
+
+    # route delete
+    # ex: /routes/5/delete/
+    url(r'^(?P<pk>[0-9]+)/delete/$', views.RouteDelete.as_view(), name='delete'),
 ]

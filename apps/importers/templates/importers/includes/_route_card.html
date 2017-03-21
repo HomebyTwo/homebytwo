@@ -2,8 +2,8 @@
 {% load humanize %}
 
 <li>
-    {% if not update %}
-    <a href="{% url source.detail_view route.source_id %}">
+    {% if new %}
+    <a href="{% url source.route_view route.source_id %}">
     {% endif %}
         <div class="media">
             <div class="media__left">
@@ -13,18 +13,18 @@
                      alt="{{ source.img_alt }}"
                 />
             </div>
-            <div class="media__body {% if update %} text-muted {% endif %}">
+            <div class="media__body {% if not new %} text-muted {% endif %}">
                 <h4 class="mrgb0">{{ route.name }}</h4>
                 <p class="mrgv0">
                     {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
                     {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
                     {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
                 </p>
-            {% if not update %}
+            {% if new %}
                 <p class="mrgt0 pull-right">import &rsaquo;</p>
              {% endif %}
         </div>
-    {% if not update %}
+    {% if new %}
     </a>
     {% endif %}
 </li>

@@ -6,7 +6,21 @@ from apps.routes import models
 from hb2.utils.factories import UserFactory
 from django.contrib.gis.geos import GEOSGeometry
 
-import pandas as pd
+from pandas import read_json
+import os
+
+
+def load_data(file):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        data_dir = 'data'
+
+        json_path = os.path.join(
+            dir_path,
+            data_dir,
+            file,
+        )
+
+        return open(json_path).read()
 
 
 class PlaceFactory(factory.django.DjangoModelFactory):
@@ -27,22 +41,10 @@ class PlaceFactory(factory.django.DjangoModelFactory):
 class RouteFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.Route
-        exclude = ('route_geojson', 'route_profile')
+        exclude = ('route_geojson', 'route_data_json')
 
-    route_geojson = (
-        '{"type": "LineString", '
-        '"coordinates": [[612190.0, 129403.0], '
-        '[615424.648017, 129784.662852]]}'
-    )
-
-    route_profile = [
-        [568013.411408, 113191.647718, 448.54, 0],
-        [568013.255765, 113191.426207, 448.54, 0.270724790281],
-        [568007.927619, 113220.802611, 448.5, 30.1264144543],
-        [567991.117585, 113298.81999, 448.66, 109.93423817],
-        [567997.554327, 113303.788421, 448.84, 118.065471914],
-        [567992.670315, 113329.49396, 448.84, 144.230875445]
-    ]
+    route_geojson = load_data('route_geom.json')
+    route_data_json = load_data('route_data.json')
 
     name = factory.fuzzy.FuzzyText()
     source_id = factory.Sequence(lambda n: '%d' % n)
@@ -61,7 +63,4 @@ class RouteFactory(factory.django.DjangoModelFactory):
         PlaceFactory,
         geom='POINT (%s %s)' % geom.coords[-1]
     )
-    data = pd.DataFrame(
-        route_profile,
-        columns=['lat', 'lng', 'altitude', 'length']
-    )
+    data = read_json(route_data_json, orient='records')

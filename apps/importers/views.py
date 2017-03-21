@@ -18,8 +18,8 @@ SWITZERLAND_MOBILITY_SOURCE_INFO = {
     'name': 'Switzerland Mobility Plus',
     'svg': 'images/switzerland_mobility.svg',
     'muted_svg': 'images/switzerland_mobility_muted.svg',
-    'detail_view': 'switzerland_mobility_detail',
-    'index_view': 'switzerland_mobility_index',
+    'route_view': 'switzerland_mobility_route',
+    'routes_view': 'switzerland_mobility_routes',
 }
 
 # Strava info for templates.
@@ -27,9 +27,14 @@ STRAVA_SOURCE_INFO = {
     'name': 'Strava',
     'svg': 'images/strava.svg',
     'muted_svg': 'images/strava_muted.svg',
-    'detail_view': 'strava_detail',
-    'index_view': 'strava_index',
+    'route_view': 'strava_route',
+    'routes_view': 'strava_routes',
 }
+
+
+@login_required
+def index(request):
+    return render(request, 'importers/index.html')
 
 
 @login_required
@@ -75,12 +80,12 @@ def strava_authorized(request):
     _set_strava_token(request.user, access_token)
 
     # redirect to the Strava routes page
-    redirect_url = reverse('strava_index')
+    redirect_url = reverse('strava_routes')
     return HttpResponseRedirect(redirect_url)
 
 
 @login_required
-def strava_index(request):
+def strava_routes(request):
 
     # retrieve the API client from athlete token
     # or redirect to connect
@@ -106,13 +111,13 @@ def strava_index(request):
         'old_routes': old_routes,
     }
 
-    template = 'importers/index.html'
+    template = 'importers/routes.html'
 
     return render(request, template, context)
 
 
 @login_required
-def strava_detail(request, source_id):
+def strava_route(request, source_id):
     """
     Detail view to import a route from Strava.
     """
@@ -148,7 +153,7 @@ def strava_detail(request, source_id):
 
         # Success! redirect to the page of the newly imported route
         if not response['error']:
-            redirect_url = reverse('routes:detail', args=(new_route.id,))
+            redirect_url = reverse('routes:route', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
 
     if request.method == 'GET':
@@ -184,13 +189,13 @@ def strava_detail(request, source_id):
         'source': STRAVA_SOURCE_INFO
     }
 
-    template = 'importers/detail.html'
+    template = 'importers/route.html'
 
     return render(request, template, context)
 
 
 @login_required
-def switzerland_mobility_index(request):
+def switzerland_mobility_routes(request):
     # Check if logged-in to Switzeland Mobility
     try:
         request.session['switzerland_mobility_cookies']
@@ -206,7 +211,7 @@ def switzerland_mobility_index(request):
     new_routes, old_routes, response = manager.get_remote_routes(
         request.session, request.user)
 
-    template = 'importers/index.html'
+    template = 'importers/routes.html'
     context = {
         'source': SWITZERLAND_MOBILITY_SOURCE_INFO,
         'new_routes': new_routes,
@@ -218,7 +223,7 @@ def switzerland_mobility_index(request):
 
 
 @login_required
-def switzerland_mobility_detail(request, source_id):
+def switzerland_mobility_route(request, source_id):
     """
     Main import page for Switzerland Mobility.
     There is a modelform for the route and a modelformset
@@ -263,7 +268,7 @@ def switzerland_mobility_detail(request, source_id):
 
         # Success! redirect to the page of the newly imported route
         if not response['error']:
-            redirect_url = reverse('routes:detail', args=(new_route.id,))
+            redirect_url = reverse('routes:route', args=(new_route.id,))
             return HttpResponseRedirect(redirect_url)
 
     # GET request
@@ -301,7 +306,7 @@ def switzerland_mobility_detail(request, source_id):
         'source': SWITZERLAND_MOBILITY_SOURCE_INFO
     }
 
-    template = 'importers/detail.html'
+    template = 'importers/route.html'
 
     return render(request, template, context)
 
@@ -326,7 +331,7 @@ def switzerland_mobility_login(request):
                 # add cookies to the user session
                 request.session['switzerland_mobility_cookies'] = cookies
                 # redirect to the route list
-                redirect_url = reverse('switzerland_mobility_index')
+                redirect_url = reverse('switzerland_mobility_routes')
                 return HttpResponseRedirect(redirect_url)
             # something went wrong, render the login page with the error
             else:
@@ -444,26 +449,26 @@ def _get_checkpoints(route):
 
     for place in places:
 
-        altitude_on_route = route.get_distance_data_from_line_location(
+        altitude_on_route = route.get_distance_data(
             place.line_location, 'altitude')
         place.altitude_on_route = altitude_on_route
 
-        length_from_start = route.get_distance_data_from_line_location(
+        length_from_start = route.get_distance_data(
             place.line_location, 'length')
         place.distance_from_start = length_from_start
 
         # get cummulative altitude gain
-        totalup = route.get_distance_data_from_line_location(
+        totalup = route.get_distance_data(
             place.line_location, 'totalup')
         place.totalup = totalup
 
         # get cummulative altitude loss
-        totaldown = route.get_distance_data_from_line_location(
+        totaldown = route.get_distance_data(
             place.line_location, 'totaldown')
         place.totaldown = totaldown
 
         # get projected time schedula at place
-        schedule = route.get_time_data_from_line_location(
+        schedule = route.get_time_data(
             place.line_location, 'schedule')
         place.schedule = schedule
 
@@ -488,7 +493,7 @@ def _get_route_places_formset(route, checkpoints):
             RoutePlace(
                 place=place,
                 line_location=place.line_location,
-                altitude_on_route=route.get_distance_data_from_line_location(
+                altitude_on_route=route.get_distance_data(
                     place.line_location, 'altitude').m,
             )
             for place in checkpoints

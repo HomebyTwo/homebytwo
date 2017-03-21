@@ -1,0 +1,20 @@
+<div class="grid">
+    <div class="grid__item">
+        {% if route.image %}
+            <div class="box box--tight text-center">
+                <p>
+                    <img class="img-block"
+                    src="{{ route.image.poster.url }}"
+                    alt="{{ route.name }} image" />
+                    {% if route.user == request.user %}
+                        <p><a href="{% url 'routes:image' route.id %}" class="btn btn--default btn--small">Edit Image</a></p>
+                    {% endif %}
+                </p>
+            </div>
+        {% elif route.user == request.user %}
+            <div class="box box--default text-center">
+                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--small">Add an image for this route</a></p>
+            </div>
+        {% endif %}
+    </div>
+</div>

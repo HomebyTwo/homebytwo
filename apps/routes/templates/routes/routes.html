@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Home by Two - Available Routes{% endblock %}
+
+{% block content %}
+    <h1 class="text-center">Your Routes</h1>
+    {% if routes %}
+        <ul class="mrgh list-stacked list-stacked--divided">
+        {% for route in routes %}
+            {% include "routes/includes/_route_card.html" %}
+        {% endfor %}
+        </ul>
+    {% else %}
+        <div class="box">
+            <h3>No route found at all.</h3>
+            <p>Maybe now is a good time to import one?</p>
+            <ul class="list">
+                <li class="box box--default text-center mrgv">
+                    <a class="btn btn--primary" href="{% url 'strava_routes' %}" title="Import from Strava">Import from Strava</a>
+                </li>
+                <li class="box box--default text-center mrgv">
+                    <a class="btn btn--primary" href="{% url 'switzerland_mobility_routes' %}" title="Import from Switzerland Mobility Plus">Import from Switzerland Mobility Plus</a>
+                </li>
+            </ul>
+        </div>
+    {% endif %}
+{% endblock content %}

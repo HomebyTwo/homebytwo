@@ -1,5 +1,6 @@
 from django import forms
 from .models import Route, Place, RoutePlace
+from easy_thumbnails.widgets import ImageClearableFileInput
 
 
 class RouteForm(forms.ModelForm):
@@ -36,6 +37,13 @@ class RouteForm(forms.ModelForm):
             'end_place',
             'data',
         ]
+
+
+class RouteImageForm(forms.ModelForm):
+    class Meta:
+        model = Route
+        fields = ['image']
+        widgets = {'image': ImageClearableFileInput}
 
 
 class RoutePlaceForm(forms.ModelForm):

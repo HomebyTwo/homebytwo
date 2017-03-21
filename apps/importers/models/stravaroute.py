@@ -86,7 +86,7 @@ class StravaRoute(Route):
         self.calculate_projected_time_schedule()
 
         # retrieve totaldown from computed data
-        self.totaldown = abs(self.get_data_from_line_location(
+        self.totaldown = abs(self.get_data(
             1,  # line location of the last datapoint
             'totaldown',
         ))
