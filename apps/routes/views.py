@@ -1,6 +1,5 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
-from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -30,10 +29,12 @@ def route(request, pk):
         place.distance = D(m=place.line_location * route.length)
 
     # enrich start and end place with data
-    route.start_place.schedule = route.get_time_data(0, 'schedule')
-    route.start_place.altitude = route.get_distance_data(0, 'altitude')
-    route.end_place.schedule = route.get_time_data(1, 'schedule')
-    route.end_place.altitude = route.get_distance_data(1, 'altitude')
+    if route.start_place:
+        route.start_place.schedule = route.get_time_data(0, 'schedule')
+        route.start_place.altitude = route.get_distance_data(0, 'altitude')
+    if route.end_place:
+        route.end_place.schedule = route.get_time_data(1, 'schedule')
+        route.end_place.altitude = route.get_distance_data(1, 'altitude')
 
     context = {
         'route': route,

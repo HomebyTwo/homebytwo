@@ -24,18 +24,17 @@ from stravalib import Client as StravaClient
 from pandas import DataFrame
 
 
-def load_data(file='2191833_show.json'):
+def load_data(file=''):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         data_dir = 'data'
-        json_file = file
 
-        json_path = os.path.join(
+        path = os.path.join(
             dir_path,
             data_dir,
-            json_file,
+            file,
         )
 
-        return open(json_path).read()
+        return open(path).read()
 
 
 @override_settings(
@@ -89,7 +88,7 @@ class Strava(TestCase):
     # views #
     #########
 
-    def test_strava_index_success(self):
+    def test_strava_routes_success(self):
         strava_athlete_id = 4679628
         source_name = 'Strava'
         route_name = escape("Tout d'Aï")
@@ -118,7 +117,7 @@ class Strava(TestCase):
             status=200
         )
 
-        url = reverse('strava_index')
+        url = reverse('strava_routes')
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
 
@@ -130,7 +129,7 @@ class Strava(TestCase):
         self.assertTrue(length in response_content)
         self.assertTrue(totalup in response_content)
 
-    def test_strava_detail_success(self):
+    def test_strava_route_success(self):
         source_id = 2325453
 
         httpretty.enable()
@@ -144,7 +143,7 @@ class Strava(TestCase):
             status=200
         )
 
-        url = reverse('strava_detail', args=[source_id])
+        url = reverse('strava_route', args=[source_id])
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
         httpretty.disable()
@@ -154,7 +153,7 @@ class Strava(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(route_name, response_content)
 
-    def test_strava_detail_already_imported(self):
+    def test_strava_route_already_imported(self):
         source_id = 2325453
         factories.StravaRouteFactory(
             source_id=source_id,
@@ -171,7 +170,7 @@ class Strava(TestCase):
             status=200
         )
 
-        url = reverse('strava_detail', args=[source_id])
+        url = reverse('strava_route', args=[source_id])
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
 
@@ -577,6 +576,23 @@ class SwitzerlandMobility(TestCase):
     # Views #
     #########
 
+    def test_importers_index_not_logged_redirected(self):
+        self.client.logout()
+        url = reverse('importers_index')
+        redirect_url = "/login/?next=" + url
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_importers_index_view_logged_in(self):
+        content = 'Import routes'
+        url = reverse('importers_index')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(content in str(response.content))
+
     def test_switzerland_mobility_route_success(self):
         route_id = 2823968
         url = reverse('switzerland_mobility_route', args=[route_id])
@@ -678,6 +694,7 @@ class SwitzerlandMobility(TestCase):
             'route-'+key: value
             for key, value in route_data.items()
         }
+        del(post_data['route-image'])
 
         post_data.update({
             'route-start_place': start_place.id,
@@ -715,6 +732,8 @@ class SwitzerlandMobility(TestCase):
             'route-'+key: value
             for key, value in route_data.items()
         }
+        del(post_data['route-image'])
+
         post_data.update({
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
@@ -764,6 +783,7 @@ class SwitzerlandMobility(TestCase):
             'route-'+key: value
             for key, value in route_data.items()
         }
+        del(post_data['route-image'])
 
         post_data.update({
             'route-start_place': start_place.id,
@@ -810,6 +830,8 @@ class SwitzerlandMobility(TestCase):
             for key, value in route_data.items()
         }
 
+        del(post_data['route-image'])
+
         post_data.update({
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
@@ -841,8 +863,8 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(alert_box in str(response.content))
         self.assertTrue(integrity_error in str(response.content))
 
-    def test_switzerland_mobility_index_success(self):
-        url = reverse('switzerland_mobility_index')
+    def test_switzerland_mobility_routes_success(self):
+        url = reverse('switzerland_mobility_routes')
         content = '<h1>Import Routes from Switzerland Mobility Plus</h1>'
         self.add_cookies_to_session()
 
@@ -864,8 +886,8 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(content in str(response.content))
 
-    def test_switzerland_mobility_index_error(self):
-        url = reverse('switzerland_mobility_index')
+    def test_switzerland_mobility_routes_error(self):
+        url = reverse('switzerland_mobility_routes')
         self.add_cookies_to_session()
 
         # intercept call to map.wanderland.ch
@@ -880,17 +902,17 @@ class SwitzerlandMobility(TestCase):
         )
 
         response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
 
         httpretty.disable()
-
         content = ('Error 500: could not retrieve information from %s. '
                    % routes_list_url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertIn(content, response_content)
 
-    def test_switzerland_mobility_index_no_cookies(self):
-        url = reverse('switzerland_mobility_index')
+    def test_switzerland_mobility_routes_no_cookies(self):
+        url = reverse('switzerland_mobility_routes')
         redirect_url = reverse('switzerland_mobility_login')
         response = self.client.get(url)
 
@@ -927,7 +949,7 @@ class SwitzerlandMobility(TestCase):
         mobility_cookies = self.client.session['switzerland_mobility_cookies']
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('switzerland_mobility_index'))
+        self.assertEqual(response.url, reverse('switzerland_mobility_routes'))
         self.assertEqual(mobility_cookies['mf-chmobil'], 'xxx')
 
     def test_switzerland_mobility_login_failed(self):

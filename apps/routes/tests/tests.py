@@ -1,7 +1,8 @@
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
@@ -13,9 +14,22 @@ from hb2.utils.factories import UserFactory
 
 from pandas import DataFrame
 import numpy as np
+from unittest import skip
 
 
 import os
+
+
+def open_data(file):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        data_dir = 'data'
+
+        path = os.path.join(
+            dir_path,
+            data_dir,
+            file,
+        )
+        return open(path, 'rb')
 
 
 class PlaceTestCase(TestCase):
@@ -73,25 +87,6 @@ class PlaceTestCase(TestCase):
         self.assertEqual(len(list(places)), 1)
         self.assertTrue(places[0].line_location == 1.0)
         self.assertTrue(places[0].distance_from_line.m > 0)
-
-    # Views
-    def test_importer_view_not_logged_redirected(self):
-        url = reverse('routes:importers')
-        redirect_url = "/login/?next=" + url
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_importer_view_logged_in(self):
-        content = 'Import routes'
-        url = reverse('routes:importers')
-        user = UserFactory(password='testpassword')
-        self.client.login(username=user.username, password='testpassword')
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
 
 
 class DataFrameFieldTestCase(TestCase):
@@ -213,17 +208,12 @@ class DataFrameFieldTestCase(TestCase):
 
         self.assertEqual(form_field.to_python(''), None)
 
-    def test_data_to_form(self):
-        pass
 
-
-@override_settings(
-    GOOGLEMAPS_API_KEY='AIzabcdefghijklmnopqrstuvwxyz0123456789',
-)
 class RouteTestCase(TestCase):
 
     def setUp(self):
-        self.user = UserFactory()
+        self.user = UserFactory(password='testpassword')
+        self.client.login(username=self.user.username, password='testpassword')
 
     #########
     # Model #
@@ -269,7 +259,7 @@ class RouteTestCase(TestCase):
             [[0, 0, 0, 0], [600000, 0, 1234, 600000]],
             columns=['lat', 'lng', 'altitude', 'length']
         )
-        route = factories.RouteFactory.build(data=data)
+        route = factories.RouteFactory.build(data=data, length=600000)
 
         end_altitude = route.get_end_altitude()
 
@@ -281,10 +271,10 @@ class RouteTestCase(TestCase):
 
     def test_get_distance_data(self):
         data = DataFrame(
-            [[0, 0, 0, 0], [1000, 1000, 1000, 1414.2135624]],
+            [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],
             columns=['lat', 'lng', 'altitude', 'length']
         )
-        route = factories.RouteFactory.build(data=data)
+        route = factories.RouteFactory.build(data=data, length=1000)
 
         # make the call
         point_altitude = route.get_distance_data(
@@ -318,16 +308,190 @@ class RouteTestCase(TestCase):
     # Views #
     #########
 
-    def test_route_route_view_success(self):
-        route = factories.RouteFactory()
+    def test_route_view_success_owner(self):
+        route = factories.RouteFactory(user=self.user)
         url = reverse('routes:route', args=[route.id])
         route_name = route.name
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
+        edit_url = reverse('routes:edit', args=[route.id])
+        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
 
         response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(route_name in str(response.content))
-        self.assertTrue(start_place_name in str(response.content))
-        self.assertTrue(end_place_name in str(response.content))
+        self.assertIn(route_name, response_content)
+        self.assertIn(start_place_name, response_content)
+        self.assertIn(end_place_name, response_content)
+        self.assertIn(edit_button, response_content)
+
+    def test_route_view_success_not_owner(self):
+        route = factories.RouteFactory(user=factories.UserFactory())
+        url = reverse('routes:route', args=[route.id])
+        edit_url = reverse('routes:edit', args=[route.id])
+        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
+
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(edit_button, response_content)
+
+    def test_route_view_success_not_logged_in(self):
+        route = factories.RouteFactory(user=factories.UserFactory())
+        url = reverse('routes:route', args=[route.id])
+        edit_url = reverse('routes:edit', args=[route.id])
+        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
+        route_name = route.name
+
+        self.client.logout()
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(route_name, response_content)
+        self.assertNotIn(edit_button, response_content)
+
+    def test_get_route_delete_view(self):
+        route = factories.RouteFactory()
+        url = reverse('routes:delete', args=[route.id])
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+        content = '<h1>Delete %s</h1>' % route.name
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(content, response_content)
+
+    def test_get_route_delete_not_logged(self):
+        route = factories.RouteFactory()
+        url = reverse('routes:delete', args=[route.id])
+        self.client.logout()
+
+        response = self.client.get(url)
+        redirect_url = "/login/?next=" + url
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_post_route_delete_view(self):
+        route = factories.RouteFactory()
+        url = reverse('routes:delete', args=[route.id])
+        post_data = {}
+        response = self.client.post(url, post_data)
+
+        redirect_url = reverse('routes:routes')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    @skip  # until rules is implemented
+    def test_post_route_delete_not_owner(self):
+        route = factories.RouteFactory(user=factories.UserFactory())
+        url = reverse('routes:delete', args=[route.id])
+        post_data = {}
+        response = self.client.post(url, post_data)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_get_route_image_form(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:image', args=[route.id])
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        content = '<h3>Edit image for %s</h3>' % route.name
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(content, response_content)
+
+    def test_get_route_image_form_not_logged(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:image', args=[route.id])
+        self.client.logout()
+
+        response = self.client.get(url)
+        redirect_url = "/login/?next=" + url
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_post_route_image(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:image', args=[route.id])
+        with open_data('image.jpg') as image:
+            post_data = {
+                'image': SimpleUploadedFile(image.name, image.read())
+            }
+
+        response = self.client.post(url, post_data)
+        redirect_url = reverse('routes:route', args=[route.id])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    @skip  # until rules is implemented
+    def test_post_route_image_not_owner(self):
+        route = factories.RouteFactory(user=factories.UserFactory())
+        url = reverse('routes:image', args=[route.id])
+
+        with open_data('image.jpg') as image:
+            post_data = {
+                'image': SimpleUploadedFile(image.name, image.read())
+            }
+
+        response = self.client.post(url, post_data)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_get_route_edit_form(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:edit', args=[route.id])
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        content = '<h2 class="text-center">Edit Route: %s</h2>' % route.name
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(content, response_content)
+
+    def test_get_route_edit_form_not_logged(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:edit', args=[route.id])
+        self.client.logout()
+
+        response = self.client.get(url)
+        redirect_url = "/login/?next=" + url
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_post_route_edit_form(self):
+        route = factories.RouteFactory(user=self.user)
+        url = reverse('routes:edit', args=[route.id])
+        with open_data('image.jpg') as image:
+            post_data = {
+                'name': route.name,
+                'description': route.description,
+                'image': SimpleUploadedFile(image.name, image.read())
+            }
+
+        response = self.client.post(url, post_data)
+        redirect_url = reverse('routes:route', args=[route.id])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    @skip  # until rules is implemented
+    def test_post_route_edit_not_owner(self):
+        route = factories.RouteFactory(user=factories.UserFactory())
+        url = reverse('routes:edit', args=[route.id])
+
+        with open_data('image.jpg') as image:
+            post_data = {
+                'name': route.name,
+                'description': route.description,
+                'image': SimpleUploadedFile(image.name, image.read())
+            }
+
+        response = self.client.post(url, post_data)
+
+        self.assertEqual(response.status_code, 401)
