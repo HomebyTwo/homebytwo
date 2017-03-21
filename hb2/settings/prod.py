@@ -2,6 +2,24 @@ from .base import *  # NOQA
 from . import get_env_variable
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'ERROR',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
+
 ###########################
 # Force Mailchimp API Key #
 ###########################
@@ -16,3 +34,15 @@ MAILCHIMP_LIST_ID = get_env_variable('MAILCHIMP_LIST_ID')
 SWITZERLAND_MOBILITY_LIST_URL = get_env_variable('SWITZERLAND_MOBILITY_LIST_URL')
 SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable('SWITZERLAND_MOBILITY_LOGIN_URL')
 SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable('SWITZERLAND_MOBILITY_ROUTE_URL')
+
+#################################
+# Force Strava related Settings #
+#################################
+
+STRAVA_CLIENT_ID = get_env_variable('STRAVA_CLIENT_ID')
+STRAVA_CLIENT_SECRET = get_env_variable('STRAVA_CLIENT_SECRET')
+
+#################################
+# Force Mapbox related Settings #
+#################################
+MAPBOX_ACCESS_TOKEN = get_env_variable('MAPBOX_ACCESS_TOKEN')
