@@ -6,14 +6,15 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'console': {
+        'file': {
             'level': 'ERROR',
-            'class': 'logging.StreamHandler',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/django.log',
         },
     },
     'loggers': {
-        '': {
-            'handlers': ['console'],
+        'django': {
+            'handlers': ['file'],
             'level': 'ERROR',
             'propagate': True,
         },
