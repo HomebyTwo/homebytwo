@@ -285,7 +285,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response['error'], True)
-        self.assertEqual(message, response['message'])
+        self.assertIn(message, response['message'])
         self.assertEqual(json_response, False)
 
     def test_get_raw_remote_routes_success(self):
@@ -385,7 +385,7 @@ class SwitzerlandMobility(TestCase):
 
         self.assertEqual(raw_routes, False)
         self.assertEqual(response['error'], True)
-        self.assertEqual(response['message'], expected_message)
+        self.assertIn(expected_message, response['message'])
 
     def test_format_raw_remote_routes_success(self):
         raw_routes = json.loads(load_data(file='tracks_list.json'))

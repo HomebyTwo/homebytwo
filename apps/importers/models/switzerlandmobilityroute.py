@@ -36,8 +36,8 @@ def request_json(url, cookies=None):
             return False, response
 
     # connection error and inform the user
-    except requests.exceptions.ConnectionError:
-        message = "Connection Error: could not connect to %s. " % url
+    except requests.exceptions.ConnectionError as e:
+        message = "Connection Error: could not connect to %s. <br> %s" % (url, e)
         response = {'error': True, 'message': message}
 
         return False, response
