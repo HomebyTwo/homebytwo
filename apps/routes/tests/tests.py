@@ -378,10 +378,9 @@ class RouteTestCase(TestCase):
             )
         )
 
-        checkpoints = Place.objects.get_places_from_line(route.geom,
-                                                         max_distance=100,
-                                                         recursive=True)
-        # self.assertEqual(len(checkpoints), 12)
+        checkpoints = Place.objects.find_places_along_line(route.geom,
+                                                           max_distance=100)
+        self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)

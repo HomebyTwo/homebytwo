@@ -439,9 +439,9 @@ def _get_checkpoints(route):
     retrieve checkpoints within 50m of the route and
     enrich them with information retrieved from the route data.
     """
-    places = Place.objects.get_places_from_line(
+    places = Place.objects.find_places_along_line(
         route.geom,
-        max_distance=50
+        max_distance=75
     )
 
     # enrich checkpoint data with information

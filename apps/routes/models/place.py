@@ -72,16 +72,8 @@ class PlaceManager(models.Manager):
     def get_public_transport(self):
         self.filter(public_transport=True)
 
-    def get_places_from_line(self, line, max_distance=50):
+    def find_places_along_line(self, line, max_distance=50):
         """
-        returns places within a max_distance of a Linestring Geometry
-        ordered by, and annotated with the `line_location` and the
-        `distance_from_line`:
-
-          * `line_location` is the location on the line expressed as a
-            float between 0.0 and 1.0.
-          * `distance_from_line` is a geodjango Distance object.
-
         The `recursive` option addresses the issue of a linestring passing
         near the same place more than once. The normal query uses
         LineLocatePoint and thus can only find each place once.
@@ -114,6 +106,46 @@ class PlaceManager(models.Manager):
             and find no additional place.
 
         """
+        places = []
+        segments = []
+
+        # initial request to find each visited place once
+        places.extend(self.get_places_from_line(line, max_distance))
+
+        if not places:
+            return []
+
+        # create segments between the found places
+        segments.extend(self.create_segments_from_places(places))
+
+        for segment in segments:
+
+            # find additional places along the segment
+            new_places = self.find_places_in_segment(segment, line,
+                                                     max_distance)
+
+            if new_places:
+                start, end = segment
+                places.extend(new_places)
+                segments.extend(
+                    self.create_segments_from_places(new_places, start, end)
+                )
+
+        places.sort(key=lambda o: o.line_location)
+
+        return places
+
+    def get_places_from_line(self, line, max_distance):
+        """
+        returns places within a max_distance of a Linestring Geometry
+        ordered by, and annotated with the `line_location` and the
+        `distance_from_line`:
+
+          * `line_location` is the location on the line expressed as a
+            float between 0.0 and 1.0.
+          * `distance_from_line` is a geodjango Distance object.
+
+        """
 
         # convert max_distance to Distance object
         max_d = D(m=max_distance)
@@ -130,27 +162,9 @@ class PlaceManager(models.Manager):
         # remove start and end places within 1% of start and end location
         places = places.filter(line_location__gt=0.01, line_location__lt=0.99)
 
-        places = places.order_by('line_location', 'distance_from_line')
+        places = places.order_by('line_location')
 
         return places
-
-    def get_all_places_from_line(self, line, max_distance):
-        # for the recursive startegy, generate a list of segments between the
-        # found places to look for additional places.
-        places = self.get_places_from_line(line, max_distance)
-        segments = self.create_segments_from_places(places)
-
-        new_places = []
-        new_segments = []
-
-        for segment in segments:
-
-            # find additional places using this very method
-            new_places.append(self.find_places_in_segment(segment, max_distance))
-
-            if new_places:
-                start, end = segment
-                new_segments.append(self.create_segments_from_places(new_places, start, end))
 
     def create_segments_from_places(self, places, start=0, end=1):
         """
@@ -164,36 +178,34 @@ class PlaceManager(models.Manager):
         # the places were found.
         line_locations = chain(
             [start],
-            [place.line_location for place in places],
+            [place.line_location for place in list(places)],
             [end]
         )
 
-        # the custom iterator `current_and_next` returns tuples with
-        # the `crt` and the `nxt` item. On the last
-        # iteration where there is no `nxt`, `nxt = None`
-        segments = [(crt, nxt) for crt, nxt in
-                    current_and_next(line_locations) if nxt]
+        # use the custom iterator, exclude segments where start and end
+        # locations are the same. Also exclude segment where 'nxt == None`.
+        segments = [(crt, nxt) for crt, nxt
+                    in current_and_next(line_locations)
+                    if crt != nxt and nxt]
 
         return segments
 
-    def find_places_in_segment(self, segment, max_distance):
-
+    def find_places_in_segment(self, segment, line, max_distance):
         start, end = segment
 
         # create the Linestring geometry
         subline = LineSubstring(line, start, end)
 
         # find places within max_distance of the linestring
-        new_places = self.get_places_from_line(subline, max_distance,
-                                               recursive=False)
+        places = self.get_places_from_line(subline, max_distance)
 
-        if not new_places:
+        if not places:
             return None
 
         # iterate over found places to change the line_location
         # from the location on the segment to the location on
         # the original linestring.
-        for place in new_places:
+        for place in places:
             # relative line location to the start point of the subline
             length = (place.line_location * (end-start))
 
