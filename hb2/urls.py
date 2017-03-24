@@ -16,9 +16,15 @@ urlpatterns = [
     url('^', include('django.contrib.auth.urls')),
 ]
 
-# This is only needed when using runserver.
+# Serve Media URL in development. This is only needed when using runserver.
 if settings.DEBUG:
     urlpatterns = [
         url(r'^media/(?P<path>.*)$', django.views.static.serve,
             {'document_root': settings.MEDIA_ROOT, 'show_indexes': True}),
     ] + staticfiles_urlpatterns() + urlpatterns
+
+    # serve Django Debug Toolbar in DEBUG mode
+    import debug_toolbar
+    urlpatterns = [
+        url(r'^__debug__/', include(debug_toolbar.urls)),
+    ] + urlpatterns
