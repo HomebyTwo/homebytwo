@@ -6,7 +6,6 @@ from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView, DeleteView
 
 from .models import Route, RoutePlace
-from .forms import RouteImageForm
 
 
 def routes(request):
@@ -14,6 +13,7 @@ def routes(request):
     context = {
         'routes': routes,
     }
+
     return render(request, 'routes/routes.html', context)
 
 
@@ -49,7 +49,7 @@ class ImageFormView(UpdateView):
     Playing around with class based views.
     """
     model = Route
-    form_class = RouteImageForm
+    fields = ['image']
     template_name_suffix = '_image_form'
 
 
