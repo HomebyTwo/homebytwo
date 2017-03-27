@@ -1,15 +1,50 @@
-{% load humanize %}
-<h2 class="text-center">Course Description</h2>
-<ul class="list">
-    <li class="mrgv box box--default place place-start">
-        <h3>{{ route.start_place.schedule }} - {{ route.start_place.name }}, {{ route.start_place.altitude.m|floatformat:0|intcomma }}m</h3>
+{% load humanize geojson_tags %}
+<div class="box">
+  <h3>Course Description</h3>
+  <ul class="list">
+
+    {# start place #}
+    <li class="box box--default box--tight mrgv- pdg- place place--start"
+          data-lineLocation="0.00"
+          data-altitude="{{ route.start_place.altitude }}"
+          data-totalup="{{ route.start_place.totalup }}"
+          data-totaldown="{{ route.start_place.totaldown }}"
+          data-geom='{{ route.start_place|geojsonfeature|safe }}'
+
+        <p class="mrgv0 h4">{{ route.start_place.schedule }} - {{ route.start_place.name }}, {{ route.start_place.altitude.m|floatformat:0|intcomma }}m</p>
+
+        <p class="text-small text-right mrgb0">{{ route.start_place.get_place_type_display }} - 0.00km</p>
+
     </li>
-    <li><ul class="list">
-        {% for place in places %}
-            <li class="mrgv box box--default place h4">{{ place.schedule }} - {{ place.place.name }}, {{ place.altitude.m|floatformat:0|intcomma }}m - {{place.distance.km|floatformat:2|intcomma }}km</li>
-        {% endfor %}
-    </ul></li>
-    <li class="mrgv box box--default place place-finish">
-        <h3>{{ route.end_place.schedule }} - {{ route.end_place.name }}, {{ route.end_place.altitude.m|floatformat:0|intcomma }}m</h3>
+
+    {# checkpoints #}
+    {% for place in places %}
+      <li class="box box--default box--tight mrgv- pdg- place place--checkpoint"
+          data-lineLocation="{{ place.line_location }}"
+          data-altitude="{{ place.altitude }}"
+          data-totalup="{{ place.totalup }}"
+          data-totaldown="{{ place.totaldown }}"
+          data-geom='{{ place.place|geojsonfeature|safe }}'
+
+        <p class="mrgv0">{{ place.schedule }} - {{ place.place.name }}, {{ place.altitude.m|floatformat:0|intcomma }}m</p>
+
+        <p class="text-small text-right mrgb0">{{ place.place.get_place_type_display }} - {{ place.distance.km|floatformat:2|intcomma }}km</p>
+
+      </li>
+    {% endfor %}
+
+    {# finsish place #}
+    <li class="box box--default box--tight mrgv- pdg- place place--finish"
+          data-lineLocation="{{ place.line_location }}"
+          data-altitude="{{ place.altitude }}"
+          data-totalup="{{ place.totalup }}"
+          data-totaldown="{{ place.totaldown }}"
+          data-geom='{{ route.end_place|geojsonfeature|safe }}'
+
+      <p class="mrgv0 h4">{{ route.end_place.schedule }} - {{ route.end_place.name }}, {{ route.end_place.altitude.m|floatformat:0|intcomma }}m</p>
+
+      <p class="text-small text-right mrgb0">{{ route.end_place.get_place_type_display }} - {{ route.get_length.km|floatformat:1|intcomma }}km</p>
+
     </li>
-</ul>
+  </ul>
+</div>
