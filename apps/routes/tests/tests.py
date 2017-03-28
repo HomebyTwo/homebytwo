@@ -75,7 +75,7 @@ class PlaceTestCase(TestCase):
         )
 
         factories.PlaceFactory(
-            geom=GEOSGeometry('POINT(615424 129744.0)', srid=21781)
+            geom=GEOSGeometry('POINT(613807.32400 370987.3314)', srid=21781)
         )
 
         factories.PlaceFactory(
@@ -85,7 +85,7 @@ class PlaceTestCase(TestCase):
         places = Place.objects.get_places_from_line(line, max_distance=50)
 
         self.assertEqual(len(list(places)), 1)
-        self.assertTrue(places[0].line_location == 1.0)
+        self.assertAlmostEqual(places[0].line_location, 0.5)
         self.assertTrue(places[0].distance_from_line.m > 0)
 
 
@@ -269,6 +269,12 @@ class RouteTestCase(TestCase):
         end_altitude = route.get_end_altitude()
         self.assertEqual(end_altitude, None)
 
+    def test_get_start_point(self):
+        route = factories.RouteFactory.build()
+        start_point = route.get_start_point()
+
+        self.assertIsInstance(start_point, GEOSGeometry)
+
     def test_get_distance_data(self):
         data = DataFrame(
             [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],
@@ -304,6 +310,87 @@ class RouteTestCase(TestCase):
         self.assertEqual(end_place.distance_from_line.m, 0)
         self.assertEqual(end_place.name, 'End_Place')
 
+    def test_find_additional_places(self):
+        route = factories.RouteFactory(name='Haute-Cime')
+
+        factories.PlaceFactory(
+            name='Sur Frête',
+            geom=GEOSGeometry(
+                'POINT (565586.0225000009 112197.4462499991)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Noudane Dessus',
+            geom=GEOSGeometry(
+                'POINT (565091.2349999994 111464.0387500003)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Col du Jorat',
+            geom=GEOSGeometry(
+                'POINT (564989.3350000009 111080.0012499988)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Saut Peca',
+            geom=GEOSGeometry(
+                'POINT (564026.3412499987 110762.4175000004)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Haute Cime',
+            geom=GEOSGeometry(
+                'POINT (560188.0975000001 112309.0137500018)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Col des Paresseux',
+            geom=GEOSGeometry(
+                'POINT (560211.875 112011.8737500012)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Col de Susanfe',
+            geom=GEOSGeometry(
+                'POINT (559944.7375000007 110888.6424999982)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Cabane de Susanfe CAS',
+            geom=GEOSGeometry(
+                'POINT (558230.2575000003 109914.8912499994)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name="Pas d'Encel",
+            geom=GEOSGeometry(
+                'POINT (556894.5662500001 110045.9137500003)',
+                srid=21781
+            )
+        )
+        factories.PlaceFactory(
+            name='Refuge de Bonaveau',
+            geom=GEOSGeometry(
+                'POINT (555775.7837500013 111198.6625000015)',
+                srid=21781
+            )
+        )
+
+        checkpoints = Place.objects.find_places_along_line(route.geom,
+                                                           max_distance=100)
+        self.assertEqual(len(checkpoints), 12)
+        for checkpoint in checkpoints:
+            self.assertNotEqual(checkpoint.line_location, 0)
+            self.assertNotEqual(checkpoint.line_location, 1)
+
     #########
     # Views #
     #########
@@ -315,7 +402,8 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
+        edit_button = ('<a href="%s">Edit Route</a>'
+                       % edit_url)
 
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
@@ -330,19 +418,17 @@ class RouteTestCase(TestCase):
         route = factories.RouteFactory(user=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
 
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn(edit_button, response_content)
+        self.assertNotIn(edit_url, response_content)
 
     def test_route_view_success_not_logged_in(self):
         route = factories.RouteFactory(user=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
         route_name = route.name
 
         self.client.logout()
@@ -351,7 +437,7 @@ class RouteTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(route_name, response_content)
-        self.assertNotIn(edit_button, response_content)
+        self.assertNotIn(edit_url, response_content)
 
     def test_get_route_delete_view(self):
         route = factories.RouteFactory()

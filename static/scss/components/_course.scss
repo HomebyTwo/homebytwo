@@ -1,3 +1,13 @@
-.course {
+.place{
+    white-space: nowrap;
+}
+.placeIcon{
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 6px;
+}
 
+.placeIcon--default{
+    border-color: $brand-color;
+    background-color: $white;
 }

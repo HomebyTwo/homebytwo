@@ -6,7 +6,6 @@ from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView, DeleteView
 
 from .models import Route, RoutePlace
-from .forms import RouteImageForm
 
 
 def routes(request):
@@ -14,25 +13,28 @@ def routes(request):
     context = {
         'routes': routes,
     }
+
     return render(request, 'routes/routes.html', context)
 
 
 def route(request, pk):
     # load route from Database
-    route = Route.objects.get(id=pk)
+    route = Route.objects.select_related('start_place', 'end_place').get(id=pk)
 
     # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.filter(route=pk)
+    places = RoutePlace.objects.select_related('route', 'place').\
+        filter(route=pk)
+
     for place in places:
         place.schedule = route.get_time_data(place.line_location, 'schedule')
         place.altitude = place.get_altitude()
         place.distance = D(m=place.line_location * route.length)
 
     # enrich start and end place with data
-    if route.start_place:
+    if route.start_place_id:
         route.start_place.schedule = route.get_time_data(0, 'schedule')
         route.start_place.altitude = route.get_distance_data(0, 'altitude')
-    if route.end_place:
+    if route.end_place_id:
         route.end_place.schedule = route.get_time_data(1, 'schedule')
         route.end_place.altitude = route.get_distance_data(1, 'altitude')
 
@@ -49,7 +51,7 @@ class ImageFormView(UpdateView):
     Playing around with class based views.
     """
     model = Route
-    form_class = RouteImageForm
+    fields = ['image']
     template_name_suffix = '_image_form'
 
 
