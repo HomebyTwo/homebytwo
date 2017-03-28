@@ -3,7 +3,9 @@
 
 <li>
     {% if new %}
-    <a href="{% url source.route_view route.source_id %}">
+        <a href="{% url source.route_view route.source_id %}">
+    {% else %}
+        <a href="{% url "routes:route" route.id %}">
     {% endif %}
         <div class="media">
             <div class="media__left">
@@ -24,7 +26,5 @@
                 <p class="mrgt0 pull-right">import &rsaquo;</p>
              {% endif %}
         </div>
-    {% if new %}
     </a>
-    {% endif %}
 </li>

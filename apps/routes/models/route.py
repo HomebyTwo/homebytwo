@@ -17,10 +17,11 @@ class RouteManager(models.Manager):
 
         for route in routes:
             source_id = route.source_id
-            user_routes = self.filter(user=user)
-            data_source_user_routes = user_routes.filter(
-                data_source=data_source)
-            if data_source_user_routes.filter(source_id=source_id).exists():
+            saved_route = self.filter(user=user)\
+                .filter(data_source=data_source)\
+                .filter(source_id=source_id)
+            if saved_route.exists():
+                route = saved_route.get()
                 old_routes.append(route)
             else:
                 new_routes.append(route)
