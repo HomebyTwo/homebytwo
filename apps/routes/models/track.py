@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.utils.translation import gettext_lazy as _
 
@@ -459,6 +460,12 @@ class Track(models.Model):
         end_altitude = self.get_distance_data(
             1, 'altitude')
         return end_altitude
+
+    def get_start_point(self):
+        return GEOSGeometry('POINT (%s %s)' % self.geom[0], srid=21781)
+
+    def get_end_point(self):
+        return GEOSGeometry('POINT (%s %s)' % self.geom[-1], srid=21781)
 
     def get_length(self):
         """

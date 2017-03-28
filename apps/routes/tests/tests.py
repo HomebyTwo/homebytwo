@@ -269,6 +269,12 @@ class RouteTestCase(TestCase):
         end_altitude = route.get_end_altitude()
         self.assertEqual(end_altitude, None)
 
+    def test_get_start_point(self):
+        route = factories.RouteFactory.build()
+        start_point = route.get_start_point()
+
+        self.assertIsInstance(start_point, GEOSGeometry)
+
     def test_get_distance_data(self):
         data = DataFrame(
             [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],
@@ -396,7 +402,8 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
+        edit_button = ('<a href="%s">Edit Route</a>'
+                       % edit_url)
 
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
@@ -411,19 +418,17 @@ class RouteTestCase(TestCase):
         route = factories.RouteFactory(user=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
 
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn(edit_button, response_content)
+        self.assertNotIn(edit_url, response_content)
 
     def test_route_view_success_not_logged_in(self):
         route = factories.RouteFactory(user=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
-        edit_button = '<a class="pull-right" href="%s">Edit</a>' % edit_url
         route_name = route.name
 
         self.client.logout()
@@ -432,7 +437,7 @@ class RouteTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(route_name, response_content)
-        self.assertNotIn(edit_button, response_content)
+        self.assertNotIn(edit_url, response_content)
 
     def test_get_route_delete_view(self):
         route = factories.RouteFactory()

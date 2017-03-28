@@ -29,10 +29,12 @@
                     <label for="{{ route_form.start_place.id_for_label }}" class="h4 mrgv0">Start Place:</label>
                     {{ route_form.start_place }}
                 </li>
+
                 {# Checkpoints #}
                 {% include 'importers/includes/_checkpoints.html' %}
+
                 {# Finish Place #}
-                <li class="mrgt box box--default place place-finish">
+                <li class="mrgt box box--default pdg-">
                     {{ route_form.end_place.errors }}
                     <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
                     {{ route_form.end_place }}
@@ -65,14 +67,30 @@
 {% endblock content %}
 
 {% if route.geom %}
-    {% block extrajs %}
-        <script type="text/javascript">
-            function route_map_init (map, options) {
-                var route = L.geoJson({{ route.geom|geojsonfeature|safe }});
-                route.addTo(map);
-                map.fitBounds(route.getBounds());
-                map.scrollWheelZoom.disable();
-            }
-        </script>
-    {% endblock extrajs %}
+  {% block extrajs %}
+    <script type="text/javascript">
+      function route_map_init (map, options) {
+        const route = L.geoJson({{ route|geojsonfeature|safe }});
+        route.addTo(map);
+        map.fitBounds(route.getBounds());
+        map.scrollWheelZoom.disable();
+        map.touchZoom.disable();
+        map.boxZoom.disable();
+        const icon = L.divIcon({
+          className: 'placeIcon placeIcon--default',
+        });
+        const places = Array.from(document.querySelectorAll('.place'));
+        const markers = places.map(place => {
+          L.geoJson(JSON.parse(place.dataset.geom), {
+            pointToLayer: (feature, latlng) => L.marker(latlng, {
+              icon: icon,
+              title: feature.properties.name
+            }),
+            style: feature => ({color: '000000'}),
+            onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
+          }).addTo(map);
+        });
+      }
+    </script>
+  {% endblock extrajs %}
 {% endif %}

@@ -9,50 +9,50 @@
 {% endblock extralinks %}
 
 {% block content %}
-    {# Route Title section#}
-    <header class="clearfix">
-        <h1 class="mrgt mrgb0 text-center">{{ route.name}}</h1>
-        <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
-        <div class="pull-left mrg-" >&lsaquo; <a href="{% url 'routes:routes' %}">Routes list</a></div>
-        {% if request.user == route.user %}
-            <div class="pull-right mrg-"><a href="{% url 'routes:edit' route.id %}">Edit Route</a> &rsaquo;</div>
-        {% endif %}
-    </header>
-
-    {% include 'routes/includes/_image.html' %}
-    {% include 'routes/includes/_course.html' %}
-
-    {% if route.geom %}
-        {% leaflet_map "main" callback="detail_map_init" %}
+  {# Route Title section#}
+  <header class="clearfix">
+    <h1 class="mrgt mrgb0 text-center">{{ route.name}}</h1>
+    <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
+    <div class="pull-left mrg-" >&lsaquo; <a href="{% url 'routes:routes' %}">Routes list</a></div>
+    {% if request.user == route.user %}
+      <div class="pull-right mrg-"><a href="{% url 'routes:edit' route.id %}">Edit Route</a> &rsaquo;</div>
     {% endif %}
+  </header>
+
+  {% include 'routes/includes/_image.html' %}
+  {% include 'routes/includes/_course.html' %}
+
+  {% if route.geom %}
+    {% leaflet_map "main" callback="route_map_init" %}
+  {% endif %}
 
 {% endblock content %}
 
 {% if route.geom %}
-    {% block extrajs %}
-        <script type="text/javascript">
-            function detail_map_init (map, options) {
-              const route = L.geoJson({{ route|geojsonfeature|safe }});
-              route.addTo(map);
-              map.fitBounds(route.getBounds());
-              map.scrollWheelZoom.disable();
-              map.touchZoom.disable();
-              map.boxZoom.disable();
-              const icon = L.divIcon({
-                className: 'placeIcon placeIcon--default',
-              });
-              const places = Array.from(document.querySelectorAll('.place'));
-              const markers = places.map(place => {
-                L.geoJson(JSON.parse(place.dataset.geom), {
-                  pointToLayer: (feature, latlng) => L.marker(latlng, {
-                    icon: icon,
-                    title: feature.properties.name
-                  }),
-                  style: feature => ({color: '000000'}),
-                  onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.na)
-                }).addTo(map);
-              });
-            }
-        </script>
-    {% endblock extrajs %}
+  {% block extrajs %}
+    <script type="text/javascript">
+      function route_map_init (map, options) {
+        const route = L.geoJson({{ route|geojsonfeature|safe }});
+        route.addTo(map);
+        map.fitBounds(route.getBounds());
+        map.scrollWheelZoom.disable();
+        map.touchZoom.disable();
+        map.boxZoom.disable();
+        const icon = L.divIcon({
+          className: 'placeIcon placeIcon--default',
+        });
+        const places = Array.from(document.querySelectorAll('.place'));
+        const markers = places.map(place => {
+          L.geoJson(JSON.parse(place.dataset.geom), {
+            pointToLayer: (feature, latlng) => L.marker(latlng, {
+              icon: icon,
+              title: feature.properties.name
+            }),
+            style: feature => ({color: '000000'}),
+            onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
+          }).addTo(map);
+        });
+      }
+    </script>
+  {% endblock extrajs %}
 {% endif %}
