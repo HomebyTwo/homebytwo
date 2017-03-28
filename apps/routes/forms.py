@@ -35,6 +35,7 @@ class RouteForm(forms.ModelForm):
             'start_place',
             'end_place',
             'data',
+            'activity_type',
         ]
 
 

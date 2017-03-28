@@ -467,11 +467,6 @@ def _get_checkpoints(route):
             place.line_location, 'totaldown')
         place.totaldown = totaldown
 
-        # get projected time schedula at place
-        schedule = route.get_time_data(
-            place.line_location, 'schedule')
-        place.schedule = schedule
-
         checkpoints.append(place)
 
     return checkpoints
@@ -570,6 +565,8 @@ def _save_detail_forms(request, response, route_form, route_places_formset):
     new_route = route_form.save(commit=False)
     # set user for route
     new_route.user = request.user
+    # calculate time schedule
+    new_route.calculate_projected_time_schedule(request.user)
 
     try:
         with transaction.atomic():

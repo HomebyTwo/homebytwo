@@ -8,7 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.utils.translation import gettext_lazy as _
 
-from . import Place, ActivityType
+from . import Place, ActivityType, ActivityPerformance
 
 from datetime import timedelta
 from pandas import read_hdf, read_json, DataFrame
@@ -305,7 +305,7 @@ class Track(models.Model):
         abstract = True
 
     name = models.CharField(max_length=100)
-    description = models.TextField('Textual description', default='')
+    description = models.TextField('Textual description', blank=True)
     image = ThumbnailerImageField(upload_to=get_image_path,
                                   blank=True, null=True)
 
@@ -383,19 +383,35 @@ class Track(models.Model):
 
         self.data = data
 
-    def calculate_projected_time_schedule(self):
+    def calculate_projected_time_schedule(self, user):
         """
-        Calculates a time schedule based on activity, distance and
-        elevation gain/loss.
+        Calculates a time schedule based on activity, user performance,
+        distance and elevation gain/loss.
         """
 
         data = self.data
+        activity_type = self.activity_type
+        athlete_performance = ActivityPerformance.objects.\
+            select_related('activity_type').\
+            filter(activity_type=activity_type, athlete=user.athlete)
 
-        # flat pace as second per meter
-        flat_pace = 3600/4000  # 1 hour for 4km = 0.9s for each m
+        # we have performance values for this athlete and activity
+        if athlete_performance.exists():
+            # flat pace as second per meter
+            flat_pace = 3600 / athlete_performance.flat_speed
+            # pace going up as second per meter
+            up_pace = 3600 / athlete_performance.vam_up
+            # pace going down as second per meter
+            down_pace = 3600 / athlete_performance.vam_down
 
-        # pace going up as second per meter
-        up_pace = 3600/400  # 1 hour for 400m up = 9s for each m
+        # fallback on activity defaults
+        else:
+            # flat pace as second per meter
+            flat_pace = 3600 / activity_type.default_flat_speed
+            # pace going up as second per meter
+            up_pace = 3600 / activity_type.default_vam_up
+            # pace going down as second per meter
+            down_pace = 3600 / activity_type.default_vam_down
 
         # flat distance / flat_speed + elevation_gain / up_speed
         data['schedule'] = (

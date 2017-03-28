@@ -230,9 +230,8 @@ class SwitzerlandMobilityRoute(Route):
             literal_eval(raw_route_json['properties']['profile']),
             columns=['lat', 'lng', 'altitude', 'length'])
 
-        # compute elevation and schedule data
+        # compute elevation data
         self.calculate_cummulative_elevation_differences()
-        self.calculate_projected_time_schedule()
 
     def save(self, *args, **kwargs):
         """

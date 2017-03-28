@@ -20,6 +20,7 @@ def routes(request):
 def route(request, pk):
     # load route from Database
     route = Route.objects.select_related('start_place', 'end_place').get(id=pk)
+    route.calculate_projected_time_schedule(request.user)
 
     # retrieve checkpoints along the way and enrich them with data
     places = RoutePlace.objects.select_related('route', 'place').\
@@ -67,4 +68,12 @@ class RouteDelete(DeleteView):
 @method_decorator(login_required, name='dispatch')
 class RouteEdit(UpdateView):
     model = Route
-    fields = ['name', 'description', 'image']
+    fields = ['activity_type', 'name', 'description', 'image']
+
+    def form_valid(self, form):
+        # This method is called when valid form data has been POSTed.
+        # if the activity_type has changed recalculate the route schedule
+        if 'activity_type' in form.changed_data:
+            form.instance.calculate_projected_time_schedule(self.request.user)
+
+        return super(RouteEdit, self).form_valid(form)

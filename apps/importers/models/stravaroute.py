@@ -81,9 +81,8 @@ class StravaRoute(Route):
         # transform geom coords to CH1903 / LV03
         self._transform_coords(self.geom)
 
-        # compute elevation and schedule data
+        # compute elevation
         self.calculate_cummulative_elevation_differences()
-        self.calculate_projected_time_schedule()
 
         # retrieve totaldown from computed data
         self.totaldown = abs(self.get_data(
