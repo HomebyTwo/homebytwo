@@ -8,7 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.utils.translation import gettext_lazy as _
 
-from . import Place
+from . import Place, ActivityType
 
 from datetime import timedelta
 from pandas import read_hdf, read_json, DataFrame
@@ -308,6 +308,10 @@ class Track(models.Model):
     description = models.TextField('Textual description', default='')
     image = ThumbnailerImageField(upload_to=get_image_path,
                                   blank=True, null=True)
+
+    # Main activity of the track: default=hike
+    activity_type = models.ForeignKey(ActivityType, default=1,
+                                      on_delete=models.SET_DEFAULT)
 
     # link to user
     user = models.ForeignKey(User, on_delete=models.CASCADE)

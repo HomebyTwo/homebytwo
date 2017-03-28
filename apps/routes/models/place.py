@@ -13,7 +13,6 @@ import requests
 import json
 from datetime import datetime
 from itertools import tee, islice, chain
-from queue import Queue
 
 
 def current_and_next(some_iterable):
