@@ -391,26 +391,22 @@ class Track(models.Model):
 
         data = self.data
         activity_type = self.activity_type
-        athlete_performance = ActivityPerformance.objects.\
-            select_related('activity_type').\
-            filter(activity_type=activity_type, athlete=user.athlete)
 
-        # we have performance values for this athlete and activity
-        if athlete_performance.exists():
-            # flat pace as second per meter
-            flat_pace = 3600 / athlete_performance.flat_speed
-            # pace going up as second per meter
-            up_pace = 3600 / athlete_performance.vam_up
-            # pace going down as second per meter
-            down_pace = 3600 / athlete_performance.vam_down
+        if user.is_authenticated:
+            athlete_performance = ActivityPerformance.objects.\
+                filter(activity_type=activity_type, athlete=user.athlete)
 
-        # fallback on activity defaults
+        if user.is_authenticated and athlete_performance.exists():
+            # we have performance values for this athlete and activity
+            performance = athlete_performance.get()
+            flat_pace = 3600 / performance.flat_speed
+            up_pace = 3600 / performance.vam_up
+            down_pace = 3600 / performance.vam_down
+
         else:
-            # flat pace as second per meter
+            # no user performance: fallback on activity defaults
             flat_pace = 3600 / activity_type.default_flat_speed
-            # pace going up as second per meter
             up_pace = 3600 / activity_type.default_vam_up
-            # pace going down as second per meter
             down_pace = 3600 / activity_type.default_vam_down
 
         # flat distance / flat_speed + elevation_gain / up_speed

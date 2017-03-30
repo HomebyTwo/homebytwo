@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.contrib.gis.geos import LineString
 
-from apps.routes.models import Route, RouteManager
+from apps.routes.models import Route, RouteManager, ActivityType
 
 from pandas import DataFrame
 from polyline import decode
@@ -77,6 +77,12 @@ class StravaRoute(Route):
         self.length = unithelper.meters(strava_route.distance).num
         self.geom = self._polyline_to_linestring(strava_route.map.polyline)
         self.data = self._data_from_streams(raw_streams)
+
+        # Strava activity types: '1' for ride, '2' for run
+        if strava_route.type == '1':
+            self.activity_type = ActivityType.objects.filter(name='Bike').get()
+        if strava_route.type == '2':
+            self.activity_type = ActivityType.objects.filter(name='Run').get()
 
         # transform geom coords to CH1903 / LV03
         self._transform_coords(self.geom)

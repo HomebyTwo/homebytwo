@@ -8,7 +8,7 @@ from django.utils.six import StringIO
 from django.utils.html import escape
 
 from . import factories
-from ..models import Swissname3dPlace, SwitzerlandMobilityRoute
+from ..models import Swissname3dPlace, SwitzerlandMobilityRoute, StravaRoute
 from ..models.switzerlandmobilityroute import request_json
 from ..forms import SwitzerlandMobilityLogin, ImportersRouteForm
 from apps.routes.models import Place, RoutePlace, Athlete
@@ -63,10 +63,10 @@ class Strava(TestCase):
         strava_client.access_token = self.user.athlete.strava_token
 
         # intercept url with httpretty
+        httpretty.enable()
         url = 'https://www.strava.com/api/v3/routes/%d/streams' % source_id
         streams_json = load_data('strava_streams.json')
 
-        httpretty.enable()
         httpretty.register_uri(
             httpretty.GET, url,
             content_type="application/json", body=streams_json,
@@ -83,6 +83,38 @@ class Strava(TestCase):
 
         self.assertIsInstance(data, DataFrame)
         self.assertEqual(nb_columns, 4)
+
+    def test_set_activity_type(self):
+        route = StravaRoute(source_id=2325453)
+        strava_client = StravaClient()
+        strava_client.access_token = self.user.athlete.strava_token
+
+        httpretty.enable()
+        # Route details API call
+        route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
+                            % route.source_id)
+        route_detail_json = load_data('strava_route_detail.json')
+
+        httpretty.register_uri(
+            httpretty.GET, route_detail_url,
+            content_type="application/json", body=route_detail_json,
+            status=200
+        )
+
+        route_streams_url = ('https://www.strava.com/api/v3/routes/%d/streams'
+                             % route.source_id)
+        streams_json = load_data('strava_streams.json')
+
+        httpretty.register_uri(
+            httpretty.GET, route_streams_url,
+            content_type="application/json", body=streams_json,
+            status=200
+        )
+
+        route.get_route_details(strava_client)
+        httpretty.disable()
+
+        self.assertEqual(route.activity_type_id, 1)
 
     #########
     # views #
@@ -133,6 +165,8 @@ class Strava(TestCase):
         source_id = 2325453
 
         httpretty.enable()
+
+        # route details API call
         route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
                             % source_id)
         route_detail_json = load_data('strava_route_detail.json')
@@ -140,6 +174,17 @@ class Strava(TestCase):
         httpretty.register_uri(
             httpretty.GET, route_detail_url,
             content_type="application/json", body=route_detail_json,
+            status=200
+        )
+
+        # route streams API call
+        route_streams_url = ('https://www.strava.com/api/v3/routes/%d/streams'
+                             % source_id)
+        streams_json = load_data('strava_streams.json')
+
+        httpretty.register_uri(
+            httpretty.GET, route_streams_url,
+            content_type="application/json", body=streams_json,
             status=200
         )
 
@@ -697,6 +742,7 @@ class SwitzerlandMobility(TestCase):
         del(post_data['route-image'])
 
         post_data.update({
+            'route-activity_type': 1,
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
@@ -735,6 +781,7 @@ class SwitzerlandMobility(TestCase):
         del(post_data['route-image'])
 
         post_data.update({
+            'route-activity_type': 1,
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
@@ -786,6 +833,7 @@ class SwitzerlandMobility(TestCase):
         del(post_data['route-image'])
 
         post_data.update({
+            'route-activity_type': 1,
             'route-start_place': start_place.id,
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
@@ -1018,6 +1066,7 @@ class SwitzerlandMobility(TestCase):
         route = factories.SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update({
+            'activity_type': 1,
             'geom': route.geom.wkt,
             'data': route.data.to_json(orient='records'),
             'start_place': route.start_place.id,
