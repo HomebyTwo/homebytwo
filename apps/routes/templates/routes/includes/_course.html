@@ -1,4 +1,4 @@
-{% load humanize geojson_tags %}
+{% load humanize geojson_tags duration %}
 <div class="box">
   <ul class="list">
 
@@ -9,7 +9,7 @@
       <li class="box box--default box--tight mrgv- pdg- place place--start"
           data-geom='{{ route.start_place|geojsonfeature:"name" }}'>
 
-        <p class="mrgv0">{{ route.start_place.schedule }} - {{ route.start_place.name }}, {{ route.get_start_altitude.m|floatformat:0|intcomma }}m</p>
+        <p class="mrgv0">{{ route.start_place.name }}, {{ route.get_start_altitude.m|floatformat:0|intcomma }}m</p>
 
         <p class="text-small text-right mrgb0">{{ route.start_place.get_place_type_display }} - 0.00km</p>
       </li>
@@ -18,7 +18,7 @@
 
       <li class="box box--default box--tight mrgv- pdg- place place--start"
           data-geom='{{ route.get_start_point|geojsonfeature }}'>
-        <p class="mrgv0">00:00:00 - Start Place, {{ route.get_start_altitude.m|floatformat:0|intcomma }}m</p>
+        <p class="mrgv0">Start Place, {{ route.get_start_altitude.m|floatformat:0|intcomma }}m</p>
         <p class="text-small text-right mrgb0">Unknown place - 0.00km</p>
       </li>
 
@@ -30,7 +30,7 @@
       <li class="box box--default box--tight mrgv- pdg- place place--checkpoint"
           data-geom='{{ place.place|geojsonfeature:"name" }}'
 
-        <p class="mrgv0">{{ place.schedule }} - {{ place.place.name }}, {{ place.altitude.m|floatformat:0|intcomma }}m</p>
+        <p class="mrgv0">{{ place.schedule|duration:'hike' }} - {{ place.place.name }}, {{ place.altitude.m|floatformat:0|intcomma }}m</p>
 
         <p class="text-small text-right mrgb0">{{ place.place.get_place_type_display }} - {{ place.distance.km|floatformat:2|intcomma }}km</p>
 
@@ -48,7 +48,7 @@
     <li class="box box--default box--tight mrgv- pdg- place place--finish"
           data-geom='{{ route.end_place|geojsonfeature:"name" }}'>
 
-      <p class="mrgv0">{{ route.end_place.schedule }} - {{ route.end_place.name }}, {{ route.end_place.altitude.m|floatformat:0|intcomma }}m</p>
+      <p class="mrgv0">{{ route.end_place.schedule|duration:'hike' }} - {{ route.end_place.name }}, {{ route.end_place.altitude.m|floatformat:0|intcomma }}m</p>
 
       <p class="text-small text-right mrgb0">{{ route.end_place.get_place_type_display }} - {{ route.get_length.km|floatformat:1|intcomma }}km</p>
 
