@@ -12,9 +12,12 @@ from apps.routes.models.track import DataFrameField, DataFrameFormField
 from . import factories
 from hb2.utils.factories import UserFactory
 
+from apps.routes.templatetags.duration import nice_repr, baseround
+
 from pandas import DataFrame
 import numpy as np
 from unittest import skip
+from datetime import timedelta
 
 
 import os
@@ -412,6 +415,33 @@ class RouteTestCase(TestCase):
         total_user_time = route.get_data(1, 'schedule')
 
         self.assertAlmostEqual(total_default_time, total_user_time * 2)
+
+    def test_schedule_display(self):
+        duration = timedelta(seconds=30, minutes=1, hours=6)
+        long_dspl = nice_repr(duration)
+        self.assertEqual(long_dspl, '6 hours 1 minute 30 seconds')
+
+        duration = timedelta(seconds=0)
+        long_dspl = nice_repr(duration)
+        self.assertEqual(long_dspl, '0 seconds')
+
+        duration = timedelta(seconds=30, minutes=2, hours=2)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '2 h 5 min')
+
+        duration = timedelta(seconds=45, minutes=57, hours=2)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '3 h')
+
+        duration = timedelta(seconds=30, minutes=2, hours=6)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '6 h')
+
+    def test_base_round(self):
+        values = [0, 3, 4.85, 12, -7]
+        rounded = [baseround(value) for value in values]
+
+        self.assertEqual(rounded, [0, 5, 5, 10, -5])
 
     #########
     # Views #

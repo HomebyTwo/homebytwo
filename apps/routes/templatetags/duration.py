@@ -39,20 +39,38 @@ def nice_repr(timedelta, display_format="long", sep=" "):
 
     result = []
 
-    weeks = timedelta.days / 7
+    weeks = int(timedelta.days / 7)
     days = timedelta.days % 7
-    hours = timedelta.seconds / 3600
-    minutes = (timedelta.seconds % 3600) / 60
+    hours = int(timedelta.seconds / 3600)
+    minutes = int((timedelta.seconds % 3600) / 60)
     seconds = timedelta.seconds % 60
 
     values = [weeks, days, hours, minutes]
 
     if display_format == 'hike':
-        values[-1] = baseround(values[-1])
+        # round up seconds
+        if seconds >= 30:
+            minutes += 1
+
+        # make minutes a multiple of 5
+        minutes = baseround(minutes)
+        if minutes == 60:
+            hours += 1
+            minutes = 0
+
+        # from 3 hours upwards, round 05 and 55 the next hour
+        if hours >= 3:
+            if minutes == 55:
+                hours += 1
+                minutes = 0
+            if minutes == 5:
+                minutes = 0
+
+        values = [weeks, days, hours, minutes]
         words = [" wks", " days", " h", " min"]
 
     else:
-        values.append(seconds)
+        values = [weeks, days, hours, minutes, seconds]
         words = [" weeks", " days", " hours", " minutes", " seconds"]
 
     for i in range(len(values)):
@@ -61,5 +79,10 @@ def nice_repr(timedelta, display_format="long", sep=" "):
                 result.append("%i%s" % (values[i], words[i].rstrip('s')))
             else:
                 result.append("%i%s" % (values[i], words[i]))
+
+    # values with less than one second, which are considered zeroes
+    if len(result) == 0:
+        # display as 0 of the smallest unit
+        result.append('0%s' % (words[-1]))
 
     return sep.join(result)
