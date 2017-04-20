@@ -19,12 +19,15 @@ def routes(request):
 
 def route(request, pk):
     # load route from Database
-    route = Route.objects.select_related('start_place', 'end_place').get(id=pk)
+    route = Route.objects.get_object_or_404(id=pk)
+    route = route.select_related('start_place', 'end_place')
+
+    # calculate the schedule based on user data
     route.calculate_projected_time_schedule(request.user)
 
     # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.select_related('route', 'place').\
-        filter(route=pk)
+    places = RoutePlace.objects.filter(route=pk)
+    places = places.select_related('route', 'place')
 
     for place in places:
         place.schedule = route.get_time_data(place.line_location, 'schedule')
