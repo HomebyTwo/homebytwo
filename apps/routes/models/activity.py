@@ -10,7 +10,7 @@ class ActivityType(models.Model):
     # Vertical speed down used for time calculation in meters/hour
     default_vam_down = models.FloatField(default=2000)
     # Horizontal speed used for time calculation in meters/hour
-    default_flat_pace = models.FloatField(default=4000)
+    default_flat_speed = models.FloatField(default=4000)
 
     def __str__(self):
         return self.name
@@ -29,4 +29,4 @@ class ActivityPerformance(models.Model):
     # Vertical speed down used for time calculation in meters/hour
     vam_down = models.FloatField(default=2000)
     # Horizontal speed used for time calculation in meters/hour
-    flat_pace = models.FloatField(default=4000)
+    flat_speed = models.FloatField(default=4000)

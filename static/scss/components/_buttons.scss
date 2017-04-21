@@ -1,0 +1,16 @@
+
+.#{$namespace}btn--delete,
+%btn--delete {
+  color: $btn-delete-color;
+
+  background-color: $btn-delete-bkg-color;
+
+  &:hover,
+  &:focus {
+    background-color: $btn-delete-hover-bkg-color;
+  }
+
+  &:active {
+    background-color: $btn-delete-active-bkg-color;
+  }
+}

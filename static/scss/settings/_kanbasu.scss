@@ -142,6 +142,10 @@ $btn-primary-bkg-color:             $brand-color;
 $btn-primary-hover-bkg-color:       lighten($btn-primary-bkg-color, 8%);
 $btn-primary-active-bkg-color:      darken($btn-primary-bkg-color, 5%);
 
+$btn-delete-color:                  white;
+$btn-delete-bkg-color:              $mountain-red;
+$btn-delete-hover-bkg-color:        lighten($btn-delete-bkg-color, 8%);
+$btn-delete-active-bkg-color:       darken($btn-delete-bkg-color, 5%);
 
 /**
  * Forms

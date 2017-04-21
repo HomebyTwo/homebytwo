@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView, DeleteView
@@ -10,6 +10,7 @@ from .models import Route, RoutePlace
 
 def routes(request):
     routes = Route.objects.order_by('name')
+    routes = routes.filter(user=request.user)
     context = {
         'routes': routes,
     }
@@ -19,11 +20,14 @@ def routes(request):
 
 def route(request, pk):
     # load route from Database
-    route = Route.objects.select_related('start_place', 'end_place').get(id=pk)
+    route = get_object_or_404(Route, id=pk)
+
+    # calculate the schedule based on user data
+    route.calculate_projected_time_schedule(request.user)
 
     # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.select_related('route', 'place').\
-        filter(route=pk)
+    places = RoutePlace.objects.filter(route=pk)
+    places = places.select_related('route', 'place')
 
     for place in places:
         place.schedule = route.get_time_data(place.line_location, 'schedule')
@@ -67,4 +71,12 @@ class RouteDelete(DeleteView):
 @method_decorator(login_required, name='dispatch')
 class RouteEdit(UpdateView):
     model = Route
-    fields = ['name', 'description', 'image']
+    fields = ['activity_type', 'name', 'description', 'image']
+
+    def form_valid(self, form):
+        # This method is called when valid form data has been POSTed.
+        # if the activity_type has changed recalculate the route schedule
+        if 'activity_type' in form.changed_data:
+            form.instance.calculate_projected_time_schedule(self.request.user)
+
+        return super(RouteEdit, self).form_valid(form)

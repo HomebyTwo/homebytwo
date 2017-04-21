@@ -14,3 +14,10 @@ class Athlete(models.Model):
                 'ActivityType',
                 through='ActivityPerformance'
             )
+
+
+"""
+A snippet to create a user profile the first time it is accessed.
+https://www.djangorocks.com/snippets/automatically-create-a-django-profile.html
+"""
+User.athlete = property(lambda u: Athlete.objects.get_or_create(user=u)[0])

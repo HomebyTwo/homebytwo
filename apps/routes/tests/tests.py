@@ -6,15 +6,18 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 
-from apps.routes.models import Place
+from apps.routes.models import Place, ActivityPerformance
 from apps.routes.models.track import DataFrameField, DataFrameFormField
 
 from . import factories
 from hb2.utils.factories import UserFactory
 
+from apps.routes.templatetags.duration import nice_repr, baseround
+
 from pandas import DataFrame
 import numpy as np
 from unittest import skip
+from datetime import timedelta
 
 
 import os
@@ -391,6 +394,55 @@ class RouteTestCase(TestCase):
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)
 
+    def test_calculate_projected_time_schedule(self):
+        activity_type = factories.ActivityTypeFactory()
+
+        route = factories.RouteFactory(activity_type=activity_type)
+        user = UserFactory()
+
+        route.calculate_projected_time_schedule(user)
+        total_default_time = route.get_data(1, 'schedule')
+
+        ActivityPerformance.objects.create(
+            athlete=user.athlete,
+            activity_type=activity_type,
+            vam_up=activity_type.default_vam_up * 2,
+            vam_down=activity_type.default_vam_down * 2,
+            flat_speed=activity_type.default_flat_speed * 2,
+        )
+
+        route.calculate_projected_time_schedule(user)
+        total_user_time = route.get_data(1, 'schedule')
+
+        self.assertAlmostEqual(total_default_time, total_user_time * 2)
+
+    def test_schedule_display(self):
+        duration = timedelta(seconds=30, minutes=1, hours=6)
+        long_dspl = nice_repr(duration)
+        self.assertEqual(long_dspl, '6 hours 1 minute 30 seconds')
+
+        duration = timedelta(seconds=0)
+        long_dspl = nice_repr(duration)
+        self.assertEqual(long_dspl, '0 seconds')
+
+        duration = timedelta(seconds=30, minutes=2, hours=2)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '2 h 5 min')
+
+        duration = timedelta(seconds=45, minutes=57, hours=2)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '3 h')
+
+        duration = timedelta(seconds=30, minutes=2, hours=6)
+        hike_dspl = nice_repr(duration, display_format='hike')
+        self.assertEqual(hike_dspl, '6 h')
+
+    def test_base_round(self):
+        values = [0, 3, 4.85, 12, -7]
+        rounded = [baseround(value) for value in values]
+
+        self.assertEqual(rounded, [0, 5, 5, 10, -5])
+
     #########
     # Views #
     #########
@@ -557,6 +609,7 @@ class RouteTestCase(TestCase):
         with open_data('image.jpg') as image:
             post_data = {
                 'name': route.name,
+                'activity_type': route.activity_type.id,
                 'description': route.description,
                 'image': SimpleUploadedFile(image.name, image.read())
             }

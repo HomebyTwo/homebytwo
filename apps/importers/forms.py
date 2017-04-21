@@ -21,6 +21,7 @@ class ImportersRouteForm(RouteForm):
             'start_place',
             'end_place',
             'data',
+            'activity_type',
         ]
 
         # Do not display the following fields in the form.

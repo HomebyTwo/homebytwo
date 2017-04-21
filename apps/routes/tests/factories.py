@@ -23,6 +23,15 @@ def load_data(file):
         return open(json_path).read()
 
 
+class ActivityTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.ActivityType
+    name = factory.fuzzy.FuzzyText()
+    default_vam_up = factory.fuzzy.FuzzyInteger(200, 2000)
+    default_vam_down = factory.fuzzy.FuzzyInteger(200, 2000)
+    default_flat_speed = factory.fuzzy.FuzzyInteger(2000, 40000)
+
+
 class PlaceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.Place
@@ -46,6 +55,7 @@ class RouteFactory(factory.django.DjangoModelFactory):
     route_geojson = load_data('route_geom.json')
     route_data_json = load_data('route_data.json')
 
+    activity_type = factory.SubFactory(ActivityTypeFactory)
     name = factory.fuzzy.FuzzyText()
     source_id = factory.Sequence(lambda n: '%d' % n)
     data_source = 'homebytwo'

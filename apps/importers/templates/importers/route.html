@@ -9,64 +9,79 @@
 {% endblock extralinks %}
 
 {% block content %}
-    <h1 class="mrgt mrgb0">Import Route</h1>
-    {% if response.error %}
-        {% include "importers/includes/_alert.html" %}
-    {% endif %}
-    {% if route %}
-        {# Route Title #}
-        <div class="header text-center relative-parent clearfix mrgb0">
-            <h2 class="mrgv0">{{ route.name }}</h2>
-            <h3 class="mrgv0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
-            <div class="pull-left pdgh mrgb0">&lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a></div>
-        </div>
-        {# Forms #}
-        <form class="box" method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
-            <ul class="list">
-                {# Start Place #}
-                <li class="mrgb box box--default pdg-">
-                    {{ route_form.start_place.errors }}
-                    <label for="{{ route_form.start_place.id_for_label }}" class="h4 mrgv0">Start Place:</label>
-                    {{ route_form.start_place }}
-                </li>
+  <h1 class="mrgt mrgb0">Import Route</h1>
 
-                {# Checkpoints #}
-                {% include 'importers/includes/_checkpoints.html' %}
+  {# Alerts #}
+  {% if response.error %}
+    {% include "importers/includes/_alert.html" %}
+  {% endif %}
 
-                {# Finish Place #}
-                <li class="mrgt box box--default pdg-">
-                    {{ route_form.end_place.errors }}
-                    <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
-                    {{ route_form.end_place }}
-                </li>
-            </ul>
+  {% if route %}
+    {# Route Title #}
+    <div class="header text-center relative-parent clearfix mrgb0">
+      
+      <h2 class="mrgv0">{{ route.name }}</h2>
 
-            {# Hidden Form Fields #}
-            <div>{{ places_form.management_form }}</div>
-            <div>{{ route_form.source_id }}</div>
-            <div>{{ route_form.name }}</div>
-            <div>{{ route_form.totalup }}</div>
-            <div>{{ route_form.totaldown }}</div>
-            <div>{{ route_form.length }}</div>
-            <div>{{ route_form.geom }}</div>
-            <div>{{ route_form.data }}</div>
-            {# Submit #}
-            <div class="form-group text-center mrg">
-                {% if not route.already_imported %}
-                    <input type="submit" value="Import" class="btn btn--md btn--primary">
-                {% else %}
-                    <p class="btn btn--md btn--default" Disabled>Already Imported</p>
-                {% endif %}
-            </div>
-        </form>
-    {% endif %}
+      <h3 class="mrgv0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
+
+      <div class="pull-left pdgh mrgb0">&lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a></div>
+
+    </div>
+
+    {# Forms #}
+    <form class="box" method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
+      <div class="mrgb box box--default pdg-">{{ route_form.activity_type.errors }}
+            <label for="{{ route_form.activity_type.id_for_label }}" class="h4 mrgv0">Activity Type</label>
+            {{ route_form.activity_type }}</div>
+      <ul class="list">
+        {# Start Place #}
+        <li class="mrgb box box--default pdg-">
+          {{ route_form.start_place.errors }}
+          <label for="{{ route_form.start_place.id_for_label }}" class="h4 mrgv0">Start Place:</label>
+          {{ route_form.start_place }}
+        </li>
+
+        {# Checkpoints #}
+        {% include 'importers/includes/_checkpoints.html' %}
+
+        {# Finish Place #}
+        <li class="mrgt box box--default pdg-">
+          {{ route_form.end_place.errors }}
+          <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
+          {{ route_form.end_place }}
+        </li>
+      </ul>
+
+      {# Hidden Form Fields #}
+      <div>{{ places_form.management_form }}</div>
+      <div>{{ route_form.source_id }}</div>
+      <div>{{ route_form.name }}</div>
+      <div>{{ route_form.totalup }}</div>
+      <div>{{ route_form.totaldown }}</div>
+      <div>{{ route_form.length }}</div>
+      <div>{{ route_form.geom }}</div>
+      <div>{{ route_form.data }}</div>
+
+      {# Submit #}
+      <div class="form-group text-center mrg">
+        {% if not route.already_imported %}
+          <input type="submit" value="Import" class="btn btn--md btn--primary">
+        {% else %}
+          <p class="btn btn--md btn--default" Disabled>Already Imported</p>
+        {% endif %}
+      </div>
+    </form>
+
     {% if route.geom %}
-        {% leaflet_map "main" callback="route_map_init" %}
+      {% leaflet_map "main" callback="route_map_init" %}
     {% endif %}
+
+  {% endif %}
 
 {% endblock content %}
 
 {% if route.geom %}
+
   {% block extrajs %}
     <script type="text/javascript">
       function route_map_init (map, options) {
@@ -93,4 +108,5 @@
       }
     </script>
   {% endblock extrajs %}
+
 {% endif %}

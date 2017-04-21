@@ -37,7 +37,7 @@ def request_json(url, cookies=None):
 
     # connection error and inform the user
     except requests.exceptions.ConnectionError as e:
-        message = "Connection Error: could not connect to %s. <br> %s" % (url, e)
+        message = "Connection Error: could not connect to %s. " % url
         response = {'error': True, 'message': message}
 
         return False, response
@@ -230,9 +230,8 @@ class SwitzerlandMobilityRoute(Route):
             literal_eval(raw_route_json['properties']['profile']),
             columns=['lat', 'lng', 'altitude', 'length'])
 
-        # compute elevation and schedule data
+        # compute elevation data
         self.calculate_cummulative_elevation_differences()
-        self.calculate_projected_time_schedule()
 
     def save(self, *args, **kwargs):
         """
