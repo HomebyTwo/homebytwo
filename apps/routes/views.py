@@ -10,6 +10,7 @@ from .models import Route, RoutePlace
 
 def routes(request):
     routes = Route.objects.order_by('name')
+    routes = routes.filter(user=request.user)
     context = {
         'routes': routes,
     }
