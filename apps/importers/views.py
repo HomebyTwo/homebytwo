@@ -87,9 +87,16 @@ def strava_authorized(request):
 @login_required
 def strava_routes(request):
 
-    # retrieve the API client from athlete token
-    # or redirect to connect
-    strava_client = _get_strava_client_or_redirect(request.user)
+    # find or create the athlete related to the user
+    athlete, created = Athlete.objects.get_or_create(user=request.user)
+
+    # if user has no token, redirect to Strava connect
+    if not athlete.strava_token:
+        redirect_url = reverse('strava_connect')
+        return HttpResponseRedirect(redirect_url)
+
+    # create the client
+    strava_client = StravaClient(access_token=athlete.strava_token)
 
     # Retrieve athlete from Strava
     try:
@@ -158,8 +165,16 @@ def strava_route(request, source_id):
 
     if request.method == 'GET':
 
-        # instantiate Strava API client
-        strava_client = _get_strava_client_or_redirect(request.user)
+        # find or create the athlete related to the user
+        athlete, created = Athlete.objects.get_or_create(user=request.user)
+
+        # if user has no token, redirect to Strava connect
+        if not athlete.strava_token:
+            redirect_url = reverse('strava_connect')
+            return HttpResponseRedirect(redirect_url)
+
+        # create the client
+        strava_client = StravaClient(access_token=athlete.strava_token)
 
         # get route details from Strava API
         route.get_route_details(strava_client)
@@ -363,19 +378,6 @@ def switzerland_mobility_login(request):
         form = SwitzerlandMobilityLogin()
         context = {'form': form}
         return render(request, template, context)
-
-
-def _get_strava_client_or_redirect(user):
-    # find or create the athlete related to the user
-    athlete, created = Athlete.objects.get_or_create(user=user)
-
-    # if user has no token, redirect to Strava connect
-    if not athlete.strava_token:
-        redirect_url = reverse('strava_connect')
-        return HttpResponseRedirect(redirect_url)
-
-    # create the client
-    return StravaClient(access_token=athlete.strava_token)
 
 
 def _set_strava_token(user, token):

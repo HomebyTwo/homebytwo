@@ -119,6 +119,17 @@ class Strava(TestCase):
     #########
     # views #
     #########
+    def test_redirect_when_token_missing(self):
+        athlete = self.user.athlete
+        athlete.strava_token = None
+        athlete.save()
+
+        routes_url = reverse('strava_routes')
+        response = self.client.get(routes_url)
+        connect_url = reverse('strava_connect')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, connect_url)
 
     def test_strava_routes_success(self):
         strava_athlete_id = 4679628
