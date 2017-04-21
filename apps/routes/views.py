@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView, DeleteView
@@ -19,8 +19,7 @@ def routes(request):
 
 def route(request, pk):
     # load route from Database
-    route = Route.objects.get_object_or_404(id=pk)
-    route = route.select_related('start_place', 'end_place')
+    route = get_object_or_404(Route, id=pk)
 
     # calculate the schedule based on user data
     route.calculate_projected_time_schedule(request.user)
