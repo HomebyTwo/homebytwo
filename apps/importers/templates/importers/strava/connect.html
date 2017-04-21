@@ -2,8 +2,10 @@
 {% load static %}
 
 {% block content %}
-<h1>Import your Strava Routes</h1>
-<a href="{{ strava_authorize_url }}">
-    <img src="{% static 'images/ConnectWithStrava@2x.png' %}" alt="Connect with Strava" width="171px"/>
-</a>
+<h1>Import Routes from Strava</h1>
+<div class="box box--default relative-parent">
+	<a href="{{ strava_authorize_url }}">
+	    <img class="h-align" src="{% static 'images/ConnectWithStrava@2x.png' %}" alt="Connect with Strava" width="171px"/>
+	</a>
+</div>
 {% endblock content %}
