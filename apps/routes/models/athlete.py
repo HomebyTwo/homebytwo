@@ -1,5 +1,5 @@
-from django.contrib.gis.db import models
 from django.contrib.auth.models import User
+from django.contrib.gis.db import models
 
 
 class Athlete(models.Model):
@@ -15,6 +15,11 @@ class Athlete(models.Model):
                 through='ActivityPerformance'
             )
 
+    def __str__(self):
+        return str(self.user.username)
+
+    def __unicode__(self):
+        return str(self.user.username)
 
 """
 A snippet to create a user profile the first time it is accessed.

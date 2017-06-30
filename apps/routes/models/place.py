@@ -1,18 +1,19 @@
 from __future__ import unicode_literals
 
-from django.contrib.gis.db import models
-from django.conf import settings
-from django.contrib.gis.geos import GEOSGeometry
-from django.contrib.gis.measure import D
-from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
-from django.db import connection
-from django.utils import six
+import json
+from datetime import datetime
+from itertools import chain, islice, tee
 
 import googlemaps
 import requests
-import json
-from datetime import datetime
-from itertools import tee, islice, chain
+from django.conf import settings
+from django.contrib.gis.db import models
+from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
+from django.core.exceptions import ValidationError
+from django.db import connection
+from django.utils import six
 
 
 def current_and_next(some_iterable):
@@ -356,8 +357,11 @@ class Place(models.Model):
 
         # Ensure the place is a public transport stop
         if not self.public_transport:
-            print('Error: place is not connected to public transport network')
-            return
+            raise ValidationError(
+                _("'%(name)s' is not connected to the public transport network."),
+                code='invalid',
+                params={'name': self.name},
+            )
 
         # Base public transport API URL
         url = '%s/connections' % settings.SWISS_PUBLIC_TRANSPORT_API_URL

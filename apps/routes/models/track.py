@@ -1,22 +1,20 @@
+import os
+import uuid
+from datetime import timedelta
+
 from django import forms
 from django.conf import settings
-
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-
-from . import Place, ActivityType, ActivityPerformance
-
-from datetime import timedelta
-from pandas import read_hdf, read_json, DataFrame
-from numpy import interp
-
-import uuid
-import os
 from easy_thumbnails.fields import ThumbnailerImageField
+from numpy import interp
+from pandas import DataFrame, read_hdf, read_json
+
+from . import ActivityPerformance, ActivityType, Place
 
 
 class DataFrameField(models.CharField):
