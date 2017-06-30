@@ -406,15 +406,16 @@ class RouteTestCase(TestCase):
         ActivityPerformance.objects.create(
             athlete=user.athlete,
             activity_type=activity_type,
-            vam_up=activity_type.default_vam_up * 2,
-            vam_down=activity_type.default_vam_down * 2,
-            flat_speed=activity_type.default_flat_speed * 2,
+            slope_squared_param=activity_type.slope_squared_param / 2,
+            slope_param=activity_type.slope_param / 2,
+            flat_param=activity_type.flat_param / 2,
+            total_elevation_gain_param=activity_type.total_elevation_gain_param,
         )
 
         route.calculate_projected_time_schedule(user)
         total_user_time = route.get_data(1, 'schedule')
 
-        self.assertAlmostEqual(total_default_time, total_user_time * 2)
+        self.assertTrue(total_default_time > total_user_time)
 
     def test_schedule_display(self):
         duration = timedelta(seconds=30, minutes=1, hours=6)

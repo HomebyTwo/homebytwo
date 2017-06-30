@@ -3,7 +3,7 @@ from leaflet.admin import LeafletGeoAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 
-from .models import Route, Place, Athlete, ActivityType
+from .models import Route, Place, Athlete, ActivityType, ActivityPerformance
 
 # Route admin
 admin.site.register(Route, LeafletGeoAdmin)
@@ -24,9 +24,8 @@ class PlaceAdmin(LeafletGeoAdmin):
 
 
 admin.site.register(Place, PlaceAdmin)
-
-# Activity admin
 admin.site.register(ActivityType, LeafletGeoAdmin)
+admin.site.register(ActivityPerformance)
 
 
 class AthleteInline(admin.StackedInline):

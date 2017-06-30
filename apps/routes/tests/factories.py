@@ -27,9 +27,10 @@ class ActivityTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = models.ActivityType
     name = factory.fuzzy.FuzzyText()
-    default_vam_up = factory.fuzzy.FuzzyInteger(200, 2000)
-    default_vam_down = factory.fuzzy.FuzzyInteger(200, 2000)
-    default_flat_speed = factory.fuzzy.FuzzyInteger(2000, 40000)
+    slope_squared_param = factory.fuzzy.FuzzyFloat(3.0, 10.0)
+    slope_param = factory.fuzzy.FuzzyFloat(0.2, 1.2)
+    flat_param = factory.fuzzy.FuzzyFloat(0.20, 1.0)
+    total_elevation_gain_param = factory.fuzzy.FuzzyFloat(0.05, 1.05)
 
 
 class PlaceFactory(factory.django.DjangoModelFactory):
