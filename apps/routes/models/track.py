@@ -499,6 +499,12 @@ class Track(models.Model):
         """
         return D(m=self.totaldown)
 
+    def get_total_duration(self):
+        """
+        returns cummalive altitude loss as a Distance object
+        """
+        return self.get_time_data(1, 'schedule')
+
     def get_closest_places_along_line(self, line_location=0, max_distance=100):
         # create the point from location
         point = self.geom.interpolate_normalized(line_location)

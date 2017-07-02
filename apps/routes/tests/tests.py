@@ -491,6 +491,38 @@ class RouteTestCase(TestCase):
         self.assertIn(route_name, response_content)
         self.assertNotIn(edit_url, response_content)
 
+    def test_route_view_success_no_start_place(self):
+        route = factories.RouteFactory(
+            user=factories.UserFactory(),
+            start_place=None
+        )
+        url = reverse('routes:route', args=[route.id])
+        route_name = route.name
+        end_place_name = route.end_place.name
+
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(route_name, response_content)
+        self.assertIn(end_place_name, response_content)
+
+    def test_route_view_success_no_end_place(self):
+        route = factories.RouteFactory(
+            user=factories.UserFactory(),
+            end_place=None
+        )
+        url = reverse('routes:route', args=[route.id])
+        route_name = route.name
+        start_place_name = route.start_place.name
+
+        response = self.client.get(url)
+        response_content = response.content.decode('UTF-8')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(route_name, response_content)
+        self.assertIn(start_place_name, response_content)
+
     def test_get_route_delete_view(self):
         route = factories.RouteFactory()
         url = reverse('routes:delete', args=[route.id])

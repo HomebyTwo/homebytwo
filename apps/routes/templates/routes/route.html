@@ -9,8 +9,9 @@
 {% endblock extralinks %}
 
 {% block content %}
-  {# Route Title section#}
+  {# Route Title section #}
   <header class="clearfix">
+    {% include 'routes/includes/_image.html' %}
     <h1 class="mrgt mrgb0 text-center">{{ route.name}}</h1>
     <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
     <div class="pull-left mrg-" >&lsaquo; <a href="{% url 'routes:routes' %}">Routes list</a></div>
@@ -19,7 +20,6 @@
     {% endif %}
   </header>
 
-  {% include 'routes/includes/_image.html' %}
   {% include 'routes/includes/_course.html' %}
 
   {% if route.geom %}
@@ -41,7 +41,7 @@
         const icon = L.divIcon({
           className: 'placeIcon placeIcon--default',
         });
-        const places = Array.from(document.querySelectorAll('.place'));
+        const places = Array.from(document.querySelectorAll('.place--known'));
         const markers = places.map(place => {
           L.geoJson(JSON.parse(place.dataset.geom), {
             pointToLayer: (feature, latlng) => L.marker(latlng, {

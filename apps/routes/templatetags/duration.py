@@ -5,7 +5,7 @@ register = template.Library()
 
 @register.filter(name='duration')
 def timedelta(value, display_format="long"):
-    if value is None:
+    if value in (None, 0):
         return value
     return nice_repr(value, display_format)
 
@@ -35,7 +35,8 @@ def nice_repr(timedelta, display_format="long", sep=" "):
     '1 day 2 h 5  min'
     """
 
-    assert isinstance(timedelta, datetime.timedelta), "First argument must be a timedelta."
+    assert isinstance(timedelta, datetime.timedelta), (
+        "First argument must be a timedelta.")
 
     result = []
 
