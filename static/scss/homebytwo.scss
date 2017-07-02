@@ -36,6 +36,7 @@
 @import '../../node_modules/kanbasu/src/assets/scss/defaults/typography';
 @import '../../node_modules/kanbasu/src/assets/scss/defaults/table';
 @import '../../node_modules/kanbasu/src/assets/scss/defaults/forms';
+@import 'defaults/base';
 @import 'defaults/typography';
 
 
@@ -74,6 +75,7 @@
 /**
 * HB2 Components
 */
+@import "components/nav";
 @import 'components/alert';
 @import 'components/box';
 @import 'components/buttons';

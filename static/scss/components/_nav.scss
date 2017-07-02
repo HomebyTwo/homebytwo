@@ -1,0 +1,29 @@
+
+.nav {
+  color: $white;
+  background-color: $brand-color;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  a {
+    color: $white;
+    text-decoration: none;
+    svg {
+      fill: currentColor;
+    }
+  }
+
+  a:hover {
+    color: $alt-color-lighter;
+  }
+
+  .active {
+    color: $alt-color-lighter;
+  }
+}
+
+.nav__subnav {
+  li {
+    font-size: $font-size-default;
+  }
+}

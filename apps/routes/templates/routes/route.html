@@ -8,10 +8,14 @@
     {% leaflet_css %}
 {% endblock extralinks %}
 
+{% block header %}
+    {% include 'routes/includes/_image.html' %}
+{% endblock header %}
+
 {% block content %}
-  {# Route Title section#}
+  {# Route Title section #}
   <header class="clearfix">
-    <h1 class="mrgt mrgb0 text-center">{{ route.name}}</h1>
+    <h1 class="mrgb0 text-center">{{ route.name}}</h1>
     <h2 class="mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h2>
     <div class="pull-left mrg-" >&lsaquo; <a href="{% url 'routes:routes' %}">Routes list</a></div>
     {% if user == route.user %}
@@ -19,7 +23,6 @@
     {% endif %}
   </header>
 
-  {% include 'routes/includes/_image.html' %}
   {% include 'routes/includes/_course.html' %}
 
   {% if route.geom %}
@@ -35,13 +38,11 @@
         const route = L.geoJson({{ route|geojsonfeature|safe }});
         route.addTo(map);
         map.fitBounds(route.getBounds());
-        map.scrollWheelZoom.disable();
-        map.touchZoom.disable();
-        map.boxZoom.disable();
+        map.dragging.disable();
         const icon = L.divIcon({
           className: 'placeIcon placeIcon--default',
         });
-        const places = Array.from(document.querySelectorAll('.place'));
+        const places = Array.from(document.querySelectorAll('.place--known'));
         const markers = places.map(place => {
           L.geoJson(JSON.parse(place.dataset.geom), {
             pointToLayer: (feature, latlng) => L.marker(latlng, {
@@ -53,6 +54,7 @@
           }).addTo(map);
         });
       }
+
     </script>
   {% endblock extrajs %}
 {% endif %}

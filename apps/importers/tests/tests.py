@@ -924,7 +924,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_routes_success(self):
         url = reverse('switzerland_mobility_routes')
-        content = '<h1>Import Routes from Switzerland Mobility Plus</h1>'
+        content = 'Import Routes from Switzerland Mobility Plus'
         self.add_cookies_to_session()
 
         # intercept call to map.wanderland.ch

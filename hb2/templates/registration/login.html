@@ -1,54 +1,54 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block banner_image %} <img src="{% static 'images/banner-login.jpg' %}" class="img-block"> {% endblock banner_image %}
+{% block header %}
+{% include "includes/_masterhead.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
+{% endblock header %}
 
 {% block content %}
+  {% if form.errors %}
+  <div class="box alert alert--error mrgv">
+    <p>Your username and password didn't match. Please try again.</p>
+  </div>
+  {% endif %}
 
-{% include "includes/_header.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
+  {% if next %}
+  {% if user.is_authenticated %}
+  <div class="box alert alert--info mrgb">
+    <p>Your account doesn't have access to this page.
+     To proceed, please login with an account that has access:</p>
+   </div>
+   {% else %}
+   <div class="box alert alert--info mrgb">
+    <p>Please login to see this page:</p>
+  </div>
+  {% endif %}
+  {% endif %}
 
-<!-- Login form -->
-<div class="grid grid--center">
-    <div class="grid__item w-5/6 sm-w-3/4 md-w-2/3 lg-w-1/2 box">
-
-        {% if form.errors %}
-            <div class="box alert alert--error mrgb">
-                <p>Your username and password didn't match. Please try again.</p>
-            </div>
-        {% endif %}
-
-        {% if next %}
-            {% if user.is_authenticated %}
-                <div class="box alert alert--info mrgb">
-                    <p>Your account doesn't have access to this page.
-                       To proceed, please login with an account that has access:</p>
-                </div>
-            {% else %}
-                <div class="box alert alert--info mrgb">
-                    <p>Please login to see this page:</p>
-                </div>
-            {% endif %}
-        {% endif %}
-
-    <form class="grid__item w-5/6 grid" method="post" action="{% url 'login' %}">
-        {% csrf_token %}
-        <div class="grid grid__item grid--tight">
-            <div class="grid__item sm-w-1/3">{{ form.username.label_tag }}</div>
-            <div class="grid__item sm-w-2/3">{{ form.username }}</div>
-        </div>
-        <div class="grid grid__item grid--tight mrgt">
-            <div class="grid__item sm-w-1/3">{{ form.password.label_tag }}</div>
-            <div class="grid__item sm-w-2/3">{{ form.password }}</div>
-        </div>
-        <div class="grid__item clearfix mrgv">
-            <div class="pull-right"><input class="btn btn--primary" type="submit" value="login" /></div>
-            <div class="pull-left"><a href="{% url 'password_reset' %}">Lost password?</a></div>
-        </div>
-        <input type="hidden" name="next" value="{{ next }}" />
-    </form>
-
-    {# Assumes you setup the password_reset view in your URLconf #}
-
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    <div class="form-group grid">
+      <label for="id_username" class="field-label grid__item md-w-1/5">Username</label>
+      <div class="grid__item md-w-4/5">
+        {{ form.username }}
+      </div>
     </div>
-</div>
+    <div class="form-group grid">
+      <label for="id_password" class="field-label grid__item md-w-1/5">Password</label>
+      <div class="grid__item md-w-4/5">
+        {{ form.password }}
+      </div>
+    </div>
+    <div class="form-group grid grid--right">
+      <div class="grid__item md-w-4/5">
+        <input type="submit" class="btn btn--primary" value="Log in" />
+      </div>
+    </div>
+    <div class="form-group grid grid--right">
+      <div class="grid__item md-w-4/5">
+        <a href="{% url 'password_reset' %}">Lost password?</a>
+      </div>
+    </div>
+    <input type="hidden" name="next" value="{{ next }}" />
+  </form>
 {% endblock content %}
