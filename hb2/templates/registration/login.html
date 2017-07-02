@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block banner_image %} <img src="{% static 'images/banner-login.jpg' %}" class="img-block"> {% endblock banner_image %}
-
 {% block content %}
 
-{% include "includes/_header.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
+{% include "includes/_masterhead.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
 
 <!-- Login form -->
 <div class="grid grid--center">

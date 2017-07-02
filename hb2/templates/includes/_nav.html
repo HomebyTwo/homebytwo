@@ -1,0 +1,55 @@
+{% load staticfiles %}
+
+<nav class="nav">
+  <ul class="list-inline">
+    <li class="nav__item pdgh pdgv-">
+      <a href="{% url 'home' %}" class="brand">
+        <img src="{% static "images/hb2_logo.svg" %}" width="40" height="40" alt="Home by Two">
+      </a>
+    </li>
+
+    <li class="nav__item nav__item--main">
+      <a href="#" class="nav-toggle-button js-toggle-nav">
+        <span class="hamburger hamburger--squeeze">
+          <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+          </span>
+        </span>
+      </a>
+
+      <ul class="list-inline list-inline--divided">
+        <li class="text-uppercase">
+          <a href="{% url 'routes:routes' %}" >
+          My Routes
+          </a>
+        </li>
+        <li class="text-uppercase">
+          <a href="{% url 'importers_index' %}" >
+          Import
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <li class="nav__item">
+      {% if not user.is_authenticated %}
+        <ul class="list-inline list-inline--tight">
+          <li>
+            <a href="{% url 'register' %}" class="btn btn--small">
+            Register
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'login' %}" class="btn  btn--small">
+            Login
+            </a>
+          </li>
+        </ul>
+      {% else %}
+          <a href="{% url 'logout' %}" class="btn  btn--small">
+          Logout
+          </a>
+      {% endif %}
+    </li>
+  </ul>
+</nav>
