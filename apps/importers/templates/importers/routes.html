@@ -10,7 +10,7 @@
     {% else %}
         {% if new_routes %}
             <h2 class="mrg">New Routes</h2>
-            <ul class="mrgh list-stacked list-stacked--divided">
+            <ul class="mrgh list-stacked list-stacked--tight">
             {% for route in new_routes %}
                 {% include "importers/includes/_route_card.html" with new=True %}
             {% endfor %}
@@ -18,7 +18,7 @@
         {% endif %}
         {% if old_routes %}
             <h2 class="mrg">Already Imported Routes</h2>
-            <ul class="mrgh list-stacked list-stacked--divided">
+            <ul class="mrgh list-stacked list-stacked--tight">
             {% for route in old_routes %}
                 {% include "importers/includes/_route_card.html" %}
             {% endfor %}

@@ -17,7 +17,7 @@
     <!-- End Google Tag Manager -->
   {% endif %}
 
-  <link rel="stylesheet" href="{% static 'stylesheets/kanbasu.css' %}"/>
+  <link rel="stylesheet" href="{% static 'stylesheets/homebytwo.css' %}"/>
   <link rel="shortcut icon" href="{% static 'favicon.ico' %}"/>
   <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:700" rel="stylesheet">
 
@@ -35,6 +35,7 @@
   <div class="master">
 
     {% include 'includes/_nav.html' %}
+    {% block header %}{% endblock %}
 
     <div class="content">
       {% block content %}{% endblock %}

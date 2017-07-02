@@ -8,6 +8,7 @@ from django.views.generic.edit import UpdateView, DeleteView
 from .models import Route, RoutePlace
 
 
+@login_required
 def routes(request):
     routes = Route.objects.order_by('name')
     routes = routes.filter(user=request.user)

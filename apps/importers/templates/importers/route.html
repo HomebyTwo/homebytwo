@@ -19,7 +19,7 @@
   {% if route %}
     {# Route Title #}
     <div class="header text-center relative-parent clearfix mrgb0">
-      
+
       <h2 class="mrgv0">{{ route.name }}</h2>
 
       <h3 class="mrgv0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>

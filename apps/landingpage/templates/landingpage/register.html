@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 
 {% block title %}Home by Two{% endblock %}
+{% block header %}
+  {% include "includes/_masterhead.html" with banner_image="images/banner-login.jpg" %}
+{% endblock header %}
 
 {% block content %}
-    {% include "includes/_masterhead.html" with banner_image="images/banner-login.jpg" %}
-    <div class="grid grid--center pdgt-- box box--default">
-    <div class="sm-w-2/3 grid__item">
-        <h4 class=>We are still working on it...</h4>
-        <p class="mrgv-">Even though we would love you to register right now. We are not quite ready yet.</p>
-        <p class="mrgt-">Sign up to find out when are ready to launch:</p>
-    </div>
-    <div class="sm-w-2/3 grid__item">{% include "landingpage/includes/_email_signup_form.html" %}</div>
+<div class="box box--default mrgt">
+  <h4 class=>We are still working on it...</h4>
+  <p class="mrgv-">Even though we would love you to register right now. We are not quite ready yet.</p>
+  <p class="mrgt-">Sign up to find out when are ready to launch:</p>
+  {% include "landingpage/includes/_email_signup_form.html" %}
+</div>
 {% endblock content %}
