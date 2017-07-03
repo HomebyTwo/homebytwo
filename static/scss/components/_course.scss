@@ -1,5 +1,8 @@
 .place{
     white-space: nowrap;
+    label {
+        overflow: auto;
+    }
 }
 
 .place__name{
