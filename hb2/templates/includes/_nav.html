@@ -2,7 +2,7 @@
 
 <nav class="nav">
   <ul class="list-inline">
-    <li class="nav__item pdgh pdgv-">
+    <li class="nav__item pdg-">
       <a href="{% url 'home' %}" class="brand">
         <img src="{% static "images/hb2_logo.svg" %}" width="40" height="40" alt="Home by Two">
       </a>
@@ -23,11 +23,6 @@
           My Routes
           </a>
         </li>
-        <li class="text-uppercase">
-          <a href="{% url 'importers_index' %}" >
-          Import
-          </a>
-        </li>
       </ul>
     </li>
 
@@ -40,13 +35,13 @@
             </a>
           </li>
           <li>
-            <a href="{% url 'login' %}" class="btn  btn--small">
+            <a href="{% url 'login' %}" class="btn btn--small">
             Login
             </a>
           </li>
         </ul>
       {% else %}
-          <a href="{% url 'logout' %}" class="btn  btn--small">
+          <a href="{% url 'logout' %}" class="btn btn--small">
           Logout
           </a>
       {% endif %}
