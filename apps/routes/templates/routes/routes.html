@@ -5,13 +5,13 @@
 
 {% block content %}
   <h1>Select a Route</h1>
-  <ul class="list-stacked list-stacked--tight">
+  <ul class="routes list-stacked list-stacked--tight mrgb">
   {% for route in routes %}
       {% include "routes/includes/_route_card.html" %}
     {% empty %}
     <div class="box">
-      <h3>Oh no! You do not seem to have anyroute at all.</h3>
-      <p>Maybe now is a good time to import one?</p>
+      <h2>No Route yet</h2>
+      <p>Import one to get going...</p>
     </div>
   {% endfor %}
   </ul>

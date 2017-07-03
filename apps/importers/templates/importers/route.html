@@ -18,22 +18,23 @@
 
   {% if route %}
     {# Route Title #}
-    <div class="header text-center relative-parent clearfix mrgb0">
+    <div class="text-center clearfix">
 
       <h2 class="mrgv0">{{ route.name }}</h2>
+      <h3 class="mrgt0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
 
-      <h3 class="mrgv0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
-
-      <div class="pull-left pdgh mrgb0">&lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a></div>
+      <div class="pull-left mrgb">
+        &lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a>
+      </div>
 
     </div>
 
     {# Forms #}
-    <form class="box" method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
+    <form method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
       <div class="mrgb box box--default pdg-">{{ route_form.activity_type.errors }}
             <label for="{{ route_form.activity_type.id_for_label }}" class="h4 mrgv0">Activity Type</label>
             {{ route_form.activity_type }}</div>
-      <ul class="list">
+      <ul class="list-stacked">
         {# Start Place #}
         <li class="mrgb box box--default pdg-">
           {{ route_form.start_place.errors }}

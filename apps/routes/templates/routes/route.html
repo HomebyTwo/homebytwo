@@ -39,6 +39,7 @@
         route.addTo(map);
         map.fitBounds(route.getBounds());
         map.dragging.disable();
+        map.scrollWheelZoom.disable();
         const icon = L.divIcon({
           className: 'placeIcon placeIcon--default',
         });
