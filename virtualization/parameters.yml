@@ -19,7 +19,7 @@ forwarded_ports: {
 # here if you want. WARNING, this parameter will not guarantee that your box
 # will be accessible at this IP depending on your network configuration or
 # provider choice.
-# box_ip: "10.10.10.10"
+box_ip: "10.10.10.11"
 
 # Name of the database to create for your project if you include the
 # MySQL or PostgreSQL role
