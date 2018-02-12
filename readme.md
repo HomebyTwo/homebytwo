@@ -86,7 +86,7 @@ $ tox
 
 ## Import Places from SwissNAME3D
 
-Dowload the shapefile from [opendata.swiss](https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung1), the file is about 390.21M:
+Dowload the shapefile from [opendata.swiss](https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung), the file is about 390.21M:
 
 ```sh
 $ vagrant ssh
