@@ -359,6 +359,24 @@ class Track(models.Model):
         """
         return True
 
+    def calculate_elevation_gain_and_distance(self):
+        """
+        calculate the gain and distance columns of the data Dataframe.
+        """
+
+        data = self.data
+
+        # calculate distance between each point
+        ['distance'] = data['length'].diff()
+
+        # cleanup cases where the distance is 0
+        data = data[data.distance > 0]
+
+        # calculate elevation gain between each point
+        data['gain'] = data['altitude'].diff()
+
+        return data
+
     def calculate_cummulative_elevation_differences(self):
         """
         Calculates two colums from the altitude data:
@@ -383,6 +401,27 @@ class Track(models.Model):
             fillna(method='ffill').fillna(value=0)
 
         self.data = data
+
+    def get_performance_data(self, user):
+        """
+        retrieve pèrformance parameters for activity type
+        """
+        activity_type = self.activity_type
+
+        if user.is_authenticated:
+            performance = ActivityPerformance.objects
+            performance = performance.filter(athlete=user.athlete)
+            performance = performance.filter(activity_type=activity_type)
+
+        if user.is_authenticated and performance.exists():
+            # we have performance values for this athlete and activity
+            performance = performance.get()
+
+        else:
+            # no user performance: fallback on activity defaults
+            performance = activity_type
+
+        return performance
 
     def calculate_projected_time_schedule(self, user):
         """
@@ -417,20 +456,13 @@ class Track(models.Model):
         """
 
         data = self.data
-        activity_type = self.activity_type
 
-        if user.is_authenticated:
-            performance = ActivityPerformance.objects
-            performance = performance.filter(athlete=user.athlete)
-            performance = performance.filter(activity_type=activity_type)
+        # make sure we have elevation gain and distance data
+        if not all(column in ['gain', 'distance'] for column in list(data)):
+            data = self.calculate_elevation_gain_and_distance()
 
-        if user.is_authenticated and performance.exists():
-            # we have performance values for this athlete and activity
-            performance = performance.get()
-
-        else:
-            # no user performance: fallback on activity defaults
-            performance = activity_type
+        # get performance data for atrhlete and activity
+        performance = self.get_performance_data(user)
 
         # set performance parameters
         slope_squared_param = performance.slope_squared_param
@@ -443,15 +475,6 @@ class Track(models.Model):
 
         totalup_penalty = total_elevation_gain_param * total_elevation_gain
 
-        # calculate distance between each point
-        data['distance'] = data['length'].diff()
-
-        # cleanup cases where the distance is 0
-        data = data[data.distance > 0]
-
-        # calculate elevation gain between each point
-        data['gain'] = data['altitude'].diff()
-
         data['schedule'] = (
             (slope_squared_param * data['gain']**2)/data['distance']
             + slope_param * data['gain']
@@ -463,7 +486,6 @@ class Track(models.Model):
 
         self.data = data
 
-    # Returns poster picture for the list view
     def get_data(self, line_location, data_column):
         """
         interpolate the value of a given column in the DataFrame
