@@ -367,15 +367,12 @@ class Track(models.Model):
         data = self.data
 
         # calculate distance between each point
-        ['distance'] = data['length'].diff()
-
-        # cleanup cases where the distance is 0
-        data = data[data.distance > 0]
+        data['distance'] = data['length'].diff().fillna(value=0)
 
         # calculate elevation gain between each point
-        data['gain'] = data['altitude'].diff()
+        data['gain'] = data['altitude'].diff().fillna(value=0)
 
-        return data
+        self.data = data
 
     def calculate_cummulative_elevation_differences(self):
         """
@@ -404,7 +401,7 @@ class Track(models.Model):
 
     def get_performance_data(self, user):
         """
-        retrieve pèrformance parameters for activity type
+        retrieve performance parameters for activity type
         """
         activity_type = self.activity_type
 
@@ -435,6 +432,7 @@ class Track(models.Model):
                    slope_param * slope +
                    flat_pace_param +
                    total_elevation_gain_param * total_elevation_gain
+                   total_distance_param * total_distance
 
         Where the is pace in s/m and slope_param_squared, slope_param,
         flat_pace_param and total_elevation_gain_param are variables fitted
@@ -459,9 +457,9 @@ class Track(models.Model):
 
         # make sure we have elevation gain and distance data
         if not all(column in ['gain', 'distance'] for column in list(data)):
-            data = self.calculate_elevation_gain_and_distance()
+            self.calculate_elevation_gain_and_distance()
 
-        # get performance data for atrhlete and activity
+        # get performance data for athlete and activity
         performance = self.get_performance_data(user)
 
         # set performance parameters
@@ -472,17 +470,20 @@ class Track(models.Model):
         # calculate totalup_penalty
         total_elevation_gain_param = performance.total_elevation_gain_param
         total_elevation_gain = self.get_totalup().km
-
         totalup_penalty = total_elevation_gain_param * total_elevation_gain
 
+        # calculate distance_penalty
+        # total_distance_param = performance.total_distance_param
+        # total_distance = self.get_length().km
+        # distance_penalty = total_distance_param * total_distance
+
+        # Calculate schedule, ignoring segments where distance is 0
         data['schedule'] = (
             (slope_squared_param * data['gain']**2)/data['distance']
             + slope_param * data['gain']
             + flat_param * data['distance']
             + totalup_penalty * data['distance']
-        ).cumsum()
-
-        data['schedule'] = data['schedule'].fillna(value=0)
+        ).where(data['distance'] > 0, 0).cumsum().fillna(value=0)
 
         self.data = data
 

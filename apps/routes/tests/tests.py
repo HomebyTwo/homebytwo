@@ -394,6 +394,31 @@ class RouteTestCase(TestCase):
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)
 
+    def test_calculate_elevation_gain_distance(self):
+        data = DataFrame({
+                'altitude': [0, 1, 2, 3, 2, 1, 0],
+                'length':   [0, 1, 2, 2, 3, 4, 5],
+               })
+
+        route = factories.RouteFactory(data=data)
+
+        route.calculate_elevation_gain_and_distance()
+
+        self.assertListEqual(
+            list(route.data),
+            ['altitude', 'length', 'distance', 'gain']
+        )
+
+        self.assertListEqual(
+            list(route.data.distance),
+            [0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
+        )
+
+        self.assertListEqual(
+            list(route.data.gain),
+            [0.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0]
+        )
+
     def test_calculate_projected_time_schedule(self):
         activity_type = factories.ActivityTypeFactory()
 
