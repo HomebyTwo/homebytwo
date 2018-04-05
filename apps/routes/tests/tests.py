@@ -1,26 +1,22 @@
-from django.test import TestCase
+import os
+from datetime import timedelta
+from unittest import skip
+
+import numpy as np
 from django.conf import settings
-from django.core.urlresolvers import reverse
-from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
-
-from apps.routes.models import Place, ActivityPerformance
-from apps.routes.models.track import DataFrameField, DataFrameFormField
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.urlresolvers import reverse
+from django.test import TestCase
+from hb2.utils.factories import UserFactory
+from pandas import DataFrame
 
 from . import factories
-from hb2.utils.factories import UserFactory
-
-from apps.routes.templatetags.duration import nice_repr, baseround
-
-from pandas import DataFrame
-import numpy as np
-from unittest import skip
-from datetime import timedelta
-
-
-import os
+from ..fields import DataFrameField, DataFrameFormField
+from ..models import ActivityPerformance, Place
+from ..templatetags.duration import baseround, nice_repr
 
 
 def open_data(file):
