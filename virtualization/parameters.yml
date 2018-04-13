@@ -19,7 +19,7 @@ forwarded_ports: {
 # here if you want. WARNING, this parameter will not guarantee that your box
 # will be accessible at this IP depending on your network configuration or
 # provider choice.
-box_ip: "10.10.10.11"
+# box_ip: "10.10.10.10"
 
 # Name of the database to create for your project if you include the
 # MySQL or PostgreSQL role
@@ -30,7 +30,7 @@ root_directory: "/vagrant/"
 
 # Do we activate SSL ? The CA will be copied to your project dir, you can then
 # add it to your computer keychain
-ssl: yes
+# ssl: yes
 
 # For a PHP project, you might want to set the following
 # Default reporting level of PHP errors
