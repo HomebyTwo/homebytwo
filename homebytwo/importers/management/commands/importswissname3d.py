@@ -1,9 +1,10 @@
+import os
+
+from django.contrib.gis.gdal import DataSource
+from django.contrib.gis.utils import LayerMapping
 from django.core.management.base import BaseCommand, CommandError
 
-import os
 from ...models import Swissname3dPlace
-from django.contrib.gis.utils import LayerMapping
-from django.contrib.gis.gdal import DataSource
 
 # Make input work in Python 2.7
 if hasattr(__builtins__, 'raw_input'):
@@ -133,7 +134,7 @@ class Command(BaseCommand):
                 transform=False, encoding='UTF-8',
             )
 
-        except:
+        except LayerMapping.LayerMapError:
             error_msg = (
                 'The shapefile could not be interpreted.\nAre you sure '
                 '"%s" is the SwissNAME3D_PKT shapefile?' % shapefile
