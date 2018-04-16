@@ -9,7 +9,7 @@
 {% endblock extralinks %}
 
 {% block header %}
-    {% include 'routes/includes/_image.html' %}
+    {% include 'routes/_image.html' %}
 {% endblock header %}
 
 {% block content %}
@@ -23,7 +23,7 @@
     {% endif %}
   </header>
 
-  {% include 'routes/includes/_course.html' %}
+  {% include 'routes/_course.html' %}
 
   {% if route.geom %}
     {% leaflet_map "main" callback="route_map_init" %}

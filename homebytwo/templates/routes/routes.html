@@ -7,7 +7,7 @@
   <h1>Select a Route</h1>
   <ul class="routes list-stacked list-stacked--tight mrgb">
   {% for route in routes %}
-      {% include "routes/includes/_route_card.html" %}
+      {% include "routes/_route_card.html" %}
     {% empty %}
     <div class="box">
       <h2>No Route yet</h2>
@@ -15,5 +15,5 @@
     </div>
   {% endfor %}
   </ul>
-  {% include 'importers/includes/_import.html' %}
+  {% include 'importers/_import.html' %}
 {% endblock content %}

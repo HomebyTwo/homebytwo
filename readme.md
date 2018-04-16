@@ -98,7 +98,7 @@ Unzip the data twice and move it to the media folder:
 ```sh
 $ unzip data.zip swissNAMES3D_LV03.zip
 $ unzip swissNAMES3D_LV03.zip swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.*
-$ mkdir -p /vagrant/media/shapefiles && mv swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.* /vagrant/media/shapefiles/
+$ mkdir -p /vagrant/homebytwo/media/shapefiles && mv swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.* /vagrant/homebytwo/media/shapefiles/
 ```
 
 Cleanup and go back to the project root:
@@ -110,5 +110,5 @@ $ rm -rf data.zip swissNAMES3D_LV03.zip swissNAMES3D_LV03 && cd /vagrant/
 Run the importer command:
 
 ```sh
-$ ./manage.py importswissname3d media/shapefiles/swissNAMES3D_PKT.shp
+$ ./manage.py importswissname3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
 ```

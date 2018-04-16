@@ -13,7 +13,7 @@
 
   {# Alerts #}
   {% if response.error %}
-    {% include "importers/includes/_alert.html" %}
+    {% include "importers/_alert.html" %}
   {% endif %}
 
   {% if route %}
@@ -43,7 +43,7 @@
         </li>
 
         {# Checkpoints #}
-        {% include 'importers/includes/_checkpoints.html' %}
+        {% include 'importers/_checkpoints.html' %}
 
         {# Finish Place #}
         <li class="mrgt box box--default pdg-">
