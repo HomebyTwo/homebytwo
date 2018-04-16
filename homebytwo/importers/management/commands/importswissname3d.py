@@ -1,6 +1,7 @@
 import os
 
-from django.contrib.gis.gdal import DataSource
+from django.contrib.gis.gdal import DataSource, error as gdal_error
+
 from django.contrib.gis.utils import LayerMapping
 from django.core.management.base import BaseCommand, CommandError
 
@@ -134,9 +135,9 @@ class Command(BaseCommand):
                 transform=False, encoding='UTF-8',
             )
 
-        except LayerMapping.LayerMapError:
+        except gdal_error.GDALException:
             error_msg = (
-                'The shapefile could not be interpreted.\nAre you sure '
+                'The shapefile fields could not be interpreted.\nAre you sure '
                 '"%s" is the SwissNAME3D_PKT shapefile?' % shapefile
             )
             raise CommandError(error_msg)

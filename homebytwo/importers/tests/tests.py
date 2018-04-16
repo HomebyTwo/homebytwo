@@ -463,8 +463,7 @@ class SwitzerlandMobility(TestCase):
         route_meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route['id']
 
         # Turn the route meta URL into a regular expression
-        route_meta_url = compile(route_meta_url.replace(
-            str(route['id']), '(\d+)'))
+        route_meta_url = re_compile(route_meta_url.replace(str(route['id']), '(\d+)'))
 
         httpretty.enable()
 
