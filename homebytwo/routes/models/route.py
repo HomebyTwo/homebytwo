@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.gis.db import models
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from .track import Track
 
@@ -39,10 +39,10 @@ class Route(Track):
 
     # A route can have checkpoints
     places = models.ManyToManyField(
-            'Place',
-            through='RoutePlace',
-            blank=True,
-        )
+        'Place',
+        through='RoutePlace',
+        blank=True,
+    )
 
     # Each route is made of segments
     # segments = models.ManyToManyField(Segment)

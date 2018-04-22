@@ -1,10 +1,10 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.urlresolvers import reverse
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import reverse
 from stravalib.client import Client as StravaClient
 
 from ..routes.forms import RoutePlaceForm

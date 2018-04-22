@@ -8,8 +8,8 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.urls import reverse
 from homebytwo.utils.factories import UserFactory
 from pandas import DataFrame
 
@@ -20,15 +20,15 @@ from ..templatetags.duration import baseround, nice_repr
 
 
 def open_data(file):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        data_dir = 'data'
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    data_dir = 'data'
 
-        path = os.path.join(
-            dir_path,
-            data_dir,
-            file,
-        )
-        return open(path, 'rb')
+    path = os.path.join(
+        dir_path,
+        data_dir,
+        file,
+    )
+    return open(path, 'rb')
 
 
 class PlaceTestCase(TestCase):
@@ -392,9 +392,9 @@ class RouteTestCase(TestCase):
 
     def test_calculate_elevation_gain_distance(self):
         data = DataFrame({
-                'altitude': [0, 1, 2, 3, 2, 1, 0],
-                'length':   [0, 1, 2, 2, 3, 4, 5],
-               })
+            'altitude': [0, 1, 2, 3, 2, 1, 0],
+            'length': [0, 1, 2, 2, 3, 4, 5],
+        })
 
         route = factories.RouteFactory(data=data)
 

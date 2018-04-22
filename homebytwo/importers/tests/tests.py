@@ -7,9 +7,9 @@ import requests
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.core.urlresolvers import reverse
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils.html import escape
 from django.utils.six import StringIO
 from pandas import DataFrame
@@ -662,12 +662,12 @@ class SwitzerlandMobility(TestCase):
 
         title = '<title>Home by Two - Import Haute Cime</title>'
         start_place_form = (
-            '<select id="id_route-start_place" '
-            'name="route-start_place">'
+            '<select name="route-start_place" '
+            'id="id_route-start_place">'
         )
         places_formset = (
-            '<input id="id_places-TOTAL_FORMS" '
-            'name="places-TOTAL_FORMS" type="hidden" value="0" />'
+            '<input type="hidden" name="places-TOTAL_FORMS" '
+            'value="0" id="id_places-TOTAL_FORMS" />'
         )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'

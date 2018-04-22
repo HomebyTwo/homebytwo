@@ -8,12 +8,11 @@ import googlemaps
 import requests
 from django.conf import settings
 from django.contrib.gis.db import models
-from django.contrib.gis.db.models.functions import Distance, GeoFunc, GeomValue
+from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.core.exceptions import ValidationError
 from django.db import connection
-from django.utils import six
 
 
 def current_and_next(some_iterable):
@@ -24,28 +23,6 @@ def current_and_next(some_iterable):
     items, nexts = tee(some_iterable, 2)
     nexts = chain(islice(nexts, 1, None), [None])
     return zip(items, nexts)
-
-
-class LineLocatePoint(GeoFunc):
-    """
-    implements ST_Line_Locate_Point that is still missing in GeoDjango
-    for some reason: https://code.djangoproject.com/ticket/12410.
-
-    This could be improved as I had no idea of how to tell GeoFunc
-    that the first arg was the one the treat as a geom,
-    unlike in GeoFuncWithGeoParam(GeoFunc).
-
-    At least, I learned something about list comprehensions.
-    """
-    def __init__(self, *expressions, **extra):
-        expressions = [
-            arg if isinstance(arg, six.string_types) else GeomValue(arg)
-            for arg in expressions
-        ]
-        super(LineLocatePoint, self).__init__(*expressions, **extra)
-
-    output_field_class = models.FloatField
-    arity = 2
 
 
 def LineSubstring(line, start_location, end_location):

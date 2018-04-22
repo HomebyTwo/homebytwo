@@ -220,6 +220,16 @@ class SwitzerlandMobilityRoute(Route):
         self.totalup = raw_route_json['properties']['meta']['totalup']
         self.totaldown = raw_route_json['properties']['meta']['totaldown']
 
+        # Add Swiss Coordinate System Information to the JSON
+        crs = {
+            "type": "name",
+            "properties": {
+                "name": "epsg:21781"
+            }
+        }
+
+        raw_route_json['geometry']['crs'] = crs
+
         # create geom from GeoJSON
         self.geom = GEOSGeometry(
             json.dumps(raw_route_json['geometry']),

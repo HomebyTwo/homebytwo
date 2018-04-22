@@ -69,13 +69,15 @@ class Track(models.Model):
     start_place = models.ForeignKey(
         Place,
         null=True,
-        related_name='starts_%(class)s'
+        related_name='starts_%(class)s',
+        on_delete=models.SET_NULL
     )
 
     end_place = models.ForeignKey(
         Place,
         null=True,
-        related_name='ends_%(class)s'
+        related_name='ends_%(class)s',
+        on_delete=models.SET_NULL
     )
 
     # track data as a pandas DataFrame

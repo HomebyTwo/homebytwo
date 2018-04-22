@@ -1,7 +1,7 @@
 import httpretty
 from django.conf import settings
-from django.core.urlresolvers import reverse
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from .forms import EmailSubscriptionForm
 
@@ -13,7 +13,7 @@ class LandingpageTest(TestCase):
     # Construct MailChimp Base URI from the API key
     def get_api_base_url(self):
         api_key = settings.MAILCHIMP_API_KEY
-        datacenter = api_key[api_key.find('-')+1:]
+        datacenter = api_key[api_key.find('-') + 1:]
         return 'https://%s.api.mailchimp.com/3.0' % datacenter
 
     # Home view
@@ -91,7 +91,7 @@ class LandingpageTest(TestCase):
     def test_post_email_signup_view_not_subscribed(self):
         api_base_url = self.get_api_base_url()
         post_url = '/'.join([api_base_url, 'lists',
-                            settings.MAILCHIMP_LIST_ID, 'members/'])
+                             settings.MAILCHIMP_LIST_ID, 'members/'])
 
         # Intercept request to MailChimp with httpretty
         httpretty.enable()
@@ -113,7 +113,7 @@ class LandingpageTest(TestCase):
         data = {'email': 'example@example.com',
                 'list_id': settings.MAILCHIMP_LIST_ID}
         post_url = '/'.join([api_base_url, 'lists',
-                            settings.MAILCHIMP_LIST_ID, 'members/'])
+                             settings.MAILCHIMP_LIST_ID, 'members/'])
         search_url = api_base_url + '/search-members?query=%s' % data['email']
 
         # Intercept request to MailChimp with httpretty
