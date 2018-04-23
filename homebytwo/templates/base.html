@@ -18,7 +18,7 @@
   {% endif %}
 
   <link rel="stylesheet" href="{% static 'stylesheets/homebytwo.css' %}"/>
-  <link rel="shortcut icon" href="{% static 'favicon.ico' %}"/>
+  <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}"/>
   <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:700" rel="stylesheet">
 
   {% block extralinks %}{% endblock extralinks%}
@@ -32,18 +32,14 @@
     <!-- End Google Tag Manager (noscript) -->
   {% endif %}
 
-  <div class="master">
-
     {% include '_nav.html' %}
     {% block header %}{% endblock %}
 
-    <div class="content">
+    <div class="container">
       {% block content %}{% endblock %}
     </div>
 
     {% include '_footer.html' %}
-
-  </div>
 
   <script src="{% static 'javascripts/main.js' %}"></script>
   {% block extrajs %}{% endblock %}

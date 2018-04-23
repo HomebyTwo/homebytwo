@@ -1,4 +1,3 @@
----
 - hosts: all
   vars_files:
    - parameters.yml
@@ -9,11 +8,4 @@
     - { role: git }
     - { role: postgis }
     - { role: django }
-
-    ## Install Gulp with Drifter Gulpfile in the box
-    - { role: gulp }
-
-# Additional tasks
-  tasks:
-    - name: npm install sass and kanbasu
-      shell: cd {{ root_directory }} && npm install
+    - { role: webpack }

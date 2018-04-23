@@ -8,7 +8,7 @@
  * Settings
  */
 
-@import 'settings/_kanbasu';
+@import 'settings/_settings';
 @import '../../../node_modules/kanbasu/src/assets/scss/settings/settings';
 
 
@@ -64,8 +64,6 @@
 @import '../../../node_modules/kanbasu/src/assets/scss/components/box';
 @import '../../../node_modules/kanbasu/src/assets/scss/components/media';
 @import '../../../node_modules/kanbasu/src/assets/scss/components/media-responsive';
-@import '../../../node_modules/kanbasu/src/assets/scss/components/mosaic';
-@import '../../../node_modules/kanbasu/src/assets/scss/components/mosaic-responsive';
 @import '../../../node_modules/kanbasu/src/assets/scss/components/list';
 @import '../../../node_modules/kanbasu/src/assets/scss/components/list-inline';
 @import '../../../node_modules/kanbasu/src/assets/scss/components/list-stacked';
@@ -73,7 +71,7 @@
 
 
 /**
-* HB2 Components
+* Homebytwo Components
 */
 @import "components/routes";
 @import "components/nav";

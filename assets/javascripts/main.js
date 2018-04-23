@@ -1,1 +1,1 @@
-import $ from 'jquery';
+import 'icons/chcekpoint.svg';

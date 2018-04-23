@@ -17,7 +17,7 @@
         </span>
       </a>
 
-      <ul class="list-inline list-inline--divided">
+      <ul class="list-inline list-inline--divided list-inline--center">
         <li class="text-uppercase">
           <a href="{% url 'routes:routes' %}" >
           My Routes
@@ -28,7 +28,7 @@
 
     <li class="nav__item">
       {% if not user.is_authenticated %}
-        <ul class="list-inline list-inline--tight">
+        <ul class="list-inline list-inline--center list-inline--tight">
           <li>
             <a href="{% url 'register' %}" class="btn btn--small">
             Register
