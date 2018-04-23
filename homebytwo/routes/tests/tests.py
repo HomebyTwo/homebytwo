@@ -469,6 +469,26 @@ class RouteTestCase(TestCase):
     # Views #
     #########
 
+    def test_route_404(self):
+        url = 'routes/0/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_route_edit_404(self):
+        url = 'routes/0/edit/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_route_image_404(self):
+        url = 'routes/0/image/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_route_delete_404(self):
+        url = 'routes/0/delete/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
     def test_route_view_success_owner(self):
         route = factories.RouteFactory(user=self.user)
         url = reverse('routes:route', args=[route.id])
