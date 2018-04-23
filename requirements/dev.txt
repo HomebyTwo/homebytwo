@@ -22,7 +22,7 @@ googlemaps==2.5.1
 idna==2.6                 # via requests
 numexpr==2.6.4            # via tables
 numpy==1.14.2             # via numexpr, pandas, tables
-pandas==0.22.0
+pandas==0.20.0
 pillow==5.1.0
 pip-tools==2.0.1
 pluggy==0.6.0             # via tox
