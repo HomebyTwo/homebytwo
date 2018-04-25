@@ -1,5 +1,6 @@
 -r base.in
 
+coverage
 factory_boy
 httpretty
 tox

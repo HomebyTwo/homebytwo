@@ -1,5 +1,7 @@
 *.map
 *.pyc
+.coverage
+.coverage.*
 .idea
 .pycharm_helpers
 /.tox
@@ -8,6 +10,7 @@
 /homebytwo/media
 /homebytwo/static/javascripts/*
 /homebytwo/static/scss/*
+/htmlcov/
 /node_modules/
 /npm-debug.log
 /virtualization/playbook.retry
