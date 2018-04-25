@@ -164,6 +164,12 @@ THUMBNAIL_ALIASES = {
     },
 }
 
+##############
+# Celery #
+##############
+
+CELERY_BROKER_URL = get_env_variable('CELERY_BROKER_URL', 'amqp://localhost')
+
 #############
 # Mailchimp #
 #############

@@ -11,6 +11,7 @@ from ..routes.models import Athlete
 from .decorators import strava_required, switerland_mobility_required
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
+from .tasks import import_strava_activities
 from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
                     get_route_places_formset, get_strava_client, post_route_form,
                     post_route_places_formset, save_detail_forms)
@@ -117,6 +118,12 @@ def strava_routes(request):
     new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
         user=request.user,
         strava_client=strava_client
+        )
+
+    # Retrieve Strava activities with Celery
+    import_strava_activities.delay(
+        user_id=request.user.id,
+        strava_token=strava_client.access_token
     )
 
     context.update({

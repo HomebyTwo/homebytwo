@@ -22,6 +22,12 @@ LOGGING = {
 }
 
 ###########################
+# Force Celery Broker URL #
+###########################
+
+CELERY_BROKER_URL = get_env_variable('CELERY_BROKER_URL')
+
+###########################
 # Force Mailchimp API Key #
 ###########################
 
