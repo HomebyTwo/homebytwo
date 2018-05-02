@@ -32,10 +32,14 @@ class RouteManager(models.Manager):
 
 class Route(Track):
 
-    # source and unique id at the source that the route was imported from
+    # source and unique id at the source
+    # that the route was imported from
     source_id = models.BigIntegerField()
-    data_source = models.CharField('Where the route came from',
-                                   default='homebytwo', max_length=50)
+    data_source = models.CharField(
+        'Where the route came from',
+        default='homebytwo',
+        max_length=50
+    )
 
     # A route can have checkpoints
     places = models.ManyToManyField(
@@ -58,7 +62,12 @@ class Route(Track):
         check if route has already been imported to the database
         """
         route_class = type(self)
-        imported_route = route_class.objects.\
-            filter(source_id=self.source_id, user=self.user)
+        imported_route = route_class.objects.filter(
+            source_id=self.source_id,
+            user=self.user
+        )
 
         return imported_route.exists()
+
+    def __str__(self):
+        return 'Route: %s' % (self.name)

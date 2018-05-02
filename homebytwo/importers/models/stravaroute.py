@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.contrib.gis.geos import LineString
 from pandas import DataFrame
 from polyline import decode
@@ -19,7 +17,7 @@ class StravaRouteManager(RouteManager):
         return super(StravaRouteManager, self). \
             get_queryset().filter(data_source='strava')
 
-    # login to Switzerland Mobility and retrieve route list
+    # login to Strava and retrieve route list
     def get_routes_list_from_server(self, user, strava_client):
 
         # retrieve routes from strava
