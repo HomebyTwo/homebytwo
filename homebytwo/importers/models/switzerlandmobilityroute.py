@@ -1,6 +1,7 @@
 import json
 
-import requests
+from requests import get, codes
+from requests.exceptions import ConnectionError
 from ast import literal_eval
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
@@ -16,10 +17,10 @@ def request_json(url, cookies=None):
     while managing server and connection errors.
     """
     try:
-        r = requests.get(url, cookies=cookies)
+        r = get(url, cookies=cookies)
 
         # if request is successful save json object
-        if r.status_code == requests.codes.ok:
+        if r.status_code == codes.ok:
             json = r.json()
             response = {'error': False, 'message': 'OK. '}
 
@@ -34,7 +35,7 @@ def request_json(url, cookies=None):
             return False, response
 
     # connection error and inform the user
-    except requests.exceptions.ConnectionError as e:
+    except ConnectionError as e:
         message = "Connection Error: could not connect to %s. " % url
         response = {'error': True, 'message': message}
 

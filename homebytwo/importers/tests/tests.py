@@ -5,15 +5,16 @@ from re import compile as re_compile
 import httpretty
 import requests
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
-from django.http import Http404
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.html import escape
 from django.utils.six import StringIO
 from pandas import DataFrame
+from requests.exceptions import ConnectionError
 from stravalib import Client as StravaClient
 
 from . import factories
@@ -22,7 +23,7 @@ from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import get_route_form, get_strava_client
+from ..utils import get_strava_client
 
 
 def load_data(file=''):
@@ -100,7 +101,7 @@ class Strava(TestCase):
             status=401
         )
 
-        with self.assertRaises(Http404):
+        with self.assertRaises(PermissionDenied):
             get_strava_client(self.user)
 
         httpretty.disable()
@@ -115,7 +116,7 @@ class Strava(TestCase):
             body=raise_connection_error,
         )
 
-        with self.assertRaises(Http404):
+        with self.assertRaises(ConnectionError):
             get_strava_client(self.user)
 
         self.assertFalse(self.user.athlete.strava_token is None)
@@ -207,7 +208,7 @@ class Strava(TestCase):
         # Intercept API calls with httpretty
         httpretty.enable()
 
-        # Athlete API call
+        # Athlete API call
         self.intercept_get_athlete(body=load_data('strava_athlete.json'))
 
         # route list API call with athlete id from the athlete json file
@@ -327,7 +328,6 @@ class SwitzerlandMobility(TestCase):
         session['switzerland_mobility_cookies'] = cookies
         session.save()
         return session
-
 
     def setUp(self):
         # Add user to the test database and log him in

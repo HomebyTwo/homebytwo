@@ -1,7 +1,8 @@
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
 from django.http import Http404
-from requests import exceptions as requests_exceptions
+from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
@@ -26,8 +27,8 @@ def get_strava_client(user):
         strava_client.get_athlete()
 
     # connection to the Strava API unavailable
-    except requests_exceptions.ConnectionError as e:
-        raise Http404("Could not connect to Strava")
+    except ConnectionError:
+        raise
 
     # invalid authorization token
     except AccessUnauthorized:
@@ -36,7 +37,7 @@ def get_strava_client(user):
         athlete.strava_token = None
         athlete.save()
 
-        raise Http404("Bad authorization token")
+        raise PermissionDenied
 
     return strava_client
 

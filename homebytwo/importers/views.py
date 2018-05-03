@@ -96,7 +96,14 @@ def strava_authorized(request):
 @strava_required
 def strava_routes(request):
 
-    strava_client = get_strava_client(request.user)
+    template = 'importers/routes.html'
+    context = {'source': STRAVA_SOURCE_INFO}
+
+    try:
+        strava_client = get_strava_client(request.user)
+    except ConnectionError:
+        # add a message
+        return render(request, template, context)
 
     # Retrieve routes from Strava
     new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
@@ -104,13 +111,10 @@ def strava_routes(request):
         strava_client=strava_client
     )
 
-    context = {
-        'source': STRAVA_SOURCE_INFO,
+    context.update({
         'new_routes': new_routes,
         'old_routes': old_routes,
-    }
-
-    template = 'importers/routes.html'
+    })
 
     return render(request, template, context)
 
