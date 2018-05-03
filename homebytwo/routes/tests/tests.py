@@ -490,7 +490,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_route_view_success_owner(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:route', args=[route.id])
         route_name = route.name
         start_place_name = route.start_place.name
@@ -509,7 +509,7 @@ class RouteTestCase(TestCase):
         self.assertIn(edit_button, response_content)
 
     def test_route_view_success_not_owner(self):
-        route = factories.RouteFactory(user=factories.UserFactory())
+        route = factories.RouteFactory(owner=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
 
@@ -520,7 +520,7 @@ class RouteTestCase(TestCase):
         self.assertNotIn(edit_url, response_content)
 
     def test_route_view_success_not_logged_in(self):
-        route = factories.RouteFactory(user=factories.UserFactory())
+        route = factories.RouteFactory(owner=factories.UserFactory())
         url = reverse('routes:route', args=[route.id])
         edit_url = reverse('routes:edit', args=[route.id])
         route_name = route.name
@@ -535,7 +535,7 @@ class RouteTestCase(TestCase):
 
     def test_route_view_success_no_start_place(self):
         route = factories.RouteFactory(
-            user=factories.UserFactory(),
+            owner=factories.UserFactory(),
             start_place=None
         )
         url = reverse('routes:route', args=[route.id])
@@ -551,7 +551,7 @@ class RouteTestCase(TestCase):
 
     def test_route_view_success_no_end_place(self):
         route = factories.RouteFactory(
-            user=factories.UserFactory(),
+            owner=factories.UserFactory(),
             end_place=None
         )
         url = reverse('routes:route', args=[route.id])
@@ -599,7 +599,7 @@ class RouteTestCase(TestCase):
 
     @skip  # until rules is implemented
     def test_post_route_delete_not_owner(self):
-        route = factories.RouteFactory(user=factories.UserFactory())
+        route = factories.RouteFactory(owner=factories.UserFactory())
         url = reverse('routes:delete', args=[route.id])
         post_data = {}
         response = self.client.post(url, post_data)
@@ -607,7 +607,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_get_route_image_form(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:image', args=[route.id])
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
@@ -618,7 +618,7 @@ class RouteTestCase(TestCase):
         self.assertIn(content, response_content)
 
     def test_get_route_image_form_not_logged(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:image', args=[route.id])
         self.client.logout()
 
@@ -629,7 +629,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.url, redirect_url)
 
     def test_post_route_image(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:image', args=[route.id])
         with open_data('image.jpg') as image:
             post_data = {
@@ -643,7 +643,7 @@ class RouteTestCase(TestCase):
 
     @skip  # until rules is implemented
     def test_post_route_image_not_owner(self):
-        route = factories.RouteFactory(user=factories.UserFactory())
+        route = factories.RouteFactory(owner=factories.UserFactory())
         url = reverse('routes:image', args=[route.id])
 
         with open_data('image.jpg') as image:
@@ -656,7 +656,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_get_route_edit_form(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:edit', args=[route.id])
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
@@ -667,7 +667,7 @@ class RouteTestCase(TestCase):
         self.assertIn(content, response_content)
 
     def test_get_route_edit_form_not_logged(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:edit', args=[route.id])
         self.client.logout()
 
@@ -678,7 +678,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.url, redirect_url)
 
     def test_post_route_edit_form(self):
-        route = factories.RouteFactory(user=self.user)
+        route = factories.RouteFactory(owner=self.user)
         url = reverse('routes:edit', args=[route.id])
         with open_data('image.jpg') as image:
             post_data = {
@@ -695,7 +695,7 @@ class RouteTestCase(TestCase):
 
     @skip  # until rules is implemented
     def test_post_route_edit_not_owner(self):
-        route = factories.RouteFactory(user=factories.UserFactory())
+        route = factories.RouteFactory(owner=factories.UserFactory())
         url = reverse('routes:edit', args=[route.id])
 
         with open_data('image.jpg') as image:

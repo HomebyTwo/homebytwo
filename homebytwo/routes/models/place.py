@@ -12,6 +12,8 @@ from django.contrib.gis.measure import D
 from django.core.exceptions import ValidationError
 from django.db import connection
 
+from ...core.models import TimeStampedModel
+
 
 def current_and_next(some_iterable):
     """
@@ -205,7 +207,7 @@ class PlaceManager(models.Manager):
         return places
 
 
-class Place(models.Model):
+class Place(TimeStampedModel):
     """
     Places are geographic points.
     They have a name, description and geom
@@ -280,9 +282,6 @@ class Place(models.Model):
     data_source = models.CharField('Where the place came from',
                                    default='homebytwo', max_length=50)
     source_id = models.CharField('Place ID at the data source', max_length=50)
-
-    created_at = models.DateTimeField('Time of creation', auto_now_add=True)
-    updated_at = models.DateTimeField('Time of last update', auto_now=True)
 
     geom = models.PointField(srid=21781)
 

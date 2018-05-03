@@ -282,7 +282,7 @@ class Strava(TestCase):
         source_id = 2325453
         factories.StravaRouteFactory(
             source_id=source_id,
-            user=self.user,
+            owner=self.user,
         )
 
         # intercept API calls with httpretty
@@ -564,7 +564,7 @@ class SwitzerlandMobility(TestCase):
             source_id=2191833,
             data_source='switzerland_mobility',
             name='Haute Cime',
-            user=user,
+            owner=user,
         )
 
         formatted_routes = [
@@ -590,7 +590,7 @@ class SwitzerlandMobility(TestCase):
             )]
 
         new_routes, old_routes = SwitzerlandMobilityRoute.objects.check_for_existing_routes(
-            user=user,
+            owner=user,
             routes=formatted_routes,
             data_source='switzerland_mobility'
         )
@@ -605,7 +605,7 @@ class SwitzerlandMobility(TestCase):
 
         # save an existing route
         factories.SwitzerlandMobilityRouteFactory(
-            user=user,
+            owner=user,
         )
 
         # intercept routes_list call to map.wandland.ch with httpretty
@@ -756,7 +756,7 @@ class SwitzerlandMobility(TestCase):
         route_id = 2733343
         factories.SwitzerlandMobilityRouteFactory(
             source_id=route_id,
-            user=self.user,
+            owner=self.user,
         )
 
         url = reverse('switzerland_mobility_route', args=[route_id])
@@ -943,7 +943,7 @@ class SwitzerlandMobility(TestCase):
         route_id = 2191833
         route = factories.SwitzerlandMobilityRouteFactory(
             source_id=route_id,
-            user=self.user,
+            owner=self.user,
         )
 
         start_place = route.start_place

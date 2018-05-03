@@ -5,7 +5,7 @@ from .track import Track
 
 
 class RouteManager(models.Manager):
-    def check_for_existing_routes(self, user, routes, data_source):
+    def check_for_existing_routes(self, owner, routes, data_source):
         """
         Split remote routes into old and new routes.
         Old routes have already been imported by the user.
@@ -16,9 +16,10 @@ class RouteManager(models.Manager):
 
         for route in routes:
             source_id = route.source_id
-            saved_route = self.filter(user=user)\
-                .filter(data_source=data_source)\
-                .filter(source_id=source_id)
+            saved_route = self.filter(owner=owner)
+            saved_route = saved_route.filter(data_source=data_source)
+            saved_route = saved_route.filter(source_id=source_id)
+
             if saved_route.exists():
                 route = saved_route.get()
                 old_routes.append(route)
@@ -30,8 +31,7 @@ class RouteManager(models.Manager):
 
 class Route(Track):
 
-    # source and unique id at the source
-    # that the route was imported from
+    # source and unique id (at the source) that the route came from
     source_id = models.BigIntegerField()
     data_source = models.CharField(
         'Where the route came from',
@@ -50,7 +50,7 @@ class Route(Track):
     # segments = models.ManyToManyField(Segment)
 
     class Meta:
-        unique_together = ('user', 'data_source', 'source_id')
+        unique_together = ('owner', 'data_source', 'source_id')
 
     def get_absolute_url(self):
         return reverse('routes:route', kwargs={'pk': self.pk})
@@ -62,7 +62,7 @@ class Route(Track):
         route_class = type(self)
         imported_route = route_class.objects.filter(
             source_id=self.source_id,
-            user=self.user
+            owner=self.owner
         )
 
         return imported_route.exists()

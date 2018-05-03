@@ -39,7 +39,7 @@ class StravaRouteManager(RouteManager):
 
         # split into new and existing routes
         return self.check_for_existing_routes(
-            user=user,
+            owner=user,
             routes=routes,
             data_source='strava'
         )

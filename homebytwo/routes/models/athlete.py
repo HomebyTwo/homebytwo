@@ -21,6 +21,7 @@ class Athlete(models.Model):
     def __unicode__(self):
         return str(self.user.username)
 
+
 """
 A snippet to create a user profile the first time it is accessed.
 https://www.djangorocks.com/snippets/automatically-create-a-django-profile.html

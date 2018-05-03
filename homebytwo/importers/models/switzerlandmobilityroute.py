@@ -72,7 +72,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
-                user=user,
+                owner=user,
                 routes=formatted_routes,
                 data_source='switzerland_mobility',
             )

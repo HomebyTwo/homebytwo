@@ -219,7 +219,7 @@ def save_detail_forms(request, response, route_form, route_places_formset):
     # create the route with the route_form
     new_route = route_form.save(commit=False)
     # set user for route
-    new_route.user = request.user
+    new_route.owner = request.user
     # calculate time schedule
     new_route.calculate_projected_time_schedule(request.user)
 

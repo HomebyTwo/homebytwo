@@ -61,7 +61,7 @@ class RouteFactory(factory.django.DjangoModelFactory):
     source_id = factory.Sequence(lambda n: '%d' % n)
     data_source = 'homebytwo'
     description = factory.fuzzy.FuzzyText(length=100)
-    user = factory.SubFactory(UserFactory)
+    owner = factory.SubFactory(UserFactory)
     totalup = factory.fuzzy.FuzzyInteger(5000)
     totaldown = factory.fuzzy.FuzzyInteger(5000)
     length = factory.fuzzy.FuzzyInteger(50000)

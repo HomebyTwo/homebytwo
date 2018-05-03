@@ -169,7 +169,7 @@ def strava_route(request, source_id):
 
         # add user information to route.
         # to check if the route has already been imported.
-        route.user = request.user
+        route.owner = request.user
 
         # populate the route_form with route details
         route_form = get_route_form(route)
@@ -278,7 +278,7 @@ def switzerland_mobility_route(request, source_id):
         if not response['error']:
 
             # add user to check if route has already been imported
-            route.user = request.user
+            route.owner = request.user
 
             # populate the route_form with route details
             route_form = get_route_form(route)

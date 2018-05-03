@@ -5,11 +5,11 @@
             src="{{ route.image.poster.url }}"
             alt="{{ route.name }} image" />
         </p>
-            {% if route.user == request.user %}
+            {% if route.owner == request.user %}
                 <p><a href="{% url 'routes:image' route.id %}" class="btn btn--default btn--small">Edit Image</a></p>
             {% endif %}
     </div>
-{% elif route.user == request.user %}
+{% elif route.owner == request.user %}
     <div class="box box--default text-center">
         <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--small">Add an image for this route</a></p>
     </div>

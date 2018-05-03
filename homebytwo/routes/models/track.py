@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
@@ -9,6 +9,7 @@ from easy_thumbnails.fields import ThumbnailerImageField
 from numpy import interp
 
 from . import ActivityPerformance, ActivityType, Place
+from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
 
 
@@ -25,7 +26,7 @@ def get_image_path(instance, filename):
     )
 
 
-class Track(models.Model):
+class Track(TimeStampedModel):
 
     class Meta:
         abstract = True
@@ -40,7 +41,8 @@ class Track(models.Model):
                                       on_delete=models.SET_DEFAULT)
 
     # link to user
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL,
+                              on_delete=models.CASCADE)
 
     # elevation gain in m
     totalup = models.FloatField(
@@ -57,10 +59,6 @@ class Track(models.Model):
         'Total length of the track in m',
         default=0
     )
-
-    # creation and update date
-    updated = models.DateTimeField('Time of last update', auto_now=True)
-    created = models.DateTimeField('Time of creation', auto_now_add=True)
 
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
@@ -209,7 +207,7 @@ class Track(models.Model):
 
         # Calculate schedule, ignoring segments where distance is 0
         data['schedule'] = (
-            (slope_squared_param * data['gain']**2)/data['distance']
+            (slope_squared_param * data['gain']**2) / data['distance']
             + slope_param * data['gain']
             + flat_param * data['distance']
             + totalup_penalty * data['distance']

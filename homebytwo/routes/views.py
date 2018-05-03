@@ -11,7 +11,7 @@ from .models import Route, RoutePlace
 @login_required
 def routes(request):
     routes = Route.objects.order_by('name')
-    routes = routes.filter(user=request.user)
+    routes = routes.filter(owner=request.user)
     context = {
         'routes': routes,
     }
