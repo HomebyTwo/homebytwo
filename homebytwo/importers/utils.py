@@ -90,7 +90,7 @@ def post_route_form(request, route):
 
 def get_checkpoints(route):
     """
-    retrieve checkpoints within 50m of the route and
+    retrieve checkpoints within a maximum distance of the route and
     enrich them with information retrieved from the route data.
     """
     places = Place.objects.find_places_along_line(
