@@ -1,5 +1,7 @@
 sudo: false
 language: python
+python:
+  - "3.5"
 cache: pip
 services:
   - postgresql
@@ -13,13 +15,13 @@ addons:
       - postgresql-9.5-postgis-2.3
 
 install:
-  - pip install tox
+  - pip install tox-travis
 
 env:
-  - TOXENV=py35 DATABASE_URL="postgis://postgres@localhost/travisdb"
+  - TOXENV=py35, DATABASE_URL=postgis://postgres@localhost/travisdb
 
 before_script:
-  - psql -c "CREATE DATABASE mydb;" -U postgres
+  - psql -c "CREATE DATABASE travisdb;" -U postgres
   - psql -c 'CREATE EXTENSION postgis;' -U postgres
   - psql -c 'CREATE EXTENSION postgis_topology;' -U postgres
 
