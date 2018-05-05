@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='route',
             name='image',
-            field=easy_thumbnails.fields.ThumbnailerImageField(blank=True, null=True, upload_to=homebytwo.routes.models.track.get_image_path),
+            field=easy_thumbnails.fields.ThumbnailerImageField(
+                blank=True, null=True, upload_to=homebytwo.routes.models.track.get_image_path),
         ),
     ]

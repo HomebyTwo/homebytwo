@@ -332,7 +332,7 @@ class Place(TimeStampedModel):
         # Ensure the place is a public transport stop
         if not self.public_transport:
             raise ValidationError(
-                _("'%(name)s' is not connected to the public transport network."),
+                "'%(name)s' is not connected to the public transport network.",
                 code='invalid',
                 params={'name': self.name},
             )

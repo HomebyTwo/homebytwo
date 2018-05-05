@@ -19,16 +19,26 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='route',
             name='end_place',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='ends_route', to='routes.Place'),
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='ends_route',
+                to='routes.Place'),
         ),
         migrations.AlterField(
             model_name='route',
             name='start_place',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='starts_route', to='routes.Place'),
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='starts_route',
+                to='routes.Place'),
         ),
         migrations.AlterField(
             model_name='route',
             name='updated',
-            field=models.DateTimeField(auto_now=True, verbose_name='Time of creation'),
+            field=models.DateTimeField(
+                auto_now=True,
+                verbose_name='Time of creation'),
         ),
     ]

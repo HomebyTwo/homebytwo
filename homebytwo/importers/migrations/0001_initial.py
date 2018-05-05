@@ -18,7 +18,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='StravaRoute',
             fields=[
-                ('route_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to='routes.Route')),
+                ('route_ptr', models.OneToOneField(
+                    auto_created=True,
+                    on_delete=django.db.models.deletion.CASCADE,
+                    parent_link=True,
+                    primary_key=True,
+                    serialize=False,
+                    to='routes.Route')),
                 ('strava_route_id', models.BigIntegerField(unique=True)),
                 ('type', models.CharField(max_length=1)),
                 ('sub_type', models.CharField(max_length=1)),

@@ -201,8 +201,8 @@ class Track(TimeStampedModel):
         totalup_penalty = total_elevation_gain_param * total_elevation_gain
 
         # calculate distance_penalty
-        # total_distance_param = performance.total_distance_param
-        # total_distance = self.get_length().km
+        # total_distance_param = performance.total_distance_param
+        # total_distance = self.get_length().km
         # distance_penalty = total_distance_param * total_distance
 
         # Calculate schedule, ignoring segments where distance is 0

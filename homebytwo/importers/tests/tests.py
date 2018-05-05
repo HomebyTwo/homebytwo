@@ -42,7 +42,7 @@ def raise_connection_error(self, request, uri, headers):
     """
     raises a connection error to use as the body of the mock
     response in httpretty. Unfortunately httpretty outputs to stdout:
-    cf. https://stackoverflow.com/questions/36491664/silence-exceptions-that-do-not-result-in-test-failure-in-python-unittest
+    cf. https://stackoverflow.com/questions/36491664/
     """
     raise requests.ConnectionError('Connection error.')
 

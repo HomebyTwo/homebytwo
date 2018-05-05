@@ -1,10 +1,8 @@
-from django.shortcuts import render, HttpResponse, HttpResponseRedirect
-from django.core.exceptions import ImproperlyConfigured
-from django.conf import settings
+from json import dumps
 
+from django.shortcuts import HttpResponse, redirect, render
 
 from .forms import EmailSubscriptionForm
-import json
 
 
 def home(request):
@@ -42,7 +40,7 @@ def email_signup(request):
 
         # If the POST was AJAX, return a JSON
         if request.is_ajax():
-            return HttpResponse(json.dumps(response))
+            return HttpResponse(dumps(response))
 
         # If the POST is not AJAX, print the template
         else:
@@ -52,7 +50,7 @@ def email_signup(request):
 
     # if it was a GET request we just redirect to the homepage
     else:
-        return HttpResponseRedirect('/')
+        return redirect('home')
 
 
 def register(request):

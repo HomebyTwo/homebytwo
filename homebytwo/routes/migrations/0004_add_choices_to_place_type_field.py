@@ -15,6 +15,43 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='place',
             name='place_type',
-            field=models.CharField(choices=[('PLA', 'Place'), ('Constructions', (('BDG', 'Single Building'), ('OBG', 'Open Building'), ('TWR', 'Tower'), ('SBG', 'Sacred Building'), ('CPL', 'Chapel'), ('SHR', 'Wayside Shrine'), ('MNT', 'Monument'), ('FTN', 'Fountain'))), ('Features', (('SUM', 'Summit'), ('HIL', 'Hill'), ('PAS', 'Pass'), ('BEL', 'Belay'), ('WTF', 'Waterfall'), ('CAV', 'Cave'), ('SRC', 'Source'), ('BLD', 'Boulder'), ('POV', 'Point of View'))), ('Public Transport', (('BUS', 'Bus Station'), ('TRA', 'Train Station'), ('OTH', 'Other Station'), ('BOA', 'Boat Station'))), ('Roads', (('EXT', 'Exit'), ('EAE', 'Entry and Exit'), ('RPS', 'Road Pass'), ('ICG', 'Interchange'), ('LST', 'Loading Station'))), ('Customs', (('C24', 'Customhouse 24h'), ('C24LT', 'Customhouse 24h limited'), ('CLT', 'Customhouse limited'), ('LMK', 'Landmark')))], max_length=26),
+            field=models.CharField(choices=[
+                ('PLA', 'Place'),
+                ('Constructions', (
+                    ('BDG', 'Single Building'),
+                    ('OBG', 'Open Building'),
+                    ('TWR', 'Tower'),
+                    ('SBG', 'Sacred Building'),
+                    ('CPL', 'Chapel'),
+                    ('SHR', 'Wayside Shrine'),
+                    ('MNT', 'Monument'),
+                    ('FTN', 'Fountain'))),
+                ('Features', (
+                    ('SUM', 'Summit'),
+                    ('HIL', 'Hill'),
+                    ('PAS', 'Pass'),
+                    ('BEL', 'Belay'),
+                    ('WTF', 'Waterfall'),
+                    ('CAV', 'Cave'),
+                    ('SRC', 'Source'),
+                    ('BLD', 'Boulder'),
+                    ('POV', 'Point of View'))),
+                ('Public Transport', (
+                    ('BUS', 'Bus Station'),
+                    ('TRA', 'Train Station'),
+                    ('OTH', 'Other Station'),
+                    ('BOA', 'Boat Station'))),
+                ('Roads', (
+                    ('EXT', 'Exit'),
+                    ('EAE', 'Entry and Exit'),
+                    ('RPS', 'Road Pass'),
+                    ('ICG', 'Interchange'),
+                    ('LST', 'Loading Station'))),
+                ('Customs', (
+                    ('C24', 'Customhouse 24h'),
+                    ('C24LT', 'Customhouse 24h limited'),
+                    ('CLT', 'Customhouse limited'),
+                    ('LMK', 'Landmark')))
+            ], max_length=26),
         ),
     ]

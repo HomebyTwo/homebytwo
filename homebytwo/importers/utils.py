@@ -1,7 +1,6 @@
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
-from django.http import Http404
 from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
@@ -33,7 +32,7 @@ def get_strava_client(user):
     # invalid authorization token
     except AccessUnauthorized:
 
-        # erase bad strava token
+        # erase bad strava token
         athlete.strava_token = None
         athlete.save()
 

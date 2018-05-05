@@ -184,7 +184,7 @@ class DataFrameFormField(forms.CharField):
         if isinstance(value, DataFrame):
             try:
                 return value.to_json(orient='records') if value is not None else ''
-            except:
+            except ValueError:
                 raise ValidationError(
                     _("Could serialize '%(value)s' to json."),
                     code='invalid',
@@ -208,7 +208,7 @@ class DataFrameFormField(forms.CharField):
                 return None
             try:
                 return read_json(value, orient='records')
-            except:
+            except ValueError:
                 raise ValidationError(
                     _("Could not read json: '%(value)s' into a DataFrame."),
                     code='invalid',

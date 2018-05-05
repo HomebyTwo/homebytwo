@@ -16,6 +16,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='route',
             name='image',
-            field=models.ImageField(blank=True, null=True, upload_to=homebytwo.routes.models.track.get_image_path),
+            field=models.ImageField(
+                blank=True, null=True,
+                upload_to=homebytwo.routes.models.track.get_image_path),
         ),
     ]
