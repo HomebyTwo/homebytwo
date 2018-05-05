@@ -1,6 +1,11 @@
 -r base.in
 
 coverage
-factory_boy
+factory-boy
+flake8
 httpretty
-tox
+isort
+pytest
+pytest-cov
+pytest-django
+pytest-xdist

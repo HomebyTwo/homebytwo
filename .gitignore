@@ -4,6 +4,7 @@
 .coverage.*
 .idea
 .pycharm_helpers
+/.pytest_cache
 /.tox
 /.vagrant/
 /envdir/*

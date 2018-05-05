@@ -3,7 +3,7 @@
 django-appconf
 django-debug-toolbar
 django-extensions
+ipython
 pip-tools
 tox
 werkzeug
-

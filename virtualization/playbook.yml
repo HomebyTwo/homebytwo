@@ -7,7 +7,6 @@
   roles:
     - { role: base }
     - { role: git }
-    - { role: postgresql }
     - { role: postgis }
     - { role: django }
 

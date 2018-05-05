@@ -7,10 +7,6 @@ from django.core.management.base import BaseCommand, CommandError
 
 from ...models import Swissname3dPlace
 
-# Make input work in Python 2.7
-if hasattr(__builtins__, 'raw_input'):
-    input = raw_input
-
 
 class Command(BaseCommand):
 

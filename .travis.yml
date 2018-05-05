@@ -16,7 +16,7 @@ install:
   - pip install tox
 
 env:
-  - TOXENV=py34 DATABASE_URL="postgis://postgres@localhost/travisdb"
+  - TOXENV=py35 DATABASE_URL="postgis://postgres@localhost/travisdb"
 
 before_script:
   - psql -c "CREATE DATABASE mydb;" -U postgres
