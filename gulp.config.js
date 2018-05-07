@@ -2,16 +2,15 @@
 
 module.exports = {
   src: {
-    sass:           'static/scss/**/*.scss',
-    javascripts:    'static/javascripts/src/**/*.{js,jsx}',
-    webpack:        ['./static/javascripts/src/main.js'],
-    images:         'static/images/**/*.{gif,jpg,jpeg,png,svg}',
-    templates:      'hb2/templates/**/*.html'
+    sass:           'assets/stylesheets/**/*.scss',
+    images:         'homebytwo/static/images/**/*.{gif,jpg,jpeg,png,svg}',
+    javascripts:    'assets/javascripts/src/**/*.{js,jsx}',
+    templates:      '**/*.html',
+    icons:          'assets/icons/*.svg'
   },
   dest: {
-    css:            'static/stylesheets',
-    webpack:        { path: './static/javascripts/', filename: 'main.js' },
-    images:         'static/images'
+    css:            'homebytwo/static/stylesheets',
+    images:         'homebytwo/static/images'
   },
   browserSync: {
     proxy:          'homebytwo.lo',
@@ -22,7 +21,6 @@ module.exports = {
     outputStyle:    'compressed'
   },
   autoprefixer: {
-    browsers:       ['last 2 versions', 'ie 9'],
     cascade:        false
   }
 };

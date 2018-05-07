@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Home by Two{% endblock %}
+
+{% block header %}
+  {% include "_masterhead.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--center">
+  {% if message %}
+  <div class="grid__item mrgv-">
+    {% if error %}<div class="box alert alert--error">{% endif %}
+    {% if not error %}<div class="box alert alert--info">{% endif %}
+    <p>{{ message }}</p>
+    </div>
+  </div>
+  {% endif %}
+  <div  class="grid__item">
+    <h1 class="text-left">Connect to your Switzerland Mobility Plus Account</h1>
+    <p>Don't worry! We will not store your Switzerland Mobility log in details at Home by Two.<br>Your credentials will be kept in your browser session.</p>
+  </div>
+  <div class="grid__item lg-w-1/2 mrgb">{% include "importers/switzerland_mobility/_login_form.html" %}</div>
+  <div class="grid__item lg-w-1/2 mrgb">{% include "importers/switzerland_mobility/_signup.html" %}</div>
+</div>
+{% endblock content %}

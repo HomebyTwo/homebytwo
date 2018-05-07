@@ -1,0 +1,52 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{% block title %}Home by Two{% endblock %}</title>
+
+  {% if gtm_container_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    <!-- End Google Tag Manager -->
+  {% endif %}
+
+  <link rel="stylesheet" href="{% static 'stylesheets/homebytwo.css' %}"/>
+  <link rel="shortcut icon" href="{% static 'favicon.ico' %}"/>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:700" rel="stylesheet">
+
+  {% block extralinks %}{% endblock extralinks%}
+
+</head>
+
+<body>
+  {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+  {% endif %}
+
+  <div class="master">
+
+    {% include '_nav.html' %}
+    {% block header %}{% endblock %}
+
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+
+    {% include '_footer.html' %}
+
+  </div>
+
+  <script src="{% static 'javascripts/main.js' %}"></script>
+  {% block extrajs %}{% endblock %}
+
+</body>
+</html>
