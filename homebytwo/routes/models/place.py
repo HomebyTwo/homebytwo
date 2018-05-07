@@ -2,7 +2,6 @@ import json
 from datetime import datetime
 from itertools import chain, islice, tee
 
-import googlemaps
 import requests
 from django.conf import settings
 from django.contrib.gis.db import models
@@ -275,25 +274,6 @@ class Place(TimeStampedModel):
 
     def get_altitude(self):
         return D(m=self.altitude)
-
-    # Returns altitude for a place and updates the database entry
-    def get_gmaps_elevation(self):
-        # Extract first geometry from Multipoint
-        geom = self.geom
-
-        # Transform coords to Gmaps SRID
-        geom.transform(4326)
-
-        # Query gmaps API for altitude
-        gmaps = googlemaps.Client(key=settings.GOOGLEMAPS_API_KEY)
-        coords = (geom.coords.y, geom.coords.x)
-        result = gmaps.elevation(coords)
-
-        # Update altitude information for point
-        self.altitude = result[0]['elevation']
-        self.save()
-
-        return self.altitude
 
     def get_public_transport_connections(self,
                                          destination,

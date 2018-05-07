@@ -226,15 +226,6 @@ SWITZERLAND_MOBILITY_META_URL = get_env_variable('SWITZERLAND_MOBILITY_META_URL'
 SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable('SWITZERLAND_MOBILITY_ROUTE_URL', '')
 
 
-############################
-# Google API for elevation #
-############################
-
-# https://developers.google.com/maps/documentation/elevation/start
-
-GOOGLEMAPS_API_KEY = get_env_variable('GOOGLEMAPS_API_KEY', '')
-
-
 ##############################
 # Swiss public transport API #
 ##############################

@@ -1,4 +1,4 @@
-# Home by Two  [![Build Status](https://travis-ci.org/HomebyTwo/homebytwo.svg?branch=master)](https://travis-ci.org/HomebyTwo/homebytwo)
+# Home by Two  [![Build Status](https://travis-ci.org/HomebyTwo/homebytwo.svg?branch=master)](https://travis-ci.org/HomebyTwo/homebytwo) [![Coverage Status](https://coveralls.io/repos/github/HomebyTwo/homebytwo/badge.svg?branch=master)](https://coveralls.io/github/HomebyTwo/homebytwo?branch=master)
 
 This repository contains the Django source code for http://homebytwo.ch.
 Home by two is a hobby project to plan the schedule of hiking, running and cycling outings, in order to reliably tell what time I will be back.
@@ -46,13 +46,16 @@ Create and provision the virtual machine:
 $ vagrant up
 ```
 
-Add API setting files to envdir:
-- GOOGLEMAPS_API_KEY:
-- MAPBOX_ACCESS_TOKEN:
-- OPENTRANSPORTDATA_API_KEY:
-- STRAVA_CLIENT_ID:
-- STRAVA_SECRET:
-- SWISS_PUBLIC_TRANSPORT_API_URL:
+Add the following setting files to the envdir folder containing the corresponding value for the environment variable:
+- `MAILCHIMP_API_KEY` - Available at https://us14.admin.mailchimp.com/account/api/
+- `MAILCHIMP_LIST_ID` - The ID of the Mailchimp list that ne1wsletter subscriber should be added to
+- `MAPBOX_ACCESS_TOKEN` - retrieve it at https://www.mapbox.com/account/access-tokens
+- `STRAVA_CLIENT_ID` your Strava client ID available at https://www.strava.com/settings/api
+- `STRAVA_SECRET` - your Strava secret available at https://www.strava.com/settings/api
+- `SWITZERLAND_MOBILITY_LIST_URL` - set it to `https://map.wanderland.ch/tracks_list`
+- `SWITZERLAND_MOBILITY_LOGIN_URL` - set it to `https://map.schweizmobil-hosting.ch/api/4/login`
+- `SWITZERLAND_MOBILITY_META_URL` - set it to `https://map.wanderland.ch/track/%d/getmeta`
+- `SWITZERLAND_MOBILITY_ROUTE_URL` - set it to `https://map.wanderland.ch/track/%d/show`
 
 
 ## Run the development server:
