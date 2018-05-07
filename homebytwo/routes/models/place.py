@@ -7,12 +7,11 @@ import requests
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
-from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.core.exceptions import ValidationError
-from django.db import connection
 
 from ...core.models import TimeStampedModel
+from ..fields import LineSubstring
 
 
 def current_and_next(some_iterable):
@@ -23,23 +22,6 @@ def current_and_next(some_iterable):
     items, nexts = tee(some_iterable, 2)
     nexts = chain(islice(nexts, 1, None), [None])
     return zip(items, nexts)
-
-
-def LineSubstring(line, start_location, end_location):
-    """
-    implements ST_Line_Substring
-    """
-    sql = ("SELECT ST_AsText(ST_Line_SubString("
-           "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));")
-
-    with connection.cursor() as cursor:
-        cursor.execute(sql, {'line': line.wkt,
-                             'srid': line.srid,
-                             'start': start_location,
-                             'end': end_location})
-        geom = cursor.fetchone()[0]
-
-    return GEOSGeometry(geom)
 
 
 class PlaceManager(models.Manager):

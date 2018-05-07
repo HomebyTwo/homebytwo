@@ -4,15 +4,35 @@ import uuid
 from django import forms
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.utils.translation import gettext_lazy as _
 from pandas import DataFrame, read_hdf, read_json
 
 
+def LineSubstring(line, start_location, end_location):
+    """
+    implements ST_Line_Substring
+    """
+    sql = ("SELECT ST_AsText(ST_Line_SubString("
+           "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));")
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, {'line': line.wkt,
+                             'srid': line.srid,
+                             'start': start_location,
+                             'end': end_location})
+        geom = cursor.fetchone()[0]
+
+    return GEOSGeometry(geom)
+
+
 class DataFrameField(models.CharField):
     """
-    Custom Filefield to save the DataFramen to the hdf5 file format as adviced
-    here: http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
+    Custom Filefield to save Pandas DataFrame to the hdf5 file format
+    as advised in the official pandas documentation:
+    http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
     """
     default_error_messages = {
         'invalid': _('Please provide a DataFrame object'),
