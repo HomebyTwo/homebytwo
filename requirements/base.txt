@@ -13,7 +13,6 @@ django-geojson==2.11.0
 django-leaflet==0.23.0
 django==2.0.5
 easy-thumbnails==2.5
-googlemaps==2.5.1
 idna==2.6                 # via requests
 numexpr==2.6.4            # via tables
 numpy==1.14.2             # via numexpr, pandas, tables

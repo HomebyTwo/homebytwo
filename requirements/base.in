@@ -2,7 +2,6 @@ dj-database-url
 django-geojson
 django-leaflet
 django
-googlemaps
 pillow
 easy_thumbnails
 polyline

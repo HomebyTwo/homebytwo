@@ -1,18 +1,15 @@
-from contextlib import nested
-from datetime import datetime
 import os
 import random
 import StringIO
+from contextlib import nested
+from datetime import datetime
 
 import dj_database_url
-from fabric.api import (
-    cd, env, execute, get, local, put, require, run, settings, shell_env,
-    task
-)
+from fabric.api import (cd, env, execute, get, local, put, require, run,
+                        settings, shell_env, task)
 from fabric.context_managers import quiet
 from fabric.operations import prompt
 from gitric import api as gitric
-
 
 # This is the definition of your environments. Every item of the ENVIRONMENTS
 # dict will be made available as a fabric task and the properties you put in a
@@ -112,14 +109,17 @@ def restart_process():
     """
     Restart the WSGI process by touching the wsgi.py file.
     """
-    run('touch %s' % os.path.join(get_project_root(), 'hb2', 'wsgi.py'))
+    run('touch %s' % os.path.join(get_project_root(), 'homebytwo', 'config', 'wsgi.py'))
 
 
 def generate_secret_key():
     """
     Generate a random secret key, suitable to be used as a SECRET_KEY setting.
     """
-    return ''.join([random.SystemRandom().choice('abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)') for i in range(50)])
+    return ''.join(
+        [random.SystemRandom().choice(
+            'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)') for i in range(50)]
+    )
 
 
 def create_structure():

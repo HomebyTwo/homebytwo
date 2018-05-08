@@ -20,7 +20,6 @@ django-leaflet==0.23.0
 django==2.0.5
 easy-thumbnails==2.5
 first==2.0.1              # via pip-tools
-googlemaps==2.5.1
 idna==2.6                 # via requests
 ipython-genutils==0.2.0   # via traitlets
 ipython==6.3.1
