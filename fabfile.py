@@ -109,7 +109,7 @@ def restart_process():
     """
     Restart the WSGI process by touching the wsgi.py file.
     """
-    run('touch %s' % os.path.join(get_project_root(), 'homebytwo', 'config', 'wsgi.py'))
+    run('touch %s' % os.path.join(get_project_root(), 'config', 'wsgi.py'))
 
 
 def generate_secret_key():
