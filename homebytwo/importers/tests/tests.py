@@ -735,10 +735,11 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         title = '<title>Home by Two - Import Haute Cime</title>'
-        start_place_form = (
-            '<select name="route-start_place" '
-            'id="id_route-start_place">'
-        )
+        start_place_form_elements = [
+            'name="route-start_place"',
+            'class="field"',
+            'id="id_route-start_place"',
+        ]
         places_formset = (
             '<input type="hidden" name="places-TOTAL_FORMS" '
             'value="0" id="id_places-TOTAL_FORMS" />'
@@ -747,10 +748,11 @@ class SwitzerlandMobility(TestCase):
         map_data = '<div id="main" class="leaflet-container-default"></div>'
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(title in str(response.content))
-        self.assertTrue(start_place_form in str(response.content))
-        self.assertTrue(places_formset in str(response.content))
-        self.assertTrue(map_data in str(response.content))
+        self.assertIn(title, str(response.content))
+        for start_place_form_element in start_place_form_elements:
+            self.assertIn(start_place_form_element, str(response.content))
+        self.assertIn(places_formset, str(response.content))
+        self.assertIn(map_data, str(response.content))
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343

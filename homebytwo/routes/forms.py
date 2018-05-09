@@ -1,5 +1,4 @@
 from django.forms import BooleanField, ModelChoiceField, ModelForm
-from django.forms.widgets import CheckboxInput, Select, SelectMultiple
 
 from .models import Place, Route, RoutePlace
 
@@ -58,6 +57,6 @@ class RoutePlaceForm(ModelForm):
         required=False,
         initial=True,
     )
-    
+
     # Kanbasu 2 class for form checkboxes
     include.widget.attrs.update({'class': 'checkbox'})
