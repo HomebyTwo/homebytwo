@@ -22,8 +22,14 @@ class RouteManager(models.Manager):
 
             if saved_route.exists():
                 route = saved_route.get()
+                route.url = reverse('routes:route', args=[route.id])
                 old_routes.append(route)
+
             else:
+                # named view where the route can be imported e.g.
+                # `strava_route` or `switzerland_mobility_route`
+                route_import_view = "{}_route".format(data_source)
+                route.url = reverse(route_import_view, args=[route.source_id])
                 new_routes.append(route)
 
         return new_routes, old_routes

@@ -1,33 +1,35 @@
 {% load static humanize %}
 
-<li class="media">
+<li>
   <a href="{% url 'routes:route' route.pk %}">
-    <div class="media__left">
-      <img
-      {% if route.image %}
-      src="{{ route.image.thumb.url }}"
-      {% else %}
-      {% if route.data_source == 'strava' %}
-      src="{% static 'images/strava.svg' %}"
-      {% elif route.data_source == 'switzerland_mobility' %}
-      src="{% static 'images/switzerland_mobility.svg' %}"
-      {% else %}
-      src="{% static 'images/homebytwo.svg' %}"
-      {% endif %}
-      {% endif %}
-      alt="{{ source.img_alt }}"
-      height="45px"
-      width="45px"
-      />
-    </div>
-    <div class="media__body relative-parent">
-      <h4 class="mrgv0">{{ route.name }}</h4>
-      <p class="mrgv0">
-        {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
-        {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
-        {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
-      </p>
-      <div class="pull-right"> view &rsaquo; </div>
+    <div class="media">
+      <div class="media__left">
+        <img
+        {% if route.image %}
+        src="{{ route.image.thumb.url }}"
+        {% else %}
+        {% if route.data_source == 'strava' %}
+        src="{% static 'images/strava.svg' %}"
+        {% elif route.data_source == 'switzerland_mobility' %}
+        src="{% static 'images/switzerland_mobility.svg' %}"
+        {% else %}
+        src="{% static 'images/homebytwo.svg' %}"
+        {% endif %}
+        {% endif %}
+        alt="{{ source.img_alt }}"
+        height="45px"
+        width="45px"
+        />
+      </div>
+      <div class="media__body relative-parent">
+        <h4 class="mrgv0">{{ route.name }}</h4>
+        <p class="mrgv0">
+          {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
+          {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
+          {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
+        </p>
+        <div class="pull-right"> view &rsaquo; </div>
+      </div>
     </div>
   </a>
 </li>

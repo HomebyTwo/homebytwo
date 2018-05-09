@@ -2,29 +2,26 @@
 {% load humanize %}
 
 <li>
-    {% if new %}
-        <a href="{% url source.route_view route.source_id %}">
-    {% else %}
-        <a href="{% url "routes:route" route.id %}">
-    {% endif %}
-        <div class="media">
-            <div class="media__left">
-                <img
-                    {% if new %} src="{% static source.svg %}" {% endif %}
-                    {% if not new %} src="{% static source.muted_svg %}" {% endif %}
-                     alt="{{ source.img_alt }}"
-                />
-            </div>
-            <div class="media__body {% if not new %} text-muted {% endif %}">
-                <h4 class="mrgv0">{{ route.name }}</h4>
-                <p class="mrgv0">
-                    {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
-                    {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
-                    {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
-                </p>
-            {% if new %}
-                <p class="mrgt0 pull-right">import &rsaquo;</p>
-             {% endif %}
-        </div>
-    </a>
+  <a href="{{ route.url }}">
+    <div class="media">
+      <div class="media__left">
+          <img
+            {% if new %} src="{% static source.svg %}" {% endif %}
+            {% if not new %} src="{% static source.muted_svg %}" {% endif %}
+            alt="{{ source.img_alt }}"
+          />
+      </div>
+      <div class="media__body {% if not new %} text-muted {% endif %}">
+        <h4 class="mrgv0">{{ route.name }}</h4>
+        <p class="mrgv0">
+          {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
+          {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
+          {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
+        </p>
+        {% if new %}
+        <p class="mrgt0 pull-right">import &rsaquo;</p>
+        {% endif %}
+      </div>
+    </div>
+  </a>
 </li>
