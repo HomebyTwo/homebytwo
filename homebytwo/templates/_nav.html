@@ -4,7 +4,7 @@
   <ul class="list-inline">
     <li class="nav__item pdg-">
       <a href="{% url 'home' %}" class="brand">
-        <img src="{% static "images/hb2_logo.svg" %}" width="40" height="40" alt="Home by Two">
+        {% include "_icon.html" with id="logo" class="icon--huge" %}
       </a>
     </li>
 
