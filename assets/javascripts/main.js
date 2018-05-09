@@ -1,1 +1,3 @@
-import 'icons/chcekpoint.svg';
+// Import the main Sass file
+import 'stylesheets/homebytwo.scss';
+

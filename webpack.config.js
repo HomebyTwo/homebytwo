@@ -8,7 +8,7 @@ module.exports = {
   mode: process.env.NODE_ENV,
   resolve: {
     modules: [
-      path.resolve(__dirname, 'assets/scripts'),
+      path.resolve(__dirname, 'assets/javascripts'),
       path.resolve(__dirname, 'assets'),
       'node_modules',
     ],
@@ -18,7 +18,7 @@ module.exports = {
     main: path.resolve(__dirname, 'assets/javascripts/main.js'),
   },
   output: {
-    path: path.resolve(__dirname, 'homebytwo/static/javascripts'),
+    path: path.resolve(__dirname, 'homebytwo/static/assets'),
     filename: '[name].js',
   },
   module: {
