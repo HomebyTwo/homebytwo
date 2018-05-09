@@ -1,10 +1,20 @@
-from django import forms
-from .models import Route, Place, RoutePlace
+from django.forms import BooleanField, ModelChoiceField, ModelForm
+from django.forms.widgets import CheckboxInput, Select, SelectMultiple
+
+from .models import Place, Route, RoutePlace
 
 
-class RouteForm(forms.ModelForm):
+class RouteForm(ModelForm):
 
-    class PlaceChoiceField(forms.ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+        super(RouteForm, self).__init__(*args, **kwargs)
+
+        # add Kanbasu 2 class for form fields
+        select_fields = ['activity_type', 'start_place', 'end_place']
+        for field in select_fields:
+            self.fields[field].widget.attrs.update({'class': 'field'})
+
+    class PlaceChoiceField(ModelChoiceField):
         def label_from_instance(self, obj):
             return '%s - %s, %d meters away.' % (
                 obj.name,
@@ -26,25 +36,28 @@ class RouteForm(forms.ModelForm):
     class Meta:
         model = Route
         fields = [
-            'source_id',
-            'name',
-            'totalup',
-            'totaldown',
-            'length',
-            'geom',
-            'start_place',
-            'end_place',
-            'data',
             'activity_type',
+            'data',
+            'end_place',
+            'geom',
+            'length',
+            'name',
+            'source_id',
+            'start_place',
+            'totaldown',
+            'totalup',
         ]
 
 
-class RoutePlaceForm(forms.ModelForm):
+class RoutePlaceForm(ModelForm):
     class Meta:
         model = RoutePlace
         fields = ['place', 'line_location', 'altitude_on_route', 'include']
 
-    include = forms.BooleanField(
+    include = BooleanField(
         required=False,
         initial=True,
     )
+    
+    # Kanbasu 2 class for form checkboxes
+    include.widget.attrs.update({'class': 'checkbox'})

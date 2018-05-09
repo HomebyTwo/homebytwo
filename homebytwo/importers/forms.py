@@ -12,16 +12,16 @@ class ImportersRouteForm(RouteForm):
     class Meta:
         model = Route
         fields = [
-            'source_id',
-            'name',
-            'totalup',
-            'totaldown',
-            'length',
-            'geom',
-            'start_place',
-            'end_place',
-            'data',
             'activity_type',
+            'data',
+            'end_place',
+            'geom',
+            'length',
+            'name',
+            'source_id',
+            'start_place',
+            'totaldown',
+            'totalup',
         ]
 
         # Do not display the following fields in the form.

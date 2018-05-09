@@ -6,7 +6,7 @@
     <li class="box box--default box--tight mrgv- pdg- place place--checkpoint relative-parent"
     data-geom='{{ place|geojsonfeature:"name" }}'>
 
-      <label class="mrgv0" for="{{ form.include.id_for_label }}">{% for field in form %}{{ field }}{% endfor %}{{ place.name }}, {{ place.altitude_on_route.m|floatformat:0|intcomma }}m</label>
+      <label class="label mrgv0" for="{{ form.include.id_for_label }}">{% for field in form %}{{ field }}{% endfor %}{{ place.name }}, {{ place.altitude_on_route.m|floatformat:0|intcomma }}m</label>
 
       <p class="text-small text-right mrgv0">{{ place.get_place_type_display }} - {{ place.distance_from_start.km|floatformat:2|intcomma }}km</p>
 

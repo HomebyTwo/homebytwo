@@ -32,13 +32,13 @@
     {# Forms #}
     <form method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
       <div class="mrgb box box--default pdg-">{{ route_form.activity_type.errors }}
-            <label for="{{ route_form.activity_type.id_for_label }}" class="h4 mrgv0">Activity Type</label>
+            <label for="{{ route_form.activity_type.id_for_label }}" class="h4 field-label">Activity Type</label>
             {{ route_form.activity_type }}</div>
       <ul class="list-stacked">
         {# Start Place #}
         <li class="mrgb box box--default pdg-">
           {{ route_form.start_place.errors }}
-          <label for="{{ route_form.start_place.id_for_label }}" class="h4 mrgv0">Start Place:</label>
+          <label for="{{ route_form.start_place.id_for_label }}" class="h4 field-label mrgv0">Start Place:</label>
           {{ route_form.start_place }}
         </li>
 
@@ -48,7 +48,7 @@
         {# Finish Place #}
         <li class="mrgt box box--default pdg-">
           {{ route_form.end_place.errors }}
-          <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
+          <label for="{{ route_form.end_place.id_for_label }}" class="h4 field-label">Finish Place:</label>
           {{ route_form.end_place }}
         </li>
       </ul>
