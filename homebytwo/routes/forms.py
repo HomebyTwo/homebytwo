@@ -4,15 +4,6 @@ from .models import Place, Route, RoutePlace
 
 
 class RouteForm(ModelForm):
-
-    def __init__(self, *args, **kwargs):
-        super(RouteForm, self).__init__(*args, **kwargs)
-
-        # add Kanbasu 2 class for form fields
-        select_fields = ['activity_type', 'start_place', 'end_place']
-        for field in select_fields:
-            self.fields[field].widget.attrs.update({'class': 'field'})
-
     class PlaceChoiceField(ModelChoiceField):
         def label_from_instance(self, obj):
             return '%s - %s, %d meters away.' % (
@@ -57,6 +48,3 @@ class RoutePlaceForm(ModelForm):
         required=False,
         initial=True,
     )
-
-    # Kanbasu 2 class for form checkboxes
-    include.widget.attrs.update({'class': 'checkbox'})

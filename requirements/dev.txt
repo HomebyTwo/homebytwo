@@ -17,6 +17,7 @@ django-debug-toolbar==1.9.1
 django-extensions==2.0.7
 django-geojson==2.11.0
 django-leaflet==0.23.0
+django-widget-tweaks==1.4.2
 django==2.0.5
 easy-thumbnails==2.5
 first==2.0.1              # via pip-tools

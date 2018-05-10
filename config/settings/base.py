@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'django.contrib.humanize',
+    'widget_tweaks',
     'djgeojson',
     'leaflet',
     'easy_thumbnails',

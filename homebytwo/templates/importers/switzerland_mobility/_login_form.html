@@ -1,23 +1,9 @@
-<div class="grid grid--center">
-
-  <form class="grid__item" method="post" action="{% url 'switzerland_mobility_login' %}">
-    {% csrf_token %}
-    <div class="form-group grid">
-      <label for="id_username" class="field-label grid__item md-w-1/5">Username</label>
-      <div class="grid__item md-w-4/5">
-        {{ form.username }}
-      </div>
+<form method="post" action="{% url 'switzerland_mobility_login' %}">
+  {% csrf_token %}
+  {% include "_kanbasu_form.html" with form=form %}
+  <div class="form-group grid grid--right">
+    <div class="grid__item md-w-4/5">
+      <input type="submit" class="btn btn--primary" value="Sign in to Switzerland Mobility Plus" />
     </div>
-    <div class="form-group grid">
-      <label for="id_password" class="field-label grid__item md-w-1/5">Password</label>
-      <div class="grid__item md-w-4/5">
-        {{ form.password }}
-      </div>
-    </div>
-    <div class="form-group grid grid--right">
-      <div class="grid__item md-w-4/5">
-        <input type="submit" class="btn btn--primary" value="Sign in to Switzerland Mobility Plus" />
-      </div>
-    </div>
-  </form>
-</div>
+  </div>
+</form>
