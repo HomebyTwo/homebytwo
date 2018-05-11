@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% load static leaflet_tags geojson_tags humanize %}
+{% load static leaflet_tags geojson_tags humanize widget_tweaks %}
 
 {% block title %}Home by Two - Import {{ route.name }}{% endblock %}
 
 {% block extralinks %}
-    {% leaflet_js %}
-    {% leaflet_css %}
+  {% leaflet_js %}
+  {% leaflet_css %}
 {% endblock extralinks %}
 
 {% block content %}
@@ -19,39 +19,24 @@
   {% if route %}
     {# Route Title #}
     <div class="text-center clearfix">
-
       <h2 class="mrgv0">{{ route.name }}</h2>
       <h3 class="mrgt0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
 
       <div class="pull-left mrgb">
         &lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a>
       </div>
-
     </div>
 
     {# Forms #}
-    <form method="post" action="{% url source.route_view route.source_id %}">{% csrf_token %}
-      <div class="mrgb box box--default pdg-">{{ route_form.activity_type.errors }}
-            <label for="{{ route_form.activity_type.id_for_label }}" class="h4 mrgv0">Activity Type</label>
-            {{ route_form.activity_type }}</div>
-      <ul class="list-stacked">
-        {# Start Place #}
-        <li class="mrgb box box--default pdg-">
-          {{ route_form.start_place.errors }}
-          <label for="{{ route_form.start_place.id_for_label }}" class="h4 mrgv0">Start Place:</label>
-          {{ route_form.start_place }}
-        </li>
-
-        {# Checkpoints #}
-        {% include 'importers/_checkpoints.html' %}
-
-        {# Finish Place #}
-        <li class="mrgt box box--default pdg-">
-          {{ route_form.end_place.errors }}
-          <label for="{{ route_form.end_place.id_for_label }}" class="h4">Finish Place:</label>
-          {{ route_form.end_place }}
-        </li>
-      </ul>
+    <form method="post" action="{% url source.route_view route.source_id %}">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="box alert alert--error" role="alert">
+          {% for error in form.non_field_errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+      {% endif %}
 
       {# Hidden Form Fields #}
       <div>{{ places_form.management_form }}</div>
@@ -62,6 +47,30 @@
       <div>{{ route_form.length }}</div>
       <div>{{ route_form.geom }}</div>
       <div>{{ route_form.data }}</div>
+
+      {# Activity Type #}
+      <div class="mrgb box box--default pdg-">
+        {{ route_form.activity_type.errors }}
+        <label for="{{ route_form.activity_type.id_for_label }}" class="h4 field-label">Activity Type</label>
+        {% render_field route_form.activity_type class="field" %}
+      </div>
+      
+      {# Start Place #}
+      <div class="mrgb box box--default pdg-">
+        {{ route_form.start_place.errors }}
+        <label for="{{ route_form.start_place.id_for_label }}" class="h4 field-label">Start Place</label>
+        {% render_field route_form.start_place class="field" %}
+      </div>
+
+      {# Checkpoints #}
+      {% include 'importers/_checkpoints.html' %}
+
+      {# Finish Place #}
+      <div class="mrgt box box--default pdg-">
+        {{ route_form.end_place.errors }}
+        <label for="{{ route_form.end_place.id_for_label }}" class="h4 field-label">Finish Place</label>
+        {% render_field route_form.end_place class="field" %}
+      </div>
 
       {# Submit #}
       <div class="form-group text-center mrg">
@@ -76,13 +85,10 @@
     {% if route.geom %}
       {% leaflet_map "main" callback="route_map_init" %}
     {% endif %}
-
   {% endif %}
-
 {% endblock content %}
 
 {% if route.geom %}
-
   {% block extrajs %}
     <script type="text/javascript">
       function route_map_init (map, options) {
@@ -109,5 +115,4 @@
       }
     </script>
   {% endblock extrajs %}
-
 {% endif %}

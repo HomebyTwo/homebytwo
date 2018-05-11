@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'django.contrib.humanize',
+    'widget_tweaks',
     'djgeojson',
     'leaflet',
     'easy_thumbnails',
@@ -106,20 +107,21 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Login Page
+# Login Page and logout redirect
+
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/routes/'
+LOGOUT_REDIRECT_URL = '/'
 
 # Internationalization
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'Europe/Zurich'
-
 USE_TZ = True
 
 
 # URL prefix for static files.
+
 STATIC_URL = get_env_variable('STATIC_URL', '/static/')
 
 # Absolute path to the directory static files should be collected to.
@@ -127,6 +129,7 @@ STATIC_URL = get_env_variable('STATIC_URL', '/static/')
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # This is usually not used in a dev env, hence the default value
 # Example: "/home/media/media.lawrence.com/static/"
+
 STATIC_ROOT = get_env_variable('STATIC_ROOT', '/tmp/static')
 
 
@@ -135,6 +138,7 @@ STATICFILES_DIRS = (
 )
 
 # Absolute path to the directory where media files should be collected to.
+
 MEDIA_ROOT = get_env_variable(
     'MEDIA_ROOT',
     get_project_root_path('homebytwo/media')

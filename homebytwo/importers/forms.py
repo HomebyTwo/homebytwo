@@ -12,16 +12,16 @@ class ImportersRouteForm(RouteForm):
     class Meta:
         model = Route
         fields = [
-            'source_id',
-            'name',
-            'totalup',
-            'totaldown',
-            'length',
-            'geom',
-            'start_place',
-            'end_place',
-            'data',
             'activity_type',
+            'data',
+            'end_place',
+            'geom',
+            'length',
+            'name',
+            'source_id',
+            'start_place',
+            'totaldown',
+            'totalup',
         ]
 
         # Do not display the following fields in the form.
@@ -63,9 +63,16 @@ class SwitzerlandMobilityLogin(forms.Form):
     """
     username = forms.CharField(
         label='Username', max_length=100,
-        widget=forms.EmailInput(attrs={'placeholder': 'Username'}))
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'Username',
+            'class': 'field',
+        }))
 
-    password = forms.CharField(label='Password', widget=forms.PasswordInput)
+    password = forms.CharField(
+        label='Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'field',
+        }))
 
     def retrieve_authorization_cookie(self):
         '''

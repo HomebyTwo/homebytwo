@@ -14,19 +14,20 @@ coverage==4.5.1
 dj-database-url==0.5.0
 django-geojson==2.11.0
 django-leaflet==0.23.0
+django-widget-tweaks==1.4.2
 django==2.0.5
 easy-thumbnails==2.5
 execnet==1.5.0            # via pytest-xdist
-factory-boy==2.10.0
+factory-boy==2.11.1
 faker==0.8.13             # via factory-boy
 flake8==3.5.0
-httpretty==0.8.14
+httpretty==0.9.4
 idna==2.6                 # via requests
 isort==4.3.4
 mccabe==0.6.1             # via flake8
 more-itertools==4.1.0     # via pytest
-numexpr==2.6.4            # via tables
-numpy==1.14.2             # via numexpr, pandas, tables
+numexpr==2.6.5            # via tables
+numpy==1.14.3             # via numexpr, pandas, tables
 pandas==0.22.0
 pillow==5.1.0
 pluggy==0.6.0             # via pytest
@@ -44,8 +45,8 @@ python-dateutil==2.7.2    # via arrow, faker, pandas
 pytz==2018.4              # via django, pandas
 rcssmin==1.0.6
 requests==2.18.4
-six==1.11.0               # via django-geojson, faker, more-itertools, polyline, pytest, python-dateutil, tables
-tables==3.4.2
+six==1.11.0               # via django-geojson, faker, httpretty, more-itertools, polyline, pytest, python-dateutil, tables
+tables==3.4.3
 text-unidecode==1.2       # via faker
 units==0.7
 urllib3==1.22             # via requests

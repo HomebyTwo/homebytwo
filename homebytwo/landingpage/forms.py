@@ -1,19 +1,26 @@
-from django import forms
 from django.conf import settings
+from django.forms import CharField, EmailField, EmailInput, Form, HiddenInput
+from requests import get, post, put
 
-import requests
 
-
-class EmailSubscriptionForm(forms.Form):
+class EmailSubscriptionForm(Form):
     """
     Email subscribtion form for Mailchimp using Mail Chimp API v3
     """
-    email = forms.EmailField(label='Email Address', max_length=100,
-                             widget=forms.EmailInput(
-                                attrs={'placeholder': 'Email',
-                                       'required': True}))
-    list_id = forms.CharField(initial=settings.MAILCHIMP_LIST_ID,
-                              widget=forms.HiddenInput, required=False)
+    email = EmailField(
+        label='Email Address',
+        max_length=100,
+        widget=EmailInput(attrs={
+            'placeholder': 'Email',
+            'required': True,
+            'class': 'field',
+        })
+    )
+    list_id = CharField(
+        initial=settings.MAILCHIMP_LIST_ID,
+        widget=HiddenInput,
+        required=False
+    )
 
     def signup_email(self):
         email = self.cleaned_data['email']
@@ -38,7 +45,7 @@ class EmailSubscriptionForm(forms.Form):
 
         # POST to the list members to add a subscriber
         post_url = '/'.join([api_base_url, 'lists', list_id, 'members/'])
-        resp = requests.post(post_url, json=payload, auth=auth)
+        resp = post(post_url, json=payload, auth=auth)
 
         error = True
         message = 'API error'
@@ -52,7 +59,7 @@ class EmailSubscriptionForm(forms.Form):
 
             # Get list member id from email
             search_url = api_base_url + '/search-members?query=%s' % email
-            resp = requests.get(search_url, auth=auth)
+            resp = get(search_url, auth=auth)
 
             # Find out if list member is subscribed
             status = resp.json()['exact_matches']['members'][0]['status']
@@ -66,7 +73,7 @@ class EmailSubscriptionForm(forms.Form):
             else:
                 member_id = resp.json()['exact_matches']['members'][0]['id']
                 put_url = post_url + member_id
-                resp = requests.put(put_url, json=payload, auth=auth)
+                resp = put(put_url, json=payload, auth=auth)
 
                 if resp.status_code == 200:
                     error = False

@@ -1,10 +1,10 @@
-from django import forms
-from .models import Route, Place, RoutePlace
+from django.forms import BooleanField, ModelChoiceField, ModelForm
+
+from .models import Place, Route, RoutePlace
 
 
-class RouteForm(forms.ModelForm):
-
-    class PlaceChoiceField(forms.ModelChoiceField):
+class RouteForm(ModelForm):
+    class PlaceChoiceField(ModelChoiceField):
         def label_from_instance(self, obj):
             return '%s - %s, %d meters away.' % (
                 obj.name,
@@ -26,25 +26,25 @@ class RouteForm(forms.ModelForm):
     class Meta:
         model = Route
         fields = [
-            'source_id',
-            'name',
-            'totalup',
-            'totaldown',
-            'length',
-            'geom',
-            'start_place',
-            'end_place',
-            'data',
             'activity_type',
+            'data',
+            'end_place',
+            'geom',
+            'length',
+            'name',
+            'source_id',
+            'start_place',
+            'totaldown',
+            'totalup',
         ]
 
 
-class RoutePlaceForm(forms.ModelForm):
+class RoutePlaceForm(ModelForm):
     class Meta:
         model = RoutePlace
         fields = ['place', 'line_location', 'altitude_on_route', 'include']
 
-    include = forms.BooleanField(
+    include = BooleanField(
         required=False,
         initial=True,
     )

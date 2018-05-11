@@ -1,13 +1,14 @@
+-e git://github.com/drixselecta/stravalib.git#egg=stravalib
 dj-database-url
+django
 django-geojson
 django-leaflet
-django
-pillow
+django-widget-tweaks
 easy_thumbnails
+pandas
+pillow
 polyline
 psycopg2-binary
 rcssmin
-pandas
-tables
 requests
--e git://github.com/drixselecta/stravalib.git#egg=stravalib
+tables

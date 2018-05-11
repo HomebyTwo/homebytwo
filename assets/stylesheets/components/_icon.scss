@@ -1,0 +1,42 @@
+/**
+ * COMPONENT
+ * Icon
+ */
+
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  pointer-events: none;
+
+  fill: currentColor;
+  will-change: transform; // Prevent cropped/blurry icons on Firefox
+}
+
+  // Size
+  .icon--huge {
+    width: 48px;
+    height: 48px;
+
+    vertical-align: -18px;
+  }
+
+  .icon--large {
+    width: 36px;
+    height: 36px;
+
+    vertical-align: -13px;
+  }
+
+  .icon--medium {
+    width: 20px;
+    height: 20px;
+
+    vertical-align: -5px;
+  }
+
+  .icon--small {
+    width: 12px;
+    height: 12px;
+
+    vertical-align: 0;
+  }

@@ -1,0 +1,5 @@
+{% load staticfiles %}
+
+<svg class="icon {% if class %} {{class}}{% endif %}">
+  <use xlink:href="{% static "assets/icons.svg" %}#{{id}}"></use>
+</svg>

@@ -4,7 +4,7 @@
   <ul class="list-inline">
     <li class="nav__item pdg-">
       <a href="{% url 'home' %}" class="brand">
-        <img src="{% static "images/hb2_logo.svg" %}" width="40" height="40" alt="Home by Two">
+        {% include "_icon.html" with id="logo" class="icon--huge" %}
       </a>
     </li>
 
@@ -17,7 +17,7 @@
         </span>
       </a>
 
-      <ul class="list-inline list-inline--divided">
+      <ul class="list-inline list-inline--divided list-inline--center">
         <li class="text-uppercase">
           <a href="{% url 'routes:routes' %}" >
           My Routes
@@ -28,7 +28,7 @@
 
     <li class="nav__item">
       {% if not user.is_authenticated %}
-        <ul class="list-inline list-inline--tight">
+        <ul class="list-inline list-inline--center list-inline--tight">
           <li>
             <a href="{% url 'register' %}" class="btn btn--small">
             Register
