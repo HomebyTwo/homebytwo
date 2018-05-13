@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
@@ -8,6 +9,14 @@ from stravalib.exc import AccessUnauthorized
 from ..routes.forms import RoutePlaceForm
 from ..routes.models import Athlete, Place, RoutePlace
 from .forms import ImportersRouteForm
+
+
+class SwitzerlandMobilityError(Exception):
+    """
+    When the connection to Switzerland Mobility Plus works but the server
+    responds with an error code: 404, 500, etc.
+    """
+    pass
 
 
 def get_strava_client(user):
@@ -197,30 +206,27 @@ def post_route_places_formset(request, route):
     )
 
 
-def save_detail_forms(request, response, route_form, route_places_formset):
+def save_detail_forms(request, route_form, route_places_formset):
     """
     POST detail view: if the forms validate, try to save the routes
     and route places.
     """
     # validate places form and return errors if any
     if not route_places_formset.is_valid():
-        response['error'] = True
-        response['message'] += str(route_places_formset.errors)
+        for error in route_places_formset.errors:
+            messages.error(request, error)
+        return False
 
     # validate route form and return errors if any
     if not route_form.is_valid():
-        response['error'] = True
-        response['message'] += str(route_form.errors)
-
-    if response['error']:
-        return False, response
+        for error in route_form.errors:
+            messages.error(request, error)
+        return False
 
     # create the route with the route_form
     new_route = route_form.save(commit=False)
     # set user for route
     new_route.owner = request.user
-    # calculate time schedule
-    new_route.calculate_projected_time_schedule(request.user)
 
     try:
         with transaction.atomic():
@@ -235,9 +241,8 @@ def save_detail_forms(request, response, route_form, route_places_formset):
                     route_place.save()
 
     except IntegrityError as error:
-        response = {
-            'error': True,
-            'message': 'Integrity Error: %s. ' % error,
-        }
+        message = 'Integrity Error: {}. '.format(error)
+        messages.error(request, message)
+        return False
 
-    return new_route, response
+    return new_route

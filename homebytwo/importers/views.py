@@ -1,18 +1,19 @@
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 
 from ..routes.models import Athlete
 from .decorators import strava_required, switerland_mobility_required
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .utils import (
-    get_checkpoints, get_route_form, get_route_places_formset,
-    get_strava_client, post_route_form, post_route_places_formset,
-    save_detail_forms
-)
+from .utils import (get_checkpoints, get_route_form, get_route_places_formset,
+                    get_strava_client, post_route_form,
+                    post_route_places_formset, save_detail_forms, SwitzerlandMobilityError)
+
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -101,8 +102,10 @@ def strava_routes(request):
 
     try:
         strava_client = get_strava_client(request.user)
-    except ConnectionError:
-        # add a message
+
+    except ConnectionError as error:
+        message = "Could not connect to Strava: {}".format(error)
+        messages.error(request, message)
         return render(request, template, context)
 
     # Retrieve routes from Strava
@@ -130,14 +133,11 @@ def strava_route(request, source_id):
     places = False
     route_form = False
     route_places_formset = False
-    response = {
-        'error': False,
-        'message': '',
-    }
 
     # model instance from source_id
     route = StravaRoute(source_id=source_id)
 
+    # with a POST request try to save route and places
     if request.method == 'POST':
 
         # populate route_form with POST data
@@ -147,16 +147,16 @@ def strava_route(request, source_id):
         route_places_formset = post_route_places_formset(request, route)
 
         # validate forms and save the route and places
-        if not response['error']:
-            new_route, response = save_detail_forms(
-                request,
-                response,
-                route_form,
-                route_places_formset
-            )
+        new_route = save_detail_forms(
+            request,
+            route_form,
+            route_places_formset
+        )
 
         # Success! redirect to the page of the newly imported route
-        if not response['error']:
+        if new_route:
+            message = 'Route imported successfully from Strava'
+            messages.success(request, message)
             return redirect('routes:route', pk=new_route.id)
 
     if request.method == 'GET':
@@ -184,7 +184,6 @@ def strava_route(request, source_id):
         places = zip(checkpoints, route_places_formset.forms)
 
     context = {
-        'response': response,
         'route': route,
         'route_form': route_form,
         'places': places,
@@ -206,15 +205,26 @@ def switzerland_mobility_routes(request):
     """
     # Retrieve remote routes from Switzerland Mobility
     manager = SwitzerlandMobilityRoute.objects
-    new_routes, old_routes, response = manager.get_remote_routes(
-        request.session, request.user)
+
+    try:
+        new_routes, old_routes = manager.get_remote_routes(
+            request.session,
+            request.user,
+        )
+
+    except ConnectionError as error:
+        messages.error(request, error)
+        new_routes, old_routes = None, None
+
+    except SwitzerlandMobilityError as error:
+        messages.error(request, error)
+        new_routes, old_routes = None, None
 
     template = 'importers/routes.html'
     context = {
         'source': SWITZERLAND_MOBILITY_SOURCE_INFO,
         'new_routes': new_routes,
         'old_routes': old_routes,
-        'response': response,
     }
 
     return render(request, template, context)
@@ -238,15 +248,11 @@ def switzerland_mobility_route(request, source_id):
     places = []
     route_form = False
     route_places_formset = False
-    response = {
-        'error': False,
-        'message': '',
-    }
 
     # model instance with source_id
-    route = SwitzerlandMobilityRoute(source_id=int(source_id))
+    route = SwitzerlandMobilityRoute(source_id=source_id)
 
-    # with a POST request try to import route and places
+    # with a POST request try to save route and places
     if request.method == 'POST':
 
         # populate the route_form with POST data
@@ -256,27 +262,33 @@ def switzerland_mobility_route(request, source_id):
         route_places_formset = post_route_places_formset(request, route)
 
         # validate forms and save the route and places
-        if not response['error']:
-            new_route, response = save_detail_forms(
-                request,
-                response,
-                route_form,
-                route_places_formset
-            )
+        new_route = save_detail_forms(
+            request,
+            route_form,
+            route_places_formset
+        )
 
         # Success! redirect to the page of the newly imported route
-        if not response['error']:
+        if new_route:
+            message = 'Route imported successfully from Switzerland Mobility'
+            messages.success(request, message)
             return redirect('routes:route', pk=new_route.id)
 
     # GET request
     if request.method == 'GET':
 
         # fetch route details from Switzerland Mobility
-        response = route.get_route_details()
+        try:
+            route.get_route_details()
 
-        # route details succesfully retrieved
-        if not response['error']:
+        except ConnectionError as error:
+            messages.error(request, error)
 
+        except SwitzerlandMobilityError as error:
+            messages.error(request, error)
+
+        # no exception
+        else:
             # add user to check if route has already been imported
             route.owner = request.user
 
@@ -292,10 +304,10 @@ def switzerland_mobility_route(request, source_id):
                 checkpoints
             )
 
+            # arrange places and formsets for template
             places = zip(checkpoints, route_places_formset.forms)
 
     context = {
-        'response': response,
         'route': route,
         'route_form': route_form,
         'places': places,
@@ -321,39 +333,19 @@ def switzerland_mobility_login(request):
         # If the form validates,
         # try to retrieve the Switzerland Mobility cookies
         if form.is_valid():
-            cookies, response = form.retrieve_authorization_cookie()
+            cookies = form.retrieve_authorization_cookie(request)
 
             # cookies retrieved successfully
-            if not response['error']:
+            if cookies:
                 # add cookies to the user session
                 request.session['switzerland_mobility_cookies'] = cookies
                 # redirect to the route list
                 return redirect('switzerland_mobility_routes')
 
-            # something went wrong, render the login page with the error
-            else:
-                context = {
-                    'form': form,
-                    'error': response['error'],
-                    'message': response['message'],
-                }
-                return render(request, template, context)
-
-        # form validation error, render the page with the errors
-        else:
-            error = True
-            message = 'An error has occured. '
-
-            for error in form.errors:
-                message += error + ': '
-                for error_message in form.errors[error]:
-                    message += error_message
-            context = {
-                'form': form,
-                'error': response['error'],
-                'message': response['message'],
-            }
-            return render(request, template, context)
+        # something went wrong, render the login page,
+        # errors handled in messages
+        context = {'form': form}
+        return render(request, template, context)
 
     # GET request, print the form
     else:

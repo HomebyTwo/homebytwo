@@ -10,13 +10,8 @@
 
 {% block content %}
   <h1 class="mrgt mrgb0">Import Route</h1>
-
-  {# Alerts #}
-  {% if response.error %}
-    {% include "importers/_alert.html" %}
-  {% endif %}
-
   {% if route %}
+
     {# Route Title #}
     <div class="text-center clearfix">
       <h2 class="mrgv0">{{ route.name }}</h2>
