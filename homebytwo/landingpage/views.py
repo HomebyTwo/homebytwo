@@ -1,6 +1,8 @@
-from json import dumps
+from django.contrib import messages
+from django.core.exceptions import ImproperlyConfigured
+from django.shortcuts import redirect, render
 
-from django.shortcuts import HttpResponse, redirect, render
+from requests.exceptions import ConnectionError, HTTPError
 
 from .forms import EmailSubscriptionForm
 
@@ -16,48 +18,46 @@ def home(request):
 
 
 def email_signup(request):
-    # if this is a POST request we need to process the form data
-    if request.method == 'POST':
 
+    template = 'landingpage/email_signup_confirm.html'
+
+    # process the form data if it has been POSTed to this view
+    if request.method == 'POST':
         # create a form instance and populate it with data from the request:
         form = EmailSubscriptionForm(request.POST)
 
-        # Prepare the repsonse.
-        # The posted form data is valid, get the response from MailChimp!
+        # The posted form data is valid, try to subscribe the email to Mailchimp
         if form.is_valid():
-            response = form.signup_email()
+            try:
+                form.signup_email(request)
 
-        # The form data is invalid. Get the errors.
-        else:
-            message = 'An error has occured. '
+            # cannot connect to MailChimp
+            except (HTTPError, ConnectionError) as error:
+                message = "MailChimp Error: {}."
+                messages.error(request, message.format(error))
 
-            for error in form.errors:
-                message += error + ': '
-                for error_message in form.errors[error]:
-                    message += error_message
+            # missing MAILCHIMP_LIST_ID or API Key
+            except ImproperlyConfigured as error:
+                messages.error(request, error)
 
-            response = {'error': True, 'message': message}
+            # redirect home if there was no exception
+            else:
+                return redirect('home')
 
-        # If the POST was AJAX, return a JSON
-        if request.is_ajax():
-            return HttpResponse(dumps(response))
-
-        # If the POST is not AJAX, print the template
-        else:
-            return render(request,
-                          'landingpage/email_signup_confirm.html',
-                          response)
-
-    # if it was a GET request we just redirect to the homepage
+    # if it was a any other request, just display the empty form
     else:
-        return redirect('home')
+        form = EmailSubscriptionForm()
+
+    return render(request, template, {'form': form})
 
 
 def register(request):
+
+    template = 'landingpage/register.html'
 
     # Include email signup form
     context = {
         'form': EmailSubscriptionForm(),
     }
 
-    return render(request, 'landingpage/register.html', context)
+    return render(request, template, context)

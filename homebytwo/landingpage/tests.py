@@ -54,16 +54,20 @@ class LandingpageTest(TestCase):
     # Email signup
     def test_get_email_signup_view(self):
         url = reverse("email_signup")
-        resp = self.client.get(url)
+        response = self.client.get(url)
+        field_type = '<input type="email"'
+        placeholder = 'placeholder="Email"'
 
-        self.assertRedirects(resp, "/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(field_type, response.content.decode('UTF-8'))
+        self.assertIn(placeholder, response.content.decode('UTF-8'))
 
     def test_post_email_signup_view_invalid(self):
-        content = 'An error has occured'
+        content = '<div class="field-error">'
         url = reverse("email_signup")
         resp = self.client.post(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(content in str(resp.content))
+        self.assertIn(content, resp.content.decode('UTF-8'))
 
     # Mailchimp API
     def test_exception_if_mailchimp_list_id_not_set(self):
@@ -72,10 +76,10 @@ class LandingpageTest(TestCase):
                     'list_id': settings.MAILCHIMP_LIST_ID}
             content = 'Please set the MAILCHIMP_LIST_ID and MAILCHIMP_API_KEY'
             url = reverse("email_signup")
-            resp = self.client.post(url, data)
+            response = self.client.post(url, data)
 
-            self.assertEqual(resp.status_code, 200)
-            self.assertTrue(content in str(resp.content))
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(content, response.content.decode('UTF-8'))
 
     def test_exception_if_mailchimp_api_key_not_set(self):
         with self.settings(MAILCHIMP_API_KEY=''):
@@ -83,10 +87,10 @@ class LandingpageTest(TestCase):
                     'list_id': settings.MAILCHIMP_LIST_ID}
             content = 'Please set the MAILCHIMP_LIST_ID and MAILCHIMP_API_KEY'
             url = reverse("email_signup")
-            resp = self.client.post(url, data)
+            response = self.client.post(url, data)
 
-            self.assertEqual(resp.status_code, 200)
-            self.assertTrue(content in str(resp.content))
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(content, response.content.decode('UTF-8'))
 
     def test_post_email_signup_view_not_subscribed(self):
         api_base_url = self.get_api_base_url()
@@ -99,11 +103,9 @@ class LandingpageTest(TestCase):
 
         data = {'email': 'example@example.com',
                 'list_id': settings.MAILCHIMP_LIST_ID}
-        content = 'subscribed'
         url = reverse("email_signup")
         resp = self.client.post(url, data)
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(content in str(resp.content))
+        self.assertRedirects(resp, '/')
 
         httpretty.disable()
         httpretty.reset()
@@ -123,13 +125,10 @@ class LandingpageTest(TestCase):
         json = '{"exact_matches":{"members":[{"status":"subscribed"}]}}'
         httpretty.register_uri(httpretty.GET, search_url, body=json)
 
-        content = 'again!'
         url = reverse("email_signup")
 
         resp = self.client.post(url, data)
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(content in str(resp.content))
+        self.assertEqual(resp.status_code, 302)
 
         httpretty.disable()
         httpretty.reset()
