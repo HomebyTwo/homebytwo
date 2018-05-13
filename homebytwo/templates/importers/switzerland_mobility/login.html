@@ -8,16 +8,9 @@
 
 {% block content %}
 <div class="grid grid--center">
-  {% if message %}
-  <div class="grid__item mrgv-">
-    <div class="box alert {% if error %}alert--error{% else %}alert--info{% endif %}">
-      <p>{{ message }}</p>
-    </div>
-  </div>
-  {% endif %}
   <div  class="grid__item">
     <h1 class="text-left">Connect to your Switzerland Mobility Plus Account</h1>
-    <p>Don't worry! We will not store your Switzerland Mobility log in details at Home by Two.<br>Your credentials will be kept in your browser session.</p>
+    <p>We do not store your Switzerland Mobility log-in details at Homebytwo. Your credentials will only be kept in your browser session.</p>
   </div>
   <div class="grid__item md-w-1/2 mrgb">
     {% include "importers/switzerland_mobility/_login_form.html" %}

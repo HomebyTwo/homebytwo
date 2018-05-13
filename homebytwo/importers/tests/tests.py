@@ -23,7 +23,7 @@ from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import get_strava_client
+from ..utils import get_strava_client, SwitzerlandMobilityError
 
 
 def load_data(file=''):
@@ -356,12 +356,10 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        json_response, response = request_json(url, cookies)
+        json_response = request_json(url, cookies)
 
         httpretty.disable()
 
-        self.assertEqual(response['error'], False)
-        self.assertEqual(response['message'], 'OK. ')
         self.assertEqual(json_loads(body), json_response)
 
     def test_request_json_server_error(self):
@@ -381,21 +379,16 @@ class SwitzerlandMobility(TestCase):
             content_type="text/html", body=html_response,
             status=500
         )
-
-        json_response, response = request_json(url, cookies)
+        with self.assertRaises(SwitzerlandMobilityError):
+            request_json(url, cookies)
 
         httpretty.disable()
-
-        self.assertEqual(response['error'], True)
-        self.assertTrue('500' in response['message'])
-        self.assertEqual(json_response, False)
 
     def test_request_json_connection_error(self):
         # save cookies to session
         session = self.add_cookies_to_session()
         cookies = session['switzerland_mobility_cookies']
         url = 'https://testurl.ch'
-        message = "Connection Error: could not connect to %s. " % url
 
         # intercept call with httpretty
         httpretty.enable()
@@ -403,16 +396,15 @@ class SwitzerlandMobility(TestCase):
         httpretty.register_uri(
             httpretty.GET, url, body=raise_connection_error,
         )
-
-        json_response, response = request_json(url, cookies)
+        with self.assertRaises(ConnectionError):
+            request_json(url, cookies)
 
         httpretty.disable()
 
-        self.assertEqual(response['error'], True)
-        self.assertIn(message, response['message'])
-        self.assertEqual(json_response, False)
+    def test_get_remote_raw_routes_success(self):
+        # create user
+        user = UserFactory()
 
-    def test_get_raw_remote_routes_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
 
@@ -426,15 +418,16 @@ class SwitzerlandMobility(TestCase):
             content_type="application/json", body=json_response,
             status=200
         )
-        raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(
-            session)
+        manager = SwitzerlandMobilityRoute.objects
+        new_routes, old_routes = manager.get_remote_routes(session, user)
         httpretty.disable()
 
-        self.assertEqual(len(raw_routes), 37)
-        self.assertEqual(response['error'], False)
-        self.assertEqual(response['message'], 'OK. ')
+        self.assertEqual(len(new_routes + old_routes), 37)
 
-    def test_get_raw_remote_routes_empty(self):
+    def test_get_remote_routes_empty(self):
+        # create user
+        user = UserFactory()
+
         # save cookies to session
         session = self.add_cookies_to_session()
 
@@ -448,15 +441,16 @@ class SwitzerlandMobility(TestCase):
             content_type="application/json", body=json_response,
             status=200
         )
-        raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(
-            session)
+        manager = SwitzerlandMobilityRoute.objects
+        new_routes, old_routes = manager.get_remote_routes(session, user)
         httpretty.disable()
 
-        self.assertEqual(len(raw_routes), 0)
-        self.assertEqual(response['error'], False)
-        self.assertEqual(response['message'], 'OK. ')
+        self.assertEqual(len(new_routes + old_routes), 0)
 
-    def test_get_raw_remote_routes_server_error(self):
+    def test_get_remote_routes_server_error(self):
+        # create user
+        user = UserFactory()
+
         # save cookies to session
         session = self.add_cookies_to_session()
 
@@ -470,20 +464,16 @@ class SwitzerlandMobility(TestCase):
             content_type="application/json", body=json_response,
             status=500
         )
-        raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(
-            session)
+
+        routes_manager = SwitzerlandMobilityRoute.objects
+        with self.assertRaises(SwitzerlandMobilityError):
+            routes_manager.get_remote_routes(session, user)
+
         httpretty.disable()
 
-        expected_message = (
-            'Error 500: could not retrieve information from %s. '
-            % routes_list_url
-        )
-
-        self.assertEqual(raw_routes, False)
-        self.assertEqual(response['error'], True)
-        self.assertEqual(response['message'], expected_message)
-
-    def test_get_raw_remote_routes_connection_error(self):
+    def test_get_remote_routes_connection_error(self):
+        # create user
+        user = UserFactory()
 
         # save cookies to session
         session = self.add_cookies_to_session()
@@ -497,18 +487,11 @@ class SwitzerlandMobility(TestCase):
             content_type="application/json", body=raise_connection_error
         )
 
-        raw_routes, response = SwitzerlandMobilityRoute.objects.get_raw_remote_routes(
-            session)
+        manager = SwitzerlandMobilityRoute.objects
+        with self.assertRaises(ConnectionError):
+            manager.get_remote_routes(session, user)
+
         httpretty.disable()
-
-        expected_message = (
-            'Connection Error: could not connect to %s. '
-            % routes_list_url
-        )
-
-        self.assertEqual(raw_routes, False)
-        self.assertEqual(response['error'], True)
-        self.assertIn(expected_message, response['message'])
 
     def test_format_raw_remote_routes_success(self):
         raw_routes = json_loads(load_data(file='tracks_list.json'))
@@ -532,31 +515,29 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(type(formatted_routes) is list)
 
     def test_add_route_meta_success(self):
-        route = {'name': 'Haute Cime', 'id': 2191833, 'description': ''}
-        route_meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route['id']
+        route = SwitzerlandMobilityRoute(source_id=2191833)
+        meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route.source_id
 
         # Turn the route meta URL into a regular expression
-        route_meta_url = re_compile(
-            route_meta_url.replace(str(route['id']), '(\d+)'))
+        meta_url = re_compile(
+            meta_url.replace(str(route.source_id), '(\d+)'))
 
         httpretty.enable()
 
         route_json = load_data('track_info.json')
 
         httpretty.register_uri(
-            httpretty.GET, route_meta_url,
+            httpretty.GET, meta_url,
             content_type="application/json", body=route_json,
             status=200
         )
 
-        route_with_meta, route_response = SwitzerlandMobilityRoute.objects.\
-            add_route_remote_meta(route)
+        route.add_route_remote_meta()
 
-        self.assertEqual(route_with_meta['totalup'].m, 1234.5)
-        self.assertEqual(route_response['message'], 'OK. ')
+        self.assertEqual(route.totalup.m, 1234.5)
 
     def test_check_for_existing_routes_success(self):
-
+        # create user
         user = UserFactory()
 
         # save an existing route
@@ -633,13 +614,12 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        new_routes, old_routes, response = SwitzerlandMobilityRoute.objects.\
+        new_routes, old_routes = SwitzerlandMobilityRoute.objects.\
             get_remote_routes(session, user)
         httpretty.disable()
 
         self.assertEqual(len(new_routes), 36)
         self.assertEqual(len(old_routes), 1)
-        self.assertEqual(response['error'], False)
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
@@ -657,12 +637,12 @@ class SwitzerlandMobility(TestCase):
             status=200
         )
 
-        route_raw_json, response = route.get_raw_route_details(route_id)
+        route.get_route_details()
 
         httpretty.disable()
 
-        self.assertEqual('Haute Cime', route_raw_json['properties']['name'])
-        self.assertEqual(response['error'], False)
+        self.assertEqual('Haute Cime', route.name)
+        self.assertEqual(28517.8, route.length)
 
     def test_get_raw_route_details_error(self):
         route_id = 999999999
@@ -680,13 +660,10 @@ class SwitzerlandMobility(TestCase):
             status=404
         )
 
-        route_raw_json, response = route.get_raw_route_details(route_id)
+        with self.assertRaises(SwitzerlandMobilityError):
+            route.get_route_details()
 
         httpretty.disable()
-
-        self.assertEqual(False, route_raw_json)
-        self.assertEqual(response['error'], True)
-        self.assertTrue('404' in response['message'])
 
     def test_already_imported(self):
         route = factories.SwitzerlandMobilityRouteFactory.build()
@@ -713,7 +690,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertTrue(content in response.content.decode('UTF-8'))
 
     def test_switzerland_mobility_route_success(self):
         route_id = 2823968
@@ -746,13 +723,14 @@ class SwitzerlandMobility(TestCase):
         )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
+        response_content = response.content.decode('UTF-8')
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(title, str(response.content))
+        self.assertIn(title, response_content)
         for start_place_form_element in start_place_form_elements:
-            self.assertIn(start_place_form_element, str(response.content))
-        self.assertIn(places_formset, str(response.content))
-        self.assertIn(map_data, str(response.content))
+            self.assertIn(start_place_form_element, response_content)
+        self.assertIn(places_formset, response_content)
+        self.assertIn(map_data, response_content)
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
@@ -777,7 +755,7 @@ class SwitzerlandMobility(TestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertTrue(content in response.content.decode('UTF-8'))
 
     def test_switzerland_mobility_route_server_error(self):
         route_id = 999999999999
@@ -800,7 +778,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertTrue(content in response.content.decode('UTF-8'))
 
     def test_switzerland_mobility_route_post_success_no_places(self):
         route_id = 2191833
@@ -932,14 +910,16 @@ class SwitzerlandMobility(TestCase):
 
         url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
-        alert_box = '<div class="box alert alert--error">'
+        response_content = response.content.decode('UTF-8')
+
+        alert_box = '<li class="box mrgv- alert alert--error">'
         required_field = 'This field is required.'
         not_a_number = 'Enter a number.'
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(alert_box in str(response.content))
-        self.assertTrue(required_field in str(response.content))
-        self.assertTrue(not_a_number in str(response.content))
+        self.assertTrue(alert_box in response_content)
+        self.assertTrue(required_field in response_content)
+        self.assertTrue(not_a_number in response_content)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
@@ -980,15 +960,16 @@ class SwitzerlandMobility(TestCase):
 
         url = reverse('switzerland_mobility_route', args=[route_id])
         response = self.client.post(url, post_data)
+        response_content = response.content.decode('UTF-8')
 
-        alert_box = '<div class="box alert alert--error">'
+        alert_box = '<li class="box mrgv- alert alert--error">'
         integrity_error = (
             'Integrity Error: duplicate key value violates unique constraint'
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(alert_box in str(response.content))
-        self.assertTrue(integrity_error in str(response.content))
+        self.assertIn(alert_box, response_content)
+        self.assertIn(integrity_error, response_content)
 
     def test_switzerland_mobility_routes_success(self):
         url = reverse('switzerland_mobility_routes')
@@ -1011,7 +992,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertIn(content, response.content.decode('UTF-8'))
 
     def test_switzerland_mobility_routes_error(self):
         url = reverse('switzerland_mobility_routes')
@@ -1032,7 +1013,8 @@ class SwitzerlandMobility(TestCase):
         response_content = response.content.decode('UTF-8')
 
         httpretty.disable()
-        content = ('Error 500: could not retrieve information from %s. '
+
+        content = ('Error 500: could not retrieve information from %s'
                    % routes_list_url)
 
         self.assertEqual(response.status_code, 200)
@@ -1052,7 +1034,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertTrue(content in response.content.decode('UTF-8'))
 
     def test_switzerland_mobility_login_successful(self):
         url = reverse('switzerland_mobility_login')
@@ -1101,7 +1083,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue('Incorrect login.' in str(response.content))
+        self.assertIn('Incorrect login.', response.content.decode('UTF-8'))
         with self.assertRaises(KeyError):
             self.client.session['switzerland_mobility_cookies']
 
@@ -1119,7 +1101,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in str(response.content))
+        self.assertTrue(content in response.content.decode('UTF-8'))
 
     #########
     # Forms #

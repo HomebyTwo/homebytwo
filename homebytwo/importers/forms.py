@@ -1,10 +1,13 @@
+from json import dumps as json_dumps
+
 from django import forms
 from django.conf import settings
-from ..routes.models import Route, Place
-from ..routes.forms import RouteForm
+from django.contrib import messages
+from requests import exceptions as requests_exceptions
+from requests import codes, post
 
-import json
-import requests
+from ..routes.forms import RouteForm
+from ..routes.models import Place, Route
 
 
 class ImportersRouteForm(RouteForm):
@@ -64,21 +67,20 @@ class SwitzerlandMobilityLogin(forms.Form):
     username = forms.CharField(
         label='Username', max_length=100,
         widget=forms.EmailInput(attrs={
-            'placeholder': 'Username',
-            'class': 'field',
+            'placeholder': 'Username on Switzeland Mobility Plus',
         }))
 
     password = forms.CharField(
         label='Password',
         widget=forms.PasswordInput(attrs={
-            'class': 'field',
+            'placeholder': 'Password on Switzeland Mobility Plus',
         }))
 
-    def retrieve_authorization_cookie(self):
+    def retrieve_authorization_cookie(self, request):
         '''
-        Retrieves auth cookies from Switzeland Mobility and returns a tulple:
-        (cookies or False, response = {'error': bool, 'message': str})
-        The cookies are required to display the list of saved routes.
+        Retrieves auth cookies from Switzeland Mobility
+        and returns cookies or False
+        The cookies are required to display a user's list of saved routes.
 
         Example response from the Switzerland Mobility login URL:
         {
@@ -105,36 +107,36 @@ class SwitzerlandMobilityLogin(forms.Form):
 
         # Try to login to map.wanderland.ch
         try:
-            r = requests.post(login_url, data=json.dumps(credentials))
+            r = post(login_url, data=json_dumps(credentials))
 
-            if r.status_code == requests.codes.ok:
+        # catch the connection error and inform the user
+        except requests_exceptions.ConnectionError:
+            message = "Connection Error: could not connect to %s. " % login_url
+            messages.error(request, message)
+            return False
+
+        # no exception
+        else:
+            if r.status_code == codes.ok:
 
                 # log-in was successful, return cookies
                 if r.json()['loginErrorCode'] == 200:
                     cookies = dict(r.cookies)
-                    error = False
-                    message = "Successfully logged in to Switzerland Mobility"
-                    return cookies, {'error': error, 'message': message}
+                    message = "Successfully logged-in to Switzerland Mobility"
+                    messages.success(request, message)
+                    return cookies
 
                 # log-in failed
                 else:
-                    error = True
                     message = r.json()['loginErrorMsg']
-                    return False, {'error': error, 'message': message}
+                    messages.error(request, message)
+                    return False
 
             # Some other server error
             else:
-                error = True
                 message = (
                     'Error %s: logging to Switzeland Mobility. '
                     'Try again later' % r.status_code
                 )
-
-                return False, {'error': error, 'message': message}
-
-        # catch the connection error and inform the user
-        except requests.exceptions.ConnectionError:
-            message = "Connection Error: could not connect to %s. " % login_url
-            response = {'error': True, 'message': message}
-
-            return False, response
+                messages.error(request, message)
+                return False
