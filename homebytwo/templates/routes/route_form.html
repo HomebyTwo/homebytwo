@@ -4,18 +4,20 @@
 
 {% block content %}
 <div class="box clearfix">
-    <h2 class="text-center">Edit Route: {{ route.name }}</h2>
-    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
-        <div>{{ form }}</div>
-        <div class="">
-            <div class="mrgt pull-right">
-                <a href="{% url 'routes:route' route.pk %}" class="btn btn--default">Cancel</a>
-                <input class="btn btn--primary" type="submit" value="Update {{ route.name }}" />
-            </div>
-            <div class="mrgt pull-left">
-                <a href="{% url 'routes:delete' route.pk %}" class="btn btn--delete pull-left">Delete {{ route.name }}</a>
-            </div>
+  <h2 class="text-center">Edit Route: {{ route.name }}</h2>
+  <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "_kanbasu_form.html" with form=form %}
+    <div class="">
+      <div class="form-group grid grid--right">
+        <div class="grid__item md-w-4/5 grid grid--tight">
+          <a href="{% url 'routes:route' route.pk %}" class="btn btn--default btn--block mrgt-">Cancel</a>
+          <input class="btn btn--primary btn--block mrgt-" type="submit" value="Update {{ route.name }}" />
         </div>
-    </form>
+        <div class="grid__item md-w-4/5">
+          <a href="{% url 'routes:delete' route.pk %}" class="btn btn--delete btn--block mrgt-">Delete {{ route.name }}</a>
+        </div>
+      </div>
+    </div>
+  </form>
 </div>
 {% endblock content %}
