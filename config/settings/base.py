@@ -241,6 +241,7 @@ SOCIAL_AUTH_STRAVA_PIPELINE = (
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
     'social_core.pipeline.user.get_username',
+    'homebytwo.importers.utils.associate_by_strava_token',
     'social_core.pipeline.user.create_user',
     'homebytwo.importers.utils.save_strava_token_from_social',
     'social_core.pipeline.social_auth.associate_user',

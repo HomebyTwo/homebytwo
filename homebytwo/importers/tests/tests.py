@@ -5,6 +5,7 @@ from re import compile as re_compile
 import httpretty
 import requests
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
@@ -15,6 +16,7 @@ from django.utils.six import StringIO
 from pandas import DataFrame
 from requests.exceptions import ConnectionError
 from social_core import backends
+from social_core.exceptions import AuthException
 from stravalib import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
@@ -23,8 +25,8 @@ from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import (SwitzerlandMobilityError, get_route_form, get_strava_client,
-                     save_strava_token_from_social)
+from ..utils import (SwitzerlandMobilityError, associate_by_strava_token, get_route_form,
+                     get_strava_client, save_strava_token_from_social)
 from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
 
@@ -152,6 +154,55 @@ class Strava(TestCase):
 
         save_strava_token_from_social(backend, user, response, *args, **kwargs)
         self.assertNotEqual(athlete.strava_token, response['access_token'])
+
+    def test_associate_by_strava_token_existing(self):
+        backend = backends.strava.StravaOAuth
+        details = {}
+        args = ()
+        kwargs = {
+            'pipeline_index': 5,
+            'response': {
+                'access_token': settings.STRAVA_CLIENT_TOKEN
+            }
+        }
+
+        response = associate_by_strava_token(backend, details, *args, **kwargs)
+
+        self.assertEqual(response['user'], self.user)
+        self.assertFalse(response['is_new'])
+
+    def test_associate_by_strava_token_new(self):
+        backend = backends.strava.StravaOAuth
+        details = {}
+        args = ()
+        kwargs = {
+            'response': {
+                'access_token': 'not_the_same_token'
+            }
+        }
+
+        response = associate_by_strava_token(backend, details, *args, **kwargs)
+
+        self.assertTrue(response is None)
+
+    def test_associate_by_strava_token_more_than_one_user(self):
+        # create another user with the same token
+        user_2 = UserFactory()
+        Athlete.objects.create(
+            user=user_2,
+            strava_token=settings.STRAVA_CLIENT_TOKEN,
+        )
+
+        backend = backends.strava.StravaOAuth
+        details = {}
+        args = ()
+        kwargs = {
+            'response': {
+                'access_token': settings.STRAVA_CLIENT_TOKEN
+            }
+        }
+        with self.assertRaises(AuthException):
+            associate_by_strava_token(backend, details, *args, **kwargs)
 
     def test_save_strava_token_from_social_refused(self):
         pass
