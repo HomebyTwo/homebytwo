@@ -5,7 +5,6 @@ from re import compile as re_compile
 import httpretty
 import requests
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
@@ -15,15 +14,18 @@ from django.utils.html import escape
 from django.utils.six import StringIO
 from pandas import DataFrame
 from requests.exceptions import ConnectionError
+from social_core import backends
 from stravalib import Client as StravaClient
+from stravalib.exc import AccessUnauthorized
 
-from . import factories
 from ...routes.models import Athlete, Place, RoutePlace
 from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import get_strava_client, SwitzerlandMobilityError
+from ..utils import (SwitzerlandMobilityError, get_route_form, get_strava_client,
+                     save_strava_token_from_social)
+from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
 
 def load_data(file=''):
@@ -101,7 +103,7 @@ class Strava(TestCase):
             status=401
         )
 
-        with self.assertRaises(PermissionDenied):
+        with self.assertRaises(AccessUnauthorized):
             get_strava_client(self.user)
 
         httpretty.disable()
@@ -120,6 +122,45 @@ class Strava(TestCase):
             get_strava_client(self.user)
 
         self.assertFalse(self.user.athlete.strava_token is None)
+
+    def test_save_strava_token_from_social_new(self):
+        response_raw = load_data('strava_athlete.json')
+        response = json_loads(response_raw)
+        response['access_token'] = '1234567890'
+
+        user = self.user
+        backend = backends.strava.StravaOAuth
+        args = ()
+        kwargs = {
+            'is_new': True,
+        }
+
+        save_strava_token_from_social(backend, user, response, *args, **kwargs)
+        self.assertEqual(user.athlete.strava_token, response['access_token'])
+
+    def test_save_strava_token_from_social_existing(self):
+        response_raw = load_data('strava_athlete.json')
+        response = json_loads(response_raw)
+        response['access_token'] = '1234567890'
+        user = self.user
+        athlete, created = Athlete.objects.get_or_create(user=user)
+        backend = backends.strava.StravaOAuth
+        args = ()
+        kwargs = {
+            'is_new': False,
+        }
+
+        save_strava_token_from_social(backend, user, response, *args, **kwargs)
+        self.assertNotEqual(athlete.strava_token, response['access_token'])
+
+    def test_save_strava_token_from_social_refused(self):
+        pass
+
+    def test_get_route_form(self):
+        route = StravaRouteFactory()
+        route_form = get_route_form(route)
+
+        self.assertEqual(len(route_form.fields), 10)
 
     #########
     # Model #
@@ -143,7 +184,7 @@ class Strava(TestCase):
 
         streams = strava_client.get_route_streams(source_id)
 
-        strava_route = factories.StravaRouteFactory()
+        strava_route = StravaRouteFactory()
         data = strava_route._data_from_streams(streams)
         nb_rows, nb_columns = data.shape
 
@@ -280,7 +321,7 @@ class Strava(TestCase):
 
     def test_strava_route_already_imported(self):
         source_id = 2325453
-        factories.StravaRouteFactory(
+        StravaRouteFactory(
             source_id=source_id,
             owner=self.user,
         )
@@ -541,7 +582,7 @@ class SwitzerlandMobility(TestCase):
         user = UserFactory()
 
         # save an existing route
-        factories.RouteFactory(
+        SwitzerlandMobilityRouteFactory(
             source_id=2191833,
             data_source='switzerland_mobility',
             name='Haute Cime',
@@ -585,9 +626,7 @@ class SwitzerlandMobility(TestCase):
         user = UserFactory()
 
         # save an existing route
-        factories.SwitzerlandMobilityRouteFactory(
-            owner=user,
-        )
+        SwitzerlandMobilityRouteFactory(owner=user)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
@@ -666,9 +705,9 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
     def test_already_imported(self):
-        route = factories.SwitzerlandMobilityRouteFactory.build()
+        route = SwitzerlandMobilityRouteFactory.build()
         self.assertEqual(route.already_imported(), False)
-        route = factories.SwitzerlandMobilityRouteFactory()
+        route = SwitzerlandMobilityRouteFactory()
         self.assertEqual(route.already_imported(), True)
 
     #########
@@ -734,7 +773,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
-        factories.SwitzerlandMobilityRouteFactory(
+        SwitzerlandMobilityRouteFactory(
             source_id=route_id,
             owner=self.user,
         )
@@ -782,7 +821,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_post_success_no_places(self):
         route_id = 2191833
-        route = factories.SwitzerlandMobilityRouteFactory.build(
+        route = SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
         )
 
@@ -821,7 +860,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_post_success_place(self):
         route_id = 2191833
-        route = factories.SwitzerlandMobilityRouteFactory.build(
+        route = SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
         )
 
@@ -873,7 +912,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_post_no_validation_places(self):
         route_id = 2191833
-        route = factories.SwitzerlandMobilityRouteFactory.build(
+        route = SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
         )
 
@@ -923,7 +962,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
-        route = factories.SwitzerlandMobilityRouteFactory(
+        route = SwitzerlandMobilityRouteFactory(
             source_id=route_id,
             owner=self.user,
         )
@@ -1124,7 +1163,7 @@ class SwitzerlandMobility(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_switzerland_mobility_valid_model_form(self):
-        route = factories.SwitzerlandMobilityRouteFactory.build()
+        route = SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update({
             'activity_type': 1,
@@ -1137,7 +1176,7 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_switzerland_mobility_invalid_model_form(self):
-        route = factories.SwitzerlandMobilityRouteFactory.build()
+        route = SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update({
             'geom': route.geom.wkt,

@@ -1,8 +1,6 @@
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
-from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
@@ -34,20 +32,23 @@ def get_strava_client(user):
     try:
         strava_client.get_athlete()
 
-    # connection to the Strava API unavailable
-    except ConnectionError:
-        raise
-
     # invalid authorization token
     except AccessUnauthorized:
 
-        # erase bad strava token
+        # erase unauthorized strava token
         athlete.strava_token = None
         athlete.save()
 
-        raise PermissionDenied
+        raise
 
     return strava_client
+
+
+def save_strava_token_from_social(backend, user, response, *args, **kwargs):
+    if backend.name == 'strava' and kwargs['is_new']:
+        athlete, created = Athlete.objects.get_or_create(user=user)
+        athlete.strava_token = response.get('access_token')
+        athlete.save()
 
 
 def get_route_form(route):

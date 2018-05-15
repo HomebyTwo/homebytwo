@@ -5,15 +5,15 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
+from stravalib.exc import AccessUnauthorized
 
 from ..routes.models import Athlete
 from .decorators import strava_required, switerland_mobility_required
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .utils import (get_checkpoints, get_route_form, get_route_places_formset,
-                    get_strava_client, post_route_form,
-                    post_route_places_formset, save_detail_forms, SwitzerlandMobilityError)
-
+from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
+                    get_route_places_formset, get_strava_client, post_route_form,
+                    post_route_places_formset, save_detail_forms)
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -107,6 +107,11 @@ def strava_routes(request):
         message = "Could not connect to Strava: {}".format(error)
         messages.error(request, message)
         return render(request, template, context)
+
+    except AccessUnauthorized:
+        message = ('Strava Authorization refused. Try connect to Strava again')
+        messages.error(request, message)
+        return redirect('strava_connect')
 
     # Retrieve routes from Strava
     new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(

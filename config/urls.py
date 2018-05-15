@@ -12,7 +12,7 @@ urlpatterns = [
     # home
     path('', landingpage_views.home, name="home"),
 
-    # email-signup/
+    # email-signup/
     path('email-signup/',
          landingpage_views.email_signup,
          name="email_signup"),
@@ -23,6 +23,9 @@ urlpatterns = [
          name="register"),
 
     # URL patterns to other apps
+    # django social auth
+    path('', include('social_django.urls', namespace='social')),
+
     # routes/
     path('routes/', include('homebytwo.routes.urls')),
 
