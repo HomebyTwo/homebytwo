@@ -8,17 +8,17 @@
 {% block content %}
   {% if next %}
     {% if user.is_authenticated %}
-      <div class="box alert alert--info mrgb">
+      <div class="box alert alert--info mrgv">
         <p>Your account doesn't have access to this page.
         To proceed, please login with an other account that has access:</p>
       </div>
     {% else %}
-      <div class="box alert alert--info mrgb">
+      <div class="box alert alert--info mrgv">
         <p>Please login to see this page:</p>
       </div>
     {% endif %}
   {% endif %}
-  <div class="grid grid--center">
+  <div class="mrgt grid grid--center">
     <form class="grid__item md-w-1/2 mrgb" method="post" action="{% url 'login' %}">
       {% csrf_token %}
       {% include "_kanbasu_form.html" with form=form %}
@@ -35,6 +35,7 @@
     </form>
     <div class="grid__item md-w-1/2">
       {% include "importers/strava/_connect_with_strava.html" %}
+      <p>No Strava account? <a href="{% url "register" %}">Create an regular homebytwo account instead.</p></a>
     </div>
   </div>
 {% endblock content %}

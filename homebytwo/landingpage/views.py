@@ -1,10 +1,10 @@
 from django.contrib import messages
+from django.contrib.auth import authenticate, login
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render
-
 from requests.exceptions import ConnectionError, HTTPError
 
-from .forms import EmailSubscriptionForm
+from .forms import EmailSubscriptionForm, UserRegistrationForm
 
 
 def home(request):
@@ -55,9 +55,16 @@ def register(request):
 
     template = 'landingpage/register.html'
 
-    # Include email signup form
-    context = {
-        'form': EmailSubscriptionForm(),
-    }
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            raw_password = form.cleaned_data.get('password1')
+            user = authenticate(username=username, password=raw_password)
+            login(request, user)
+            return redirect('routes:routes')
+    else:
+        form = UserRegistrationForm()
 
-    return render(request, template, context)
+    return render(request, template, {'form': form})

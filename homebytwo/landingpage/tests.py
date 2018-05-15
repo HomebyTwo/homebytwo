@@ -42,14 +42,12 @@ class LandingpageTest(TestCase):
 
     # Register
     def test_landingpage_register_view(self):
-        content = "Even though we would love you to register right now."
-        signup_form = EmailSubscriptionForm()
+        signup_form_content = "Required. 150 characters or fewer."
         url = reverse("register")
         resp = self.client.get(url)
 
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(content in str(resp.content))
-        self.assertTrue(str(signup_form['email']) in str(resp.content))
+        self.assertIn(signup_form_content, resp.content.decode('UTF-8'))
 
     # Email signup
     def test_get_email_signup_view(self):

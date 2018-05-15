@@ -5,7 +5,6 @@ from re import compile as re_compile
 import httpretty
 import requests
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
