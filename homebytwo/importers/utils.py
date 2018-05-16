@@ -51,7 +51,7 @@ def save_strava_token_from_social(backend, user, response, *args, **kwargs):
 
     This pipeline entry recycles the strava access token retrieved
     by Django Social Auth and adds it to the athlete table of the user.
-    The user does not need to ciick on Strava Connect again in order to retrieve Strava Routes.
+    The user does not need to click on Strava Connect again in order to retrieve Strava Routes.
     """
     if backend.name == 'strava' and kwargs['new_association']:
         athlete, created = Athlete.objects.get_or_create(user=user)
