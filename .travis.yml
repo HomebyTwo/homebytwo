@@ -27,3 +27,6 @@ before_script:
 
 script:
   - tox
+
+after_success:
+  - coveralls
