@@ -124,7 +124,7 @@ class Strava(TestCase):
 
         self.assertFalse(self.user.athlete.strava_token is None)
 
-    def test_save_strava_token_from_social_new(self):
+    def test_save_strava_token_from_social_new_user(self):
         response_raw = load_data('strava_athlete.json')
         response = json_loads(response_raw)
         response['access_token'] = '1234567890'
@@ -133,7 +133,7 @@ class Strava(TestCase):
         backend = backends.strava.StravaOAuth
         args = ()
         kwargs = {
-            'is_new': True,
+            'new_association': True,
         }
 
         save_strava_token_from_social(backend, user, response, *args, **kwargs)
@@ -148,7 +148,7 @@ class Strava(TestCase):
         backend = backends.strava.StravaOAuth
         args = ()
         kwargs = {
-            'is_new': False,
+            'new_association': False,
         }
 
         save_strava_token_from_social(backend, user, response, *args, **kwargs)
@@ -159,7 +159,6 @@ class Strava(TestCase):
         details = {}
         args = ()
         kwargs = {
-            'pipeline_index': 5,
             'response': {
                 'access_token': settings.STRAVA_CLIENT_TOKEN
             }
@@ -203,8 +202,22 @@ class Strava(TestCase):
         with self.assertRaises(AuthException):
             associate_by_strava_token(backend, details, *args, **kwargs)
 
-    def test_save_strava_token_from_social_refused(self):
-        pass
+    def test_associate_by_strava_token_already_logged_in(self):
+        # user already logged-in
+        user = self.user
+
+        backend = backends.strava.StravaOAuth
+        details = {}
+        args = ()
+        kwargs = {
+            'response': {
+                'access_token': settings.STRAVA_CLIENT_TOKEN
+            }
+        }
+
+        response = associate_by_strava_token(backend, user, details, *args, **kwargs)
+
+        self.assertTrue(response, None)
 
     def test_get_route_form(self):
         route = StravaRouteFactory()
@@ -382,6 +395,7 @@ class Strava(TestCase):
         # Athlete API call
         self.intercept_get_athlete()
 
+        # Route API call
         route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
                             % source_id)
         route_detail_json = load_data('strava_route_detail.json')
@@ -392,7 +406,18 @@ class Strava(TestCase):
             status=200
         )
 
+        # Streams API call
+        stream_url = 'https://www.strava.com/api/v3/routes/%d/streams' % source_id
+        streams_json = load_data('strava_streams.json')
+
+        httpretty.register_uri(
+            httpretty.GET, stream_url,
+            content_type="application/json", body=streams_json,
+            status=200
+        )
+
         url = reverse('strava_route', args=[source_id])
+
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
 

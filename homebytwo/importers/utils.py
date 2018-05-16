@@ -53,8 +53,7 @@ def save_strava_token_from_social(backend, user, response, *args, **kwargs):
     by Django Social Auth and adds it to the athlete table of the user.
     The user does not need to ciick on Strava Connect again in order to retrieve Strava Routes.
     """
-
-    if backend.name == 'strava' and kwargs['is_new']:
+    if backend.name == 'strava' and kwargs['new_association']:
         athlete, created = Athlete.objects.get_or_create(user=user)
         athlete.strava_token = response.get('access_token')
         athlete.save()
@@ -87,7 +86,7 @@ def associate_by_strava_token(backend, details, user=None, *args, **kwargs):
         except Athlete.MultipleObjectsReturned:
             raise AuthException(
                 backend,
-                'The given email address is associated with another account'
+                'The given strava token is associated with another account'
             )
 
         else:
