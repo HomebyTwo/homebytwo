@@ -31,7 +31,7 @@ Optional dependencies:
 Clone the repository on your machine and open the project directory:
 
 ```sh
-$ git clone --recursive https://github.com/drixselecta/homebytwo.git && cd homebytwo
+$ git clone --recursive https://github.com/HomebyTwo/homebytwo.git && cd homebytwo
 ```
 
 Insall addition vagrant plugins:

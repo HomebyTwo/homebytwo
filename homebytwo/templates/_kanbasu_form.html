@@ -5,7 +5,7 @@
 {% endfor %}
 
 {% if form.non_field_errors %}
-  <div class="box alert alert--error" role="alert">
+  <div class="box alert alert--error mrgb" role="alert">
     {% for error in form.non_field_errors %}
       {{ error }}
     {% endfor %}
@@ -33,8 +33,13 @@
         {% render_field field class="field" %}
       {% endif %}
     </div>
-    {% if field.help_text %}
-      <div class="field-help">{{ field.help_text }}</div>
-    {% endif %}
   </div>
+  {% if field.help_text %}
+  <div class="grid grid--right">
+    <div class="grid__item field-help md-w-4/5">
+      {{ field.help_text|safe }}
+    </div>
+  </div>
+  {% endif %}
+
 {% endfor %}

@@ -3,6 +3,7 @@ dj-database-url
 django
 django-geojson
 django-leaflet
+social-auth-app-django
 django-widget-tweaks
 easy_thumbnails
 pandas

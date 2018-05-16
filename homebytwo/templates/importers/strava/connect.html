@@ -2,10 +2,8 @@
 {% load static %}
 
 {% block content %}
-<h1>Import Routes from Strava</h1>
-<div class="box box--default relative-parent">
-	<a href="{{ strava_authorize_url }}">
-	    <img src="{% static 'images/ConnectWithStrava@2x.png' %}" alt="Connect with Strava" width="171px"/>
-	</a>
-</div>
+
+  <h1>Import Routes from Strava</h1>
+  {% include "importers/strava/_connect_with_strava.html" with next="/import/strava/" %}
+
 {% endblock content %}

@@ -1,8 +1,7 @@
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
-from requests.exceptions import ConnectionError
+from social_core.exceptions import AuthException
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
@@ -34,20 +33,65 @@ def get_strava_client(user):
     try:
         strava_client.get_athlete()
 
-    # connection to the Strava API unavailable
-    except ConnectionError:
-        raise
-
     # invalid authorization token
     except AccessUnauthorized:
 
-        # erase bad strava token
+        # erase unauthorized strava token
         athlete.strava_token = None
         athlete.save()
 
-        raise PermissionDenied
+        raise
 
     return strava_client
+
+
+def save_strava_token_from_social(backend, user, response, *args, **kwargs):
+    """
+    Add strava_token to the athlete when djnago social creates a user with Strava
+
+    This pipeline entry recycles the strava access token retrieved
+    by Django Social Auth and adds it to the athlete table of the user.
+    The user does not need to click on Strava Connect again in order to retrieve Strava Routes.
+    """
+    if backend.name == 'strava' and kwargs['new_association']:
+        athlete, created = Athlete.objects.get_or_create(user=user)
+        athlete.strava_token = response.get('access_token')
+        athlete.save()
+
+
+def associate_by_strava_token(backend, details, user=None, *args, **kwargs):
+    """
+    Associate current auth with a user with the same Strava Token in the DB.
+
+    With this pipeline, we try to find out if a user already exists with
+    the retrieved Strava access_token, so that we can associate the auth
+    with the user instead of creating a new one.
+
+    """
+    if user:
+        return None
+
+    access_token = kwargs['response']['access_token']
+
+    if access_token:
+        # Try to associate accounts with the same strava token,
+        # only if it's a single object. AuthException is raised if multiple
+        # objects are returned.
+        try:
+            athlete = Athlete.objects.get(strava_token=access_token)
+
+        except Athlete.DoesNotExist:
+            return None
+
+        except Athlete.MultipleObjectsReturned:
+            raise AuthException(
+                backend,
+                'The given strava token is associated with another account'
+            )
+
+        else:
+            return {'user': athlete.user,
+                    'is_new': False}
 
 
 def get_route_form(route):

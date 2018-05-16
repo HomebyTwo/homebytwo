@@ -5,10 +5,20 @@
 {% endblock header %}
 
 {% block content %}
-<div class="box box--default mrgt">
-  <h4 class=>We are still working on it...</h4>
-  <p class="mrgv-">Even though we would love you to register right now. We are not quite ready yet.</p>
-  <p class="mrgt-">Sign up to find out when are ready to launch:</p>
-  {% include "landingpage/_email_signup_form.html" %}
-</div>
+
+  <h2>Register to Homebytwo</h2>
+  <div class="grid grid--center">
+    <form class="grid__item md-w-2/3 mrgb" method="post">
+      {% csrf_token ent%}
+      {% include "_kanbasu_form.html" with form=form %}
+      <div class="form-group grid grid--right">
+        <div class="grid__item md-w-4/5">
+          <button class="btn btn--primary" type="submit">Register to Homebytwo</button>
+        </div>
+      </div>
+    </form>
+    <div class="grid__item md-w-1/3">
+      {% include "importers/strava/_connect_with_strava.html" %}
+    </div>
+  </div>
 {% endblock content %}
