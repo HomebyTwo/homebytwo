@@ -8,7 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from homebytwo.utils.factories import UserFactory
 from pandas import DataFrame
@@ -464,6 +464,26 @@ class RouteTestCase(TestCase):
         rounded = [baseround(value) for value in values]
 
         self.assertEqual(rounded, [0, 5, 5, 10, -5])
+
+    @override_settings(
+        STRAVA_ROUTE_URL='https://strava_route_url/%d',
+        SWITZERLAND_MOBILITY_ROUTE_URL='https://switzerland_mobility_route_url/%d',
+    )
+    def test_source_url(self):
+        route = factories.RouteFactory(
+            data_source='strava',
+            source_id=777)
+        source_url = 'https://strava_route_url/777'
+        self.assertEqual(route.source_url, source_url)
+
+        route = factories.RouteFactory(
+            data_source='switzerland_mobility',
+            source_id=777)
+        source_url = 'https://switzerland_mobility_route_url/777'
+        self.assertEqual(route.source_url, source_url)
+
+        route = factories.RouteFactory()
+        self.assertIsNone(route.source_url)
 
     #########
     # Views #

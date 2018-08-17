@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.gis.db import models
 from django.urls import reverse
 
@@ -60,6 +61,14 @@ class Route(Track):
 
     def get_absolute_url(self):
         return reverse('routes:route', kwargs={'pk': self.pk})
+
+    @property
+    def source_url(self):
+        if self.data_source == 'switzerland_mobility':
+            return settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+        if self.data_source == 'strava':
+            return settings.STRAVA_ROUTE_URL % int(self.source_id)
+        return
 
     def already_imported(self):
         """
