@@ -32,9 +32,14 @@ MAILCHIMP_LIST_ID = get_env_variable('MAILCHIMP_LIST_ID')
 # Force Switzerland Mobility Settings #
 #######################################
 
-SWITZERLAND_MOBILITY_LIST_URL = get_env_variable('SWITZERLAND_MOBILITY_LIST_URL')
-SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable('SWITZERLAND_MOBILITY_LOGIN_URL')
-SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable('SWITZERLAND_MOBILITY_ROUTE_URL')
+SWITZERLAND_MOBILITY_LIST_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_LIST_URL')
+SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_LOGIN_URL')
+SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_ROUTE_URL')
+SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_ROUTE_DATA_URL')
 
 #################################
 # Force Strava related Settings #

@@ -123,9 +123,7 @@ class SwitzerlandMobilityRoute(Route):
         """
         Fetches route details from map.wanderland.ch.
         """
-
-        # Create the URL
-        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % self.source_id
 
         # request from Switzerland Mobility
         raw_route_json = request_json(route_url)

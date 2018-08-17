@@ -146,7 +146,7 @@ MEDIA_ROOT = get_env_variable(
     'MEDIA_ROOT',
     get_project_root_path('homebytwo/media')
 )
-MEDIA_URL = get_env_variable('MEDIA_URL',  '/media/')
+MEDIA_URL = get_env_variable('MEDIA_URL', '/media/')
 
 THUMBNAIL_ALIASES = {
     '': {
@@ -216,6 +216,7 @@ LEAFLET_CONFIG = {
 
 STRAVA_CLIENT_ID = get_env_variable('STRAVA_CLIENT_ID', '')
 STRAVA_CLIENT_SECRET = get_env_variable('STRAVA_CLIENT_SECRET', '')
+STRAVA_ROUTE_URL = get_env_variable('STRAVA_ROUTE_URL', '')
 
 ######################
 # Django Social Auth #
@@ -257,11 +258,16 @@ SOCIAL_AUTH_STRAVA_PIPELINE = (
 # Colelction of Switzerland Mobility URL to
 # retrieve data from https://map.wanderland.ch/
 
-SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable('SWITZERLAND_MOBILITY_LOGIN_URL', '')
-SWITZERLAND_MOBILITY_LIST_URL = get_env_variable('SWITZERLAND_MOBILITY_LIST_URL', '')
-SWITZERLAND_MOBILITY_META_URL = get_env_variable('SWITZERLAND_MOBILITY_META_URL', '')
-SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable('SWITZERLAND_MOBILITY_ROUTE_URL', '')
-
+SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_LOGIN_URL', '')
+SWITZERLAND_MOBILITY_LIST_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_LIST_URL', '')
+SWITZERLAND_MOBILITY_META_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_META_URL', '')
+SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_ROUTE_URL', '')
+SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
+    'SWITZERLAND_MOBILITY_ROUTE_DATA_URL', '')
 
 ##############################
 # Swiss public transport API #
@@ -269,4 +275,5 @@ SWITZERLAND_MOBILITY_ROUTE_URL = get_env_variable('SWITZERLAND_MOBILITY_ROUTE_UR
 
 # http://transport.opendata.ch/docs.html
 
-SWISS_PUBLIC_TRANSPORT_API_URL = get_env_variable('SWISS_PUBLIC_TRANSPORT_API_URL', '')
+SWISS_PUBLIC_TRANSPORT_API_URL = get_env_variable(
+    'SWISS_PUBLIC_TRANSPORT_API_URL', '')

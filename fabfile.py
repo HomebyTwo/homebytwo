@@ -165,7 +165,7 @@ def bootstrap():
                              'MAILCHIMP_API_KEY', 'MAILCHIMP_LIST_ID',
                              'SWITZERLAND_MOBILITY_LIST_URL',
                              'SWITZERLAND_MOBILITY_LOGIN_URL',
-                             'SWITZERLAND_MOBILITY_ROUTE_URL'])
+                             'SWITZERLAND_MOBILITY_ROUTE_DATA_URL'])
 
     if hasattr(env, 'settings'):
         for setting, value in env.settings.items():
