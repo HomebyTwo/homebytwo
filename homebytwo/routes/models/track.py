@@ -211,7 +211,7 @@ class Track(TimeStampedModel):
             + slope_param * data['gain']
             + flat_param * data['distance']
             + totalup_penalty * data['distance']
-        ).where(data['distance'] > 0, 0).cumsum().fillna(value=0)
+        ).where(data['distance'] > 0.1, 0).cumsum().fillna(value=0)
 
         self.data = data
 
