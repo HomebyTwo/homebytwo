@@ -469,21 +469,23 @@ class RouteTestCase(TestCase):
         STRAVA_ROUTE_URL='https://strava_route_url/%d',
         SWITZERLAND_MOBILITY_ROUTE_URL='https://switzerland_mobility_route_url/%d',
     )
-    def test_source_url(self):
+    def test_source_link(self):
         route = factories.RouteFactory(
             data_source='strava',
             source_id=777)
         source_url = 'https://strava_route_url/777'
-        self.assertEqual(route.source_url, source_url)
+        self.assertEqual(route.source_link.url, source_url)
+        self.assertEqual(route.source_link.text, 'Strava')
 
         route = factories.RouteFactory(
             data_source='switzerland_mobility',
             source_id=777)
         source_url = 'https://switzerland_mobility_route_url/777'
-        self.assertEqual(route.source_url, source_url)
+        self.assertEqual(route.source_link.url, source_url)
+        self.assertEqual(route.source_link.text, 'Switzerland Mobility')
 
         route = factories.RouteFactory()
-        self.assertIsNone(route.source_url)
+        self.assertIsNone(route.source_link)
 
     #########
     # Views #

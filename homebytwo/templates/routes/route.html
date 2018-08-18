@@ -29,9 +29,9 @@
     {% leaflet_map "main" callback="route_map_init" %}
   {% endif %}
 
-  {% if route.source_url %}
+  {% if route.source_link %}
     <p class="text-right">
-      <a href="{{ route.source_url }}" target="_blank">See this route on {{ route.data_source }}</a>
+      <a href="{{ route.source_link.url }}" target="_blank">See this route on {{ route.source_link.text }}</a>
     </p>
   {% endif %}
 

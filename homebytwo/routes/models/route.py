@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.urls import reverse
@@ -63,11 +65,19 @@ class Route(Track):
         return reverse('routes:route', kwargs={'pk': self.pk})
 
     @property
-    def source_url(self):
+    def source_link(self):
+        SourceLink = namedtuple('SourceLink', ['url', 'text'])
+
         if self.data_source == 'switzerland_mobility':
-            return settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+            url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+            text = 'Switzerland Mobility'
+            return SourceLink(url, text)
+
         if self.data_source == 'strava':
-            return settings.STRAVA_ROUTE_URL % int(self.source_id)
+            url = settings.STRAVA_ROUTE_URL % int(self.source_id)
+            text = 'Strava'
+            return SourceLink(url, text)
+
         return
 
     def already_imported(self):
