@@ -52,10 +52,11 @@ Add the following setting files to the envdir folder containing the correspondin
 - `MAPBOX_ACCESS_TOKEN` - retrieve it at https://www.mapbox.com/account/access-tokens
 - `STRAVA_CLIENT_ID` your Strava client ID available at https://www.strava.com/settings/api
 - `STRAVA_SECRET` - your Strava secret available at https://www.strava.com/settings/api
+- `STRAVA_ROUTE_URL` - set it to `https://www.strava.com/routes/%d`
 - `SWITZERLAND_MOBILITY_LIST_URL` - set it to `https://map.wanderland.ch/tracks_list`
 - `SWITZERLAND_MOBILITY_LOGIN_URL` - set it to `https://map.schweizmobil-hosting.ch/api/4/login`
-- `SWITZERLAND_MOBILITY_META_URL` - set it to `https://map.wanderland.ch/track/%d/getmeta`
-- `SWITZERLAND_MOBILITY_ROUTE_URL` - set it to `https://map.wanderland.ch/track/%d/show`
+- `SWITZERLAND_MOBILITY_ROUTE_URL` - set it to `https://map.wanderland.ch/?trackId=%d`
+- `SWITZERLAND_MOBILITY_ROUTE_DATA_URL` - set it to `https://map.wanderland.ch/track/%d/show`
 
 
 ## Run the development server:

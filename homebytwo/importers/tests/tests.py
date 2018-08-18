@@ -431,7 +431,7 @@ class Strava(TestCase):
     SWITZERLAND_MOBILITY_LOGIN_URL='https://example.com/login',
     SWITZERLAND_MOBILITY_LIST_URL='https://example.com/tracks',
     SWITZERLAND_MOBILITY_META_URL='https://example.com/track/%d/getmeta',
-    SWITZERLAND_MOBILITY_ROUTE_URL='https://example.com/track/%d/show'
+    SWITZERLAND_MOBILITY_ROUTE_DATA_URL='https://example.com/track/%d/show'
 )
 class SwitzerlandMobility(TestCase):
     """
@@ -741,7 +741,7 @@ class SwitzerlandMobility(TestCase):
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
-        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
 
         route_details_json = load_data(file='2191833_show.json')
 
@@ -764,7 +764,7 @@ class SwitzerlandMobility(TestCase):
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable()
-        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
 
         html_response = load_data(file='404.html')
 
@@ -812,7 +812,7 @@ class SwitzerlandMobility(TestCase):
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
-        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
         json_response = load_data(file='2191833_show.json')
 
         httpretty.register_uri(
@@ -858,7 +858,7 @@ class SwitzerlandMobility(TestCase):
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
-        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
         json_response = load_data(file='2733343_show.json')
 
         httpretty.register_uri(
@@ -878,7 +878,7 @@ class SwitzerlandMobility(TestCase):
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable()
-        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % route_id
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
         html_response = load_data(file='500.html')
 
         httpretty.register_uri(
