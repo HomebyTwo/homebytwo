@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.0] - 2018-08-18 Link to source on route page
+### Added
+- On the route page, display a link to the original route on Strava or Switzerland Mobility
+
 ## [0.3.0] - 2018-05-16 Athlete Registration
 ### Added
 - Django Social Auth registration with the Strava Backend
