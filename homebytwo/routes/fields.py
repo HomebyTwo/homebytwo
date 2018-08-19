@@ -1,5 +1,5 @@
 import os
-import uuid
+from uuid import uuid4
 
 from django import forms
 from django.conf import settings
@@ -49,7 +49,7 @@ class DataFrameField(models.CharField):
         """
         generate a unique filename for the saved file.
         """
-        filename = uuid.uuid4().hex + '.h5'
+        filename = uuid4().hex + '.h5'
 
         return filename
 

@@ -1,6 +1,9 @@
 import os
 from datetime import timedelta
+from shutil import rmtree
+from tempfile import mkdtemp
 from unittest import skip
+from uuid import uuid4
 
 import numpy as np
 from django.conf import settings
@@ -8,8 +11,10 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.six import StringIO
 from homebytwo.utils.factories import UserFactory
 from pandas import DataFrame
 
@@ -730,3 +735,69 @@ class RouteTestCase(TestCase):
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 401)
+
+    #######################
+    # Management Commands #
+    #######################
+
+    @override_settings(MEDIA_ROOT=mkdtemp())
+    def test_cleanup_route_data_no_data(self):
+        # No files in data directory
+        out = StringIO()
+        call_command('cleanup_route_data', stdout=out)
+        self.assertIn('No files to delete.', out.getvalue())
+        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+
+    @override_settings(MEDIA_ROOT=mkdtemp())
+    def test_cleanup_route_data_routes(self):
+        # five routes no extra files
+        out = StringIO()
+        [factories.RouteFactory() for i in range(5)]
+
+        call_command('cleanup_route_data', stdout=out)
+        self.assertIn('No files to delete.', out.getvalue())
+        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+
+    @override_settings(MEDIA_ROOT=mkdtemp())
+    def test_cleanup_route_data_delete_trash(self):
+        # five random files not in DB
+        data_dir = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            'data'
+        )
+
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        out = StringIO()
+        for i in range(5):
+            filename = uuid4().hex + '.h5'
+            fullpath = os.path.join(data_dir, filename)
+            with open(fullpath, 'wb') as file_:
+                file_.write(os.urandom(64))
+
+        call_command('cleanup_route_data', stdout=out)
+        self.assertIn('Successfully deleted 5 files.', out.getvalue())
+        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+
+    @override_settings(MEDIA_ROOT=mkdtemp())
+    def test_cleanup_route_data_missing_route_file(self):
+        # One deleted route data file one random file
+        data_dir = os.path.join(
+            settings.BASE_DIR,
+            settings.MEDIA_ROOT,
+            'data'
+        )
+        out = StringIO()
+        [factories.RouteFactory() for i in range(5)]
+        file_to_delete = os.listdir(data_dir)[0]
+        os.remove(os.path.join(data_dir, file_to_delete))
+        filename = uuid4().hex + '.h5'
+        fullpath = os.path.join(data_dir, filename)
+        with open(fullpath, 'wb') as file_:
+            file_.write(os.urandom(64))
+
+        call_command('cleanup_route_data', stdout=out)
+        self.assertIn('Successfully deleted 1 files.', out.getvalue())
+        rmtree(settings.MEDIA_ROOT, ignore_errors=True)

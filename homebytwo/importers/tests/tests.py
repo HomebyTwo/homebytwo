@@ -1341,7 +1341,10 @@ class Swissname3dModelTest(TestCase):
         place3d_3.save()
         self.assertEqual(Place.objects.count(), 2)
 
-    # Management Commands
+    #######################
+    # Management Commands #
+    #######################
+
     def test_command_output_inexistant_file(self):
         with self.assertRaises(OSError):
             call_command('importswissname3d', 'toto')

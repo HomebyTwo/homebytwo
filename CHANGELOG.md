@@ -1,4 +1,7 @@
 # Change Log
+## [0.4.2] - 2018-08-19 Cleanup HDf files
+### Added
+- New management command to cleanup old HDF files used to store route data
 
 ## [0.4.0] - 2018-08-18 Link to source on route page
 ### Added
