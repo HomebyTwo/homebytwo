@@ -24,15 +24,16 @@ class Command(BaseCommand):
 
         # list all files and filter by .h5 extension
         os_files = os.listdir(data_dir)
-        hdf_os_files = set([file for file in os_files if file[-3:] == '.h5'])
+        hdf_os_files = {file for file in os_files if file[-3:] == '.h5'}
 
         # list all files in the Database
         cursor = connection.cursor()
         cursor.execute('SELECT data FROM routes_route')
-        db_files = set([column[0] for column in cursor.fetchall()])
+        db_files = {column[0] for column in cursor.fetchall()}
 
         # delete os files that are not in the DB
         files_to_delete = hdf_os_files - db_files
+
         if files_to_delete:
             for file in files_to_delete:
                 try:
