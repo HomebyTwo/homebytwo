@@ -6,6 +6,8 @@ from django.urls import reverse
 
 from .track import Track
 
+SourceLink = namedtuple('SourceLink', ['url', 'text'])
+
 
 class RouteManager(models.Manager):
     def check_for_existing_routes(self, owner, routes, data_source):
@@ -66,7 +68,6 @@ class Route(Track):
 
     @property
     def source_link(self):
-        SourceLink = namedtuple('SourceLink', ['url', 'text'])
 
         if self.data_source == 'switzerland_mobility':
             url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
