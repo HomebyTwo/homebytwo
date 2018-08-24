@@ -128,7 +128,7 @@ class Command(BaseCommand):
         try:
             layermapping = LayerMapping(
                 Swissname3dPlace, shapefile, swissname3d_mapping,
-                transform=False, encoding='UTF-8',
+                transform=False, encoding='latin-1',
             )
 
         except gdal_error.GDALException:
@@ -143,10 +143,10 @@ class Command(BaseCommand):
             self.delete(options['interactive'])
 
         mapping_options = {
-                            'strict': True,
-                            'stream': self.stdout,
-                            'progress': True,
-                        }
+            'strict': True,
+            'stream': self.stdout,
+            'progress': True,
+        }
 
         # Get the number of features
         datasource = DataSource(shapefile)

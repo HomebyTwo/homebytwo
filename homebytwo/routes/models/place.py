@@ -27,6 +27,7 @@ class PlaceManager(models.Manager):
     """
     Manager to retrieve places.
     """
+
     def get_public_transport(self):
         self.filter(public_transport=True)
 
@@ -165,7 +166,7 @@ class PlaceManager(models.Manager):
         # the original linestring.
         for place in places:
             # relative line location to the start point of the subline
-            length = (place.line_location * (end-start))
+            length = (place.line_location * (end - start))
 
             # update attribute with line location on the original line
             place.line_location = start + length
@@ -199,60 +200,60 @@ class Place(TimeStampedModel):
     PLACE_TYPE_CHOICES = (
         ('PLA', 'Place'),
         ('Constructions', (
-                ('BDG', 'Single Building'),
-                ('OBG', 'Open Building'),
-                ('TWR', 'Tower'),
-                ('SBG', 'Sacred Building'),
-                ('CPL', 'Chapel'),
-                ('SHR', 'Wayside Shrine'),
-                ('MNT', 'Monument'),
-                ('FTN', 'Fountain'),
-            )
-         ),
+            ('BDG', 'Single Building'),
+            ('OBG', 'Open Building'),
+            ('TWR', 'Tower'),
+            ('SBG', 'Sacred Building'),
+            ('CPL', 'Chapel'),
+            ('SHR', 'Wayside Shrine'),
+            ('MNT', 'Monument'),
+            ('FTN', 'Fountain'),
+        )
+        ),
         ('Features', (
-                ('SUM', 'Summit'),
-                ('HIL', 'Hill'),
-                ('PAS', 'Pass'),
-                ('BEL', 'Belay'),
-                ('WTF', 'Waterfall'),
-                ('CAV', 'Cave'),
-                ('SRC', 'Source'),
-                ('BLD', 'Boulder'),
-                ('POV', 'Point of View')
-            )
-         ),
+            ('SUM', 'Summit'),
+            ('HIL', 'Hill'),
+            ('PAS', 'Pass'),
+            ('BEL', 'Belay'),
+            ('WTF', 'Waterfall'),
+            ('CAV', 'Cave'),
+            ('SRC', 'Source'),
+            ('BLD', 'Boulder'),
+            ('POV', 'Point of View')
+        )
+        ),
         ('Public Transport', (
-                ('BUS', 'Bus Station'),
-                ('TRA', 'Train Station'),
-                ('OTH', 'Other Station'),
-                ('BOA', 'Boat Station'),
-            )
-         ),
+            ('BUS', 'Bus Station'),
+            ('TRA', 'Train Station'),
+            ('OTH', 'Other Station'),
+            ('BOA', 'Boat Station'),
+        )
+        ),
         ('Roads', (
-                ('EXT', 'Exit'),
-                ('EAE', 'Entry and Exit'),
-                ('RPS', 'Road Pass'),
-                ('ICG', 'Interchange'),
-                ('LST', 'Loading Station'),
-                ('PKG', 'Parking'),
-            )
-         ),
+            ('EXT', 'Exit'),
+            ('EAE', 'Entry and Exit'),
+            ('RPS', 'Road Pass'),
+            ('ICG', 'Interchange'),
+            ('LST', 'Loading Station'),
+            ('PKG', 'Parking'),
+        )
+        ),
         ('Customs', (
-                ('C24', 'Customhouse 24h'),
-                ('C24LT', 'Customhouse 24h limited'),
-                ('CLT', 'Customhouse limited'),
-                ('LMK', 'Landmark'),
-            )
-         ),
+            ('C24', 'Customhouse 24h'),
+            ('C24LT', 'Customhouse 24h limited'),
+            ('CLT', 'Customhouse limited'),
+            ('LMK', 'Landmark'),
+        )
+        ),
         ('Personal', (
-                ('HOM', 'Home'),
-                ('WRK', 'Work'),
-                ('GYM', 'Gym'),
-                ('HOL', 'Holiday Place'),
-                ('FRD', 'Friend\'s place'),
-                ('CST', 'Other place'),
-            )
-         ),
+            ('HOM', 'Home'),
+            ('WRK', 'Work'),
+            ('GYM', 'Gym'),
+            ('HOL', 'Holiday Place'),
+            ('FRD', 'Friend\'s place'),
+            ('CST', 'Other place'),
+        )
+        ),
     )
 
     place_type = models.CharField(max_length=26, choices=PLACE_TYPE_CHOICES)
@@ -319,11 +320,11 @@ class Place(TimeStampedModel):
             'limit': limit,
             'bike': bike,
             'fields[]': [
-                         'connections/from/departure',
-                         'connections/to/arrival',
-                         'connections/duration',
-                         'connections/products',
-                         ]
+                'connections/from/departure',
+                'connections/to/arrival',
+                'connections/duration',
+                'connections/products',
+            ]
         }
         kwargs = {'params': args}
 

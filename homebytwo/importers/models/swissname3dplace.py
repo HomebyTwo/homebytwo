@@ -16,7 +16,7 @@ class Swissname3dPlace(Place):
     to preserve performance when importing >200'000 places from the shapefile.
     SwissNAMES3D is the most comprehensive collection of geographical names
     for Switzerland and Liechtenstein.
-    https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung1
+    https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung
     """
 
     # translation map for type of places
@@ -24,6 +24,7 @@ class Swissname3dPlace(Place):
         'Flurname swisstopo': 'PLA',
         'Lokalname swisstopo': 'PLA',
         'Haltestelle Bus': 'BUS',
+        'Gebaeude': 'BDG',
         'Gebaeude Einzelhaus': 'BDG',
         'Haltestelle Bahn': 'TRA',
         'Hauptgipfel': 'SUM',
