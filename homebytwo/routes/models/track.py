@@ -160,9 +160,8 @@ class Track(TimeStampedModel):
                    slope_param * slope +
                    flat_pace_param +
                    total_elevation_gain_param * total_elevation_gain
-                   total_distance_param * total_distance
 
-        Where the is pace in s/m and slope_param_squared, slope_param,
+        Where the pace in s/m and slope_param_squared, slope_param,
         flat_pace_param and total_elevation_gain_param are variables fitted
         with a polynomial linear regression from past Strava performances.
 
@@ -176,8 +175,7 @@ class Track(TimeStampedModel):
                 flat_pace_param * distance +
                 total_elevation_gain_param * total_elevation_gain * distance
 
-        total_elevation_gain_param * total_elevation_gain is constant.
-        let's call it totalup_penalty.
+        total_elevation_gain_param * total_elevation_gain is added to account for the total effort.
 
         """
 
@@ -194,23 +192,14 @@ class Track(TimeStampedModel):
         slope_squared_param = performance.slope_squared_param
         slope_param = performance.slope_param
         flat_param = performance.flat_param
-
-        # calculate totalup_penalty
         total_elevation_gain_param = performance.total_elevation_gain_param
-        total_elevation_gain = self.get_totalup().km
-        totalup_penalty = total_elevation_gain_param * total_elevation_gain
-
-        # calculate distance_penalty
-        # total_distance_param = performance.total_distance_param
-        # total_distance = self.get_length().km
-        # distance_penalty = total_distance_param * total_distance
 
         # Calculate schedule, ignoring segments where distance is 0
         data['schedule'] = (
             (slope_squared_param * data['gain']**2) / data['distance']
             + slope_param * data['gain']
             + flat_param * data['distance']
-            + totalup_penalty * data['distance']
+            + total_elevation_gain_param * data['totalup'] / 1000 * data['distance']
         ).where(data['distance'] > 0.1, 0).cumsum().fillna(value=0)
 
         self.data = data
