@@ -1,5 +1,4 @@
 import os
-from itertools import chain
 
 import factory
 import factory.django
