@@ -59,7 +59,7 @@ def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return os.path.join(env.root, 'venv', env.project_name)
+    return os.path.join(env.root, 'venv')
 
 
 def run_in_virtualenv(cmd, args):
