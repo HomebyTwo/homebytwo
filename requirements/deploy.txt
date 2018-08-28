@@ -7,13 +7,14 @@
 asn1crypto==0.24.0        # via cryptography
 bcrypt==3.1.4             # via paramiko
 cffi==1.11.5              # via bcrypt, cryptography, pynacl
-cryptography==2.2.2       # via paramiko
+cryptography==2.3.1       # via fabric, paramiko
 dj-database-url==0.5.0
-fabric==1.14.0
+fabric==2.3.1
 gitric==0.4
-idna==2.6                 # via cryptography
+idna==2.7                 # via cryptography
+invoke==1.1.1             # via fabric
 paramiko==2.4.1           # via fabric
-pyasn1==0.4.2             # via paramiko
+pyasn1==0.4.4             # via paramiko
 pycparser==2.18           # via cffi
 pynacl==1.2.1             # via paramiko
 six==1.11.0               # via bcrypt, cryptography, pynacl
