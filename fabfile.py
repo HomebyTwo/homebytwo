@@ -16,16 +16,16 @@ from gitric import api as gitric
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
     'prod': {
-        'root': '/home/homebytwo/',
-        'hosts': ['homebytwo@homebytwo.ch'],
+        'root': '/var/www/homebytwo/',
+        'hosts': ['root@homebytwo.ch'],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
-        # 'settings': {
-        #     'ALLOWED_HOSTS': 'www.myhost.com',
-        # }
+        'settings': {
+            'ALLOWED_HOSTS': 'www.homebytwo.ch',
+        }
     },
     'staging': {
-        'root': '/var/www/homebytwo/staging/',
+        'root': '/var/www/homebytwo_staging/',
         'hosts': ['root@myhost'],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
@@ -59,7 +59,7 @@ def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return os.path.join(env.root, 'Env', env.project_name)
+    return os.path.join(env.root, 'venv', env.project_name)
 
 
 def run_in_virtualenv(cmd, args):
