@@ -141,15 +141,35 @@ def post_route_form(request, route):
     )
 
 
-def get_checkpoints(route):
+def get_place_type_choices(places_qs):
+    """
+    limit available place_type filter choices to place_types found in a place querystring.
+    takes a Place query string and returns a list of choices to use in the filter configuration.
+    """
+
+    # limit place type choices to available ones
+    found_place_types = {place.place_type for place in places_qs}
+
+    choices = []
+
+    for key, value in Place.PLACE_TYPE_CHOICES:
+        if isinstance(value, (list, tuple)):
+            for key2, value2 in value:
+                if key2 in found_place_types:
+                    choices.append((key2, value2))
+        else:
+            if key in found_place_types:
+                choices.append((key, value))
+
+    return choices
+
+
+def get_checkpoints(route, filter_qs):
     """
     retrieve checkpoints within a maximum distance of the route and
-    enrich them with information retrieved from the route data.
+    enrich them with altitude and distance information retrieved from the route data.
     """
-    places = Place.objects.find_places_along_line(
-        route.geom,
-        max_distance=75
-    )
+    places = Place.objects.find_places_along_line(route.geom, filter_qs)
 
     # enrich checkpoint data with information
     checkpoints = []
@@ -163,16 +183,6 @@ def get_checkpoints(route):
         length_from_start = route.get_distance_data(
             place.line_location, 'length')
         place.distance_from_start = length_from_start
-
-        # get cummulative altitude gain
-        totalup = route.get_distance_data(
-            place.line_location, 'totalup')
-        place.totalup = totalup
-
-        # get cummulative altitude loss
-        totaldown = route.get_distance_data(
-            place.line_location, 'totaldown')
-        place.totaldown = totaldown
 
         checkpoints.append(place)
 

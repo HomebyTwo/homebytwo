@@ -10,6 +10,7 @@ certifi==2018.4.16        # via requests
 chardet==3.0.4            # via requests
 defusedxml==0.5.0         # via python3-openid, social-auth-core
 dj-database-url==0.5.0
+django-filter==2.0.0
 django-geojson==2.11.0
 django-leaflet==0.23.0
 django-widget-tweaks==1.4.2

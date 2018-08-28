@@ -1,9 +1,9 @@
 -e git://github.com/drixselecta/stravalib.git#egg=stravalib
 dj-database-url
 django
+django-filter
 django-geojson
 django-leaflet
-social-auth-app-django
 django-widget-tweaks
 easy_thumbnails
 pandas
@@ -12,4 +12,5 @@ polyline
 psycopg2-binary
 rcssmin
 requests
+social-auth-app-django
 tables

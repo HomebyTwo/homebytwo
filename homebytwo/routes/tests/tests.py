@@ -388,8 +388,12 @@ class RouteTestCase(TestCase):
             )
         )
 
-        checkpoints = Place.objects.find_places_along_line(route.geom,
-                                                           max_distance=100)
+        places = Place.objects.get_places_from_line(route.geom, 100)
+        checkpoints = Place.objects.find_places_along_line(
+            route.geom,
+            places,
+            max_distance=100)
+
         self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:
             self.assertNotEqual(checkpoint.line_location, 0)
@@ -752,7 +756,7 @@ class RouteTestCase(TestCase):
     def test_cleanup_route_data_routes(self):
         # five routes no extra files
         out = StringIO()
-        [factories.RouteFactory() for i in range(5)]
+        factories.RouteFactory.create_batch(5)
 
         call_command('cleanup_route_data', stdout=out)
         self.assertIn('No files to delete.', out.getvalue())
