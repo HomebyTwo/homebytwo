@@ -1,4 +1,9 @@
 # Change Log
+## [0.5.0] - 2018-08-19 Filter proposed checkpoints by type
+### Added
+- You can now choose the type of checkpoints found when importing a new route.
+- No bus stations are proposed for Bike routes
+
 ## [0.4.2] - 2018-08-19 Cleanup HDf files
 ### Added
 - New management command to cleanup old HDF files used to store route data
