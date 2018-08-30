@@ -178,6 +178,10 @@ def strava_route(request, source_id):
         route.owner = request.user
         places_qs = Place.objects.get_places_from_line(route.geom, 75)
 
+        # filter bus stops for bike routes
+        if route.activity_type == 'Bike':
+            places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
         # define place_type filter
         place_filter = PlaceFilter(
             request.GET,
@@ -310,6 +314,10 @@ def switzerland_mobility_route(request, source_id):
             # add user to check if route has already been imported
             route.owner = request.user
             places_qs = Place.objects.get_places_from_line(route.geom, 75)
+
+            # filter bus stops for bike routes
+            if route.activity_type == 'Bike':
+                places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
 
             # define place_type filter
             place_filter = PlaceFilter(
