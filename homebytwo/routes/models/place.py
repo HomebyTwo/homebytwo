@@ -201,6 +201,7 @@ class Place(TimeStampedModel):
     """
 
     PLACE = 'PLA'
+    LOCAL_PLACE = 'LPL'
     SINGLE_BUILDING = 'BDG'
     OPEN_BUILDING = 'OBG'
     TOWER = 'TWR'
@@ -241,6 +242,7 @@ class Place(TimeStampedModel):
 
     PLACE_TYPE_CHOICES = (
         (PLACE, 'Place'),
+        (LOCAL_PLACE, 'Local Place'),
         ('Constructions', (
             (SINGLE_BUILDING, 'Single Building'),
             (OPEN_BUILDING, 'Open Building'),

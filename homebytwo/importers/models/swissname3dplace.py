@@ -31,7 +31,7 @@ class Swissname3dPlace(Place):
         'Erratischer Block': Place.BOULDER,
         'Felsblock': Place.BELAY,
         'Felskopf': Place.BELAY,
-        'Flurname swisstopo': Place.PLACE,
+        'Flurname swisstopo': Place.LOCAL_PLACE,
         'Gebaeude Einzelhaus': Place.SINGLE_BUILDING,
         'Gebaeude': Place.SINGLE_BUILDING,
         'Gipfel': Place.SUMMIT,
