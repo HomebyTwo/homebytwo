@@ -1,5 +1,8 @@
 # Change Log
-## [0.5.0] - 2018-08-19 Filter proposed checkpoints by type
+## [0.5.0] - 2018-08-31 Distinguish local from more important places
+- SwissNAME3D has added a lot of unimportant local places. We want to filter them more efficiently, so we need to distinguish them from the real thing.
+
+## [0.5.0] - 2018-08-30 Filter proposed checkpoints by type
 ### Added
 - You can now choose the type of checkpoints found when importing a new route.
 - No bus stations are proposed for Bike routes
