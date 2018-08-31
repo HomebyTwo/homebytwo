@@ -7,13 +7,15 @@ from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.models import Athlete
+from ..routes.models import Athlete, Place
 from .decorators import strava_required, switerland_mobility_required
+from .filters import PlaceFilter
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
-                    get_route_places_formset, get_strava_client, post_route_form,
-                    post_route_places_formset, save_detail_forms)
+                    get_route_places_formset, get_strava_client,
+                    post_route_form, post_route_places_formset,
+                    save_detail_forms, get_place_type_choices)
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -138,6 +140,7 @@ def strava_route(request, source_id):
     places = False
     route_form = False
     route_places_formset = False
+    place_filter = False
 
     # model instance from source_id
     route = StravaRoute(source_id=source_id)
@@ -166,21 +169,33 @@ def strava_route(request, source_id):
 
     if request.method == 'GET':
 
-        # get the strava the client
-        strava_client = get_strava_client(request.user)
-
         # get route details from Strava API
+        strava_client = get_strava_client(request.user)
         route.get_route_details(strava_client)
 
         # add user information to route.
         # to check if the route has already been imported.
         route.owner = request.user
+        places_qs = Place.objects.get_places_from_line(route.geom, 75)
+
+        # filter bus stops for bike routes
+        if route.activity_type == 'Bike':
+            places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
+        # define place_type filter
+        place_filter = PlaceFilter(
+            request.GET,
+            queryset=places_qs,
+        )
+
+        place_type_choices = get_place_type_choices(places_qs)
+        place_filter.form.fields['place_type'].choices = place_type_choices
 
         # populate the route_form with route details
         route_form = get_route_form(route)
 
         # get checkpoints along the way
-        checkpoints = get_checkpoints(route)
+        checkpoints = get_checkpoints(route, place_filter.qs)
 
         # get form to save places along the route
         route_places_formset = get_route_places_formset(route, checkpoints)
@@ -189,6 +204,7 @@ def strava_route(request, source_id):
         places = zip(checkpoints, route_places_formset.forms)
 
     context = {
+        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'places': places,
@@ -253,6 +269,7 @@ def switzerland_mobility_route(request, source_id):
     places = []
     route_form = False
     route_places_formset = False
+    place_filter = False
 
     # model instance with source_id
     route = SwitzerlandMobilityRoute(source_id=source_id)
@@ -296,23 +313,35 @@ def switzerland_mobility_route(request, source_id):
         else:
             # add user to check if route has already been imported
             route.owner = request.user
+            places_qs = Place.objects.get_places_from_line(route.geom, 75)
+
+            # filter bus stops for bike routes
+            if route.activity_type == 'Bike':
+                places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
+            # define place_type filter
+            place_filter = PlaceFilter(
+                request.GET,
+                queryset=places_qs
+            )
+
+            place_type_choices = get_place_type_choices(places_qs)
+            place_filter.form.fields['place_type'].choices = place_type_choices
 
             # populate the route_form with route details
             route_form = get_route_form(route)
 
             # find checkpoints along the route
-            checkpoints = get_checkpoints(route)
+            checkpoints = get_checkpoints(route, place_filter.qs)
 
             # get form set to save route places
-            route_places_formset = get_route_places_formset(
-                route,
-                checkpoints
-            )
+            route_places_formset = get_route_places_formset(route, checkpoints)
 
             # arrange places and formsets for template
             places = zip(checkpoints, route_places_formset.forms)
 
     context = {
+        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'places': places,

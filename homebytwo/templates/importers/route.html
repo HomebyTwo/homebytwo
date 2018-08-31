@@ -22,6 +22,23 @@
       </div>
     </div>
 
+    {# Filters #}
+    {% if filter.form.place_type %}
+      <div class="mrgb box box--primary pdg-">
+        <form method="get">
+          <div class="form-group">
+            <h2>Type of Checkpoints</h2>  
+              {% for place_type in filter.form.place_type %}
+                <label class="label label--inline">
+                  {{ place_type.tag }} {{ place_type.choice_label }}
+                </label>
+              {% endfor %}
+              <button type="submit">Update Checkpoints</button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+
     {# Forms #}
     <form method="post" action="{% url source.route_view route.source_id %}">
       {% csrf_token %}

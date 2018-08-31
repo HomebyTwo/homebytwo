@@ -20,12 +20,14 @@ from stravalib import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
 from ...routes.models import Athlete, Place, RoutePlace
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import (SwitzerlandMobilityError, associate_by_strava_token, get_route_form,
-                     get_strava_client, save_strava_token_from_social)
+from ..utils import (SwitzerlandMobilityError, associate_by_strava_token,
+                     get_place_type_choices, get_route_form, get_strava_client,
+                     save_strava_token_from_social)
 from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
 
@@ -215,7 +217,8 @@ class Strava(TestCase):
             }
         }
 
-        response = associate_by_strava_token(backend, user, details, *args, **kwargs)
+        response = associate_by_strava_token(
+            backend, user, details, *args, **kwargs)
 
         self.assertTrue(response, None)
 
@@ -224,6 +227,13 @@ class Strava(TestCase):
         route_form = get_route_form(route)
 
         self.assertEqual(len(route_form.fields), 10)
+
+    def test_get_place_type_choices(self):
+        places = PlaceFactory.create_batch(12)
+        places_types = {place.place_type for place in places}
+        choices = get_place_type_choices(places)
+
+        self.assertEqual(places_types, {choice[0] for choice in choices})
 
     #########
     # Model #

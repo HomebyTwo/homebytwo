@@ -34,13 +34,53 @@ class ActivityTypeFactory(factory.django.DjangoModelFactory):
 
 
 class PlaceFactory(factory.django.DjangoModelFactory):
+
     class Meta:
         model = models.Place
+        exclude = ['place_types']
 
-    place_type = factory.Iterator(
-        models.Place.PLACE_TYPE_CHOICES,
-        getter=lambda c: c[0]
-    )
+    place_types = [
+        models.Place.PLACE,
+        models.Place.SINGLE_BUILDING,
+        models.Place.OPEN_BUILDING,
+        models.Place.TOWER,
+        models.Place.SACRED_BUILDING,
+        models.Place.CHAPEL,
+        models.Place.WAYSIDE_SHRINE,
+        models.Place.MONUMENT,
+        models.Place.FOUNTAIN,
+        models.Place.SUMMIT,
+        models.Place.HILL,
+        models.Place.PASS,
+        models.Place.BELAY,
+        models.Place.WATERFALL,
+        models.Place.CAVE,
+        models.Place.SOURCE,
+        models.Place.BOULDER,
+        models.Place.POINT_OF_VIEW,
+        models.Place.BUS_STATION,
+        models.Place.TRAIN_STATION,
+        models.Place.OTHER_STATION,
+        models.Place.BOAT_STATION,
+        models.Place.EXIT,
+        models.Place.ENTRY_AND_EXIT,
+        models.Place.ROAD_PASS,
+        models.Place.INTERCHANGE,
+        models.Place.LOADING_STATION,
+        models.Place.PARKING,
+        models.Place.CUSTOMHOUSE_24H,
+        models.Place.CUSTOMHOUSE_24H_LIMITED,
+        models.Place.CUSTOMHOUSE_LIMITED,
+        models.Place.LANDMARK,
+        models.Place.HOME,
+        models.Place.WORK,
+        models.Place.GYM,
+        models.Place.HOLIDAY_PLACE,
+        models.Place.FRIENDS_PLACE,
+        models.Place.OTHER_PLACE,
+    ]
+
+    place_type = factory.fuzzy.FuzzyChoice(place_types)
     name = factory.fuzzy.FuzzyText()
     description = factory.fuzzy.FuzzyText(length=100)
     altitude = factory.fuzzy.FuzzyInteger(5000)
