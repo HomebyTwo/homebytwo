@@ -1,12 +1,12 @@
 from django.contrib import messages
 from django.db import IntegrityError, transaction
-from django.forms import HiddenInput, modelform_factory, modelformset_factory
+from django.forms import modelform_factory
 from social_core.exceptions import AuthException
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.forms import RoutePlaceForm
 from ..routes.models import Athlete, Place, RoutePlace
+from .filters import PlaceFilter
 from .forms import ImportersRouteForm
 
 
@@ -94,74 +94,64 @@ def associate_by_strava_token(backend, details, user=None, *args, **kwargs):
                     'is_new': False}
 
 
-def get_route_form(route):
-    """
-    GET detail view: instanciate route_form with model instance and
-    set the query for start and end places.
-    """
-    RouteForm = modelform_factory(
-        type(route),
-        form=ImportersRouteForm,
-    )
-
-    route_form = RouteForm(
-        instance=route,
-        prefix='route',
-    )
-
-    # find places to display in the select
-    # for start, finish points.
-    route_form.fields['start_place'].queryset = \
-        route.get_closest_places_along_line(
-            line_location=0,  # start
-            max_distance=200,
-    )
-
-    route_form.fields['end_place'].queryset = \
-        route.get_closest_places_along_line(
-            line_location=1,  # finish
-            max_distance=200,
-    )
-
-    return route_form
-
-
 def post_route_form(request, route):
     """
-    POST detail view: instanciate route form with POST values.
+    POST a RouteForm passing the route class along:
+    SwitzerlandMobilityRoute or Strava
     """
     RouteForm = modelform_factory(
         type(route),
         form=ImportersRouteForm,
     )
 
-    return RouteForm(
-        request.POST,
-        prefix='route',
+    return RouteForm(request.POST)
+
+
+def get_place_filter(route, request):
+
+    def get_place_type_choices(places_qs):
+        """
+        return place_type choices for the types found in a place query set.
+        Takes a Place query string and returns a list of choices used
+        in the filter configuration.
+        """
+
+        # limit place type choices to available ones
+        found_place_types = {place.place_type for place in places_qs}
+
+        choices = []
+
+        for key, value in Place.PLACE_TYPE_CHOICES:
+            if isinstance(value, (list, tuple)):
+                for key2, value2 in value:
+                    if key2 in found_place_types:
+                        choices.append((key2, value2))
+            else:
+                if key in found_place_types:
+                    choices.append((key, value))
+
+        return choices
+
+    # initial queryset
+    places_qs = Place.objects.locate_places_on_line(route.geom, 75)
+
+    # retrieve available types for all checkpoints
+    place_type_choices = get_place_type_choices(places_qs)
+
+    # filter bus stops for bike routes
+    if route.activity_type == 'Bike':
+        places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
+    # define place_type filter object
+    place_filter = PlaceFilter(
+        request.GET,
+        queryset=places_qs
     )
 
+    # set choices for the filter
+    place_filter.form.fields['place_type'].choices = place_type_choices
 
-def get_place_type_choices(places_qs):
-    """
-    limit available place_type filter choices to place_types found in a place querystring.
-    takes a Place query string and returns a list of choices to use in the filter configuration.
-    """
-
-    # limit place type choices to available ones
-    found_place_types = {place.place_type for place in places_qs}
-
-    choices = []
-
-    for key, value in Place.PLACE_TYPE_CHOICES:
-        if isinstance(value, (list, tuple)):
-            for key2, value2 in value:
-                if key2 in found_place_types:
-                    choices.append((key2, value2))
-        else:
-            if key in found_place_types:
-                choices.append((key, value))
-
-    return choices
+    return place_filter
 
 
 def get_checkpoints(route, filter_qs):
@@ -189,87 +179,10 @@ def get_checkpoints(route, filter_qs):
     return checkpoints
 
 
-def get_route_places_formset(route, checkpoints):
+def save_detail_forms(request, route_form, route):
     """
-    GET detail view creates a Model Formset populated with all the
-    checkpoints found along the route.
-    the user can select and save the relevant places to the imported route.
-
-    This is used in both the Strava and Switzerland Mobility
-    detail import page.
-
+    If the route form validates, try to save the route places.
     """
-
-    # convert checkpoints to RoutePlace objects
-    route_places = [
-        RoutePlace(
-            place=place,
-            line_location=place.line_location,
-            altitude_on_route=route.get_distance_data(
-                place.line_location, 'altitude').m,
-        )
-        for place in checkpoints
-    ]
-
-    # create form class with modelformset_factory
-    RoutePlaceFormset = modelformset_factory(
-        RoutePlace,
-        form=RoutePlaceForm,
-        extra=len(route_places),
-        widgets={
-            'place': HiddenInput,
-            'line_location': HiddenInput,
-            'altitude_on_route': HiddenInput,
-        }
-    )
-
-    # instantiate form with initial data
-    return RoutePlaceFormset(
-        prefix='places',
-        queryset=RoutePlace.objects.none(),
-        initial=[
-            {
-                'place': route_place.place,
-                'line_location': route_place.line_location,
-                'altitude_on_route': route_place.altitude_on_route,
-            }
-            for route_place in route_places
-        ],
-    )
-
-
-def post_route_places_formset(request, route):
-    """
-    POST detail view: return the route_places model_formset
-    populated with POST data.
-    """
-    # create form class with modelformset_factory
-    RoutePlaceFormset = modelformset_factory(
-        RoutePlace,
-        form=RoutePlaceForm,
-        widgets={
-            'place': HiddenInput,
-            'line_location': HiddenInput,
-            'altitude_on_route': HiddenInput,
-        }
-    )
-
-    return RoutePlaceFormset(
-        request.POST,
-        prefix='places',
-    )
-
-
-def save_detail_forms(request, route_form, route_places_formset):
-    """
-    POST detail view: if the forms validate, try to save the routes
-    and route places.
-    """
-    # validate places form and return errors if any
-    if not route_places_formset.is_valid():
-        for error in route_places_formset.errors:
-            messages.error(request, error)
-        return False
 
     # validate route form and return errors if any
     if not route_form.is_valid():
@@ -279,20 +192,36 @@ def save_detail_forms(request, route_form, route_places_formset):
 
     # create the route with the route_form
     new_route = route_form.save(commit=False)
+
     # set user for route
     new_route.owner = request.user
 
+    # try to the route alongside all route places
     try:
         with transaction.atomic():
+
             # save the route
             new_route.save()
 
-            # create the route places from the route_place_forms
-            for form in route_places_formset:
-                if form.cleaned_data['include']:
-                    route_place = form.save(commit=False)
-                    route_place.route = new_route
-                    route_place.save()
+            # save the individual RoutePlace objects passed by the form
+            # as `id_linelocation`
+            for place in request.POST.getlist('places'):
+
+                # separate the place_id from the line_locations
+                place_id, line_location = place.split('_')
+
+                # calculate altitude on route
+                altitude_on_route = new_route.get_distance_data(
+                    float(line_location),
+                    'altitude',
+                )
+
+                RoutePlace.objects.create(
+                    route=new_route,
+                    place=Place.objects.get(pk=place_id),
+                    line_location=float(line_location),
+                    altitude_on_route=altitude_on_route.m,
+                )
 
     except IntegrityError as error:
         message = 'Integrity Error: {}. '.format(error)

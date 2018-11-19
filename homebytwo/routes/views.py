@@ -1,10 +1,11 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
-from django.views.generic.edit import UpdateView, DeleteView
+from django.views.generic.edit import DeleteView, UpdateView
 
+from .forms import RouteForm
 from .models import Route, RoutePlace
 
 
@@ -72,7 +73,7 @@ class RouteDelete(DeleteView):
 @method_decorator(login_required, name='dispatch')
 class RouteEdit(UpdateView):
     model = Route
-    fields = ['activity_type', 'name', 'description', 'image']
+    form_class = RouteForm
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.

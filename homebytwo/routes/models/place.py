@@ -90,7 +90,7 @@ class PlaceManager(models.Manager):
 
         return found_places
 
-    def get_places_from_line(self, line, max_distance, places=None):
+    def locate_places_on_line(self, line, max_distance, places=None):
         """
         returns places within a max_distance of a Linestring Geometry
         ordered by, and annotated with the `line_location` and the
@@ -101,6 +101,13 @@ class PlaceManager(models.Manager):
           * `distance_from_line` is a geodjango Distance object.
 
         """
+
+        # line location where we do not want to find additional places
+        crop_factor = max_distance / line.length
+
+        # line is shorter than twice the max distance, no place will be found
+        if crop_factor >= 0.5:
+            return None
 
         # convert max_distance to Distance object
         max_d = D(m=max_distance)
@@ -120,8 +127,8 @@ class PlaceManager(models.Manager):
 
         # remove start and end places within 1% of start and end location
         places = places.filter(
-            line_location__gt=0.01,
-            line_location__lt=0.99,
+            line_location__gt=crop_factor,
+            line_location__lt=(1-crop_factor),
         )
 
         places = places.order_by('line_location')
@@ -159,7 +166,7 @@ class PlaceManager(models.Manager):
         subline = LineSubstring(line, start, end)
 
         # find places within max_distance of the linestring
-        places = self.get_places_from_line(subline, max_distance, places)
+        places = self.locate_places_on_line(subline, max_distance, places)
 
         if not places:
             return None
@@ -320,87 +327,11 @@ class Place(TimeStampedModel):
     def get_altitude(self):
         return D(m=self.altitude)
 
-    def get_public_transport_connections(self,
-                                         destination,
-                                         via=[],
-                                         travel_to_place=False,
-                                         travel_datetime=datetime.now(),
-                                         is_arrival_time=False,
-                                         limit=1,
-                                         bike=0):
-        """
-        Get connection information from the place to a destination
-        using the public transport API.
-        If travelling to the place instead of from the place,
-        the connection can be queried using the travel_to_place=True flag
-        An object is returned containing departure and arrival time
-        """
-
-        # Ensure the place is a public transport stop
-        if not self.public_transport:
-            raise ValidationError(
-                "'%(name)s' is not connected to the public transport network.",
-                code='invalid',
-                params={'name': self.name},
-            )
-
-        # Base public transport API URL
-        url = '%s/connections' % settings.SWISS_PUBLIC_TRANSPORT_API_URL
-
-        # Set origin and destination according to travel_to_place flag
-        if travel_to_place:
-            origin = destination
-            destination = self.name
-        else:
-            origin = self.name
-
-        # Define API call parameters
-        args = {
-            'from': origin,
-            'to': destination,
-            'date': str(travel_datetime.date()),
-            'time': travel_datetime.strftime('%H:%S'),
-            'isArrivalTime': is_arrival_time,
-            'limit': limit,
-            'bike': bike,
-            'fields[]': [
-                'connections/from/departure',
-                'connections/to/arrival',
-                'connections/duration',
-                'connections/products',
-            ]
-        }
-        kwargs = {'params': args}
-
-        # Call the API
-        try:
-            response = requests.get(url, **kwargs)
-        except requests.exceptions.ConnectionError:
-            print('Error: Could not reach network.')
-
-        if not response.ok:
-            print('Server Error: HTTP %s' %
-                  (response.status_code, ))
-            return
-
-        try:
-            data = json.loads(response.text)
-        except ValueError:
-            print('Error: Invalid API response (invalid JSON)')
-            return
-
-        if not data['connections']:
-            msg = 'No connections found from "%s" to "%s".' % \
-                  (data['from']['name'], data['to']['name'])
-            print(msg)
-
-        return data
-
     def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.name
+        return '{} - {}'.format(
+            self.name,
+            self.get_place_type_display(),
+        )
 
     def save(self, *args, **kwargs):
         """
@@ -438,10 +369,10 @@ class RoutePlace(models.Model):
         return D(m=self.altitude_on_route)
 
     def __str__(self):
-        return self.place.name
-
-    def __unicode__(self):
-        return self.place.name
+        return '{} - {}'.format(
+            self.name,
+            self.get_place_type_display(),
+        )
 
     class Meta:
         ordering = ('line_location',)

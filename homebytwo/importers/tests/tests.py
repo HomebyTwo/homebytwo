@@ -26,7 +26,7 @@ from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
 from ..utils import (SwitzerlandMobilityError, associate_by_strava_token,
-                     get_place_type_choices, get_route_form, get_strava_client,
+                     get_place_filter, get_strava_client,
                      save_strava_token_from_social)
 from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
@@ -84,6 +84,35 @@ class Strava(TestCase):
             content_type="application/json", body=body,
             status=status
         )
+
+    def get_strava_route(self, route, route_json='strava_route_detail.json', streams_json='strava_streams.json'):
+        # route details API call
+        source_id = route.source_id
+        route_detail_url = settings.STRAVA_ROUTE_URL % source_id
+        route_detail_json = load_data(route_json)
+
+        httpretty.register_uri(
+            httpretty.GET, route_detail_url,
+            content_type="application/json", body=route_detail_json,
+            status=200
+        )
+
+        # route streams API call
+        route_streams_url = ('https://www.strava.com/api/v3/routes/%d/streams'
+                             % source_id)
+        streams_json = load_data(streams_json)
+
+        httpretty.register_uri(
+            httpretty.GET, route_streams_url,
+            content_type="application/json", body=streams_json,
+            status=200
+        )
+
+        url = reverse('strava_route', args=[source_id])
+        response = self.client.get(url)
+        httpretty.disable()
+
+        return response
 
     #########
     # Utils #
@@ -222,17 +251,18 @@ class Strava(TestCase):
 
         self.assertTrue(response, None)
 
-    def test_get_route_form(self):
-        route = StravaRouteFactory()
-        route_form = get_route_form(route)
-
-        self.assertEqual(len(route_form.fields), 10)
-
-    def test_get_place_type_choices(self):
+    def test_get_place_filter_all(self):
         places = PlaceFactory.create_batch(12)
-        places_types = {place.place_type for place in places}
-        choices = get_place_type_choices(places)
+        queryset = Place.objects.all()
+        route = StravaRouteFactory()
+        route_url = reverse('strava_route', args=[route.source_id])
+        request = self.client.get(route_url)
 
+        place_filter = get_place_filter(route, request)
+        place_filter.qs = queryset
+
+        places_types = {place.place_type for place in places}
+        choices = place_filter.choices
         self.assertEqual(places_types, {choice[0] for choice in choices})
 
     #########
@@ -837,14 +867,10 @@ class SwitzerlandMobility(TestCase):
 
         title = '<title>Home by Two - Import Haute Cime</title>'
         start_place_form_elements = [
-            'name="route-start_place"',
+            'name="start_place"',
             'class="field"',
-            'id="id_route-start_place"',
+            'id="id_start_place"',
         ]
-        places_formset = (
-            '<input type="hidden" name="places-TOTAL_FORMS" '
-            'value="0" id="id_places-TOTAL_FORMS" />'
-        )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
         response_content = response.content.decode('UTF-8')
@@ -853,7 +879,6 @@ class SwitzerlandMobility(TestCase):
         self.assertIn(title, response_content)
         for start_place_form_element in start_place_form_elements:
             self.assertIn(start_place_form_element, response_content)
-        self.assertIn(places_formset, response_content)
         self.assertIn(map_data, response_content)
 
     def test_switzerland_mobility_route_already_imported(self):

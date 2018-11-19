@@ -1,26 +1,19 @@
 {% load humanize geojson_tags widget_tweaks %}
 
-{% if places_form %}
-  <ul class="list-stacked">
-    <h4>Checkpoints</h4>
-    {% for place, form in places %}
-      <li class="box box--default box--tight mrgv- pdg- place place--checkpoint relative-parent"
-      data-geom='{{ place|geojsonfeature:"name" }}'>
-        <label class="label mrgv0" for="{{ form.include.id_for_label }}">
-          {% for hidden_field in form.hidden_fields %}
-            {{ hidden_field }}
-          {% endfor %}
-          {% for field in form.visible_fields %}
-            {% render_field field class="checkbox" %}
-          {% endfor %}
-          {{ place.name }}, {{ place.altitude_on_route.m|floatformat:0|intcomma }}m
-        </label>
-        <p class="text-small text-right mrgv0">
-          {{ place.get_place_type_display }} - {{ place.distance_from_start.km|floatformat:2|intcomma }}km
-        </p>
-      </li>
-    {% empty %}
-      <li class="box box--default box--tight mrgv- pdg- ">No checkpoint found along the route.</li>
-    {% endfor %}
-  </ul>
-{% endif %}
+<ul class="list-stacked" id="id_places">
+  <h4>Checkpoints</h4>
+  {% for place in checkpoints %}
+    <li class="box box--default box--tight mrgv- pdg- place place--checkpoint relative-parent"
+    data-geom='{{ place|geojsonfeature:"name" }}'>
+      <label class="label mrgv0" for="id_places_{{ forloop.counter0 }}">
+        <input type="checkbox" name="places" class="checkbox" value="{{ place.id }}_{{ place.line_location }}" id="id_places_{{ forloop.counter0 }}" checked >
+        {{ place.name }}, {{ place.altitude_on_route.m|floatformat:0|intcomma }}m
+      </label>
+      <p class="text-small text-right mrgv0">
+        {{ place.get_place_type_display }} - {{ place.distance_from_start.km|floatformat:2|intcomma }}km
+      </p>
+    </li>
+  {% empty %}
+    <li class="box box--default box--tight mrgv- pdg- ">No checkpoint found along the route.</li>
+  {% endfor %}
+</ul>

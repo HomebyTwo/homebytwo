@@ -6,25 +6,27 @@ from django.contrib import messages
 from requests import exceptions as requests_exceptions
 from requests import codes, post
 
+from ..routes.models import Route
 from ..routes.forms import RouteForm
-from ..routes.models import Place, Route
 
 
 class ImportersRouteForm(RouteForm):
+
+    places = None
 
     class Meta:
         model = Route
         fields = [
             'activity_type',
-            'data',
+            'start_place',
             'end_place',
-            'geom',
-            'length',
             'name',
             'source_id',
-            'start_place',
-            'totaldown',
             'totalup',
+            'totaldown',
+            'length',
+            'geom',
+            'data',
         ]
 
         # Do not display the following fields in the form.
@@ -37,25 +39,6 @@ class ImportersRouteForm(RouteForm):
             'length': forms.HiddenInput,
             'geom': forms.HiddenInput,
         }
-
-    class PlaceChoiceField(forms.ModelChoiceField):
-        def label_from_instance(self, obj):
-            return '%s - %s.' % (
-                obj.name,
-                obj.get_place_type_display()
-            )
-
-    start_place = PlaceChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False,
-    )
-
-    end_place = PlaceChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False,
-    )
 
 
 class SwitzerlandMobilityLogin(forms.Form):
