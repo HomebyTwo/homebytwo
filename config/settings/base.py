@@ -255,7 +255,7 @@ SOCIAL_AUTH_STRAVA_PIPELINE = (
 # Switzerland Mobility #
 ########################
 
-# Colelction of Switzerland Mobility URL to
+# Collection of Switzerland Mobility URL to
 # retrieve data from https://map.wanderland.ch/
 
 SWITZERLAND_MOBILITY_LOGIN_URL = get_env_variable(

@@ -35,7 +35,12 @@
     </form>
     <div class="grid__item md-w-1/2">
       {% include "importers/strava/_connect_with_strava.html" %}
-      <p>No Strava account? <a href="{% url "register" %}">Create an regular homebytwo account instead.</p></a>
+      <p>
+        No Strava account?
+        <a href="{% url "register" %}">
+          Create a regular homebytwo account instead.
+        </a>
+      </p>
     </div>
   </div>
 {% endblock content %}
