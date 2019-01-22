@@ -32,14 +32,12 @@
       {% else %}
         {% render_field field class="field" %}
       {% endif %}
+      {% if field.help_text %}
+        <p class="field-help">
+          {{ field.help_text|safe }}
+        </p>
+      {% endif %}
     </div>
   </div>
-  {% if field.help_text %}
-  <div class="grid grid--right">
-    <div class="grid__item field-help md-w-4/5">
-      {{ field.help_text|safe }}
-    </div>
-  </div>
-  {% endif %}
 
 {% endfor %}
