@@ -1,3 +1,4 @@
+from .models import Place, Route, RoutePlace
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
 from django.shortcuts import render, get_object_or_404
@@ -81,3 +82,13 @@ class RouteEdit(UpdateView):
             form.instance.calculate_projected_time_schedule(self.request.user)
 
         return super(RouteEdit, self).form_valid(form)
+
+
+def route_checkpoints_list(request, pk):
+    route = get_object_or_404(Route, pk=pk)
+
+    places_qs = Place.objects.get_places_from_line(route.geom, 75)
+    checkpoints = get_checkpoints(route, places_qs)
+    serialized = serialize('geojson', checkpoints, geometry_field='point', fields=('name', 'geom'))
+
+    return JsonResponse({'checkpoints': json.loads(serialized)})

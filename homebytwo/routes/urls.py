@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from . import views
 
@@ -10,6 +10,11 @@ urlpatterns = [
 
     # display route details by id
     # example: /routes/5/
+    path('<int:pk>/', include([
+        path('', views.route, name='route'),
+        path('checkpoints/', views.route_checkpoints_list, name='checkpoints_list'),
+    ])),
+
     path('<int:pk>/', views.route, name='route'),
 
     # edit route
