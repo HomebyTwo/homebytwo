@@ -7,16 +7,14 @@ from requests.exceptions import ConnectionError
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.models import Athlete, Place
-from ..routes.utils import get_places_from_line
+from ..routes.models import Athlete
 from .decorators import strava_required, switerland_mobility_required
-from .filters import PlaceFilter
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
                     get_route_places_formset, get_strava_client,
                     post_route_form, post_route_places_formset,
-                    save_detail_forms, get_place_type_choices)
+                    save_detail_forms)
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -141,7 +139,6 @@ def strava_route(request, source_id):
     checkpoints_forms = False
     route_form = False
     route_places_formset = False
-    place_filter = False
 
     # model instance from source_id
     route = StravaRoute(source_id=source_id)
@@ -177,20 +174,6 @@ def strava_route(request, source_id):
         # add user information to route.
         # to check if the route has already been imported.
         route.owner = request.user
-        places_qs = get_places_from_line(route.geom, 75)
-
-        # filter bus stops for bike routes
-        if route.activity_type == 'Bike':
-            places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
-
-        # define place_type filter
-        place_filter = PlaceFilter(
-            request.GET,
-            queryset=places_qs,
-        )
-
-        place_type_choices = get_place_type_choices(places_qs)
-        place_filter.form.fields['place_type'].choices = place_type_choices
 
         # populate the route_form with route details
         route_form = get_route_form(route)
@@ -205,7 +188,6 @@ def strava_route(request, source_id):
         checkpoints_forms = zip(checkpoints, route_places_formset.forms)
 
     context = {
-        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'checkpoints_forms': checkpoints_forms,
@@ -270,7 +252,6 @@ def switzerland_mobility_route(request, source_id):
     checkpoints_forms = []
     route_form = False
     route_places_formset = False
-    place_filter = False
 
     # model instance with source_id
     route = SwitzerlandMobilityRoute(source_id=source_id)
@@ -314,20 +295,6 @@ def switzerland_mobility_route(request, source_id):
         else:
             # add user to check if route has already been imported
             route.owner = request.user
-            places_qs = get_places_from_line(route.geom, 75)
-
-            # filter bus stops for bike routes
-            if route.activity_type == 'Bike':
-                places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
-
-            # define place_type filter
-            place_filter = PlaceFilter(
-                request.GET,
-                queryset=places_qs
-            )
-
-            place_type_choices = get_place_type_choices(places_qs)
-            place_filter.form.fields['place_type'].choices = place_type_choices
 
             # populate the route_form with route details
             route_form = get_route_form(route)
@@ -342,7 +309,6 @@ def switzerland_mobility_route(request, source_id):
             checkpoints_forms = zip(checkpoints, route_places_formset.forms)
 
     context = {
-        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'checkpoints_forms': checkpoints_forms,

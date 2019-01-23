@@ -1,7 +1,6 @@
 -e git://github.com/drixselecta/stravalib.git#egg=stravalib
 dj-database-url
 django
-django-filter
 django-geojson
 django-leaflet
 django-widget-tweaks
