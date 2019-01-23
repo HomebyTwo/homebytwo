@@ -1,9 +1,7 @@
-import django.views.static
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path
-
 from homebytwo.landingpage import views as landingpage_views
 
 urlpatterns = [
@@ -35,16 +33,11 @@ urlpatterns = [
     # admin/
     path('admin/', admin.site.urls),
     path('', include('django.contrib.auth.urls')),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Serve Media URL in development. This is only needed when using runserver.
+# serve Django Debug Toolbar in DEBUG mode
 if settings.DEBUG:
-    urlpatterns = [
-        path('media/<path>.*', django.views.static.serve,
-             {'document_root': settings.MEDIA_ROOT, 'show_indexes': True}),
-    ] + staticfiles_urlpatterns() + urlpatterns
 
-    # serve Django Debug Toolbar in DEBUG mode
     import debug_toolbar
     urlpatterns = [
         path('__debug__/', include(debug_toolbar.urls)),
