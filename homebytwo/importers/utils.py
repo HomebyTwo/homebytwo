@@ -164,27 +164,16 @@ def get_place_type_choices(places_qs):
     return choices
 
 
-def get_checkpoints(route, filter_qs):
+def get_checkpoints(route):
     """
     retrieve checkpoints within a maximum distance of the route and
     enrich them with altitude and distance information retrieved from the route data.
     """
-    places = Place.objects.find_places_along_line(route.geom, filter_qs)
+    checkpoints = route.find_checkpoints()
 
-    # enrich checkpoint data with information
-    checkpoints = []
-
-    for place in places:
-
-        altitude_on_route = route.get_distance_data(
-            place.line_location, 'altitude')
-        place.altitude_on_route = altitude_on_route
-
-        length_from_start = route.get_distance_data(
-            place.line_location, 'length')
-        place.distance_from_start = length_from_start
-
-        checkpoints.append(place)
+    for checkpoint in checkpoints:
+        checkpoint.altitude_on_route = route.get_distance_data(checkpoint.line_location, 'altitude')
+        checkpoint.distance_from_start = route.get_distance_data(checkpoint.line_location, 'length')
 
     return checkpoints
 
@@ -200,22 +189,11 @@ def get_route_places_formset(route, checkpoints):
 
     """
 
-    # convert checkpoints to RoutePlace objects
-    route_places = [
-        RoutePlace(
-            place=place,
-            line_location=place.line_location,
-            altitude_on_route=route.get_distance_data(
-                place.line_location, 'altitude').m,
-        )
-        for place in checkpoints
-    ]
-
     # create form class with modelformset_factory
     RoutePlaceFormset = modelformset_factory(
         RoutePlace,
         form=RoutePlaceForm,
-        extra=len(route_places),
+        extra=len(checkpoints),
         widgets={
             'place': HiddenInput,
             'line_location': HiddenInput,
@@ -229,11 +207,11 @@ def get_route_places_formset(route, checkpoints):
         queryset=RoutePlace.objects.none(),
         initial=[
             {
-                'place': route_place.place,
-                'line_location': route_place.line_location,
-                'altitude_on_route': route_place.altitude_on_route,
+                'place': checkpoint.place,
+                'line_location': checkpoint.line_location,
+                'altitude_on_route': checkpoint.altitude_on_route,
             }
-            for route_place in route_places
+            for checkpoint in checkpoints
         ],
     )
 

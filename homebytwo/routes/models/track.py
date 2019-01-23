@@ -11,6 +11,7 @@ from numpy import interp
 from . import ActivityPerformance, ActivityType, Place
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from ..utils import get_places_within
 
 
 def get_image_path(instance, filename):
@@ -297,6 +298,6 @@ class Track(TimeStampedModel):
         point = self.geom.interpolate_normalized(line_location)
 
         # get closest places to the point
-        places = Place.objects.get_places_within(point, max_distance)
+        places = get_places_within(point, max_distance)
 
         return places

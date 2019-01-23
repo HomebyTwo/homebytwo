@@ -20,7 +20,8 @@ from pandas import DataFrame
 
 from . import factories
 from ..fields import DataFrameField, DataFrameFormField
-from ..models import ActivityPerformance, Place
+from ..models import ActivityPerformance
+from ..utils import get_places_from_line, get_places_within
 from ..templatetags.duration import baseround, nice_repr
 
 
@@ -60,10 +61,10 @@ class PlaceTestCase(TestCase):
         factories.PlaceFactory(geom='POINT(100 100)')
         factories.PlaceFactory(geom='POINT(10 10)')
 
-        places = Place.objects.get_places_within(point, 6)
+        places = get_places_within(point, 6)
         self.assertEqual(places.count(), 2)
 
-        places = Place.objects.get_places_within(point, 200)
+        places = get_places_within(point, 200)
         self.assertTrue(
             places[0].distance_from_line < places[1].distance_from_line)
         self.assertTrue(
@@ -86,7 +87,7 @@ class PlaceTestCase(TestCase):
             geom=GEOSGeometry('POINT(4.0 4.0)', srid=21781)
         )
 
-        places = Place.objects.get_places_from_line(line, max_distance=50)
+        places = get_places_from_line(line, max_distance=50)
 
         self.assertEqual(len(list(places)), 1)
         self.assertAlmostEqual(places[0].line_location, 0.5)
@@ -388,11 +389,7 @@ class RouteTestCase(TestCase):
             )
         )
 
-        places = Place.objects.get_places_from_line(route.geom, 100)
-        checkpoints = Place.objects.find_places_along_line(
-            route.geom,
-            places,
-            max_distance=100)
+        checkpoints = route.find_checkpoints(max_distance=100)
 
         self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:

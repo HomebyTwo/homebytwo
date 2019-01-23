@@ -1,12 +1,13 @@
-from .models import Place, Route, RoutePlace
+import json
+
+from .models import Route, RoutePlace
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView, DeleteView
-
-from .models import Route, RoutePlace
 
 
 @login_required
@@ -85,10 +86,16 @@ class RouteEdit(UpdateView):
 
 
 def route_checkpoints_list(request, pk):
-    route = get_object_or_404(Route, pk=pk)
+    route = get_object_or_404(Route, pk=pk, owner=request.user)
 
-    places_qs = Place.objects.get_places_from_line(route.geom, 75)
-    checkpoints = get_checkpoints(route, places_qs)
-    serialized = serialize('geojson', checkpoints, geometry_field='point', fields=('name', 'geom'))
+    checkpoints = route.find_checkpoints()
+    checkpoints_dicts = [
+        {
+            'name': checkpoint.place.name,
+            'line_location': checkpoint.line_location,
+            'geom': json.loads(checkpoint.place.geom.json)
+        }
+        for checkpoint in checkpoints
+    ]
 
-    return JsonResponse({'checkpoints': json.loads(serialized)})
+    return JsonResponse({'checkpoints': checkpoints_dicts})
