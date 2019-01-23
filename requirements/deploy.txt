@@ -5,16 +5,15 @@
 #    pip-compile --output-file requirements/deploy.txt requirements/deploy.in
 #
 asn1crypto==0.24.0        # via cryptography
-bcrypt==3.1.4             # via paramiko
+bcrypt==3.1.6             # via paramiko
 cffi==1.11.5              # via bcrypt, cryptography, pynacl
-cryptography==2.3.1       # via fabric, paramiko
+cryptography==2.5         # via fabric, paramiko
 dj-database-url==0.5.0
-fabric==2.3.1
+fabric==2.4.0
 gitric==0.4
-idna==2.7                 # via cryptography
-invoke==1.1.1             # via fabric
-paramiko==2.4.1           # via fabric
-pyasn1==0.4.4             # via paramiko
-pycparser==2.18           # via cffi
-pynacl==1.2.1             # via paramiko
-six==1.11.0               # via bcrypt, cryptography, pynacl
+invoke==1.2.0             # via fabric
+paramiko==2.4.2           # via fabric
+pyasn1==0.4.5             # via paramiko
+pycparser==2.19           # via cffi
+pynacl==1.3.0             # via paramiko
+six==1.12.0               # via bcrypt, cryptography, pynacl

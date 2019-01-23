@@ -646,7 +646,7 @@ class SwitzerlandMobility(TestCase):
 
         # Turn the route meta URL into a regular expression
         meta_url = re_compile(
-            meta_url.replace(str(route.source_id), '(\d+)'))
+            meta_url.replace(str(route.source_id), r'(\d+)'))
 
         httpretty.enable()
 
@@ -728,7 +728,7 @@ class SwitzerlandMobility(TestCase):
         # remove "https://
         route_meta_url = settings.SWITZERLAND_MOBILITY_META_URL[8:]
         # Turn the route meta URL into a regular expression
-        route_meta_url = re_compile(route_meta_url.replace('%d', '(\w+)'))
+        route_meta_url = re_compile(route_meta_url.replace('%d', r'(\w+)'))
 
         route_json = load_data('track_info.json')
 
@@ -843,7 +843,7 @@ class SwitzerlandMobility(TestCase):
         ]
         places_formset = (
             '<input type="hidden" name="places-TOTAL_FORMS" '
-            'value="0" id="id_places-TOTAL_FORMS" />'
+            'value="0" id="id_places-TOTAL_FORMS">'
         )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
