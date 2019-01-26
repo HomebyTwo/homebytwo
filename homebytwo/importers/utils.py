@@ -5,8 +5,8 @@ from social_core.exceptions import AuthException
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.forms import RoutePlaceForm
-from ..routes.models import Athlete, Place, RoutePlace
+from ..routes.forms import CheckpointForm
+from ..routes.models import Athlete, Checkpoint
 from .forms import ImportersRouteForm
 
 
@@ -141,48 +141,11 @@ def post_route_form(request, route):
     )
 
 
-def get_place_type_choices(places_qs):
-    """
-    limit available place_type filter choices to place_types found in a place querystring.
-    takes a Place query string and returns a list of choices to use in the filter configuration.
-    """
-
-    # limit place type choices to available ones
-    found_place_types = {place.place_type for place in places_qs}
-
-    choices = []
-
-    for key, value in Place.PLACE_TYPE_CHOICES:
-        if isinstance(value, (list, tuple)):
-            for key2, value2 in value:
-                if key2 in found_place_types:
-                    choices.append((key2, value2))
-        else:
-            if key in found_place_types:
-                choices.append((key, value))
-
-    return choices
-
-
-def get_checkpoints(route):
-    """
-    retrieve checkpoints within a maximum distance of the route and
-    enrich them with altitude and distance information retrieved from the route data.
-    """
-    checkpoints = route.find_checkpoints()
-
-    for checkpoint in checkpoints:
-        checkpoint.altitude_on_route = route.get_distance_data(checkpoint.line_location, 'altitude')
-        checkpoint.distance_from_start = route.get_distance_data(checkpoint.line_location, 'length')
-
-    return checkpoints
-
-
-def get_route_places_formset(route, checkpoints):
+def get_checkpoints_formset(route, checkpoints):
     """
     GET detail view creates a Model Formset populated with all the
     checkpoints found along the route.
-    the user can select and save the relevant places to the imported route.
+    the user can select and save the relevant checkpoints to the imported route.
 
     This is used in both the Strava and Switzerland Mobility
     detail import page.
@@ -190,41 +153,39 @@ def get_route_places_formset(route, checkpoints):
     """
 
     # create form class with modelformset_factory
-    RoutePlaceFormset = modelformset_factory(
-        RoutePlace,
-        form=RoutePlaceForm,
+    CheckpointFormset = modelformset_factory(
+        Checkpoint,
+        form=CheckpointForm,
         extra=len(checkpoints),
         widgets={
             'place': HiddenInput,
             'line_location': HiddenInput,
-            'altitude_on_route': HiddenInput,
         }
     )
 
     # instantiate form with initial data
-    return RoutePlaceFormset(
-        prefix='places',
-        queryset=RoutePlace.objects.none(),
+    return CheckpointFormset(
+        prefix='checkpoints',
+        queryset=Checkpoint.objects.none(),
         initial=[
             {
                 'place': checkpoint.place,
                 'line_location': checkpoint.line_location,
-                'altitude_on_route': checkpoint.altitude_on_route,
             }
             for checkpoint in checkpoints
         ],
     )
 
 
-def post_route_places_formset(request, route):
+def post_checkpoints_formset(request, route):
     """
-    POST detail view: return the route_places model_formset
+    POST detail view: return the checkpoints model_formset
     populated with POST data.
     """
     # create form class with modelformset_factory
-    RoutePlaceFormset = modelformset_factory(
-        RoutePlace,
-        form=RoutePlaceForm,
+    CheckpointFormset = modelformset_factory(
+        Checkpoint,
+        form=CheckpointForm,
         widgets={
             'place': HiddenInput,
             'line_location': HiddenInput,
@@ -232,20 +193,20 @@ def post_route_places_formset(request, route):
         }
     )
 
-    return RoutePlaceFormset(
+    return CheckpointFormset(
         request.POST,
-        prefix='places',
+        prefix='checkpoints',
     )
 
 
-def save_detail_forms(request, route_form, route_places_formset):
+def save_detail_forms(request, route_form, checkpoints_formset):
     """
     POST detail view: if the forms validate, try to save the routes
     and route places.
     """
     # validate places form and return errors if any
-    if not route_places_formset.is_valid():
-        for error in route_places_formset.errors:
+    if not checkpoints_formset.is_valid():
+        for error in checkpoints_formset.errors:
             messages.error(request, error)
         return False
 
@@ -265,12 +226,12 @@ def save_detail_forms(request, route_form, route_places_formset):
             # save the route
             new_route.save()
 
-            # create the route places from the route_place_forms
-            for form in route_places_formset:
+            # create the route places from the checkpoint_forms
+            for form in checkpoints_formset:
                 if form.cleaned_data['include']:
-                    route_place = form.save(commit=False)
-                    route_place.route = new_route
-                    route_place.save()
+                    checkpoint = form.save(commit=False)
+                    checkpoint.route = new_route
+                    checkpoint.save()
 
     except IntegrityError as error:
         message = 'Integrity Error: {}. '.format(error)

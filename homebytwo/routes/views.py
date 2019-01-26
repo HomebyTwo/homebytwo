@@ -1,6 +1,6 @@
 import json
 
-from .models import Route, RoutePlace
+from .models import Route, Checkpoint
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
 from django.http import JsonResponse
@@ -29,13 +29,11 @@ def route(request, pk):
     route.calculate_projected_time_schedule(request.user)
 
     # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.filter(route=pk)
-    places = places.select_related('route', 'place')
+    checkpoints = Checkpoint.objects.filter(route=pk)
+    checkpoints = checkpoints.select_related('route', 'place')
 
-    for place in places:
-        place.schedule = route.get_time_data(place.line_location, 'schedule')
-        place.altitude = place.get_altitude()
-        place.distance = D(m=place.line_location * route.length)
+    for checkpoint in checkpoints:
+        checkpoint.schedule = route.get_time_data(checkpoint.line_location, 'schedule')
 
     # enrich start and end place with data
     if route.start_place_id:
@@ -47,7 +45,7 @@ def route(request, pk):
 
     context = {
         'route': route,
-        'places': places
+        'checkpoints': checkpoints
     }
     return render(request, 'routes/route.html', context)
 

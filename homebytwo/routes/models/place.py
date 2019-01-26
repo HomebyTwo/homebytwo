@@ -256,30 +256,3 @@ class Place(TimeStampedModel):
         if self.source_id == '':
             self.source_id = str(self.id)
             self.save()
-
-
-class RoutePlace(models.Model):
-    # Intermediate model for route - place
-    route = models.ForeignKey('Route', on_delete=models.CASCADE)
-    place = models.ForeignKey('Place', on_delete=models.CASCADE)
-
-    # location on the route normalized 0=start 1=end
-    line_location = models.FloatField(default=0)
-
-    # Altitude at the route's closest point to the place
-    altitude_on_route = models.FloatField()
-
-    def get_altitude(self):
-        """
-        return altitude on route as a distance object.
-        """
-        return D(m=self.altitude_on_route)
-
-    def __str__(self):
-        return self.place.name
-
-    def __unicode__(self):
-        return self.place.name
-
-    class Meta:
-        ordering = ('line_location',)

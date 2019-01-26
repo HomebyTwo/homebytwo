@@ -1,6 +1,6 @@
 from django.forms import BooleanField, ModelChoiceField, ModelForm
 
-from .models import Place, Route, RoutePlace
+from .models import Place, Route, Checkpoint
 
 
 class RouteForm(ModelForm):
@@ -39,10 +39,10 @@ class RouteForm(ModelForm):
         ]
 
 
-class RoutePlaceForm(ModelForm):
+class CheckpointForm(ModelForm):
     class Meta:
-        model = RoutePlace
-        fields = ['place', 'line_location', 'altitude_on_route', 'include']
+        model = Checkpoint
+        fields = ['place', 'line_location', 'include']
 
     include = BooleanField(
         required=False,

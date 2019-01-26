@@ -1,6 +1,6 @@
 {% load humanize geojson_tags widget_tweaks %}
 
-{% if places_form %}
+{% if checkpoints_formset %}
   <ul class="list-stacked">
     <h4>Checkpoints</h4>
     {% for checkpoint, form in checkpoints_forms %}

@@ -2,11 +2,11 @@ from collections import deque, namedtuple
 
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.contrib.gis.measure import D
 from django.urls import reverse
 
 from ..fields import LineSubstring
 from ..utils import create_segments_from_checkpoints, get_places_from_line
-from .place import RoutePlace
 from .track import Track
 
 SourceLink = namedtuple('SourceLink', ['url', 'text'])
@@ -56,7 +56,7 @@ class Route(Track):
     # A route can have checkpoints
     places = models.ManyToManyField(
         'Place',
-        through='RoutePlace',
+        through='Checkpoint',
         blank=True,
     )
 
@@ -130,7 +130,7 @@ class Route(Track):
 
         """
         # add places from initial request that found each visited place once
-        checkpoints = list(self.routeplace_set.all())
+        checkpoints = list(self.checkpoint_set.all())
         segments = deque(create_segments_from_checkpoints(checkpoints))
 
         while segments:
@@ -141,7 +141,7 @@ class Route(Track):
             if new_places:
                 start, end = segment
                 checkpoints += [
-                    RoutePlace(route=self, place=place, line_location=place.line_location) for place in new_places
+                    Checkpoint(route=self, place=place, line_location=place.line_location) for place in new_places
                 ]
                 segments.extend(
                     create_segments_from_checkpoints(new_places, start, end)
@@ -171,3 +171,26 @@ class Route(Track):
             place.line_location = start + length
 
         return places
+
+
+class Checkpoint(models.Model):
+    # Intermediate model for route - place
+    route = models.ForeignKey('Route', on_delete=models.CASCADE)
+    place = models.ForeignKey('Place', on_delete=models.CASCADE)
+
+    # location on the route normalized 0=start 1=end
+    line_location = models.FloatField(default=0)
+
+    @property
+    def altitude_on_route(self):
+        return self.route.get_distance_data(self.line_location, 'altitude')
+
+    @property
+    def distance_from_start(self):
+        return self.route.get_distance_data(self.line_location, 'length')
+
+    class Meta:
+        ordering = ('line_location',)
+
+    def __str__(self):
+        return self.place.name

@@ -11,9 +11,9 @@ from ..routes.models import Athlete
 from .decorators import strava_required, switerland_mobility_required
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
-                    get_route_places_formset, get_strava_client,
-                    post_route_form, post_route_places_formset,
+from .utils import (SwitzerlandMobilityError, get_route_form,
+                    get_checkpoints_formset, get_strava_client,
+                    post_route_form, post_checkpoints_formset,
                     save_detail_forms)
 
 # Switzerland Mobility info for the templates.
@@ -138,7 +138,7 @@ def strava_route(request, source_id):
     # default values for variables passed to the request context
     checkpoints_forms = False
     route_form = False
-    route_places_formset = False
+    checkpoints_formset = False
 
     # model instance from source_id
     route = StravaRoute(source_id=source_id)
@@ -149,14 +149,14 @@ def strava_route(request, source_id):
         # populate route_form with POST data
         route_form = post_route_form(request, route)
 
-        # populate the route_places_formset with POST data
-        route_places_formset = post_route_places_formset(request, route)
+        # populate the checkpoints_formset with POST data
+        checkpoints_formset = post_checkpoints_formset(request, route)
 
         # validate forms and save the route and places
         new_route = save_detail_forms(
             request,
             route_form,
-            route_places_formset
+            checkpoints_formset
         )
 
         # Success! redirect to the page of the newly imported route
@@ -179,19 +179,19 @@ def strava_route(request, source_id):
         route_form = get_route_form(route)
 
         # get checkpoints along the way
-        checkpoints = get_checkpoints(route)
+        checkpoints = route.find_checkpoints()
 
         # get form to save places along the route
-        route_places_formset = get_route_places_formset(route, checkpoints)
+        checkpoints_formset = get_checkpoints_formset(route, checkpoints)
 
         # prepare zipped list for the template
-        checkpoints_forms = zip(checkpoints, route_places_formset.forms)
+        checkpoints_forms = zip(checkpoints, checkpoints_formset.forms)
 
     context = {
         'route': route,
         'route_form': route_form,
         'checkpoints_forms': checkpoints_forms,
-        'places_form': route_places_formset,
+        'places_form': checkpoints_formset,
         'source': STRAVA_SOURCE_INFO
     }
 
@@ -251,7 +251,7 @@ def switzerland_mobility_route(request, source_id):
     # default values for variables passed to the request context
     checkpoints_forms = []
     route_form = False
-    route_places_formset = False
+    checkpoints_formset = False
 
     # model instance with source_id
     route = SwitzerlandMobilityRoute(source_id=source_id)
@@ -262,14 +262,14 @@ def switzerland_mobility_route(request, source_id):
         # populate the route_form with POST data
         route_form = post_route_form(request, route)
 
-        # populate the route_places_formset with POST data
-        route_places_formset = post_route_places_formset(request, route)
+        # populate the checkpoints_formset with POST data
+        checkpoints_formset = post_checkpoints_formset(request, route)
 
         # validate forms and save the route and places
         new_route = save_detail_forms(
             request,
             route_form,
-            route_places_formset
+            checkpoints_formset
         )
 
         # Success! redirect to the page of the newly imported route
@@ -300,19 +300,19 @@ def switzerland_mobility_route(request, source_id):
             route_form = get_route_form(route)
 
             # find checkpoints along the route
-            checkpoints = get_checkpoints(route)
+            checkpoints = route.find_checkpoints()
 
-            # get form set to save route places
-            route_places_formset = get_route_places_formset(route, checkpoints)
+            # get formset to save checkpoints
+            checkpoints_formset = get_checkpoints_formset(route, checkpoints)
 
             # arrange places and formsets for template
-            checkpoints_forms = zip(checkpoints, route_places_formset.forms)
+            checkpoints_forms = zip(checkpoints, checkpoints_formset.forms)
 
     context = {
         'route': route,
         'route_form': route_form,
         'checkpoints_forms': checkpoints_forms,
-        'places_form': route_places_formset,
+        'checkpoints_formset': checkpoints_formset,
         'source': SWITZERLAND_MOBILITY_SOURCE_INFO
     }
 

@@ -19,14 +19,13 @@ from social_core.exceptions import AuthException
 from stravalib import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ...routes.models import Athlete, Place, RoutePlace
-from ...routes.tests.factories import PlaceFactory
+from ...routes.models import Athlete, Place, Checkpoint
 from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
 from ..utils import (SwitzerlandMobilityError, associate_by_strava_token,
-                     get_place_type_choices, get_route_form, get_strava_client,
+                     get_route_form, get_strava_client,
                      save_strava_token_from_social)
 from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
@@ -227,13 +226,6 @@ class Strava(TestCase):
         route_form = get_route_form(route)
 
         self.assertEqual(len(route_form.fields), 10)
-
-    def test_get_place_type_choices(self):
-        places = PlaceFactory.create_batch(12)
-        places_types = {place.place_type for place in places}
-        choices = get_place_type_choices(places)
-
-        self.assertEqual(places_types, {choice[0] for choice in choices})
 
     #########
     # Model #
@@ -841,9 +833,9 @@ class SwitzerlandMobility(TestCase):
             'class="field"',
             'id="id_route-start_place"',
         ]
-        places_formset = (
-            '<input type="hidden" name="places-TOTAL_FORMS" '
-            'value="0" id="id_places-TOTAL_FORMS">'
+        checkpoints_formset = (
+            '<input type="hidden" name="checkpoints-TOTAL_FORMS" '
+            'value="0" id="id_checkpoints-TOTAL_FORMS">'
         )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
@@ -853,7 +845,7 @@ class SwitzerlandMobility(TestCase):
         self.assertIn(title, response_content)
         for start_place_form_element in start_place_form_elements:
             self.assertIn(start_place_form_element, response_content)
-        self.assertIn(places_formset, response_content)
+        self.assertIn(checkpoints_formset, response_content)
         self.assertIn(map_data, response_content)
 
     def test_switzerland_mobility_route_already_imported(self):
@@ -928,10 +920,10 @@ class SwitzerlandMobility(TestCase):
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
             'route-data': route.data.to_json(orient='records'),
-            'places-TOTAL_FORMS': 0,
-            'places-INITIAL_FORMS': 0,
-            'places-MIN_NUM_FORMS': 0,
-            'places-MAX_NUM_FORMS': 1000,
+            'checkpoints-TOTAL_FORMS': 0,
+            'checkpoints-INITIAL_FORMS': 0,
+            'checkpoints-MIN_NUM_FORMS': 0,
+            'checkpoints-MAX_NUM_FORMS': 1000,
         })
 
         url = reverse('switzerland_mobility_route', args=[route_id])
@@ -967,20 +959,18 @@ class SwitzerlandMobility(TestCase):
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
             'route-data': route.data.to_json(orient='records'),
-            'places-TOTAL_FORMS': 2,
-            'places-INITIAL_FORMS': 0,
-            'places-MIN_NUM_FORMS': 0,
-            'places-MAX_NUM_FORMS': 1000,
-            'places-0-place': start_place.id,
-            'places-0-line_location': 0.0207291870756597,
-            'places-0-altitude_on_route': 123,
-            'places-0-id': '',
-            'places-0-include': True,
-            'places-1-place': end_place.id,
-            'places-1-line_location': 0.039107325861928,
-            'places-1-altitude_on_route': 123,
-            'places-1-id': '',
-            'places-1-include': True,
+            'checkpoints-TOTAL_FORMS': 2,
+            'checkpoints-INITIAL_FORMS': 0,
+            'checkpoints-MIN_NUM_FORMS': 0,
+            'checkpoints-MAX_NUM_FORMS': 1000,
+            'checkpoints-0-place': start_place.id,
+            'checkpoints-0-line_location': 0.0207291870756597,
+            'checkpoints-0-id': '',
+            'checkpoints-0-include': True,
+            'checkpoints-1-place': end_place.id,
+            'checkpoints-1-line_location': 0.039107325861928,
+            'checkpoints-1-id': '',
+            'checkpoints-1-include': True,
         })
 
         url = reverse('switzerland_mobility_route', args=[route_id])
@@ -988,14 +978,14 @@ class SwitzerlandMobility(TestCase):
 
         # a new route has been created
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        route_places = RoutePlace.objects.filter(route=route.id)
-        self.assertEqual(route_places.count(), 2)
+        checkpoints = Checkpoint.objects.filter(route=route.id)
+        self.assertEqual(checkpoints.count(), 2)
 
         redirect_url = reverse('routes:route', args=[route.id])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_route_post_no_validation_places(self):
+    def test_switzerland_mobility_route_post_no_validation_checkpoints(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(
             source_id=route_id
@@ -1019,17 +1009,15 @@ class SwitzerlandMobility(TestCase):
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
             'route-data': route.data.to_json(orient='records'),
-            'places-TOTAL_FORMS': 2,
-            'places-INITIAL_FORMS': 0,
-            'places-MIN_NUM_FORMS': 0,
-            'places-MAX_NUM_FORMS': 1000,
-            'places-0-place': start_place.id,
-            'places-0-altitude_on_route': 'not a number',
-            'places-0-id': '',
-            'places-1-place': end_place.id,
-            'places-1-line_location': 0.039107325861928,
-            'places-1-altitude_on_route': 123,
-            'places-1-id': '',
+            'checkpoints-TOTAL_FORMS': 2,
+            'checkpoints-INITIAL_FORMS': 0,
+            'checkpoints-MIN_NUM_FORMS': 0,
+            'checkpoints-MAX_NUM_FORMS': 1000,
+            'checkpoints-0-place': start_place.id,
+            'checkpoints-0-id': '',
+            'checkpoints-1-place': end_place.id,
+            'checkpoints-1-line_location': 0.039107325861928,
+            'checkpoints-1-id': '',
         })
 
         url = reverse('switzerland_mobility_route', args=[route_id])
@@ -1038,12 +1026,10 @@ class SwitzerlandMobility(TestCase):
 
         alert_box = '<li class="box mrgv- alert alert--error">'
         required_field = 'This field is required.'
-        not_a_number = 'Enter a number.'
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(alert_box in response_content)
         self.assertTrue(required_field in response_content)
-        self.assertTrue(not_a_number in response_content)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
@@ -1068,18 +1054,16 @@ class SwitzerlandMobility(TestCase):
             'route-end_place': end_place.id,
             'route-geom': route.geom.wkt,
             'route-data': route.data.to_json(orient='records'),
-            'places-TOTAL_FORMS': 2,
-            'places-INITIAL_FORMS': 0,
-            'places-MIN_NUM_FORMS': 0,
-            'places-MAX_NUM_FORMS': 1000,
-            'places-0-place': start_place.id,
-            'places-0-line_location': 0.0207291870756597,
-            'places-0-altitude_on_route': 123,
-            'places-0-id': '',
-            'places-1-place': end_place.id,
-            'places-1-line_location': 0.039107325861928,
-            'places-1-altitude_on_route': 123,
-            'places-1-id': '',
+            'checkpoints-TOTAL_FORMS': 2,
+            'checkpoints-INITIAL_FORMS': 0,
+            'checkpoints-MIN_NUM_FORMS': 0,
+            'checkpoints-MAX_NUM_FORMS': 1000,
+            'checkpoints-0-place': start_place.id,
+            'checkpoints-0-line_location': 0.0207291870756597,
+            'checkpoints-0-id': '',
+            'checkpoints-1-place': end_place.id,
+            'checkpoints-1-line_location': 0.039107325861928,
+            'checkpoints-1-id': '',
         })
 
         url = reverse('switzerland_mobility_route', args=[route_id])
