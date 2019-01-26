@@ -2,7 +2,6 @@ from collections import deque, namedtuple
 
 from django.conf import settings
 from django.contrib.gis.db import models
-from django.contrib.gis.measure import D
 from django.urls import reverse
 
 from ..fields import LineSubstring
