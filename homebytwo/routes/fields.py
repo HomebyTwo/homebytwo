@@ -133,7 +133,7 @@ class DataFrameField(models.CharField):
 
         return filename
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         """
         use the filename from the database to load the DataFrame from file.
         """

@@ -5,8 +5,7 @@ from ...routes.models import Place
 
 class Swissname3dManager(models.Manager):
     def get_queryset(self):
-        return super(Swissname3dManager, self).get_queryset().filter(
-            data_source='swissname3d')
+        return super().get_queryset().filter(data_source='swissname3d')
 
 
 class Swissname3dPlace(Place):
@@ -82,4 +81,4 @@ class Swissname3dPlace(Place):
             # set datasource to swissname3d
             self.data_source = 'swissname3d'
             # Save with the parent method
-            super(Swissname3dPlace, self).save(*args, **kwargs)
+            super().save(*args, **kwargs)

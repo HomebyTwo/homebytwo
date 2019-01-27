@@ -29,37 +29,30 @@ def get_image_path(instance, filename):
 
 class Track(TimeStampedModel):
 
-    class Meta:
-        abstract = True
-
     name = models.CharField(max_length=100)
     description = models.TextField('Textual description', blank=True)
-    image = ThumbnailerImageField(upload_to=get_image_path,
-                                  blank=True, null=True)
+    image = ThumbnailerImageField(
+        upload_to=get_image_path,
+        blank=True, null=True
+    )
 
     # Main activity of the track: default=hike
-    activity_type = models.ForeignKey(ActivityType, default=1,
-                                      on_delete=models.SET_DEFAULT)
+    activity_type = models.ForeignKey(
+        ActivityType, default=1,
+        on_delete=models.SET_DEFAULT
+    )
 
     # link to user
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL,
-                              on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     # elevation gain in m
-    totalup = models.FloatField(
-        'Total elevation gain in m',
-        default=0
-    )
+    totalup = models.FloatField('Total elevation gain in m', default=0)
+
     # elevation loss in m
-    totaldown = models.FloatField(
-        'Total elevation loss in m',
-        default=0
-    )
+    totaldown = models.FloatField('Total elevation loss in m', default=0)
+
     # route distance in m
-    length = models.FloatField(
-        'Total length of the track in m',
-        default=0
-    )
+    length = models.FloatField('Length of the track in m', default=0)
 
     # geographic information
     geom = models.LineStringField('line geometry', srid=21781)
@@ -81,6 +74,9 @@ class Track(TimeStampedModel):
 
     # track data as a pandas DataFrame
     data = DataFrameField(null=True, max_length=100, save_to='data')
+
+    class Meta:
+        abstract = True
 
     def is_owner(self):
         """
@@ -105,9 +101,9 @@ class Track(TimeStampedModel):
 
     def calculate_cummulative_elevation_differences(self):
         """
-        Calculates two colums from the altitude data:
-        - totalup: cummulative sum of positive elevation data
-        - totaldown: cummulative sum of negative elevation data
+        Add two calculated columns to the Dataframe from the altitude data:
+        - totalup: cummulative sum of positive elevation
+        - totaldown: cummulative sum of negative elevation
         """
         data = self.data
 
@@ -215,12 +211,12 @@ class Track(TimeStampedModel):
             return None
 
         # calculate the distance value to interpolate with
-        # based on line location and the total length of the track.
-        interp_x = line_location * self.length
+        # based distance from start in meters.
+        distance_from_start = line_location * self.length
 
         # interpolate the value, see:
         # https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html
-        return interp(interp_x, self.data['length'], self.data[data_column])
+        return interp(distance_from_start, self.data['length'], self.data[data_column])
 
     def get_distance_data(self, line_location, data_column):
         """

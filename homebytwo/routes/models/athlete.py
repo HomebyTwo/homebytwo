@@ -11,14 +11,11 @@ class Athlete(models.Model):
 
     # activities that the athlete practices with personal performance
     activies = models.ManyToManyField(
-                'ActivityType',
-                through='ActivityPerformance'
-            )
+        'ActivityType',
+        through='ActivityPerformance'
+    )
 
     def __str__(self):
-        return str(self.user.username)
-
-    def __unicode__(self):
         return str(self.user.username)
 
 

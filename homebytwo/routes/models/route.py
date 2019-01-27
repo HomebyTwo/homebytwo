@@ -180,6 +180,12 @@ class Checkpoint(models.Model):
     # location on the route normalized 0=start 1=end
     line_location = models.FloatField(default=0)
 
+    class Meta:
+        ordering = ('line_location',)
+
+    def __str__(self):
+        return self.place.name
+
     @property
     def altitude_on_route(self):
         return self.route.get_distance_data(self.line_location, 'altitude')
@@ -187,9 +193,3 @@ class Checkpoint(models.Model):
     @property
     def distance_from_start(self):
         return self.route.get_distance_data(self.line_location, 'length')
-
-    class Meta:
-        ordering = ('line_location',)
-
-    def __str__(self):
-        return self.place.name

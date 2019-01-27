@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.forms import HiddenInput, modelform_factory, modelformset_factory
+from requests import codes, get
+from requests.exceptions import ConnectionError
 from social_core.exceptions import AuthException
 from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
@@ -16,6 +18,31 @@ class SwitzerlandMobilityError(Exception):
     responds with an error code: 404, 500, etc.
     """
     pass
+
+
+def request_json(url, cookies=None):
+    """
+    Makes get call the Switzerland Mobility website and retrieves a json
+    while managing server and connection errors.
+    """
+    try:
+        r = get(url, cookies=cookies)
+
+    # connection error and inform the user
+    except ConnectionError:
+        message = "Connection Error: could not connect to {0}. "
+        raise ConnectionError(message.format(url))
+
+    else:
+        # if request is successful save json object
+        if r.status_code == codes.ok:
+            json = r.json()
+            return json
+
+        # server error: display the status code
+        else:
+            message = "Error {0}: could not retrieve information from {1}"
+            raise SwitzerlandMobilityError(message.format(r.status_code, url))
 
 
 def get_strava_client(user):

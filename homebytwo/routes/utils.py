@@ -1,4 +1,4 @@
-from itertools import chain, tee, islice
+from itertools import chain, islice, tee
 
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D

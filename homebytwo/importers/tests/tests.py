@@ -19,13 +19,12 @@ from social_core.exceptions import AuthException
 from stravalib import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ...routes.models import Athlete, Place, Checkpoint
+from ...routes.models import Athlete, Checkpoint, Place
 from ...utils.factories import UserFactory
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
-from ..models.switzerlandmobilityroute import request_json
 from ..utils import (SwitzerlandMobilityError, associate_by_strava_token,
-                     get_route_form, get_strava_client,
+                     get_route_form, get_strava_client, request_json,
                      save_strava_token_from_social)
 from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
 
@@ -614,7 +613,7 @@ class SwitzerlandMobility(TestCase):
     def test_format_raw_remote_routes_success(self):
         raw_routes = json_loads(load_data(file='tracks_list.json'))
 
-        formatted_routes = SwitzerlandMobilityRoute.objects.format_raw_remote_routes(
+        formatted_routes = SwitzerlandMobilityRoute.objects._format_raw_remote_routes(
             raw_routes)
 
         self.assertTrue(type(formatted_routes) is list)
@@ -626,7 +625,7 @@ class SwitzerlandMobility(TestCase):
     def test_format_raw_remote_routes_empty(self):
         raw_routes = []
 
-        formatted_routes = SwitzerlandMobilityRoute.objects.format_raw_remote_routes(
+        formatted_routes = SwitzerlandMobilityRoute.objects._format_raw_remote_routes(
             raw_routes)
 
         self.assertEqual(len(formatted_routes), 0)

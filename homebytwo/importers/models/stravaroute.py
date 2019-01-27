@@ -14,8 +14,7 @@ class StravaRouteManager(RouteManager):
         This method is required because StravaRoute
         is a proxy class.
         """
-        return super(StravaRouteManager, self). \
-            get_queryset().filter(data_source='strava')
+        return super().get_queryset().filter(data_source='strava')
 
     # login to Strava and retrieve route list
     def get_routes_list_from_server(self, user, strava_client):
@@ -51,11 +50,22 @@ class StravaRoute(Route):
     Proxy for Route Model with specific methods and custom manager.
     """
 
+    # custom manager
+    objects = StravaRouteManager()
+
     class Meta:
         proxy = True
 
-    # custom manager
-    objects = StravaRouteManager()
+    def save(self, *args, **kwargs):
+        """
+        Set the data_source of the route to strava
+        when saving the route.
+        """
+        # set the data_source of the route to switzerland_mobility
+        self.data_source = 'strava'
+
+        # Save with the parent method
+        super().save(*args, **kwargs)
 
     # retrieve strava information for a route
     def get_route_details(self, client):
@@ -146,14 +156,3 @@ class StravaRoute(Route):
 
         # transform geometry to target srid
         geom.transform(target_srid)
-
-    def save(self, *args, **kwargs):
-        """
-        Set the data_source of the route to strava
-        when saving the route.
-        """
-        # set the data_source of the route to switzerland_mobility
-        self.data_source = 'strava'
-
-        # Save with the parent method
-        super(StravaRoute, self).save(*args, **kwargs)

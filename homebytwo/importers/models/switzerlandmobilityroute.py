@@ -1,7 +1,5 @@
 import json
 
-from requests import get, codes
-from requests.exceptions import ConnectionError
 from ast import literal_eval
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
@@ -9,32 +7,7 @@ from django.contrib.gis.measure import Distance
 from pandas import DataFrame
 
 from ...routes.models import Route, RouteManager
-from ..utils import SwitzerlandMobilityError
-
-
-def request_json(url, cookies=None):
-    """
-    Makes get call the map.wanderland.ch website and retrieves a json
-    while managing server and connection errors.
-    """
-    try:
-        r = get(url, cookies=cookies)
-
-    # connection error and inform the user
-    except ConnectionError:
-        message = "Connection Error: could not connect to {0}. "
-        raise ConnectionError(message.format(url))
-
-    else:
-        # if request is successful save json object
-        if r.status_code == codes.ok:
-            json = r.json()
-            return json
-
-        # server error: display the status code
-        else:
-            message = "Error {0}: could not retrieve information from {1}"
-            raise SwitzerlandMobilityError(message.format(r.status_code, url))
+from ..utils import request_json
 
 
 class SwitzerlandMobilityRouteManager(RouteManager):
@@ -48,8 +21,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         This method is required because SwitzerlandMobilityRoute
         is a proxy class.
         """
-        return super(SwitzerlandMobilityRouteManager, self). \
-            get_queryset().filter(data_source='switzerland_mobility')
+        return super().get_queryset().filter(data_source='switzerland_mobility')
 
     def get_remote_routes(self, session, user):
         """
@@ -67,7 +39,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         if raw_routes:
 
             # format routes into dictionary
-            formatted_routes = self.format_raw_remote_routes(raw_routes)
+            formatted_routes = self._format_raw_remote_routes(raw_routes)
 
             # split into old and new routes
             new_routes, old_routes = self.check_for_existing_routes(
@@ -82,7 +54,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         else:
             return [], []
 
-    def format_raw_remote_routes(self, raw_routes):
+    def _format_raw_remote_routes(self, raw_routes):
         """
         Take routes list returned by Switzerland Mobility as list of 3 values
         e.g. [2692136, u'Rochers de Nayes', None] and create a new
@@ -113,11 +85,21 @@ class SwitzerlandMobilityRoute(Route):
     Proxy for Route Model with specific methods and custom manager.
     """
 
+    objects = SwitzerlandMobilityRouteManager()
+
     class Meta:
         proxy = True
 
-    # Custom manager
-    objects = SwitzerlandMobilityRouteManager()
+    def save(self, *args, **kwargs):
+        """
+        Set the data_source of the route to switzerland_mobility
+        when saving the route.
+        """
+        # set the data_source of the route to switzerland_mobility
+        self.data_source = 'switzerland_mobility'
+
+        # Save with the parent method
+        super().save(*args, **kwargs)
 
     def get_route_details(self):
         """
@@ -192,14 +174,3 @@ class SwitzerlandMobilityRoute(Route):
         else:
             message = "Could not retrieve meta-information for route: '{}'."
             raise ConnectionError(message.format(self.name))
-
-    def save(self, *args, **kwargs):
-        """
-        Set the data_source of the route to switzerland_mobility
-        when saving the route.
-        """
-        # set the data_source of the route to switzerland_mobility
-        self.data_source = 'switzerland_mobility'
-
-        # Save with the parent method
-        super(SwitzerlandMobilityRoute, self).save(*args, **kwargs)

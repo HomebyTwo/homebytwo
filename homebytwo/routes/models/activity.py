@@ -21,9 +21,6 @@ class ActivityType(models.Model):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 class ActivityPerformance(models.Model):
     """
@@ -60,9 +57,7 @@ class ActivityPerformance(models.Model):
     total_elevation_gain_param = models.FloatField(default=0.1)
 
     def __str__(self):
-        return '%s - %s' % (self.athlete.user.username,
-                            self.activity_type.name)
-
-    def __unicode__(self):
-        return '%s - %s' % (self.athlete.user.username,
-                            self.activity_type.name)
+        return "{} - {}".format(
+            self.athlete.user.username,
+            self.activity_type.name
+        )
