@@ -4,8 +4,7 @@
 #
 #    pip-compile --output-file requirements/dev.txt requirements/dev.in
 #
--e git+git://github.com/drixselecta/stravalib.git#egg=stravalib
-arrow==0.13.0
+arrow==0.13.0             # via stravalib
 backcall==0.1.0           # via ipython
 certifi==2018.11.29       # via requests
 chardet==3.0.4            # via requests
@@ -46,19 +45,20 @@ pygments==2.3.1           # via ipython
 pyjwt==1.7.1              # via social-auth-core
 python-dateutil==2.7.5    # via arrow, pandas
 python3-openid==3.1.0     # via social-auth-core
-pytz==2018.9              # via django, pandas
+pytz==2018.9              # via django, pandas, stravalib
 rcssmin==1.0.6
 requests-oauthlib==1.2.0  # via social-auth-core
 requests==2.21.0
-six==1.12.0               # via django-extensions, django-geojson, pip-tools, polyline, prompt-toolkit, python-dateutil, social-auth-app-django, social-auth-core, tables, tox, traitlets
+six==1.12.0               # via django-extensions, django-geojson, pip-tools, polyline, prompt-toolkit, python-dateutil, social-auth-app-django, social-auth-core, stravalib, tables, tox, traitlets
 social-auth-app-django==3.1.0
 social-auth-core==3.0.0   # via social-auth-app-django
 sqlparse==0.2.4           # via django-debug-toolbar
+stravalib==0.10.2
 tables==3.4.4
 toml==0.10.0              # via tox
 tox==3.7.0
 traitlets==4.3.2          # via ipython
-units==0.7
+units==0.7                # via stravalib
 urllib3==1.24.1           # via requests
 virtualenv==16.2.0        # via tox
 wcwidth==0.1.7            # via prompt-toolkit
