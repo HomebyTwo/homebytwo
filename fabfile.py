@@ -136,7 +136,7 @@ def restart_process():
     """
     Restart the WSGI process
     """
-    run("uwsgi --reload %s" % env.pid)
+    run("sudo systemctl restart gunicorn")
 
 
 def generate_secret_key():
