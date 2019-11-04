@@ -1,34 +1,56 @@
 from json import loads as json_loads
-from os.path import dirname, join, realpath
+from os.path import (
+    dirname,
+    join,
+    realpath,
+)
 from re import compile as re_compile
 
 import httpretty
-import requests
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
-from django.test import TestCase, override_settings
+from django.test import (
+    TestCase,
+    override_settings,
+)
 from django.urls import reverse
 from django.utils.html import escape
 from django.utils.six import StringIO
 from pandas import DataFrame
-from requests.exceptions import ConnectionError
-from social_core import backends
-from social_core.exceptions import AuthException
+from social_django.models import UserSocialAuth
 from stravalib import Client as StravaClient
-from stravalib.exc import AccessUnauthorized
 
-from ...routes.models import Athlete, Place, RoutePlace
+import requests
+from requests.exceptions import ConnectionError
+
+from ...routes.models import (
+    Place,
+    RoutePlace,
+)
 from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import UserFactory
-from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
-from ..models import StravaRoute, Swissname3dPlace, SwitzerlandMobilityRoute
+from ..forms import (
+    ImportersRouteForm,
+    SwitzerlandMobilityLogin,
+)
+from ..models import (
+    StravaRoute,
+    Swissname3dPlace,
+    SwitzerlandMobilityRoute,
+)
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import (SwitzerlandMobilityError, associate_by_strava_token,
-                     get_place_type_choices, get_route_form, get_strava_client,
-                     save_strava_token_from_social)
-from .factories import StravaRouteFactory, SwitzerlandMobilityRouteFactory
+from ..utils import (
+    SwitzerlandMobilityError,
+    get_place_type_choices,
+    get_route_form,
+    get_strava_client,
+)
+from .factories import (
+    StravaRouteFactory,
+    SwitzerlandMobilityRouteFactory,
+)
 
 
 def load_data(file=''):
@@ -52,9 +74,6 @@ def raise_connection_error(self, request, uri, headers):
     raise requests.ConnectionError('Connection error.')
 
 
-@override_settings(
-    STRAVA_CLIENT_TOKEN='1234567890123456789012345678901234567890'
-)
 class Strava(TestCase):
     """
     Test the Strava route importer.
@@ -64,13 +83,13 @@ class Strava(TestCase):
         # Add user to the test database and log him in
         self.user = UserFactory(password='testpassword')
         self.client.login(username=self.user.username, password='testpassword')
-        Athlete.objects.create(
+        UserSocialAuth.objects.create(
             user=self.user,
-            strava_token=settings.STRAVA_CLIENT_TOKEN,
+            provider='strava',
+            uid='123456'
         )
 
-    def intercept_get_athlete(self, body=load_data('strava_athlete.json'),
-                              status=200):
+    def intercept_get_athlete(self, body=load_data('strava_athlete.json'), status=200):
         """
         intercept the Strava API call to get_athlete. This call is made
         when creating the strava client to test if the API is
@@ -89,138 +108,28 @@ class Strava(TestCase):
     # Utils #
     #########
 
-    def test_get_strava_client_success(self):
+    def test_get_strava_athlete_success(self):
         # intercept API calls with httpretty
+        strava_client = get_strava_client(self.user)
+
         httpretty.enable()
         self.intercept_get_athlete()
-        strava_client = get_strava_client(self.user)
+        strava_client.get_athlete()
         httpretty.disable()
 
         self.assertIsInstance(strava_client, StravaClient)
 
-    def test_get_strava_client_bad_token(self):
-        self.user.athlete.strava_token = 'bad_token'
-        httpretty.enable()
-        self.intercept_get_athlete(
-            body=load_data('strava_athlete_unauthorized.json'),
-            status=401
-        )
-
-        with self.assertRaises(AccessUnauthorized):
-            get_strava_client(self.user)
-
-        httpretty.disable()
-
-        self.assertTrue(self.user.athlete.strava_token is None)
-
-    def test_get_strava_client_no_connection(self):
+    def test_get_strava_athlete_no_connection(self):
         # intercept API calls with httpretty
-        httpretty.enable()
+        strava_client = get_strava_client(self.user)
 
+        httpretty.enable()
         self.intercept_get_athlete(
             body=raise_connection_error,
         )
 
         with self.assertRaises(ConnectionError):
-            get_strava_client(self.user)
-
-        self.assertFalse(self.user.athlete.strava_token is None)
-
-    def test_save_strava_token_from_social_new_user(self):
-        response_raw = load_data('strava_athlete.json')
-        response = json_loads(response_raw)
-        response['access_token'] = '1234567890'
-
-        user = self.user
-        backend = backends.strava.StravaOAuth
-        args = ()
-        kwargs = {
-            'new_association': True,
-        }
-
-        save_strava_token_from_social(backend, user, response, *args, **kwargs)
-        self.assertEqual(user.athlete.strava_token, response['access_token'])
-
-    def test_save_strava_token_from_social_existing(self):
-        response_raw = load_data('strava_athlete.json')
-        response = json_loads(response_raw)
-        response['access_token'] = '1234567890'
-        user = self.user
-        athlete, created = Athlete.objects.get_or_create(user=user)
-        backend = backends.strava.StravaOAuth
-        args = ()
-        kwargs = {
-            'new_association': False,
-        }
-
-        save_strava_token_from_social(backend, user, response, *args, **kwargs)
-        self.assertNotEqual(athlete.strava_token, response['access_token'])
-
-    def test_associate_by_strava_token_existing(self):
-        backend = backends.strava.StravaOAuth
-        details = {}
-        args = ()
-        kwargs = {
-            'response': {
-                'access_token': settings.STRAVA_CLIENT_TOKEN
-            }
-        }
-
-        response = associate_by_strava_token(backend, details, *args, **kwargs)
-
-        self.assertEqual(response['user'], self.user)
-        self.assertFalse(response['is_new'])
-
-    def test_associate_by_strava_token_new(self):
-        backend = backends.strava.StravaOAuth
-        details = {}
-        args = ()
-        kwargs = {
-            'response': {
-                'access_token': 'not_the_same_token'
-            }
-        }
-
-        response = associate_by_strava_token(backend, details, *args, **kwargs)
-
-        self.assertTrue(response is None)
-
-    def test_associate_by_strava_token_more_than_one_user(self):
-        # create another user with the same token
-        user_2 = UserFactory()
-        Athlete.objects.create(
-            user=user_2,
-            strava_token=settings.STRAVA_CLIENT_TOKEN,
-        )
-
-        backend = backends.strava.StravaOAuth
-        details = {}
-        args = ()
-        kwargs = {
-            'response': {
-                'access_token': settings.STRAVA_CLIENT_TOKEN
-            }
-        }
-        with self.assertRaises(AuthException):
-            associate_by_strava_token(backend, details, *args, **kwargs)
-
-    def test_associate_by_strava_token_already_logged_in(self):
-        # user already logged-in
-        user = self.user
-
-        backend = backends.strava.StravaOAuth
-        details = {}
-        args = ()
-        kwargs = {
-            'response': {
-                'access_token': settings.STRAVA_CLIENT_TOKEN
-            }
-        }
-
-        response = associate_by_strava_token(
-            backend, user, details, *args, **kwargs)
-
-        self.assertTrue(response, None)
+            strava_client.get_athlete()
 
     def test_get_route_form(self):
         route = StravaRouteFactory()
@@ -241,8 +150,7 @@ class Strava(TestCase):
 
     def test_data_from_streams(self):
         source_id = 2325453
-        strava_client = StravaClient()
-        strava_client.access_token = self.user.athlete.strava_token
+        strava_client = get_strava_client(self.user)
 
         # intercept url with httpretty
         httpretty.enable()
@@ -268,8 +176,7 @@ class Strava(TestCase):
 
     def test_set_activity_type(self):
         route = StravaRoute(source_id=2325453)
-        strava_client = StravaClient()
-        strava_client.access_token = self.user.athlete.strava_token
+        strava_client = get_strava_client(self.user)
 
         httpretty.enable()
         # Route details API call
@@ -301,10 +208,9 @@ class Strava(TestCase):
     #########
     # views #
     #########
-    def test_redirect_when_token_missing(self):
-        athlete = self.user.athlete
-        athlete.strava_token = None
-        athlete.save()
+    def test_redirect_when_strava_token_missing(self):
+        asocial_user = UserFactory(password='testpassword')
+        self.client.login(username=asocial_user, password='testpassword')
 
         routes_url = reverse('strava_routes')
         response = self.client.get(routes_url)
@@ -406,8 +312,7 @@ class Strava(TestCase):
         self.intercept_get_athlete()
 
         # Route API call
-        route_detail_url = ('https://www.strava.com/api/v3/routes/%d'
-                            % source_id)
+        route_detail_url = 'https://www.strava.com/api/v3/routes/%d' % source_id
         route_detail_json = load_data('strava_route_detail.json')
 
         httpretty.register_uri(
@@ -430,7 +335,6 @@ class Strava(TestCase):
 
         response = self.client.get(url)
         response_content = response.content.decode('UTF-8')
-
         httpretty.disable()
 
         already_imported = 'Already Imported'
@@ -1036,14 +940,14 @@ class SwitzerlandMobility(TestCase):
         response = self.client.post(url, post_data)
         response_content = response.content.decode('UTF-8')
 
-        alert_box = '<li class="box mrgv- alert alert--error">'
+        alert_box = '<li class="box mrgv- alert error">'
         required_field = 'This field is required.'
         not_a_number = 'Enter a number.'
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(alert_box in response_content)
-        self.assertTrue(required_field in response_content)
-        self.assertTrue(not_a_number in response_content)
+        self.assertIn(alert_box, response_content)
+        self.assertIn(required_field, response_content)
+        self.assertIn(not_a_number, response_content)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
@@ -1086,7 +990,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.post(url, post_data)
         response_content = response.content.decode('UTF-8')
 
-        alert_box = '<li class="box mrgv- alert alert--error">'
+        alert_box = '<li class="box mrgv- alert error">'
         integrity_error = (
             'Integrity Error: duplicate key value violates unique constraint'
         )

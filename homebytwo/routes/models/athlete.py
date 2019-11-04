@@ -6,9 +6,6 @@ class Athlete(models.Model):
     # Extend default user model
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    # Save remote authentications
-    strava_token = models.CharField(max_length=100, null=True)
-
     # activities that the athlete practices with personal performance
     activies = models.ManyToManyField(
                 'ActivityType',
