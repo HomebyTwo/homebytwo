@@ -1,3 +1,5 @@
+-e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
+
 dj-database-url
 django
 django-filter
