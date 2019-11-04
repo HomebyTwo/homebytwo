@@ -2,8 +2,7 @@ from functools import wraps
 
 from django.shortcuts import redirect
 from django.urls import reverse
-
-from ..routes.models import Athlete
+from social_django.models import UserSocialAuth
 
 
 def strava_required(view_func):
@@ -14,11 +13,12 @@ def strava_required(view_func):
     @wraps(view_func)
     def new_view_func(request, *args, **kwargs):
 
-        # get or create the athlete for the request user
-        athlete, created = Athlete.objects.get_or_create(user=request.user)
+        # check if the user has an associated Strava account
+        try:
+            request.user.social_auth.get(provider='strava')
 
-        # check athlete has a Strava token
-        if not athlete.strava_token:
+        # redirect to login with strava page
+        except UserSocialAuth.DoesNotExist:
             return redirect(reverse('strava_connect'))
 
         # call the original function

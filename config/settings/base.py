@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -114,6 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/routes/'
+LOGIN_ERROR_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/'
 
 # Internationalization
@@ -212,10 +214,7 @@ LEAFLET_CONFIG = {
 # Strava #
 ##########
 
-# https://www.strava.com/settings/api
-
-STRAVA_CLIENT_ID = get_env_variable('STRAVA_CLIENT_ID', '')
-STRAVA_CLIENT_SECRET = get_env_variable('STRAVA_CLIENT_SECRET', '')
+# Strava API URL for retrieving routes
 STRAVA_ROUTE_URL = get_env_variable('STRAVA_ROUTE_URL', '')
 
 ######################
@@ -223,7 +222,6 @@ STRAVA_ROUTE_URL = get_env_variable('STRAVA_ROUTE_URL', '')
 ######################
 
 # http://python-social-auth.readthedocs.io/en/latest/configuration/django.html#installing
-
 SOCIAL_AUTH_POSTGRES_JSONFIELD = True
 SOCIAL_AUTH_URL_NAMESPACE = 'social'
 
@@ -232,9 +230,10 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 
-# recycle strava settings for django social auth
-SOCIAL_AUTH_STRAVA_KEY = STRAVA_CLIENT_ID
-SOCIAL_AUTH_STRAVA_SECRET = STRAVA_CLIENT_SECRET
+# Strava settings for django social auth, see https://www.strava.com/settings/api
+SOCIAL_AUTH_STRAVA_KEY = get_env_variable('STRAVA_CLIENT_ID', '')
+SOCIAL_AUTH_STRAVA_SECRET = get_env_variable('STRAVA_CLIENT_SECRET', '')
+SOCIAL_AUTH_STRAVA_SCOPE = ['read', 'read_all', 'activity:read', 'activity:read_all']
 
 SOCIAL_AUTH_STRAVA_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
@@ -242,9 +241,7 @@ SOCIAL_AUTH_STRAVA_PIPELINE = (
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
     'social_core.pipeline.user.get_username',
-    'homebytwo.importers.utils.associate_by_strava_token',
     'social_core.pipeline.user.create_user',
-    'homebytwo.importers.utils.save_strava_token_from_social',
     'social_core.pipeline.social_auth.associate_user',
     'social_core.pipeline.social_auth.load_extra_data',
     'social_core.pipeline.user.user_details',

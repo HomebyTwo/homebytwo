@@ -1,21 +1,34 @@
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.shortcuts import (
+    redirect,
+    render,
+)
 from requests.exceptions import ConnectionError
-from stravalib.client import Client as StravaClient
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.models import Athlete, Place
-from .decorators import strava_required, switerland_mobility_required
+from ..routes.models import Place
+from .decorators import (
+    strava_required,
+    switerland_mobility_required,
+)
 from .filters import PlaceFilter
 from .forms import SwitzerlandMobilityLogin
-from .models import StravaRoute, SwitzerlandMobilityRoute
-from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
-                    get_route_places_formset, get_strava_client,
-                    post_route_form, post_route_places_formset,
-                    save_detail_forms, get_place_type_choices)
+from .models import (
+    StravaRoute,
+    SwitzerlandMobilityRoute,
+)
+from .utils import (
+    SwitzerlandMobilityError,
+    get_checkpoints,
+    get_place_type_choices,
+    get_route_form,
+    get_route_places_formset,
+    get_strava_client,
+    post_route_form,
+    post_route_places_formset,
+    save_detail_forms,
+)
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -43,56 +56,7 @@ def index(request):
 
 @login_required
 def strava_connect(request):
-    """
-    generate the Strava connect button to request the Strava
-    authorization token from the user.
-
-    clicking on this button opens an authorization request on strava.com
-
-    accepting takes the user back to the 'strava_authorized' view that
-    saves the token.
-    """
-    # Initialize stravalib client
-    strava_client = StravaClient()
-
-    # generate the absolute redirect url
-    redirect_url = reverse('strava_authorized')
-    absolute_redirect_url = request.build_absolute_uri(redirect_url)
-
-    # Generate Strava authorization URL
-    strava_authorize_url = strava_client.authorization_url(
-        client_id=settings.STRAVA_CLIENT_ID,
-        redirect_uri=absolute_redirect_url,
-    )
-
-    context = {
-        'strava_authorize_url': strava_authorize_url,
-    }
-
-    # Render the Strava connect button
-    return render(request, 'importers/strava/connect.html', context)
-
-
-@login_required
-def strava_authorized(request):
-    # Initialize stravalib client
-    strava_client = StravaClient()
-
-    # Obtain access token
-    code = request.GET.get('code', '')
-    access_token = strava_client.exchange_code_for_token(
-        client_id=settings.STRAVA_CLIENT_ID,
-        client_secret=settings.STRAVA_CLIENT_SECRET,
-        code=code,
-    )
-
-    # Save access token to athlete
-    athlete, created = Athlete.objects.get_or_create(user=request.user)
-    athlete.strava_token = access_token
-    athlete.save()
-
-    # redirect to the Strava routes page
-    return redirect('strava_routes')
+    return render(request, 'importers/strava/connect.html')
 
 
 @login_required

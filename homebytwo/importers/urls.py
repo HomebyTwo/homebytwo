@@ -32,13 +32,6 @@ urlpatterns = [
         name='strava_connect'
     ),
 
-    # /import/strava/authorized/
-    path(
-        'strava/authorized/',
-        views.strava_authorized,
-        name='strava_authorized'
-    ),
-
     # /import/switzerland_mobility/
     path(
         'switzerland-mobility/',
