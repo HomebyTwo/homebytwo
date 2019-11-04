@@ -15,6 +15,7 @@ from fabric.api import (
     run,
     settings,
     shell_env,
+    sudo,
     task,
 )
 from fabric.context_managers import quiet
@@ -65,6 +66,7 @@ def git_push(commit):
     repository to the given commit. The commit can be any git object, be it a
     hash, a tag or a branch.
     """
+    gitric.allow_dirty()
     gitric.git_seed(get_project_root(), commit)
     gitric.git_reset(get_project_root(), 'master')
 
@@ -136,7 +138,7 @@ def restart_process():
     """
     Restart the WSGI process
     """
-    run("sudo systemctl restart gunicorn")
+    sudo("systemctl restart gunicorn")
 
 
 def generate_secret_key():
