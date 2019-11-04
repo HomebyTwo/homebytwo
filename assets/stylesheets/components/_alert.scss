@@ -2,27 +2,27 @@
   border-radius: 10px 10px;
 }
 
-.alert .debug {
+.alert.debug {
   color: $white;
   background-color: $black;
 }
 
-.alert .info {
+.alert.info {
   color: $info-text;
   background-color: $info;
 }
 
-.alert .success {
+.alert.success {
   color: $success-text;
   background-color: $success;
 }
 
-.alert .warning {
+.alert.warning {
   color: $warning-text;
   background-color: $warning;
 }
 
-.alert .error {
+.alert.error {
   color: $error-text;
   background-color: $error;
 }
