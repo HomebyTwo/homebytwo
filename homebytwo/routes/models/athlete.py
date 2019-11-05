@@ -9,10 +9,7 @@ class Athlete(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     # activities that the athlete practices with personal performance
-    activies = models.ManyToManyField(
-                'ActivityType',
-                through='ActivityPerformance'
-            )
+    activies = models.ManyToManyField("ActivityType", through="ActivityPerformance")
 
     def __str__(self):
         return str(self.user.username)
@@ -26,7 +23,7 @@ class Athlete(models.Model):
         """
 
         # retrieve the access token from the user with social auth
-        social = self.user.social_auth.get(provider='strava')
+        social = self.user.social_auth.get(provider="strava")
         strava_access_token = social.get_access_token(load_strategy())
 
         # return the Strava client

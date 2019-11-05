@@ -2,8 +2,9 @@ from django.contrib.gis.db import models
 
 
 class ActivityManager(models.Manager):
-
-    def import_all_user_activities_from_strava(self, user, after=None, before=None, limit=0):
+    def import_all_user_activities_from_strava(
+        self, user, after=None, before=None, limit=0
+    ):
         """
         retrieves all user activities from Strava and saves them to the Database.
 
@@ -15,11 +16,7 @@ class ActivityManager(models.Manager):
         and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
         """
 
-        kwargs = {
-            'after': after,
-            'before': before,
-            'limit': limit
-        }
+        kwargs = {"after": after, "before": before, "limit": limit}
 
         strava_activities = user.athlete.strava_client.get_activities(**kwargs)
 
@@ -27,23 +24,25 @@ class ActivityManager(models.Manager):
 
             # Retrieve the gear information from Strava if it does not yet exist in the database
             if strava_activity.gear_id is not None:
-                gear, created = Gear.objects.get_or_create(strava_id=strava_activity.gear_id,
-                                                           athlete=user.athlete)
-
+                gear, created = Gear.objects.get_or_create(
+                    strava_id=strava_activity.gear_id, athlete=user.athlete
+                )
                 if created:
                     gear.update_from_strava()
             else:
                 gear = None
 
             # Create the related ActivityType if it does not yet exist in the database
-            activity_type, created = ActivityType.objects.get_or_create(name=strava_activity.type)
+            activity_type, created = ActivityType.objects.get_or_create(
+                name=strava_activity.type
+            )
 
             # Create or update the activity in the Database
             defaults = {
-                'name': strava_activity.name,
-                'gear': gear,
-                'workout_type': strava_activity.workout_type,
-                'activity_type': activity_type,
+                "name": strava_activity.name,
+                "gear": gear,
+                "workout_type": strava_activity.workout_type,
+                "activity_type": activity_type,
             }
 
             activity, created = self.update_or_create(
@@ -62,14 +61,14 @@ class Activity(models.Model):
     """
 
     WORKOUT_TYPE_CHOICES = [
-        (None, 'None'),
-        ('0', 'default run'),
-        ('1', 'race run'),
-        ('2', 'long run'),
-        ('3', 'workout run'),
-        ('10', 'default ride'),
-        ('11', 'race ride'),
-        ('12', 'workout ride'),
+        (None, "None"),
+        ("0", "default run"),
+        ("1", "race run"),
+        ("2", "long run"),
+        ("3", "workout run"),
+        ("10", "default ride"),
+        ("11", "race ride"),
+        ("12", "workout ride"),
     ]
 
     # name of the activity as imported from Strava
@@ -79,16 +78,18 @@ class Activity(models.Model):
     strava_id = models.BigIntegerField(unique=True)
 
     # Athlete whose activities have been imported from Strava
-    athlete = models.ForeignKey('Athlete', on_delete=models.CASCADE)
+    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
 
     # Athlete whose activities have been imported from Strava
-    activity_type = models.ForeignKey('ActivityType', on_delete=models.PROTECT)
+    activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
     # Workout Type as defined in Strava
-    workout_type = models.SmallIntegerField(choices=WORKOUT_TYPE_CHOICES, blank=True, null=True)
+    workout_type = models.SmallIntegerField(
+        choices=WORKOUT_TYPE_CHOICES, blank=True, null=True
+    )
 
     # Gear used if any
-    gear = models.ForeignKey('Gear', on_delete=models.SET_NULL, blank=True, null=True)
+    gear = models.ForeignKey("Gear", on_delete=models.SET_NULL, blank=True, null=True)
 
     # Starting date and time of the activity in UTC
     start_date = models.DateTimeField()
@@ -100,22 +101,26 @@ class Activity(models.Model):
     objects = ActivityManager()
 
     def __str__(self):
-        return '{0} - {1}'.format(self.activity_type, self.name)
+        return "{0} - {1}".format(self.activity_type, self.name)
 
     def update_from_strava(self):
         # retrieve activity from Strava
         strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
 
         # Create the related ActivityType if it does not yet exist in the database
-        activity_type, created = ActivityType.objects.get_or_create(name=strava_activity.type)
+        activity_type, created = ActivityType.objects.get_or_create(
+            name=strava_activity.type
+        )
 
         # Retrieve the gear information from Strava if it does not yet exist in the database
         if strava_activity.gear_id is not None:
-            gear, created = Gear.objects.get_or_create(strava_id=strava_activity.gear_id,
-                                                       athlete=self.athlete)
-
+            gear, created = Gear.objects.get_or_create(
+                strava_id=strava_activity.gear_id, athlete=self.athlete
+            )
             if created:
                 gear.update_from_strava()
+        else:
+            gear = None
 
         self.name = strava_activity.name
         self.activity_type = activity_type
@@ -133,43 +138,43 @@ class ActivityType(models.Model):
 
     # Strava activity types
     ACTIVITY_NAME_CHOICES = [
-        ('AlpineSki', 'Alpine Ski'),
-        ('BackcountrySki', 'Backcountry Ski'),
-        ('Canoeing', 'Canoeing'),
-        ('Crossfit', 'Crossfit'),
-        ('EBikeRide', 'E-Bike Ride'),
-        ('Elliptical', 'Elliptical'),
-        ('Golf', 'Golf'),
-        ('Handcycle', 'Handcycle'),
-        ('Hike', 'Hike'),
-        ('IceSkate', 'Ice Skate'),
-        ('InlineSkate', 'Inline Skate'),
-        ('Kayaking', 'Kayaking'),
-        ('Kitesurf', 'Kitesurf'),
-        ('NordicSki', 'Nordic Ski'),
-        ('Ride', 'Ride'),
-        ('RockClimbing', 'Rock Climbing'),
-        ('RollerSki', 'Roller Ski'),
-        ('Rowing', 'Rowing'),
-        ('Run', 'Run'),
-        ('Sail', 'Sail'),
-        ('Skateboard', 'Skateboard'),
-        ('Snowboard', 'Snowboard'),
-        ('Snowshoe', 'Snowshoe'),
-        ('Soccer', 'Soccer'),
-        ('StairStepper', 'Stair Stepper'),
-        ('StandUpPaddling', 'Stand-Up Paddling'),
-        ('Surfing', 'Surfing'),
-        ('Swim', 'Swim'),
-        ('Velomobile', 'Velomobile'),
-        ('VirtualRide', 'Virtual Ride'),
-        ('VirtualRun', 'Virtual Run'),
-        ('Walk', 'Walk'),
-        ('WeightTraining', 'Weight Training'),
-        ('Wheelchair', 'Wheelchair'),
-        ('Windsurf', 'Windsurf'),
-        ('Workout', 'Workout'),
-        ('Yoga', 'Yoga'),
+        ("AlpineSki", "Alpine Ski"),
+        ("BackcountrySki", "Backcountry Ski"),
+        ("Canoeing", "Canoeing"),
+        ("Crossfit", "Crossfit"),
+        ("EBikeRide", "E-Bike Ride"),
+        ("Elliptical", "Elliptical"),
+        ("Golf", "Golf"),
+        ("Handcycle", "Handcycle"),
+        ("Hike", "Hike"),
+        ("IceSkate", "Ice Skate"),
+        ("InlineSkate", "Inline Skate"),
+        ("Kayaking", "Kayaking"),
+        ("Kitesurf", "Kitesurf"),
+        ("NordicSki", "Nordic Ski"),
+        ("Ride", "Ride"),
+        ("RockClimbing", "Rock Climbing"),
+        ("RollerSki", "Roller Ski"),
+        ("Rowing", "Rowing"),
+        ("Run", "Run"),
+        ("Sail", "Sail"),
+        ("Skateboard", "Skateboard"),
+        ("Snowboard", "Snowboard"),
+        ("Snowshoe", "Snowshoe"),
+        ("Soccer", "Soccer"),
+        ("StairStepper", "Stair Stepper"),
+        ("StandUpPaddling", "Stand-Up Paddling"),
+        ("Surfing", "Surfing"),
+        ("Swim", "Swim"),
+        ("Velomobile", "Velomobile"),
+        ("VirtualRide", "Virtual Ride"),
+        ("VirtualRun", "Virtual Run"),
+        ("Walk", "Walk"),
+        ("WeightTraining", "Weight Training"),
+        ("Wheelchair", "Wheelchair"),
+        ("Windsurf", "Windsurf"),
+        ("Workout", "Workout"),
+        ("Yoga", "Yoga"),
     ]
 
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES)
@@ -211,8 +216,9 @@ class ActivityPerformance(models.Model):
     Params are fitted using a robust linear model.
 
     """
-    athlete = models.ForeignKey('Athlete', on_delete=models.CASCADE)
-    activity_type = models.ForeignKey('ActivityType', on_delete=models.PROTECT)
+
+    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
+    activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
     # Slope squared parameter of the regression model
     slope_squared_param = models.FloatField(default=7.0)
@@ -227,21 +233,21 @@ class ActivityPerformance(models.Model):
     total_elevation_gain_param = models.FloatField(default=0.1)
 
     def __str__(self):
-        return '{0} - {1}'.format(self.athlete.user.username,
-                                  self.activity_type.name)
+        return "{0} - {1}".format(self.athlete.user.username, self.activity_type.name)
 
 
 class Gear(models.Model):
     """
     Small helper model to save gear from Strava.
     """
+
     strava_id = models.CharField(max_length=24, unique=True)
     name = models.CharField(max_length=100, blank=True)
     brand_name = models.CharField(max_length=100, blank=True)
-    athlete = models.ForeignKey('Athlete', on_delete=models.CASCADE)
+    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
 
     def __str__(self):
-        return '{0} - {1}'.format(self.brand_name, self.name)
+        return "{0} - {1}".format(self.brand_name, self.name)
 
     def update_from_strava(self):
         # retrieve gear info from Strava
