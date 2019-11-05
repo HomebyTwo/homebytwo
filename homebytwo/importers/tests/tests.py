@@ -45,7 +45,6 @@ from ..utils import (
     SwitzerlandMobilityError,
     get_place_type_choices,
     get_route_form,
-    get_strava_client,
 )
 from .factories import (
     StravaRouteFactory,
@@ -109,27 +108,24 @@ class Strava(TestCase):
     #########
 
     def test_get_strava_athlete_success(self):
-        # intercept API calls with httpretty
-        strava_client = get_strava_client(self.user)
 
+        # intercept API calls with httpretty
         httpretty.enable()
         self.intercept_get_athlete()
-        strava_client.get_athlete()
+        self.user.athlete.strava_client.get_athlete()
         httpretty.disable()
 
-        self.assertIsInstance(strava_client, StravaClient)
+        self.assertIsInstance(self.user.athlete.strava_client, StravaClient)
 
     def test_get_strava_athlete_no_connection(self):
         # intercept API calls with httpretty
-        strava_client = get_strava_client(self.user)
-
         httpretty.enable()
         self.intercept_get_athlete(
             body=raise_connection_error,
         )
 
         with self.assertRaises(ConnectionError):
-            strava_client.get_athlete()
+            self.user.athlete.strava_client.get_athlete()
 
     def test_get_route_form(self):
         route = StravaRouteFactory()
@@ -150,7 +146,6 @@ class Strava(TestCase):
 
     def test_data_from_streams(self):
         source_id = 2325453
-        strava_client = get_strava_client(self.user)
 
         # intercept url with httpretty
         httpretty.enable()
@@ -163,7 +158,7 @@ class Strava(TestCase):
             status=200
         )
 
-        streams = strava_client.get_route_streams(source_id)
+        streams = self.user.athlete.strava_client.get_route_streams(source_id)
 
         strava_route = StravaRouteFactory()
         data = strava_route._data_from_streams(streams)
@@ -175,8 +170,7 @@ class Strava(TestCase):
         self.assertEqual(nb_columns, 4)
 
     def test_set_activity_type(self):
-        route = StravaRoute(source_id=2325453)
-        strava_client = get_strava_client(self.user)
+        route = StravaRoute(source_id=2325453, owner=self.user)
 
         httpretty.enable()
         # Route details API call
@@ -200,7 +194,7 @@ class Strava(TestCase):
             status=200
         )
 
-        route.get_route_details(strava_client)
+        route.get_route_details()
         httpretty.disable()
 
         self.assertEqual(route.activity_type_id, 1)
@@ -307,9 +301,6 @@ class Strava(TestCase):
 
         # intercept API calls with httpretty
         httpretty.enable()
-
-        # Athlete API call
-        self.intercept_get_athlete()
 
         # Route API call
         route_detail_url = 'https://www.strava.com/api/v3/routes/%d' % source_id

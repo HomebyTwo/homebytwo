@@ -8,8 +8,6 @@ from django.forms import (
     modelform_factory,
     modelformset_factory,
 )
-from social_django.utils import load_strategy
-from stravalib.client import Client as StravaClient
 
 from ..routes.forms import RoutePlaceForm
 from ..routes.models import (
@@ -25,21 +23,6 @@ class SwitzerlandMobilityError(Exception):
     responds with an error code: 404, 500, etc.
     """
     pass
-
-
-def get_strava_client(user):
-    """
-    instantiate the Strava client with the athlete's authorization token
-    """
-
-    # retrieve the access token from the user with social auth
-    social = user.social_auth.get(provider='strava')
-    strava_access_token = social.get_access_token(load_strategy())
-
-    # create the Strava client
-    strava_client = StravaClient(access_token=strava_access_token)
-
-    return strava_client
 
 
 def get_route_form(route):
