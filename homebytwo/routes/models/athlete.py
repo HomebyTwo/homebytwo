@@ -8,8 +8,8 @@ class Athlete(models.Model):
     # Extend default user model
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    # activities that the athlete practices with personal performance
-    activies = models.ManyToManyField("ActivityType", through="ActivityPerformance")
+    # activity types that the athlete practices with personal performance
+    activity_type = models.ManyToManyField("ActivityType", through="ActivityPerformance")
 
     def __str__(self):
         return str(self.user.username)

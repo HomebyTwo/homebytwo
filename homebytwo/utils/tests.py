@@ -18,7 +18,7 @@ class TempMediaMixin(object):
         settings._original_file_storage = settings.DEFAULT_FILE_STORAGE
         self._temp_media = tempfile.mkdtemp()
         settings.MEDIA_ROOT = self._temp_media
-        settings.DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+        settings.DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
     def teardown_test_environment(self):
         "Delete temp storage."

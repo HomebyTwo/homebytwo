@@ -1,0 +1,10 @@
+{
+    "id": "g123456",
+    "primary": true,
+    "name": "Name of the shoe",
+    "resource_state": 3,
+    "distance": 510367,
+    "brand_name": "Brand",
+    "model_name": "Model Name",
+    "description": ""
+}
