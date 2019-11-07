@@ -10,52 +10,40 @@ def save_from_strava(strava_activity, athlete):
     information received from Strava.
     """
 
-    # find or create the activity type
-    activity_type, created = ActivityType.objects.get_or_create(
-        name=strava_activity.activity_type
-    )
-
-    # mapping of fields that will also be in the strava activity
-    required_strava_fields = {
+    # fields from the Strava API object mapped to the Activity Model
+    mapped_values = {
         "name": strava_activity.name,
-        "activity_type": activity_type,
+        "activity_type": strava_activity.type,
         "start_date": strava_activity.start_date,
         "elapsed_time": strava_activity.elapsed_time,
         "moving_time": strava_activity.moving_time,
-    }
-
-    # mapping of field that can sometimes be set to `None`
-    optional_strava_fields = {
         "description": strava_activity.description,
-        "gear": strava_activity.gear_id,
         "workout_type": strava_activity.workout_type,
         "distance": unithelper.meters(strava_activity.distance),
         "totalup": unithelper.meters(strava_activity.total_elevation_gain),
+        "gear": strava_activity.gear_id,
     }
 
-    # prepare values to create or update the activity_type
-    defaults = required_strava_fields
-
-    for key, value in optional_strava_fields.items():
-        if value is not None:
-            defaults[key] = value
+    # find or create the activity type
+    mapped_values["activity_type"], created = ActivityType.objects.get_or_create(
+        name=strava_activity.type
+    )
 
     # resolve foreign key relationship for gear if any
-    if "gear" in defaults:
-        defaults["gear"], created = Gear.objects.get_or_create(
+    if strava_activity.gear_id is not None:
+        mapped_values["gear"], created = Gear.objects.get_or_create(
             strava_id=strava_activity.gear_id, athlete=athlete
         )
-
-        # Retrieve the gear information from Strava if new.
+        # Retrieve the gear information from Strava if gear is new.
         if created:
-            defaults["gear"].update_from_strava()
+            mapped_values["gear"].update_from_strava()
 
     # create or update the activity in the Database
     activity, created = Activity.objects.update_or_create(
         strava_id=strava_activity.id,
         athlete=athlete,
         manual=strava_activity.manual,
-        defaults=defaults,
+        defaults=mapped_values,
     )
 
     return activity

@@ -16,7 +16,7 @@ def get_field_choices(choices):
     for groupname, group in choices:
         # if the group value is a string, it is not a group, it is a choice
         if isinstance(group, str):
-            yield(groupname)
+            yield (groupname)
         else:
             for key, value in group:
                 yield key
@@ -47,5 +47,13 @@ class AthleteFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def create_social_user(self, create, extracted, **kwargd):
+        # check if the user has an associated Strava account and create one if missing
         if create:
-            UserSocialAuth.objects.create(user=self.user, provider="strava", uid="123456")
+            try:
+                self.user.social_auth.get(provider="strava")
+            except UserSocialAuth.DoesNotExist:
+                UserSocialAuth.objects.create(
+                    user=self.user,
+                    provider="strava",
+                    uid=factory.Faker("random_int", min=1000, max=1000000),
+                )

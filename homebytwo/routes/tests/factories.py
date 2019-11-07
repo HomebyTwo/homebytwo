@@ -33,7 +33,7 @@ class GearFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Gear
 
-    name = factory.Faker("text", max_nb_chars=100)
+    name = factory.Faker("text", max_nb_chars=50)
     brand_name = factory.Faker("company")
     strava_id = factory.Sequence(lambda n: "g%d" % n)
     athlete = factory.SubFactory(AthleteFactory)
@@ -99,7 +99,7 @@ class ActivityFactory(factory.django.DjangoModelFactory):
 
     name = factory.Faker("sentence")
     description = factory.Faker("bs")
-    strava_id = factory.Sequence(lambda n: "%d" % n)
+    strava_id = factory.Sequence(lambda n: "100%d" % n)
     start_date = factory.Faker("past_datetime", tzinfo=utc)
     athlete = factory.SubFactory(AthleteFactory)
     activity_type = factory.SubFactory(ActivityTypeFactory)

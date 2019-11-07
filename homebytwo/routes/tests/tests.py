@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from os import (
     listdir,
@@ -41,6 +42,7 @@ from ..fields import (
     DataFrameFormField,
 )
 from ..models import (
+    Activity,
     ActivityPerformance,
     Gear,
     Place,
@@ -772,9 +774,37 @@ class RouteTestCase(TestCase):
 
 
 class ActivityTestCase(TestCase):
+
     def setUp(self):
         self.athlete = AthleteFactory(user__password="testpassword")
         self.client.login(username=self.athlete.user.username, password="testpassword")
+
+    def load_strava_activity_from_json(self, file):
+        """
+        helper to turn Strava API json results into stravalib client objects
+        """
+        strava_activity_json = read_data(file)
+        strava_activity_dict = json.loads(strava_activity_json)
+        strava_activity_id = strava_activity_dict['id']
+
+        # intercept API call and return local json instead
+        httpretty.enable()
+        activity_url = "https://www.strava.com/api/v3/activities/%s" % strava_activity_id
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=strava_activity_json,
+            status=200,
+        )
+
+        # intercepted call to the API
+        strava_activity = self.athlete.strava_client.get_activity(strava_activity_id)
+
+        httpretty.disable()
+
+        return strava_activity
 
     def test_save_strava_activity_add_existing_gear(self):
 
@@ -784,28 +814,47 @@ class ActivityTestCase(TestCase):
         # create gear
         gear = GearFactory(athlete=self.athlete)
 
-        # get activity data from Strava with a gear_id
+        # fake activity from Strava with a gear_id from an existing gear
         strava_activity = activity
+
+        # map id back to strava_id
+        strava_activity.id = activity.strava_id
+
+        # map totalup back to total_elevation_gain and activity_type to type
         strava_activity.total_elevation_gain = activity.totalup
+        strava_activity.type = activity.activity_type
+
+        #  add existing gear to the Strava activity
         strava_activity.gear_id = gear.strava_id
 
         updated_activity = save_from_strava(strava_activity, activity.athlete)
         self.assertEqual(gear, updated_activity.gear)
+        self.assertEqual(Activity.objects.count(), 1)
 
     def test_save_strava_activity_add_new_gear(self):
 
         # create activity with no gear
         activity = ActivityFactory(gear=None, athlete=self.athlete)
 
-        # get activity data from Strava with a new gear_id
+        # fake activity from Strava with a new gear_id
         strava_activity = activity
+
+        # map id back to strava_id
+        strava_activity.id = activity.strava_id
+
+        # map totalup back to total_elevation_gain and activity_type to type
         strava_activity.total_elevation_gain = activity.totalup
+        strava_activity.type = activity.activity_type
+
+        #  add new gear to the Strava activity
         strava_activity.gear_id = "g123456"
+
+        # intercept Strava API call to get gear info from Strava
+        httpretty.enable()
 
         gear_url = "https://www.strava.com/api/v3/gear/%s" % strava_activity.gear_id
         gear_json = read_data("gear.json")
 
-        httpretty.enable()
         httpretty.register_uri(
             httpretty.GET,
             gear_url,
@@ -813,9 +862,47 @@ class ActivityTestCase(TestCase):
             body=gear_json,
             status=200,
         )
+
+        # save the strava activity: because of the new gear,
+        #  it will trigger an update with the Strava API
         updated_activity = save_from_strava(strava_activity, activity.athlete)
 
         httpretty.disable()
 
         self.assertEqual(strava_activity.gear_id, updated_activity.gear.strava_id)
         self.assertIsInstance(updated_activity.gear, Gear)
+        self.assertEqual(Activity.objects.count(), 1)
+
+    def test_save_strava_activity_remove_gear(self):
+
+        # create activity with gear
+        activity = ActivityFactory(athlete=self.athlete)
+
+        # fake a Strava activity as it would be retrieved from the API
+        strava_activity = activity
+
+        # map id back to Strava
+        strava_activity.id = activity.strava_id
+
+        # map totalup back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.totalup
+        strava_activity.type = activity.activity_type
+
+        # remove gear
+        strava_activity.gear_id = None
+
+        # save the strava activity
+        updated_activity = save_from_strava(strava_activity, activity.athlete)
+
+        self.assertIsNone(updated_activity.gear)
+        self.assertEqual(Activity.objects.count(), 1)
+
+    def test_save_strava_activity_new_manual_activity(self):
+
+        strava_activity = self.load_strava_activity_from_json("manual_activity.json")
+
+        # save the manual strava activity
+        new_activity = save_from_strava(strava_activity, self.athlete)
+
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertTrue(new_activity.manual)
