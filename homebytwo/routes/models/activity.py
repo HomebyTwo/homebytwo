@@ -77,7 +77,8 @@ class ActivityManager(models.Manager):
         and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
         """
         strava_activities = user.athlete.strava_client.get_activities(
-            before=before, after=after, limit=limit)
+            before=before, after=after, limit=limit
+        )
 
         activities = []
 
@@ -191,44 +192,82 @@ class ActivityType(models.Model):
     """
 
     # Strava activity types
+    ALPINESKI = "AlpineSki"
+    BACKCOUNTRYSKI = "BackcountrySki"
+    CANOEING = "Canoeing"
+    CROSSFIT = "Crossfit"
+    EBIKERIDE = "EBikeRide"
+    ELLIPTICAL = "Elliptical"
+    GOLF = "Golf"
+    HANDCYCLE = "Handcycle"
+    HIKE = "Hike"
+    ICESKATE = "IceSkate"
+    INLINESKATE = "InlineSkate"
+    KAYAKING = "Kayaking"
+    KITESURF = "Kitesurf"
+    NORDICSKI = "NordicSki"
+    RIDE = "Ride"
+    ROCKCLIMBING = "RockClimbing"
+    ROLLERSKI = "RollerSki"
+    ROWING = "Rowing"
+    RUN = "Run"
+    SAIL = "Sail"
+    SKATEBOARD = "Skateboard"
+    SNOWBOARD = "Snowboard"
+    SNOWSHOE = "Snowshoe"
+    SOCCER = "Soccer"
+    STAIRSTEPPER = "StairStepper"
+    STANDUPPADDLING = "StandUpPaddling"
+    SURFING = "Surfing"
+    SWIM = "Swim"
+    VELOMOBILE = "Velomobile"
+    VIRTUALRIDE = "VirtualRide"
+    VIRTUALRUN = "VirtualRun"
+    WALK = "Walk"
+    WEIGHTTRAINING = "WeightTraining"
+    WHEELCHAIR = "Wheelchair"
+    WINDSURF = "Windsurf"
+    WORKOUT = "Workout"
+    YOGA = "Yoga"
+
     ACTIVITY_NAME_CHOICES = [
-        ("AlpineSki", "Alpine Ski"),
-        ("BackcountrySki", "Backcountry Ski"),
-        ("Canoeing", "Canoeing"),
-        ("Crossfit", "Crossfit"),
-        ("EBikeRide", "E-Bike Ride"),
-        ("Elliptical", "Elliptical"),
-        ("Golf", "Golf"),
-        ("Handcycle", "Handcycle"),
-        ("Hike", "Hike"),
-        ("IceSkate", "Ice Skate"),
-        ("InlineSkate", "Inline Skate"),
-        ("Kayaking", "Kayaking"),
-        ("Kitesurf", "Kitesurf"),
-        ("NordicSki", "Nordic Ski"),
-        ("Ride", "Ride"),
-        ("RockClimbing", "Rock Climbing"),
-        ("RollerSki", "Roller Ski"),
-        ("Rowing", "Rowing"),
-        ("Run", "Run"),
-        ("Sail", "Sail"),
-        ("Skateboard", "Skateboard"),
-        ("Snowboard", "Snowboard"),
-        ("Snowshoe", "Snowshoe"),
-        ("Soccer", "Soccer"),
-        ("StairStepper", "Stair Stepper"),
-        ("StandUpPaddling", "Stand-Up Paddling"),
-        ("Surfing", "Surfing"),
-        ("Swim", "Swim"),
-        ("Velomobile", "Velomobile"),
-        ("VirtualRide", "Virtual Ride"),
-        ("VirtualRun", "Virtual Run"),
-        ("Walk", "Walk"),
-        ("WeightTraining", "Weight Training"),
-        ("Wheelchair", "Wheelchair"),
-        ("Windsurf", "Windsurf"),
-        ("Workout", "Workout"),
-        ("Yoga", "Yoga"),
+        (ALPINESKI, "Alpine Ski"),
+        (BACKCOUNTRYSKI, "Backcountry Ski"),
+        (CANOEING, "Canoeing"),
+        (CROSSFIT, "Crossfit"),
+        (EBIKERIDE, "E-Bike Ride"),
+        (ELLIPTICAL, "Elliptical"),
+        (GOLF, "Golf"),
+        (HANDCYCLE, "Handcycle"),
+        (HIKE, "Hike"),
+        (ICESKATE, "Ice Skate"),
+        (INLINESKATE, "Inline Skate"),
+        (KAYAKING, "Kayaking"),
+        (KITESURF, "Kitesurf"),
+        (NORDICSKI, "Nordic Ski"),
+        (RIDE, "Ride"),
+        (ROCKCLIMBING, "Rock Climbing"),
+        (ROLLERSKI, "Roller Ski"),
+        (ROWING, "Rowing"),
+        (RUN, "Run"),
+        (SAIL, "Sail"),
+        (SKATEBOARD, "Skateboard"),
+        (SNOWBOARD, "Snowboard"),
+        (SNOWSHOE, "Snowshoe"),
+        (SOCCER, "Soccer"),
+        (STAIRSTEPPER, "Stair Stepper"),
+        (STANDUPPADDLING, "Stand-Up Paddling"),
+        (SURFING, "Surfing"),
+        (SWIM, "Swim"),
+        (VELOMOBILE, "Velomobile"),
+        (VIRTUALRIDE, "Virtual Ride"),
+        (VIRTUALRUN, "Virtual Run"),
+        (WALK, "Walk"),
+        (WEIGHTTRAINING, "Weight Training"),
+        (WHEELCHAIR, "Wheelchair"),
+        (WINDSURF, "Windsurf"),
+        (WORKOUT, "Workout"),
+        (YOGA, "Yoga"),
     ]
 
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES, unique=True)
