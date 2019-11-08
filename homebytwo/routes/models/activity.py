@@ -6,11 +6,13 @@ from ...core.models import TimeStampedModel
 
 
 class ActivityManager(models.Manager):
-    def import_all_user_activities_from_strava(
+    def update_user_activities_from_strava(
         self, athlete, after=None, before=None, limit=0
     ):
         """
-        fetches user activities from Strava, saves them to the Database and returns them
+        fetches an athlete's activities from Strava and saves them to the Database.
+        It erases the ones that are no more available becaause they have been deleted
+        or set to private. It returns all of the athlete's current activities.
 
         Parameters:s
         'after': start date is after specified value (UTC). datetime.datetime, str or None.
@@ -33,7 +35,7 @@ class ActivityManager(models.Manager):
             try:
                 activity = Activity.objects.get(strava_id=strava_activity.id)
 
-            except activity.DoesNotExist:
+            except Activity.DoesNotExist:
                 activity = Activity(athlete=athlete, strava_id=strava_activity.id)
 
             activity.save_from_strava(strava_activity)

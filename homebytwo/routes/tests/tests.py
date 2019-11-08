@@ -775,7 +775,6 @@ class RouteTestCase(TestCase):
 
 
 class ActivityTestCase(TestCase):
-
     def setUp(self):
         self.athlete = AthleteFactory(user__password="testpassword")
         self.client.login(username=self.athlete.user.username, password="testpassword")
@@ -786,11 +785,13 @@ class ActivityTestCase(TestCase):
         """
         strava_activity_json = read_data(file)
         strava_activity_dict = json.loads(strava_activity_json)
-        strava_activity_id = strava_activity_dict['id']
+        strava_activity_id = strava_activity_dict["id"]
 
         # intercept API call and return local json instead
-        httpretty.enable()
-        activity_url = "https://www.strava.com/api/v3/activities/%s" % strava_activity_id
+        httpretty.enable(allow_net_connect=False)
+        activity_url = (
+            "https://www.strava.com/api/v3/activities/%s" % strava_activity_id
+        )
 
         httpretty.register_uri(
             httpretty.GET,
@@ -874,7 +875,7 @@ class ActivityTestCase(TestCase):
         strava_activity.gear_id = "g123456"
 
         # intercept Strava API call to get gear info from Strava
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
         gear_url = "https://www.strava.com/api/v3/gear/%s" % strava_activity.gear_id
         gear_json = read_data("gear.json")
@@ -928,9 +929,11 @@ class ActivityTestCase(TestCase):
 
         # API response will be a 404 because it was deleted or
         # the the privacy settings have changed
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
-        activity_url = "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        activity_url = (
+            "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        )
         not_found_json = read_data("activity_not_found.json")
 
         httpretty.register_uri(
@@ -958,9 +961,11 @@ class ActivityTestCase(TestCase):
 
         self.assertEqual(activity.description, "Manual Description")
 
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
-        activity_url = "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        activity_url = (
+            "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        )
         changed_json = read_data("manual_activity_changed.json")
 
         httpretty.register_uri(
@@ -980,3 +985,47 @@ class ActivityTestCase(TestCase):
         self.assertTrue(activity.manual)
 
         self.assertEqual(activity.description, "")
+
+    def test_import_all_user_activities_from_strava(self):
+
+        httpretty.enable(allow_net_connect=False)
+        activities_url = "https://www.strava.com/api/v3/athlete/activities"
+
+        # get athlete activities: 2 retrieved
+        responses = [
+            # first call, content: two activities
+            httpretty.Response(
+                content_type="application/json",
+                body=read_data("activities.json"),  # two activities
+            ),
+            # second call, content one activity
+            httpretty.Response(
+                content_type="application/json",
+                body=read_data("activities_one.json"),  # one activity
+            ),
+            httpretty.Response(
+                content_type="application/json",
+                body=read_data("activities.json"),  # two activities
+            ),
+            httpretty.Response(content_type="application/json", body="[]"),  # empty
+        ]
+
+        httpretty.register_uri(
+            httpretty.GET, activities_url, responses=responses, match_querystring=False,
+        )
+
+        # update athlete activities: 2 received
+        Activity.objects.update_user_activities_from_strava(self.athlete)
+        self.assertEqual(Activity.objects.count(), 2)
+
+        # update athlete activities: 1 received
+        Activity.objects.update_user_activities_from_strava(self.athlete)
+        self.assertEqual(Activity.objects.count(), 1)
+
+        # update athlete activities: 2 received
+        Activity.objects.update_user_activities_from_strava(self.athlete)
+        self.assertEqual(Activity.objects.count(), 2)
+
+        # update activities: 0 received
+        Activity.objects.update_user_activities_from_strava(self.athlete)
+        self.assertEqual(Activity.objects.count(), 0)
