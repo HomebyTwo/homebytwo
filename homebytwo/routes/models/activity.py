@@ -83,15 +83,24 @@ class Activity(TimeStampedModel):
     User activities used to calculate performance by activity type.
     """
 
+    NONE = None
+    DEFAULT_RUN = 0
+    RACE_RUN = 1
+    LONG_RUN = 2
+    WORKOUT_RUN = 3
+    DEFAULT_RIDE = 10
+    RACE_RIDE = 11
+    WORKOUT_RIDE = 12
+
     WORKOUT_TYPE_CHOICES = [
-        (None, "None"),
-        ("0", "default run"),
-        ("1", "race run"),
-        ("2", "long run"),
-        ("3", "workout run"),
-        ("10", "default ride"),
-        ("11", "race ride"),
-        ("12", "workout ride"),
+        (NONE, "None"),
+        (DEFAULT_RUN, "default run"),
+        (RACE_RUN, "race run"),
+        (LONG_RUN, "long run"),
+        (WORKOUT_RUN, "workout run"),
+        (DEFAULT_RIDE, "default ride"),
+        (RACE_RIDE, "race ride"),
+        (WORKOUT_RIDE, "workout ride"),
     ]
 
     # name of the activity as imported from Strava
@@ -107,10 +116,14 @@ class Activity(TimeStampedModel):
     start_date = models.DateTimeField()
 
     # Athlete whose activities have been imported from Strava
-    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
+    athlete = models.ForeignKey(
+        "Athlete", on_delete=models.CASCADE, related_name="activities"
+    )
 
     # Athlete whose activities have been imported from Strava
-    activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
+    activity_type = models.ForeignKey(
+        "ActivityType", on_delete=models.PROTECT, related_name="activities"
+    )
 
     # Was the activity created manually? If yes there are no associated data streams.
     manual = models.BooleanField(default=False)
@@ -137,7 +150,13 @@ class Activity(TimeStampedModel):
     )
 
     # Gear used if any
-    gear = models.ForeignKey("Gear", on_delete=models.SET_NULL, blank=True, null=True)
+    gear = models.ForeignKey(
+        "Gear",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="activities",
+    )
 
     # Custom manager
     objects = ActivityManager()
@@ -325,7 +344,9 @@ class Gear(models.Model):
     strava_id = models.CharField(max_length=24, unique=True)
     name = models.CharField(max_length=100, blank=True)
     brand_name = models.CharField(max_length=100, blank=True)
-    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
+    athlete = models.ForeignKey(
+        "Athlete", on_delete=models.CASCADE, related_name="gears"
+    )
 
     def __str__(self):
         return "{0} - {1}".format(self.brand_name, self.name)
