@@ -1,5 +1,7 @@
 import json
 from datetime import timedelta
+from copy import deepcopy
+
 from os import (
     listdir,
     makedirs,
@@ -47,7 +49,6 @@ from ..models import (
     Gear,
     Place,
 )
-from ..models.activity import save_from_strava
 from ..templatetags.duration import (
     baseround,
     nice_repr,
@@ -806,6 +807,27 @@ class ActivityTestCase(TestCase):
 
         return strava_activity
 
+    def test_save_strava_activity_new_manual_activity(self):
+
+        strava_activity = self.load_strava_activity_from_json("manual_activity.json")
+        new_activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
+
+        # save the manual strava activity
+        new_activity.save_from_strava(strava_activity)
+
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertTrue(new_activity.manual)
+
+    def test_save_strava_race_run(self):
+
+        # load_json and save the manual strava activity
+        strava_activity = self.load_strava_activity_from_json("race_run_activity.json")
+        new_activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
+        new_activity.save_from_strava(strava_activity)
+
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertEqual(int(new_activity.workout_type), Activity.RACE_RUN)
+
     def test_save_strava_activity_add_existing_gear(self):
 
         # create activity with no gear
@@ -815,7 +837,7 @@ class ActivityTestCase(TestCase):
         gear = GearFactory(athlete=self.athlete)
 
         # fake activity from Strava with a gear_id from an existing gear
-        strava_activity = activity
+        strava_activity = deepcopy(activity)
 
         # map id back to strava_id
         strava_activity.id = activity.strava_id
@@ -827,8 +849,10 @@ class ActivityTestCase(TestCase):
         #  add existing gear to the Strava activity
         strava_activity.gear_id = gear.strava_id
 
-        updated_activity = save_from_strava(strava_activity, activity.athlete)
-        self.assertEqual(gear, updated_activity.gear)
+        # update activity with Strava data
+        activity.save_from_strava(strava_activity)
+
+        self.assertEqual(gear, activity.gear)
         self.assertEqual(Activity.objects.count(), 1)
 
     def test_save_strava_activity_add_new_gear(self):
@@ -837,7 +861,7 @@ class ActivityTestCase(TestCase):
         activity = ActivityFactory(gear=None, athlete=self.athlete)
 
         # fake activity from Strava with a new gear_id
-        strava_activity = activity
+        strava_activity = deepcopy(activity)
 
         # map id back to strava_id
         strava_activity.id = activity.strava_id
@@ -863,14 +887,14 @@ class ActivityTestCase(TestCase):
             status=200,
         )
 
-        # save the strava activity: because of the new gear,
+        # update the activity with strava data: because of the new gear,
         #  it will trigger an update with the Strava API
-        updated_activity = save_from_strava(strava_activity, activity.athlete)
+        activity.save_from_strava(strava_activity)
 
         httpretty.disable()
 
-        self.assertEqual(strava_activity.gear_id, updated_activity.gear.strava_id)
-        self.assertIsInstance(updated_activity.gear, Gear)
+        self.assertEqual(strava_activity.gear_id, activity.gear.strava_id)
+        self.assertIsInstance(activity.gear, Gear)
         self.assertEqual(Activity.objects.count(), 1)
 
     def test_save_strava_activity_remove_gear(self):
@@ -879,7 +903,7 @@ class ActivityTestCase(TestCase):
         activity = ActivityFactory(athlete=self.athlete)
 
         # fake a Strava activity as it would be retrieved from the API
-        strava_activity = activity
+        strava_activity = deepcopy(activity)
 
         # map id back to Strava
         strava_activity.id = activity.strava_id
@@ -892,17 +916,67 @@ class ActivityTestCase(TestCase):
         strava_activity.gear_id = None
 
         # save the strava activity
-        updated_activity = save_from_strava(strava_activity, activity.athlete)
+        activity.save_from_strava(strava_activity)
 
-        self.assertIsNone(updated_activity.gear)
+        self.assertIsNone(activity.gear)
         self.assertEqual(Activity.objects.count(), 1)
 
-    def test_save_strava_activity_new_manual_activity(self):
+    def test_update_strava_activity_deleted(self):
+
+        # create activity
+        activity = ActivityFactory(athlete=self.athlete)
+
+        # API response will be a 404 because it was deleted or
+        # the the privacy settings have changed
+        httpretty.enable()
+
+        activity_url = "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        not_found_json = read_data("activity_not_found.json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=not_found_json,
+            status=404,
+        )
+
+        # update the activity from strava data
+        activity.update_from_strava()
+
+        httpretty.disable()
+
+        self.assertEqual(Activity.objects.count(), 0)
+
+    def test_update_strava_activity_changed(self):
 
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")
+        activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
 
         # save the manual strava activity
-        new_activity = save_from_strava(strava_activity, self.athlete)
+        activity.save_from_strava(strava_activity)
+
+        self.assertEqual(activity.description, "Manual Description")
+
+        httpretty.enable()
+
+        activity_url = "https://www.strava.com/api/v3/activities/%s" % activity.strava_id
+        changed_json = read_data("manual_activity_changed.json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=changed_json,
+            status=200,
+        )
+
+        # update the activity from strava data
+        activity.update_from_strava()
+
+        httpretty.disable()
 
         self.assertEqual(Activity.objects.count(), 1)
-        self.assertTrue(new_activity.manual)
+        self.assertTrue(activity.manual)
+
+        self.assertEqual(activity.description, "")

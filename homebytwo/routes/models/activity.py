@@ -1,57 +1,13 @@
 from django.contrib.gis.db import models
 from stravalib import unithelper
+from stravalib.exc import ObjectNotFound
 
 from ...core.models import TimeStampedModel
 
 
-def save_from_strava(strava_activity, athlete):
-    """
-    helper function to create or update a Strava activity based on
-    information received from Strava.
-    """
-
-    # fields from the Strava API object mapped to the Activity Model
-    mapped_values = {
-        "name": strava_activity.name,
-        "activity_type": strava_activity.type,
-        "start_date": strava_activity.start_date,
-        "elapsed_time": strava_activity.elapsed_time,
-        "moving_time": strava_activity.moving_time,
-        "description": strava_activity.description,
-        "workout_type": strava_activity.workout_type,
-        "distance": unithelper.meters(strava_activity.distance),
-        "totalup": unithelper.meters(strava_activity.total_elevation_gain),
-        "gear": strava_activity.gear_id,
-    }
-
-    # find or create the activity type
-    mapped_values["activity_type"], created = ActivityType.objects.get_or_create(
-        name=strava_activity.type
-    )
-
-    # resolve foreign key relationship for gear if any
-    if strava_activity.gear_id is not None:
-        mapped_values["gear"], created = Gear.objects.get_or_create(
-            strava_id=strava_activity.gear_id, athlete=athlete
-        )
-        # Retrieve the gear information from Strava if gear is new.
-        if created:
-            mapped_values["gear"].update_from_strava()
-
-    # create or update the activity in the Database
-    activity, created = Activity.objects.update_or_create(
-        strava_id=strava_activity.id,
-        athlete=athlete,
-        manual=strava_activity.manual,
-        defaults=mapped_values,
-    )
-
-    return activity
-
-
 class ActivityManager(models.Manager):
     def import_all_user_activities_from_strava(
-        self, user, after=None, before=None, limit=0
+        self, athlete, after=None, before=None, limit=0
     ):
         """
         fetches user activities from Strava, saves them to the Database and returns them
@@ -64,15 +20,28 @@ class ActivityManager(models.Manager):
         See https://pythonhosted.org/stravalib/usage/activities.html#list-of-activities
         and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
         """
-        strava_activities = user.athlete.strava_client.get_activities(
+
+        # retrieve the athlete's activities on Strava
+        strava_activities = athlete.strava_client.get_activities(
             before=before, after=after, limit=limit
         )
 
+        # create or update retrieved activities
         activities = []
-
         for strava_activity in strava_activities:
-            activity = save_from_strava(strava_activity, user)
-            activities.add(activity)
+
+            try:
+                activity = Activity.objects.get(strava_id=strava_activity.id)
+
+            except activity.DoesNotExist:
+                activity = Activity(athlete=athlete, strava_id=strava_activity.id)
+
+            activity.save_from_strava(strava_activity)
+            activities.append(activity)
+
+        # delete activities not in the Strava result
+        existing_activities = Activity.objects.filter(athlete=athlete)
+        existing_activities.exclude(id__in=[activity.id for activity in activities]).delete()
 
         return activities
 
@@ -166,8 +135,59 @@ class Activity(TimeStampedModel):
 
     def update_from_strava(self):
         # retrieve activity from Strava and update it.
-        strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
-        save_from_strava(strava_activity, self.athlete)
+        try:
+            strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
+            self.save_from_strava(strava_activity)
+
+        except ObjectNotFound:
+            self.delete()
+
+    def save_from_strava(self, strava_activity):
+        """
+        create or update an activity based on information received from Strava.
+
+        `strava_activity` is the activity object returned by the Strava API client.
+        returns the saved activity.
+        """
+
+        # fields from the Strava API object mapped to the Activity Model
+        mapped_values = {
+            "name": strava_activity.name,
+            "activity_type": strava_activity.type,
+            "manual": strava_activity.manual,
+            "start_date": strava_activity.start_date,
+            "elapsed_time": strava_activity.elapsed_time,
+            "moving_time": strava_activity.moving_time,
+            "description": strava_activity.description,
+            "workout_type": strava_activity.workout_type,
+            "distance": unithelper.meters(strava_activity.distance),
+            "totalup": unithelper.meters(strava_activity.total_elevation_gain),
+            "gear": strava_activity.gear_id,
+        }
+
+        # find or create the activity type
+        mapped_values["activity_type"], created = ActivityType.objects.get_or_create(
+            name=strava_activity.type
+        )
+
+        # resolve foreign key relationship for gear if any
+        if strava_activity.gear_id is not None:
+            mapped_values["gear"], created = Gear.objects.get_or_create(
+                strava_id=strava_activity.gear_id, athlete=self.athlete
+            )
+            # Retrieve the gear information from Strava if gear is new.
+            if created:
+                mapped_values["gear"].update_from_strava()
+
+        # transform text field to empty if None
+        if strava_activity.description is None:
+            mapped_values["description"] = ""
+
+        # update the activity in the Database
+        for key, value in mapped_values.items():
+            setattr(self, key, value)
+
+        self.save()
 
     def get_streams_from_strava(self, resolution="low"):
         """
