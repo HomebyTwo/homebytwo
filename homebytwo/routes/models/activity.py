@@ -201,8 +201,10 @@ class Activity(TimeStampedModel):
         for better accuracy in the prediction.
         """
         # exclude manually created activities because they have no streams
+
+        STREAM_TYPES = ["time", "altitude", "distance"]
+
         if not self.manual:
-            STREAM_TYPES = ["time", "altitude", "distance"]
             strava_client = self.athlete.strava_client
 
             raw_streams = strava_client.get_activity_streams(
