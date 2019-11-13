@@ -24,7 +24,6 @@ from .utils import (
     get_place_type_choices,
     get_route_form,
     get_route_places_formset,
-    get_strava_client,
     post_route_form,
     post_route_places_formset,
     save_detail_forms,
@@ -66,8 +65,9 @@ def strava_routes(request):
     template = 'importers/routes.html'
     context = {'source': STRAVA_SOURCE_INFO}
 
+    # Retrieve routes from Strava
     try:
-        strava_client = get_strava_client(request.user)
+        new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(user=request.user)
 
     except ConnectionError as error:
         message = "Could not connect to Strava: {}".format(error)
@@ -75,15 +75,9 @@ def strava_routes(request):
         return render(request, template, context)
 
     except AccessUnauthorized:
-        message = ('Strava Authorization refused. Try connect to Strava again')
+        message = ('Strava Authorization refused. Try to connect to Strava again')
         messages.error(request, message)
         return redirect('strava_connect')
-
-    # Retrieve routes from Strava
-    new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
-        user=request.user,
-        strava_client=strava_client
-    )
 
     context.update({
         'new_routes': new_routes,
@@ -133,13 +127,14 @@ def strava_route(request, source_id):
 
     if request.method == 'GET':
 
-        # get route details from Strava API
-        strava_client = get_strava_client(request.user)
-        route.get_route_details(strava_client)
-
-        # add user information to route.
-        # to check if the route has already been imported.
+        # add user to route to retrieve details from Strava and
+        # to check if it has already been imported
         route.owner = request.user
+
+        # get route details from Strava API
+        route.get_route_details()
+
+        # find places along the route
         places_qs = Place.objects.get_places_from_line(route.geom, 75)
 
         # filter bus stops for bike routes

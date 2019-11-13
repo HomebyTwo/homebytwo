@@ -23,4 +23,10 @@ urlpatterns = [
     # route delete
     # ex: /routes/5/delete/
     path('<int:pk>/delete/', views.RouteDelete.as_view(), name='delete'),
+
+    # list of Strava activities for the athlete
+    path('activities/', views.ActivityList.as_view(), name='activities'),
+
+    # callback URL for Strava webhooks
+    path('webhook/', views.strava_webhook, name='strava_webhook')
 ]

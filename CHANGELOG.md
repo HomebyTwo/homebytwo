@@ -1,4 +1,8 @@
 # Change Log
+## [0.6.0] - 2019-11-13 Retrieve Activities from Strava
+- An athlete's Strava activities can be retrieved and saved to the database
+- Strava Webhook API subscriptions can be authorized
+- Events sent from the Strava Webhook API subscriptions are saved to the database (but not yet processed)
 
 ## [0.5.2] - 2019-11-04 Adapt to Strava API changes
 - The Strava API now uses refresh tokens and does not discloses email addresses

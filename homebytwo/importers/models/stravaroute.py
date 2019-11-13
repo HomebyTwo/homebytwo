@@ -18,10 +18,10 @@ class StravaRouteManager(RouteManager):
             get_queryset().filter(data_source='strava')
 
     # login to Strava and retrieve route list
-    def get_routes_list_from_server(self, user, strava_client):
+    def get_routes_list_from_server(self, user):
 
         # retrieve routes from strava
-        strava_routes = strava_client.get_routes()
+        strava_routes = user.athlete.strava_client.get_routes()
 
         # create model instances with Strava routes data
         routes = []
@@ -58,15 +58,17 @@ class StravaRoute(Route):
     objects = StravaRouteManager()
 
     # retrieve strava information for a route
-    def get_route_details(self, client):
+    def get_route_details(self):
         """
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
 
+        strava_client = self.owner.athlete.strava_client
+
         # Retrieve route detail and streams
-        strava_route = client.get_route(self.source_id)
-        raw_streams = client.get_route_streams(self.source_id)
+        strava_route = strava_client.get_route(self.source_id)
+        raw_streams = strava_client.get_route_streams(self.source_id)
 
         self.name = strava_route.name
         self.description = strava_route.description

@@ -8,7 +8,11 @@ from django.contrib.gis.measure import D
 from easy_thumbnails.fields import ThumbnailerImageField
 from numpy import interp
 
-from . import ActivityPerformance, ActivityType, Place
+from . import (
+    ActivityPerformance,
+    ActivityType,
+    Place,
+)
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
 
@@ -19,73 +23,49 @@ def get_image_path(instance, filename):
     to the type of object: segment, route, etc.. and the id of the object.
     """
     return os.path.join(
-        'images',
-        instance.__class__.__name__,
-        str(instance.id),
-        filename
+        "images", instance.__class__.__name__, str(instance.id), filename
     )
 
 
 class Track(TimeStampedModel):
-
     class Meta:
         abstract = True
 
     name = models.CharField(max_length=100)
-    description = models.TextField('Textual description', blank=True)
-    image = ThumbnailerImageField(upload_to=get_image_path,
-                                  blank=True, null=True)
+    description = models.TextField("Textual description", blank=True)
+    image = ThumbnailerImageField(upload_to=get_image_path, blank=True, null=True)
 
     # Main activity of the track: default=hike
-    activity_type = models.ForeignKey(ActivityType, default=1,
-                                      on_delete=models.SET_DEFAULT)
+    activity_type = models.ForeignKey(
+        ActivityType, default=1, on_delete=models.SET_DEFAULT
+    )
 
     # link to user
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL,
-                              on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     # elevation gain in m
-    totalup = models.FloatField(
-        'Total elevation gain in m',
-        default=0
-    )
+    totalup = models.FloatField("Total elevation gain in m", default=0)
+
     # elevation loss in m
-    totaldown = models.FloatField(
-        'Total elevation loss in m',
-        default=0
-    )
+    totaldown = models.FloatField("Total elevation loss in m", default=0)
+
     # route distance in m
-    length = models.FloatField(
-        'Total length of the track in m',
-        default=0
-    )
+    length = models.FloatField("Total length of the track in m", default=0)
 
     # geographic information
-    geom = models.LineStringField('line geometry', srid=21781)
+    geom = models.LineStringField("line geometry", srid=21781)
 
     # Start and End-place
     start_place = models.ForeignKey(
-        Place,
-        null=True,
-        related_name='starts_%(class)s',
-        on_delete=models.SET_NULL
+        Place, null=True, related_name="starts_%(class)s", on_delete=models.SET_NULL
     )
 
     end_place = models.ForeignKey(
-        Place,
-        null=True,
-        related_name='ends_%(class)s',
-        on_delete=models.SET_NULL
+        Place, null=True, related_name="ends_%(class)s", on_delete=models.SET_NULL
     )
 
     # track data as a pandas DataFrame
-    data = DataFrameField(null=True, max_length=100, save_to='data')
-
-    def is_owner(self):
-        """
-        determines wether a route is owned by the currently logged in user
-        """
-        return True
+    data = DataFrameField(null=True, max_length=100, save_to="data")
 
     def calculate_elevation_gain_and_distance(self):
         """
@@ -95,10 +75,10 @@ class Track(TimeStampedModel):
         data = self.data
 
         # calculate distance between each point
-        data['distance'] = data['length'].diff().fillna(value=0)
+        data["distance"] = data["length"].diff().fillna(value=0)
 
         # calculate elevation gain between each point
-        data['gain'] = data['altitude'].diff().fillna(value=0)
+        data["gain"] = data["altitude"].diff().fillna(value=0)
 
         self.data = data
 
@@ -111,19 +91,18 @@ class Track(TimeStampedModel):
         data = self.data
 
         # only consider entries where altitude difference is greater than 0
-        data['totalup'] = data['altitude'].diff()[
-            data['altitude'].diff() >= 0
-        ].cumsum()
+        data["totalup"] = data["altitude"].diff()[data["altitude"].diff() >= 0].cumsum()
 
         # only consider entries where altitude difference is less than 0
-        data['totaldown'] = data['altitude'].diff()[
-            data['altitude'].diff() <= 0
-        ].cumsum()
+        data["totaldown"] = (
+            data["altitude"].diff()[data["altitude"].diff() <= 0].cumsum()
+        )
 
         # Fill the NaNs with the last valid value of the series
         # then, replace the remainng NaN (at the beginning) with 0
-        data[['totalup', 'totaldown']] = data[['totalup', 'totaldown']].\
-            fillna(method='ffill').fillna(value=0)
+        data[["totalup", "totaldown"]] = (
+            data[["totalup", "totaldown"]].fillna(method="ffill").fillna(value=0)
+        )
 
         self.data = data
 
@@ -182,7 +161,7 @@ class Track(TimeStampedModel):
         data = self.data
 
         # make sure we have elevation gain and distance data
-        if not all(column in ['gain', 'distance'] for column in list(data)):
+        if not all(column in ["gain", "distance"] for column in list(data)):
             self.calculate_elevation_gain_and_distance()
 
         # get performance data for athlete and activity
@@ -195,12 +174,17 @@ class Track(TimeStampedModel):
         total_elevation_gain_param = performance.total_elevation_gain_param
 
         # Calculate schedule, ignoring segments where distance is 0
-        data['schedule'] = (
-            (slope_squared_param * data['gain']**2) / data['distance']
-            + slope_param * data['gain']
-            + flat_param * data['distance']
-            + total_elevation_gain_param * data['totalup'] / 1000 * data['distance']
-        ).where(data['distance'] > 0.1, 0).cumsum().fillna(value=0)
+        data["schedule"] = (
+            (
+                (slope_squared_param * data["gain"] ** 2) / data["distance"]
+                + slope_param * data["gain"]
+                + flat_param * data["distance"]
+                + total_elevation_gain_param * data["totalup"] / 1000 * data["distance"]
+            )
+            .where(data["distance"] > 0.1, 0)
+            .cumsum()
+            .fillna(value=0)
+        )
 
         self.data = data
 
@@ -219,17 +203,14 @@ class Track(TimeStampedModel):
 
         # interpolate the value, see:
         # https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html
-        return interp(interp_x, self.data['length'], self.data[data_column])
+        return interp(interp_x, self.data["length"], self.data[data_column])
 
     def get_distance_data(self, line_location, data_column):
         """
         wrap around the get_data method
         to return a Distance object.
         """
-        distance_data = self.get_data(
-            line_location,
-            data_column
-        )
+        distance_data = self.get_data(line_location, data_column)
 
         # return distance object
         if distance_data is not None:
@@ -242,10 +223,7 @@ class Track(TimeStampedModel):
         wrap around the get_data method
         to return a timedelta object.
         """
-        time_data = self.get_data(
-            line_location,
-            data_column
-        )
+        time_data = self.get_data(line_location, data_column)
         # return time object
         if time_data is not None:
             return timedelta(seconds=int(time_data))
@@ -253,20 +231,18 @@ class Track(TimeStampedModel):
         return
 
     def get_start_altitude(self):
-        start_altitude = self.get_distance_data(
-            0, 'altitude')
+        start_altitude = self.get_distance_data(0, "altitude")
         return start_altitude
 
     def get_end_altitude(self):
-        end_altitude = self.get_distance_data(
-            1, 'altitude')
+        end_altitude = self.get_distance_data(1, "altitude")
         return end_altitude
 
     def get_start_point(self):
-        return GEOSGeometry('POINT (%s %s)' % self.geom[0], srid=21781)
+        return GEOSGeometry("POINT (%s %s)" % self.geom[0], srid=21781)
 
     def get_end_point(self):
-        return GEOSGeometry('POINT (%s %s)' % self.geom[-1], srid=21781)
+        return GEOSGeometry("POINT (%s %s)" % self.geom[-1], srid=21781)
 
     def get_length(self):
         """
@@ -290,7 +266,7 @@ class Track(TimeStampedModel):
         """
         returns cummalive altitude loss as a Distance object
         """
-        return self.get_time_data(1, 'schedule')
+        return self.get_time_data(1, "schedule")
 
     def get_closest_places_along_line(self, line_location=0, max_distance=100):
         # create the point from location
