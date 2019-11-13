@@ -1,4 +1,5 @@
 from django.contrib.gis.db import models
+from django.contrib.gis.measure import D
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
@@ -129,11 +130,26 @@ class Activity(TimeStampedModel):
         related_name="activities",
     )
 
+    class Meta:
+        ordering = ["-start_date"]
+
     # Custom manager
     objects = ActivityManager()
 
     def __str__(self):
         return "{0} - {1}".format(self.activity_type, self.name)
+
+    def get_strava_url(self):
+        # return the absolute URL to the activity on Strava
+        return "https://www.strava.com/activities/{}".format(self.strava_id)
+
+    def get_distance(self):
+        # return the activity distance as a Distance object
+        return D(m=self.distance)
+
+    def get_totalup(self):
+        # return the activity distance as a Distance object
+        return D(m=self.totalup)
 
     def update_from_strava(self):
         # retrieve activity from Strava and update it.

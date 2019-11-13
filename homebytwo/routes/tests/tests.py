@@ -1,7 +1,6 @@
 import json
-from datetime import timedelta
 from copy import deepcopy
-
+from datetime import timedelta
 from os import (
     listdir,
     makedirs,
@@ -820,8 +819,7 @@ class ActivityTestCase(TestCase):
         self.assertEqual(Activity.objects.count(), 1)
         self.assertTrue(activity.manual)
         self.assertEqual(
-            str(activity),
-            "{} - {}".format(activity.activity_type, activity.name),
+            str(activity), "{} - {}".format(activity.activity_type, activity.name),
         )
 
     def test_save_strava_race_run(self):
@@ -830,9 +828,15 @@ class ActivityTestCase(TestCase):
         strava_activity = self.load_strava_activity_from_json("race_run_activity.json")
         activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
         activity.save_from_strava(strava_activity)
+        activity.refresh_from_db()
 
         self.assertEqual(Activity.objects.count(), 1)
         self.assertEqual(int(activity.workout_type), Activity.RACE_RUN)
+
+        url = "https://www.strava.com/activities/{}".format(activity.strava_id)
+        self.assertEqual(url, activity.get_strava_url())
+        self.assertAlmostEqual(activity.distance / 1000, activity.get_distance().km)
+        self.assertAlmostEqual(activity.totalup, activity.get_totalup().m)
 
     def test_save_strava_activity_add_existing_gear(self):
 
