@@ -15,7 +15,7 @@
         </a>
       </div>
       <div>
-        {{ activity.start_date|naturaltime}}
+        {{ activity.start_date|naturalday}}
         {% if activity.distance %}
         - {{ activity.get_distance.km|floatformat:"01"|intcomma }}km
         {% endif %}
@@ -24,7 +24,7 @@
         {% endif %}
       
         {% if activity.moving_time %}
-         - {{ activity.moving_time|duration:'hike' }}
+         - {{ activity.moving_time|duration }}
         {% endif %}
       <div>
     </li>

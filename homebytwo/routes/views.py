@@ -147,7 +147,8 @@ class RouteEdit(UpdateView):
 
 @method_decorator(login_required, name="dispatch")
 class ActivityList(ListView):
-
-    model = Activity
     paginate_by = 50
     context_object_name = "strava_activities"
+
+    def get_queryset(self):
+        return Activity.objects.filter(athlete=self.request.user.athlete)
