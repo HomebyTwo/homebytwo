@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
 from django.http import (
     HttpResponse,
+    JsonResponse,
 )
 from django.shortcuts import (
     get_object_or_404,
@@ -19,11 +20,13 @@ from django.views.generic.edit import (
     UpdateView,
 )
 from django.views.generic.list import ListView
+from pytz import utc
 
 from .models import (
     Activity,
     Route,
     RoutePlace,
+    WebhookTransaction,
 )
 
 
@@ -66,6 +69,45 @@ def route(request, pk):
     return render(request, "routes/route.html", context)
 
 
+@csrf_exempt
+def strava_webhook(request):
+    """
+    handle events sent by the Strava Webhook Events API
+
+    Strava validates a subscription with a GET request to the callback URL.
+    Events from the subscriptions are POSTed to the callback URL.
+    Documentation available at https://developers.strava.com/docs/webhooks/
+    """
+
+    # subscription validation
+    if request.method == "GET":
+
+        # validate the request and return the hub.challenge as json
+        if request.GET["hub.verify_token"] == settings.STRAVA_VERIFY_TOKEN:
+            hub_challenge_json = {"hub.challenge": request.GET["hub.challenge"]}
+            return JsonResponse(hub_challenge_json)
+
+    # event submission
+    elif request.method == "POST":
+
+        # decode json object
+        body = request.body.decode("utf-8")
+        data = json.loads(body)
+
+        # keep only metadata with string values in the transaction object
+        meta_data = {k: v for k, v in request.META.items() if isinstance(v, str)}
+
+        # save transaction object to the database
+        WebhookTransaction.objects.create(
+            body=data,
+            request_meta=meta_data,
+            date_generated=datetime.fromtimestamp(data["event_time"], tz=utc),
+        )
+
+        return HttpResponse(status=200)
+
+    # Anything else
+    return HttpResponse("Unauthorized", status=401)
 
 
 @method_decorator(login_required, name="dispatch")

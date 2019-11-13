@@ -47,6 +47,7 @@ from ..models import (
     ActivityPerformance,
     Gear,
     Place,
+    WebhookTransaction,
 )
 from ..templatetags.duration import (
     baseround,
@@ -1088,3 +1089,39 @@ class ActivityTestCase(TestCase):
         httpretty.disable()
 
         self.assertEqual(len(raw_streams), 3)
+
+    @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
+    def test_strava_webhook_callback_url(self):
+
+        # subscritption validation successful
+        url = reverse("routes:strava_webhook")
+        data = {
+            "hub.verify_token": "RIGHT_TOKEN",
+            "hub.challenge": "challenge",
+            "hub.mode": "subscribe",
+        }
+
+        response = self.client.get(url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(data["hub.challenge"], response.content.decode("UTF-8"))
+
+        # subscription validation with wrong token
+        data["hub.verify_token"] = "WRONG_TOKEN"
+
+        response = self.client.get(url, data)
+        self.assertEqual(response.status_code, 401)
+
+        # event posted by Strava
+        data = json.loads(read_data("event.json"))
+        response = self.client.post(url, data, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(WebhookTransaction.objects.count(), 1)
+
+        transaction = WebhookTransaction.objects.first()
+        self.assertEqual(
+            str(transaction),
+            "{0} - {1}".format(
+                transaction.get_status_display(), transaction.date_generated,
+            ),
+        )

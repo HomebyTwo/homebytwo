@@ -5,6 +5,7 @@ from .activity import (  # NOQA
     Gear,
 )
 from .athlete import Athlete  # NOQA
+from .event import WebhookTransaction  # NOQA
 from .place import (  # NOQA
     Place,
     RoutePlace,
