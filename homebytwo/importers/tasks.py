@@ -1,11 +1,12 @@
+from .models import (
+    Activity,
+    Athlete,
+)
 from celery import shared_task
-
-from .models import StravaActivity
 
 
 @shared_task
-def import_strava_activities(user_id, strava_token):
-    activities = StravaActivity.objects.get_activities_from_server(
-        self, strava_token=strava_token,
-    )
-    return activities
+def import_strava_activities(athlete_id):
+    athlete = Athlete.objects.get(pk=athlete_id)
+    activities = Activity.objects.update_user_activities_from_strava(athlete)
+    return activities.count()
