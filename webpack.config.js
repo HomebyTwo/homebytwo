@@ -3,6 +3,7 @@ const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const SpriteLoaderPlugin = require('svg-sprite-loader/plugin');
 const browserslist = require('./package.json').browserslist;
+const VueLoaderPlugin = require('vue-loader/lib/plugin');
 
 module.exports = {
   mode: process.env.NODE_ENV,
@@ -12,7 +13,11 @@ module.exports = {
       path.resolve(__dirname, 'assets'),
       'node_modules',
     ],
-    extensions: ['.js'],
+    extensions: ['.js', '.vue'],
+    alias: {
+      vue$: 'vue/dist/vue.esm.js',
+    },
+
   },
   entry: {
     main: path.resolve(__dirname, 'assets/javascripts/main.js'),
@@ -24,18 +29,14 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.vue$/,
+        loader: 'vue-loader',
+      },
+      {
         test: /\.js$/,
+        include: path.resolve(__dirname, 'assets/javascripts'),
         exclude: /node_modules/,
         loader: 'babel-loader',
-        options: {
-          presets: [
-            ['env', {
-              targets: {
-                browsers: browserslist,
-              },
-            }],
-          ],
-        },
       },
       {
         test: /\.scss$/,
@@ -91,6 +92,7 @@ module.exports = {
       filename: '[name].css',
     }),
     new SpriteLoaderPlugin(),
+    new VueLoaderPlugin(),
   ],
   devServer: {
     proxy: {
@@ -108,6 +110,7 @@ module.exports = {
     // Here you can specify folders that contain your views
     // So they’ll trigger a page reload when you change them
     contentBase: ['./homebytwo/templates/'],
+    publicPath: '/static/assets/',
     watchContentBase: true,
   },
   optimization: {

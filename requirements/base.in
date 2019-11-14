@@ -1,9 +1,11 @@
--e git://github.com/drixselecta/stravalib.git#egg=stravalib
+-e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
+
+celery
 dj-database-url
 django
+django-filter
 django-geojson
 django-leaflet
-social-auth-app-django
 django-widget-tweaks
 easy_thumbnails
 pandas
@@ -12,4 +14,6 @@ polyline
 psycopg2-binary
 rcssmin
 requests
+social-auth-app-django
+stravalib
 tables

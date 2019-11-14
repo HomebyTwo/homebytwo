@@ -21,7 +21,7 @@ def request_json(url, cookies=None):
         r = get(url, cookies=cookies)
 
     # connection error and inform the user
-    except ConnectionError as e:
+    except ConnectionError:
         message = "Connection Error: could not connect to {0}. "
         raise ConnectionError(message.format(url))
 

@@ -1,20 +1,35 @@
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
-from django.urls import reverse
-from requests.exceptions import ConnectionError
-from stravalib.client import Client as StravaClient
+from django.shortcuts import (
+    redirect,
+    render,
+)
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.models import Athlete
-from .decorators import strava_required, switerland_mobility_required
+from requests.exceptions import ConnectionError
+
+from ..routes.models import Place
+from .decorators import (
+    strava_required,
+    switerland_mobility_required,
+)
+from .filters import PlaceFilter
 from .forms import SwitzerlandMobilityLogin
-from .models import StravaRoute, SwitzerlandMobilityRoute
-from .tasks import import_strava_activities
-from .utils import (SwitzerlandMobilityError, get_checkpoints, get_route_form,
-                    get_route_places_formset, get_strava_client, post_route_form,
-                    post_route_places_formset, save_detail_forms)
+from .models import (
+    StravaRoute,
+    SwitzerlandMobilityRoute,
+)
+
+from .utils import (
+    SwitzerlandMobilityError,
+    get_checkpoints,
+    get_place_type_choices,
+    get_route_form,
+    get_route_places_formset,
+    post_route_form,
+    post_route_places_formset,
+    save_detail_forms,
+)
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -42,56 +57,7 @@ def index(request):
 
 @login_required
 def strava_connect(request):
-    """
-    generate the Strava connect button to request the Strava
-    authorization token from the user.
-
-    clicking on this button opens an authorization request on strava.com
-
-    accepting takes the user back to the 'strava_authorized' view that
-    saves the token.
-    """
-    # Initialize stravalib client
-    strava_client = StravaClient()
-
-    # generate the absolute redirect url
-    redirect_url = reverse('strava_authorized')
-    absolute_redirect_url = request.build_absolute_uri(redirect_url)
-
-    # Generate Strava authorization URL
-    strava_authorize_url = strava_client.authorization_url(
-        client_id=settings.STRAVA_CLIENT_ID,
-        redirect_uri=absolute_redirect_url,
-    )
-
-    context = {
-        'strava_authorize_url': strava_authorize_url,
-    }
-
-    # Render the Strava connect button
-    return render(request, 'importers/strava/connect.html', context)
-
-
-@login_required
-def strava_authorized(request):
-    # Initialize stravalib client
-    strava_client = StravaClient()
-
-    # Obtain access token
-    code = request.GET.get('code', '')
-    access_token = strava_client.exchange_code_for_token(
-        client_id=settings.STRAVA_CLIENT_ID,
-        client_secret=settings.STRAVA_CLIENT_SECRET,
-        code=code,
-    )
-
-    # Save access token to athlete
-    athlete, created = Athlete.objects.get_or_create(user=request.user)
-    athlete.strava_token = access_token
-    athlete.save()
-
-    # redirect to the Strava routes page
-    return redirect('strava_routes')
+    return render(request, 'importers/strava/connect.html')
 
 
 @login_required
@@ -101,8 +67,9 @@ def strava_routes(request):
     template = 'importers/routes.html'
     context = {'source': STRAVA_SOURCE_INFO}
 
+    # Retrieve routes from Strava
     try:
-        strava_client = get_strava_client(request.user)
+        new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(user=request.user)
 
     except ConnectionError as error:
         message = "Could not connect to Strava: {}".format(error)
@@ -110,21 +77,14 @@ def strava_routes(request):
         return render(request, template, context)
 
     except AccessUnauthorized:
-        message = ('Strava Authorization refused. Try connect to Strava again')
+        message = ('Strava Authorization refused. Try to connect to Strava again')
         messages.error(request, message)
         return redirect('strava_connect')
 
     # Retrieve routes from Strava
     new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
         user=request.user,
-        strava_client=strava_client
         )
-
-    # Retrieve Strava activities with Celery
-    import_strava_activities.delay(
-        user_id=request.user.id,
-        strava_token=strava_client.access_token
-    )
 
     context.update({
         'new_routes': new_routes,
@@ -145,6 +105,7 @@ def strava_route(request, source_id):
     places = False
     route_form = False
     route_places_formset = False
+    place_filter = False
 
     # model instance from source_id
     route = StravaRoute(source_id=source_id)
@@ -173,21 +134,34 @@ def strava_route(request, source_id):
 
     if request.method == 'GET':
 
-        # get the strava the client
-        strava_client = get_strava_client(request.user)
+        # add user to route to retrieve details from Strava and
+        # to check if it has already been imported
+        route.owner = request.user
 
         # get route details from Strava API
-        route.get_route_details(strava_client)
+        route.get_route_details()
 
-        # add user information to route.
-        # to check if the route has already been imported.
-        route.owner = request.user
+        # find places along the route
+        places_qs = Place.objects.get_places_from_line(route.geom, 75)
+
+        # filter bus stops for bike routes
+        if route.activity_type == 'Bike':
+            places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
+        # define place_type filter
+        place_filter = PlaceFilter(
+            request.GET,
+            queryset=places_qs,
+        )
+
+        place_type_choices = get_place_type_choices(places_qs)
+        place_filter.form.fields['place_type'].choices = place_type_choices
 
         # populate the route_form with route details
         route_form = get_route_form(route)
 
         # get checkpoints along the way
-        checkpoints = get_checkpoints(route)
+        checkpoints = get_checkpoints(route, place_filter.qs)
 
         # get form to save places along the route
         route_places_formset = get_route_places_formset(route, checkpoints)
@@ -196,6 +170,7 @@ def strava_route(request, source_id):
         places = zip(checkpoints, route_places_formset.forms)
 
     context = {
+        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'places': places,
@@ -260,6 +235,7 @@ def switzerland_mobility_route(request, source_id):
     places = []
     route_form = False
     route_places_formset = False
+    place_filter = False
 
     # model instance with source_id
     route = SwitzerlandMobilityRoute(source_id=source_id)
@@ -303,23 +279,35 @@ def switzerland_mobility_route(request, source_id):
         else:
             # add user to check if route has already been imported
             route.owner = request.user
+            places_qs = Place.objects.get_places_from_line(route.geom, 75)
+
+            # filter bus stops for bike routes
+            if route.activity_type == 'Bike':
+                places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
+
+            # define place_type filter
+            place_filter = PlaceFilter(
+                request.GET,
+                queryset=places_qs
+            )
+
+            place_type_choices = get_place_type_choices(places_qs)
+            place_filter.form.fields['place_type'].choices = place_type_choices
 
             # populate the route_form with route details
             route_form = get_route_form(route)
 
             # find checkpoints along the route
-            checkpoints = get_checkpoints(route)
+            checkpoints = get_checkpoints(route, place_filter.qs)
 
             # get form set to save route places
-            route_places_formset = get_route_places_formset(
-                route,
-                checkpoints
-            )
+            route_places_formset = get_route_places_formset(route, checkpoints)
 
             # arrange places and formsets for template
             places = zip(checkpoints, route_places_formset.forms)
 
     context = {
+        'filter': place_filter,
         'route': route,
         'route_form': route_form,
         'places': places,

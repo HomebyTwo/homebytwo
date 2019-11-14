@@ -51,9 +51,10 @@ Add the following setting files to the envdir folder containing the correspondin
 - `MAILCHIMP_LIST_ID` - The ID of the Mailchimp list that ne1wsletter subscriber should be added to
 - `MAPBOX_ACCESS_TOKEN` - retrieve it at https://www.mapbox.com/account/access-tokens
 - `STRAVA_CLIENT_ID` your Strava client ID available at https://www.strava.com/settings/api
-- `STRAVA_SECRET` - your Strava secret available at https://www.strava.com/settings/api
+- `STRAVA_CLIENT_SECRET` - your Strava secret available at https://www.strava.com/settings/api
 - `STRAVA_ROUTE_URL` - set it to `https://www.strava.com/routes/%d`
-- `SWITZERLAND_MOBILITY_LIST_URL` - set it to `https://map.wanderland.ch/tracks_list`
+- `STRAVA_VERIFY_TOKEN` - The token configured to receive updates from the Strava Webhook Events API
+- `SWITZERLAND_MOBILITY_LIST_URL` - set it to `https://map.wanderland.ch/api/4/tracks_list`
 - `SWITZERLAND_MOBILITY_LOGIN_URL` - set it to `https://map.schweizmobil-hosting.ch/api/4/login`
 - `SWITZERLAND_MOBILITY_ROUTE_URL` - set it to `https://map.wanderland.ch/?trackId=%d`
 - `SWITZERLAND_MOBILITY_ROUTE_DATA_URL` - set it to `https://map.wanderland.ch/track/%d/show`

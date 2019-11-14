@@ -1,0 +1,10 @@
+{
+    "message": "Resource Not Found",
+    "errors": [
+        {
+            "resource": "Activity",
+            "field": "",
+            "code": "not found"
+        }
+    ]
+}

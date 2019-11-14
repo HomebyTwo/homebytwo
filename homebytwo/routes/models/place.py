@@ -31,7 +31,7 @@ class PlaceManager(models.Manager):
     def get_public_transport(self):
         self.filter(public_transport=True)
 
-    def find_places_along_line(self, line, max_distance=50):
+    def find_places_along_line(self, line, places, max_distance=75):
         """
         The `recursive` option addresses the issue of a linestring passing
         near the same place more than once. The normal query uses
@@ -65,36 +65,32 @@ class PlaceManager(models.Manager):
             and find no additional place.
 
         """
-        places = []
+        found_places = []
         segments = []
 
-        # initial request to find each visited place once
-        places.extend(self.get_places_from_line(line, max_distance))
-
-        if not places:
-            return []
+        # add places from initial request that found each visited place once
+        found_places.extend(places)
 
         # create segments between the found places
-        segments.extend(self.create_segments_from_places(places))
+        segments.extend(self.create_segments_from_places(found_places))
 
         for segment in segments:
 
             # find additional places along the segment
-            new_places = self.find_places_in_segment(segment, line,
-                                                     max_distance)
+            new_places = self.find_places_in_segment(segment, line, max_distance, places)
 
             if new_places:
                 start, end = segment
-                places.extend(new_places)
+                found_places.extend(new_places)
                 segments.extend(
                     self.create_segments_from_places(new_places, start, end)
                 )
 
-        places.sort(key=lambda o: o.line_location)
+        found_places.sort(key=lambda o: o.line_location)
 
-        return places
+        return found_places
 
-    def get_places_from_line(self, line, max_distance):
+    def get_places_from_line(self, line, max_distance, places=None):
         """
         returns places within a max_distance of a Linestring Geometry
         ordered by, and annotated with the `line_location` and the
@@ -109,8 +105,12 @@ class PlaceManager(models.Manager):
         # convert max_distance to Distance object
         max_d = D(m=max_distance)
 
+        # no querystring has been passed to the method, start with all places
+        if places is None:
+            places = self.all()
+
         # find all places within max distance from line
-        places = Place.objects.filter(geom__dwithin=(line, max_d))
+        places = places.filter(geom__dwithin=(line, max_d))
 
         # annotate with distance to line
         places = places.annotate(distance_from_line=Distance('geom', line))
@@ -119,7 +119,10 @@ class PlaceManager(models.Manager):
         places = places.annotate(line_location=LineLocatePoint(line, 'geom'))
 
         # remove start and end places within 1% of start and end location
-        places = places.filter(line_location__gt=0.01, line_location__lt=0.99)
+        places = places.filter(
+            line_location__gt=0.01,
+            line_location__lt=0.99,
+        )
 
         places = places.order_by('line_location')
 
@@ -149,14 +152,14 @@ class PlaceManager(models.Manager):
 
         return segments
 
-    def find_places_in_segment(self, segment, line, max_distance):
+    def find_places_in_segment(self, segment, line, max_distance, places):
         start, end = segment
 
         # create the Linestring geometry
         subline = LineSubstring(line, start, end)
 
         # find places within max_distance of the linestring
-        places = self.get_places_from_line(subline, max_distance)
+        places = self.get_places_from_line(subline, max_distance, places)
 
         if not places:
             return None
@@ -197,61 +200,102 @@ class Place(TimeStampedModel):
     and for public transport connection.
     """
 
+    PLACE = 'PLA'
+    LOCAL_PLACE = 'LPL'
+    SINGLE_BUILDING = 'BDG'
+    OPEN_BUILDING = 'OBG'
+    TOWER = 'TWR'
+    SACRED_BUILDING = 'SBG'
+    CHAPEL = 'CPL'
+    WAYSIDE_SHRINE = 'SHR'
+    MONUMENT = 'MNT'
+    FOUNTAIN = 'FTN'
+    SUMMIT = 'SUM'
+    HILL = 'HIL'
+    PASS = 'PAS'
+    BELAY = 'BEL'
+    WATERFALL = 'WTF'
+    CAVE = 'CAV'
+    SOURCE = 'SRC'
+    BOULDER = 'BLD'
+    POINT_OF_VIEW = 'POV'
+    BUS_STATION = 'BUS'
+    TRAIN_STATION = 'TRA'
+    OTHER_STATION = 'OTH'
+    BOAT_STATION = 'BOA'
+    EXIT = 'EXT'
+    ENTRY_AND_EXIT = 'EAE'
+    ROAD_PASS = 'RPS'
+    INTERCHANGE = 'ICG'
+    LOADING_STATION = 'LST'
+    PARKING = 'PKG'
+    CUSTOMHOUSE_24H = 'C24'
+    CUSTOMHOUSE_24H_LIMITED = 'C24LT'
+    CUSTOMHOUSE_LIMITED = 'CLT'
+    LANDMARK = 'LMK'
+    HOME = 'HOM'
+    WORK = 'WRK'
+    GYM = 'GYM'
+    HOLIDAY_PLACE = 'HOL'
+    FRIENDS_PLACE = 'FRD'
+    OTHER_PLACE = 'CST'
+
     PLACE_TYPE_CHOICES = (
-        ('PLA', 'Place'),
+        (PLACE, 'Place'),
+        (LOCAL_PLACE, 'Local Place'),
         ('Constructions', (
-            ('BDG', 'Single Building'),
-            ('OBG', 'Open Building'),
-            ('TWR', 'Tower'),
-            ('SBG', 'Sacred Building'),
-            ('CPL', 'Chapel'),
-            ('SHR', 'Wayside Shrine'),
-            ('MNT', 'Monument'),
-            ('FTN', 'Fountain'),
+            (SINGLE_BUILDING, 'Single Building'),
+            (OPEN_BUILDING, 'Open Building'),
+            (TOWER, 'Tower'),
+            (SACRED_BUILDING, 'Sacred Building'),
+            (CHAPEL, 'Chapel'),
+            (WAYSIDE_SHRINE, 'Wayside Shrine'),
+            (MONUMENT, 'Monument'),
+            (FOUNTAIN, 'Fountain'),
         )
         ),
         ('Features', (
-            ('SUM', 'Summit'),
-            ('HIL', 'Hill'),
-            ('PAS', 'Pass'),
-            ('BEL', 'Belay'),
-            ('WTF', 'Waterfall'),
-            ('CAV', 'Cave'),
-            ('SRC', 'Source'),
-            ('BLD', 'Boulder'),
-            ('POV', 'Point of View')
+            (SUMMIT, 'Summit'),
+            (HILL, 'Hill'),
+            (PASS, 'Pass'),
+            (BELAY, 'Belay'),
+            (WATERFALL, 'Waterfall'),
+            (CAVE, 'Cave'),
+            (SOURCE, 'Source'),
+            (BOULDER, 'Boulder'),
+            (POINT_OF_VIEW, 'Point of View')
         )
         ),
         ('Public Transport', (
-            ('BUS', 'Bus Station'),
-            ('TRA', 'Train Station'),
-            ('OTH', 'Other Station'),
-            ('BOA', 'Boat Station'),
+            (BUS_STATION, 'Bus Station'),
+            (TRAIN_STATION, 'Train Station'),
+            (OTHER_STATION, 'Other Station'),
+            (BOAT_STATION, 'Boat Station'),
         )
         ),
         ('Roads', (
-            ('EXT', 'Exit'),
-            ('EAE', 'Entry and Exit'),
-            ('RPS', 'Road Pass'),
-            ('ICG', 'Interchange'),
-            ('LST', 'Loading Station'),
-            ('PKG', 'Parking'),
+            (EXIT, 'Exit'),
+            (ENTRY_AND_EXIT, 'Entry and Exit'),
+            (ROAD_PASS, 'Road Pass'),
+            (INTERCHANGE, 'Interchange'),
+            (LOADING_STATION, 'Loading Station'),
+            (PARKING, 'Parking'),
         )
         ),
         ('Customs', (
-            ('C24', 'Customhouse 24h'),
-            ('C24LT', 'Customhouse 24h limited'),
-            ('CLT', 'Customhouse limited'),
-            ('LMK', 'Landmark'),
+            (CUSTOMHOUSE_24H, 'Customhouse 24h'),
+            (CUSTOMHOUSE_24H_LIMITED, 'Customhouse 24h limited'),
+            (CUSTOMHOUSE_LIMITED, 'Customhouse limited'),
+            (LANDMARK, 'Landmark'),
         )
         ),
         ('Personal', (
-            ('HOM', 'Home'),
-            ('WRK', 'Work'),
-            ('GYM', 'Gym'),
-            ('HOL', 'Holiday Place'),
-            ('FRD', 'Friend\'s place'),
-            ('CST', 'Other place'),
+            (HOME, 'Home'),
+            (WORK, 'Work'),
+            (GYM, 'Gym'),
+            (HOLIDAY_PLACE, 'Holiday Place'),
+            (FRIENDS_PLACE, 'Friend\'s place'),
+            (OTHER_PLACE, 'Other place'),
         )
         ),
     )

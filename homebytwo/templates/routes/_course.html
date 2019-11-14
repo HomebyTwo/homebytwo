@@ -32,7 +32,7 @@
 
   {% endfor %}
 
-{# finsish place #}
+{# finish place #}
   <h4 class="mrgh-">End Place</h4>
   <li class="box box--default box--tight mrgv- pdg- place place--finish {% if route.end_place %} place--known{% endif %}"
         {% if route.end_place %}data-geom='{{ route.end_place|geojsonfeature:"name" }}'{% endif %}>

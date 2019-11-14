@@ -1,4 +1,4 @@
-{% load staticfiles %}
+{% load static %}
 
 <nav class="nav">
   <ul class="list-inline">
@@ -17,13 +17,15 @@
         </span>
       </a>
 
-      <ul class="list-inline list-inline--divided list-inline--center">
-        <li class="text-uppercase">
-          <a href="{% url 'routes:routes' %}" >
-          My Routes
-          </a>
-        </li>
-      </ul>
+      {% if user.is_authenticated %}
+        <ul class="list-inline list-inline--divided list-inline--center">
+          <li class="text-uppercase">
+            <a href="{% url 'routes:routes' %}">
+              My Routes
+            </a>
+          </li>
+        </ul>
+      {% endif %}
     </li>
 
     <li class="nav__item">

@@ -1,9 +1,10 @@
 from django import template
 import datetime
+
 register = template.Library()
 
 
-@register.filter(name='duration')
+@register.filter(name="duration")
 def timedelta(value, display_format="long"):
     if value in (None, 0):
         return value
@@ -11,7 +12,7 @@ def timedelta(value, display_format="long"):
 
 
 def baseround(x, base=5):
-    return int(base * round(float(x)/base))
+    return int(base * round(float(x) / base))
 
 
 def nice_repr(timedelta, display_format="long", sep=" "):
@@ -35,8 +36,9 @@ def nice_repr(timedelta, display_format="long", sep=" "):
     '1 day 2 h 5  min'
     """
 
-    assert isinstance(timedelta, datetime.timedelta), (
-        "First argument must be a timedelta.")
+    assert isinstance(
+        timedelta, datetime.timedelta
+    ), "First argument must be a timedelta."
 
     result = []
 
@@ -48,7 +50,7 @@ def nice_repr(timedelta, display_format="long", sep=" "):
 
     values = [weeks, days, hours, minutes]
 
-    if display_format == 'hike':
+    if display_format == "hike":
         # round up seconds
         if seconds >= 30:
             minutes += 1
@@ -77,13 +79,13 @@ def nice_repr(timedelta, display_format="long", sep=" "):
     for i in range(len(values)):
         if values[i]:
             if values[i] == 1 and len(words[i]) > 1:
-                result.append("%i%s" % (values[i], words[i].rstrip('s')))
+                result.append("%i%s" % (values[i], words[i].rstrip("s")))
             else:
                 result.append("%i%s" % (values[i], words[i]))
 
     # values with less than one second, which are considered zeroes
     if len(result) == 0:
         # display as 0 of the smallest unit
-        result.append('0%s' % (words[-1]))
+        result.append("0%s" % (words[-1]))
 
     return sep.join(result)
