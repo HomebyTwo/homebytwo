@@ -1,5 +1,6 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
+
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
@@ -132,6 +133,7 @@ class Activity(TimeStampedModel):
 
     class Meta:
         ordering = ["-start_date"]
+        verbose_name_plural = "activities"
 
     # Custom manager
     objects = ActivityManager()
