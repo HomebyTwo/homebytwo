@@ -1,0 +1,35 @@
+# Download swissNAMES3D Data from Swiss Topo
+- name: create temporary dir for dowloading swissnames3d data
+  file:
+    path: /tmp/sn3d
+    state: directory
+
+- name: download and extract nested archive from swisstopo
+  unarchive:
+    src: "http://data.geo.admin.ch/ch.swisstopo.swissnames3d/data.zip"
+    dest: "/tmp/sn3d/"
+    creates: "/tmp/sn3d/swissNAMES3D_LV03.zip"
+    remote_src: yes
+    exclude:
+    - swissNAMES3D_LV95.zip
+
+- name: Extract shapefiles from swissnames3d archive
+  unarchive:
+    src: "/tmp/sn3d/swissNAMES3D_LV03.zip"
+    dest: "/tmp/sn3d/"
+    creates: "/tmp/sn3d/swissNAMES3D_LV03/"
+
+- name: copy shapefiles to media folder
+  copy:
+    src: "{{ item }}"
+    dest: "{{ django_root }}{{ project_name}}/media"
+  with_fileglob:
+    - "/tmp/sn3d/swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.*"
+
+- name: import places from shapefile
+  command: "{{ env_root }}/bin/python {{ django_root }}manage.py importswissname3d --no-input --delete {{ django_root }}{{ project_name}}/media/shapefiles/swissNAMES3D_PKT.shp"
+
+- name: remove temporary directory
+  file:
+    path: "/tmp/sn3d/"
+    state: absent

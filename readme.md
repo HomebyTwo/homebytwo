@@ -52,13 +52,7 @@ Add the following setting files to the envdir folder containing the correspondin
 - `MAPBOX_ACCESS_TOKEN` - retrieve it at https://www.mapbox.com/account/access-tokens
 - `STRAVA_CLIENT_ID` your Strava client ID available at https://www.strava.com/settings/api
 - `STRAVA_CLIENT_SECRET` - your Strava secret available at https://www.strava.com/settings/api
-- `STRAVA_ROUTE_URL` - set it to `https://www.strava.com/routes/%d`
-- `STRAVA_VERIFY_TOKEN` - The token configured to receive updates from the Strava Webhook Events API
-- `SWITZERLAND_MOBILITY_LIST_URL` - set it to `https://map.wanderland.ch/api/4/tracks_list`
-- `SWITZERLAND_MOBILITY_LOGIN_URL` - set it to `https://map.schweizmobil-hosting.ch/api/4/login`
-- `SWITZERLAND_MOBILITY_ROUTE_URL` - set it to `https://map.wanderland.ch/?trackId=%d`
-- `SWITZERLAND_MOBILITY_ROUTE_DATA_URL` - set it to `https://map.wanderland.ch/track/%d/show`
-
+- `STRAVA_VERIFY_TOKEN` - The token configured to receive updates from the Strava Webhook Events API. More info at https://developers.strava.com/docs/webhooks/
 
 ## Run the development server:
 
@@ -89,7 +83,10 @@ $ tox
 ```
 
 
-## Import Places from SwissNAME3D
+## Import Places from SwissNAMES3D
+
+Importing the SwissNAMES3D points database is now part of the provisioning script.
+If you need to, you can also do it manually:
 
 Dowload the shapefile from [opendata.swiss](https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung), the file is about 390.21M:
 

@@ -7,5 +7,9 @@
     - { role: base }
     - { role: git }
     - { role: postgis }
+    - { role: hd5 }
     - { role: django }
+    - { role: rabbitmq }
     - { role: webpack }
+    - { role: homebytwo_env }
+    - { role: swissname3d }
