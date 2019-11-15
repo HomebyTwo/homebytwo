@@ -1,9 +1,18 @@
-from django.contrib.gis import admin
-from leaflet.admin import LeafletGeoAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
+from django.contrib.gis import admin
 
-from .models import Route, Place, Athlete, ActivityType, ActivityPerformance
+from leaflet.admin import LeafletGeoAdmin
+
+from .models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Athlete,
+    Place,
+    Route,
+    WebhookTransaction,
+)
 
 # Route admin
 admin.site.register(Route, LeafletGeoAdmin)
@@ -26,6 +35,8 @@ class PlaceAdmin(LeafletGeoAdmin):
 admin.site.register(Place, PlaceAdmin)
 admin.site.register(ActivityType, LeafletGeoAdmin)
 admin.site.register(ActivityPerformance)
+admin.site.register(Activity)
+admin.site.register(WebhookTransaction)
 
 
 class AthleteInline(admin.StackedInline):
