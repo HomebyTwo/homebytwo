@@ -4,30 +4,17 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
-from django.http import (
-    HttpResponse,
-    JsonResponse,
-)
-from django.shortcuts import (
-    get_object_or_404,
-    render,
-)
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic.edit import (
-    DeleteView,
-    UpdateView,
-)
+from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
+
 from pytz import utc
 
-from .models import (
-    Activity,
-    Route,
-    RoutePlace,
-    WebhookTransaction,
-)
+from .models import Activity, Route, RoutePlace, WebhookTransaction
 
 
 @login_required
@@ -83,8 +70,8 @@ def strava_webhook(request):
     if request.method == "GET":
 
         # validate the request and return the hub.challenge as json
-        if request.GET["hub.verify_token"] == settings.STRAVA_VERIFY_TOKEN:
-            hub_challenge_json = {"hub.challenge": request.GET["hub.challenge"]}
+        if request.GET.get("hub.verify_token") == settings.STRAVA_VERIFY_TOKEN:
+            hub_challenge_json = {"hub.challenge": request.GET.get("hub.challenge")}
             return JsonResponse(hub_challenge_json)
 
     # event submission
