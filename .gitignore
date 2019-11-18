@@ -16,3 +16,5 @@
 /npm-debug.log
 /virtualization/playbook.retry
 __pycache__
+celerybeat-schedule.db
+celerybeat.pid

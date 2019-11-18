@@ -1,9 +1,10 @@
 import os
 
 import dj_database_url
+from celery.schedules import crontab
 
-from . import get_env_variable
 from .. import get_project_root_path
+from . import get_env_variable
 
 ###################
 # DJANGO SETTINGS #
@@ -64,7 +65,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "homebytwo", "templates"),],
+        "DIRS": [os.path.join(BASE_DIR, "homebytwo", "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -96,9 +97,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # Login Page and logout redirect
@@ -137,8 +138,8 @@ MEDIA_URL = get_env_variable("MEDIA_URL", "/media/")
 
 THUMBNAIL_ALIASES = {
     "": {
-        "thumb": {"size": (90, 90), "crop": True, "sharpen": True,},
-        "poster": {"size": (1434, 600), "crop": True, "details": True, "quality": 95,},
+        "thumb": {"size": (90, 90), "crop": True, "sharpen": True},
+        "poster": {"size": (1434, 600), "crop": True, "details": True, "quality": 95},
     },
 }
 
@@ -146,7 +147,10 @@ THUMBNAIL_ALIASES = {
 # Celery #
 ##############
 
-CELERY_BROKER_URL = get_env_variable('CELERY_BROKER_URL', 'amqp://localhost')
+CELERY_BROKER_URL = get_env_variable("CELERY_BROKER_URL", "amqp://localhost")
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
 
 #############
 # Mailchimp #

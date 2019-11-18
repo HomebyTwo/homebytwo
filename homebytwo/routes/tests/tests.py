@@ -1,64 +1,39 @@
 import json
 from copy import deepcopy
 from datetime import timedelta
-from os import (
-    listdir,
-    makedirs,
-    remove,
-    urandom,
-)
-from os.path import (
-    dirname,
-    exists,
-    join,
-    realpath,
-)
+from os import listdir, makedirs, remove, urandom
+from os.path import dirname, exists, join, realpath
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import skip
 from uuid import uuid4
 
-import httpretty
-import numpy as np
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import (
-    TestCase,
-    override_settings,
-)
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.six import StringIO
+
+import httpretty
+import numpy as np
 from pandas import DataFrame
 
-from ...utils.factories import (
-    AthleteFactory,
-    UserFactory,
-)
-from ..fields import (
-    DataFrameField,
-    DataFrameFormField,
-)
-from ..models import (
-    Activity,
-    ActivityPerformance,
-    Gear,
-    Place,
-    WebhookTransaction,
-)
-from ..templatetags.duration import (
-    baseround,
-    nice_repr,
-)
+from ...utils.factories import AthleteFactory, UserFactory
+from ..fields import DataFrameField, DataFrameFormField
+from ..models import Activity, ActivityPerformance, Gear, Place, WebhookTransaction
+from ..tasks import ProcessStravaEvents
+from ..templatetags.duration import baseround, nice_repr
 from .factories import (
     ActivityFactory,
     ActivityTypeFactory,
     GearFactory,
     PlaceFactory,
     RouteFactory,
+    WebhookTransactionFactory,
 )
 
 
@@ -1124,4 +1099,286 @@ class ActivityTestCase(TestCase):
             "{0} - {1}".format(
                 transaction.get_status_display(), transaction.date_generated,
             ),
+        )
+
+    def test_process_strava_event_create_new_activity(self):
+        transaction = WebhookTransactionFactory()
+
+        # link transaction to athlete
+        social_user = self.athlete.user.social_auth.get(provider="strava")
+        transaction.body["owner_id"] = social_user.uid
+
+        # transaction creates a new activty
+        transaction.body["aspect_type"] = "create"
+        transaction.body["object_type"] = "activity"
+        transaction.body["object_id"] = 12345
+
+        transaction.save()
+
+        httpretty.enable(allow_net_connect=False)
+
+        activity_url = (
+            self.STRAVA_BASE_URL + "/activities/%s" % transaction.body["object_id"]
+        )
+        activity_json = read_data("manual_activity.json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=activity_json,
+            status=200,
+        )
+
+        # process the event
+        task = ProcessStravaEvents()
+        task.run()
+
+        httpretty.disable()
+
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertEqual(
+            Activity.objects.filter(strava_id=transaction.body["object_id"]).count(), 1
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.PROCESSED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.UNPROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.ERROR).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.SKIPPED
+            ).count(),
+            0,
+        )
+
+    def test_process_strava_event_update_existing_activity(self):
+        transaction = WebhookTransactionFactory()
+
+        # link transaction to athlete
+        social_user = self.athlete.user.social_auth.get(provider="strava")
+        transaction.body["owner_id"] = social_user.uid
+
+        # associate transaction with an existing activity
+        strava_id = 12345
+        ActivityFactory(strava_id=strava_id)
+        transaction.body["aspect_type"] = "update"
+        transaction.body["object_type"] = "activity"
+        transaction.body["object_id"] = strava_id
+        transaction.save()
+
+        httpretty.enable(allow_net_connect=False)
+
+        activity_url = (
+            self.STRAVA_BASE_URL + "/activities/%s" % transaction.body["object_id"]
+        )
+        changed_json = read_data("manual_activity_changed.json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=changed_json,
+            status=200,
+        )
+
+        # process the event
+        task = ProcessStravaEvents()
+        task.run()
+
+        httpretty.disable()
+
+        self.assertEqual(Activity.objects.count(), 1)
+        self.assertEqual(
+            Activity.objects.filter(strava_id=strava_id).count(), 1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.PROCESSED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.UNPROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.ERROR).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.SKIPPED
+            ).count(),
+            0,
+        )
+
+    def test_process_strava_event_delete_existing_activity(self):
+
+        transaction = WebhookTransactionFactory()
+
+        # link transaction to athlete
+        social_user = self.athlete.user.social_auth.get(provider="strava")
+        transaction.body["owner_id"] = social_user.uid
+
+        # associate transaction with an existing activity
+        strava_id = 12345
+        ActivityFactory(strava_id=strava_id)
+        transaction.body["aspect_type"] = "delete"
+        transaction.body["object_type"] = "activity"
+        transaction.body["object_id"] = strava_id
+        transaction.save()
+
+        httpretty.enable(allow_net_connect=False)
+
+        # process the event
+        task = ProcessStravaEvents()
+        task.run()
+
+        httpretty.disable()
+
+        self.assertEqual(Activity.objects.count(), 0)
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.PROCESSED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.UNPROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.ERROR).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.SKIPPED
+            ).count(),
+            0,
+        )
+
+    def test_process_strava_event_missing_user(self):
+        transaction = WebhookTransactionFactory()
+
+        # link transaction to inexistant athlete
+        transaction.body["owner_id"] = 666
+        transaction.save()
+
+        httpretty.enable(allow_net_connect=False)
+
+        # process the event
+        task = ProcessStravaEvents()
+        task.run()
+
+        httpretty.disable()
+
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.PROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.UNPROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.ERROR).count(),
+            1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.SKIPPED
+            ).count(),
+            0,
+        )
+
+    def test_process_strava_skip_duplicate_events(self):
+        transaction1 = WebhookTransactionFactory()
+
+        # link transaction to athlete
+        social_user = self.athlete.user.social_auth.get(provider="strava")
+        transaction1.body["owner_id"] = social_user.uid
+
+        # associate transaction with an existing activity
+        strava_id = 12345
+        ActivityFactory(strava_id=strava_id)
+        transaction1.body["aspect_type"] = "create"
+        transaction1.body["object_type"] = "activity"
+        transaction1.body["object_id"] = strava_id
+        transaction1.save()
+
+        transaction2 = WebhookTransactionFactory(
+            date_generated=transaction1.date_generated + timedelta(minutes=1)
+        )
+        transaction2.body["aspect_type"] = "update"
+        transaction2.body["object_type"] = "activity"
+        transaction2.body["object_id"] = strava_id
+        transaction2.save()
+
+        httpretty.enable(allow_net_connect=False)
+
+        activity_url = self.STRAVA_BASE_URL + "/activities/%s" % strava_id
+        changed_json = read_data("manual_activity_changed.json")
+
+        httpretty.register_uri(
+            httpretty.GET,
+            activity_url,
+            content_type="application/json",
+            body=changed_json,
+            status=200,
+        )
+
+        # process the event
+        task = ProcessStravaEvents()
+        task.run()
+
+        httpretty.disable()
+
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.PROCESSED
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.PROCESSED)
+            .first()
+            .body["aspect_type"],
+            "update",
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.UNPROCESSED
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(status=WebhookTransaction.ERROR).count(),
+            0,
+        )
+        self.assertEqual(
+            WebhookTransaction.objects.filter(
+                status=WebhookTransaction.SKIPPED
+            ).count(),
+            1,
         )
