@@ -80,8 +80,8 @@ def strava_webhook(request):
     if request.method == "GET":
 
         # validate the request and return the hub.challenge as json
-        if request.GET["hub.verify_token"] == settings.STRAVA_VERIFY_TOKEN:
-            hub_challenge_json = {"hub.challenge": request.GET["hub.challenge"]}
+        if request.GET.get("hub.verify_token") == settings.STRAVA_VERIFY_TOKEN:
+            hub_challenge_json = {"hub.challenge": request.GET.get("hub.challenge")}
             return JsonResponse(hub_challenge_json)
 
     # event submission
