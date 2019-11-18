@@ -1,4 +1,5 @@
 from django.contrib.gis.geos import LineString
+
 from pandas import DataFrame
 from polyline import decode
 from stravalib import unithelper
@@ -18,10 +19,10 @@ class StravaRouteManager(RouteManager):
             get_queryset().filter(data_source='strava')
 
     # login to Strava and retrieve route list
-    def get_routes_list_from_server(self, user):
+    def get_routes_list_from_server(self, athlete):
 
-        # retrieve routes from strava
-        strava_routes = user.athlete.strava_client.get_routes()
+        # retrieve routes list from Strava
+        strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.get_strava_id())
 
         # create model instances with Strava routes data
         routes = []
@@ -39,7 +40,7 @@ class StravaRouteManager(RouteManager):
 
         # split into new and existing routes
         return self.check_for_existing_routes(
-            owner=user,
+            owner=athlete.user,
             routes=routes,
             data_source='strava'
         )

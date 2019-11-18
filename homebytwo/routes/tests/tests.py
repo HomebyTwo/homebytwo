@@ -1105,8 +1105,7 @@ class ActivityTestCase(TestCase):
         transaction = WebhookTransactionFactory()
 
         # link transaction to athlete
-        social_user = self.athlete.user.social_auth.get(provider="strava")
-        transaction.body["owner_id"] = social_user.uid
+        transaction.body["owner_id"] = self.athlete.get_strava_id()
 
         # transaction creates a new activty
         transaction.body["aspect_type"] = "create"
@@ -1167,8 +1166,7 @@ class ActivityTestCase(TestCase):
         transaction = WebhookTransactionFactory()
 
         # link transaction to athlete
-        social_user = self.athlete.user.social_auth.get(provider="strava")
-        transaction.body["owner_id"] = social_user.uid
+        transaction.body["owner_id"] = self.athlete.get_strava_id()
 
         # associate transaction with an existing activity
         strava_id = 12345
@@ -1231,8 +1229,7 @@ class ActivityTestCase(TestCase):
         transaction = WebhookTransactionFactory()
 
         # link transaction to athlete
-        social_user = self.athlete.user.social_auth.get(provider="strava")
-        transaction.body["owner_id"] = social_user.uid
+        transaction.body["owner_id"] = self.athlete.get_strava_id()
 
         # associate transaction with an existing activity
         strava_id = 12345
@@ -1316,8 +1313,7 @@ class ActivityTestCase(TestCase):
         transaction1 = WebhookTransactionFactory()
 
         # link transaction to athlete
-        social_user = self.athlete.user.social_auth.get(provider="strava")
-        transaction1.body["owner_id"] = social_user.uid
+        transaction1.body["owner_id"] = self.athlete.get_strava_id()
 
         # associate transaction with an existing activity
         strava_id = 12345
