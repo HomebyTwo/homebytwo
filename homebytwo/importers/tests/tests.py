@@ -271,8 +271,7 @@ class StravaTestCase(TestCase):
 
         route_name = escape("Nom de Route")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(route_name, response_content)
+        self.assertContains(response, route_name)
 
     def test_strava_route_already_imported(self):
         source_id = 2325453
@@ -314,7 +313,7 @@ class StravaTestCase(TestCase):
         httpretty.disable()
 
         already_imported = "Already Imported"
-        self.assertIn(already_imported, response_content)
+        self.assertContains(response, already_imported)
 
 
 @override_settings(
@@ -922,10 +921,9 @@ class SwitzerlandMobility(TestCase):
         required_field = "This field is required."
         not_a_number = "Enter a number."
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(alert_box, response_content)
-        self.assertIn(required_field, response_content)
-        self.assertIn(not_a_number, response_content)
+        self.assertContains(response, alert_box)
+        self.assertContains(response, required_field)
+        self.assertContains(response, not_a_number)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
@@ -969,9 +967,8 @@ class SwitzerlandMobility(TestCase):
             "Integrity Error: duplicate key value violates unique constraint"
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(alert_box, response_content)
-        self.assertIn(integrity_error, response_content)
+        self.assertContains(response, alert_box)
+        self.assertContains(response, integrity_error)
 
     def test_switzerland_mobility_routes_success(self):
         url = reverse("switzerland_mobility_routes")
@@ -995,8 +992,7 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(content, response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_routes_error(self):
         url = reverse("switzerland_mobility_routes")
@@ -1022,8 +1018,7 @@ class SwitzerlandMobility(TestCase):
 
         content = "Error 500: could not retrieve information from %s" % routes_list_url
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(content, response_content)
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_routes_no_cookies(self):
         url = reverse("switzerland_mobility_routes")
@@ -1038,8 +1033,7 @@ class SwitzerlandMobility(TestCase):
         content = 'action="%s"' % url
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_login_successful(self):
         url = reverse("switzerland_mobility_login")
@@ -1091,8 +1085,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.post(url, data)
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Incorrect login.", response.content.decode("UTF-8"))
+        self.assertContains(response, "Incorrect login.")
         with self.assertRaises(KeyError):
             self.client.session["switzerland_mobility_cookies"]
 
@@ -1109,8 +1102,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.post(url, data)
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     #########
     # Forms #
