@@ -1,19 +1,9 @@
 from django.contrib import messages
-from django.db import (
-    IntegrityError,
-    transaction,
-)
-from django.forms import (
-    HiddenInput,
-    modelform_factory,
-    modelformset_factory,
-)
+from django.db import IntegrityError, transaction
+from django.forms import HiddenInput, modelform_factory, modelformset_factory
 
 from ..routes.forms import RoutePlaceForm
-from ..routes.models import (
-    Place,
-    RoutePlace,
-)
+from ..routes.models import Place, RoutePlace
 from .forms import ImportersRouteForm
 
 
@@ -210,12 +200,12 @@ def save_detail_forms(request, route_form, route_places_formset):
 
     # create the route with the route_form
     new_route = route_form.save(commit=False)
-    # set user for route
-    new_route.owner = request.user
+
+    # set athlete for route
+    new_route.athlete = request.user.athlete
 
     try:
         with transaction.atomic():
-            # save the route
             new_route.save()
 
             # create the route places from the route_place_forms

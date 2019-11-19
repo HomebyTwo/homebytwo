@@ -8,7 +8,7 @@ from pandas import read_json
 from pytz import utc
 
 from ...routes.models import Activity, ActivityType, Gear, Place, Route, WebhookTransaction
-from ...utils.factories import AthleteFactory, UserFactory, get_field_choices
+from ...utils.factories import AthleteFactory, get_field_choices
 
 
 def load_data(file):
@@ -72,7 +72,7 @@ class RouteFactory(factory.django.DjangoModelFactory):
     source_id = factory.Sequence(lambda n: "%d" % n)
     data_source = "homebytwo"
     description = factory.Faker("bs")
-    owner = factory.SubFactory(UserFactory)
+    athlete = factory.SubFactory(AthleteFactory)
     totalup = factory.Faker("random_int", min=0, max=5000)
     totaldown = factory.Faker("random_int", min=0, max=5000)
     length = factory.Faker("random_int", min=1, max=5000)

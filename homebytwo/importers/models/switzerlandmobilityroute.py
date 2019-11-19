@@ -1,12 +1,13 @@
 import json
-
-from requests import get, codes
-from requests.exceptions import ConnectionError
 from ast import literal_eval
+
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
+
 from pandas import DataFrame
+from requests import codes, get
+from requests.exceptions import ConnectionError
 
 from ...routes.models import Route, RouteManager
 from ..utils import SwitzerlandMobilityError
@@ -48,16 +49,19 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         This method is required because SwitzerlandMobilityRoute
         is a proxy class.
         """
-        return super(SwitzerlandMobilityRouteManager, self). \
-            get_queryset().filter(data_source='switzerland_mobility')
+        return (
+            super(SwitzerlandMobilityRouteManager, self)
+            .get_queryset()
+            .filter(data_source="switzerland_mobility")
+        )
 
-    def get_remote_routes(self, session, user):
+    def get_remote_routes(self, session, athlete):
         """
         Use the authorization cookies saved in the session
-        to return the user's raw route list as json and format
+        to return the athlete's raw route list as json and format
         them for display
         """
-        cookies = session['switzerland_mobility_cookies']
+        cookies = session["switzerland_mobility_cookies"]
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
@@ -67,22 +71,16 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         if raw_routes:
 
             # format routes into dictionary
-            formatted_routes = self.format_raw_remote_routes(raw_routes)
+            formatted_routes = self.format_raw_remote_routes(raw_routes, athlete)
 
-            # split into old and new routes
-            new_routes, old_routes = self.check_for_existing_routes(
-                owner=user,
-                routes=formatted_routes,
-                data_source='switzerland_mobility',
-            )
-
-            return new_routes, old_routes
+            # split routes in two  lists: into old and new routes
+            return self.check_for_existing_routes(formatted_routes)
 
         # return two empty lits if no raw_routes were found
         else:
             return [], []
 
-    def format_raw_remote_routes(self, raw_routes):
+    def format_raw_remote_routes(self, raw_routes, athlete):
         """
         Take routes list returned by Switzerland Mobility as list of 3 values
         e.g. [2692136, u'Rochers de Nayes', None] and create a new
@@ -90,17 +88,18 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         """
         formatted_routes = []
 
-        # Iterate through json object
+        # Iterate through json object and create stubs
         for route in raw_routes:
             formatted_route = SwitzerlandMobilityRoute(
                 source_id=route[0],
                 name=route[1],
                 description=route[2],
+                athlete=athlete,
             )
 
             # If description is None convert it to empty
             if formatted_route.description is None:
-                formatted_route.description = ''
+                formatted_route.description = ""
 
             formatted_routes.append(formatted_route)
 
@@ -112,6 +111,13 @@ class SwitzerlandMobilityRoute(Route):
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+    def __init__(self, *args, **kwargs):
+        """
+        Set the data_source of the route to Switzerland Mobility
+        when instatiatind a route.
+        """
+        super(SwitzerlandMobilityRoute, self).__init__(*args, **kwargs)
+        self.data_source = "switzerland_mobility"
 
     class Meta:
         proxy = True
@@ -137,31 +143,24 @@ class SwitzerlandMobilityRoute(Route):
         Converts the json returned by Switzerland mobility
         into an instance of the SwitzerlandMobilityRoute model.
         """
-
-        self.name = raw_route_json['properties']['name']
-        self.length = raw_route_json['properties']['meta']['length']
-        self.totalup = raw_route_json['properties']['meta']['totalup']
-        self.totaldown = raw_route_json['properties']['meta']['totaldown']
+        self.name = raw_route_json["properties"]["name"]
+        self.length = raw_route_json["properties"]["meta"]["length"]
+        self.totalup = raw_route_json["properties"]["meta"]["totalup"]
+        self.totaldown = raw_route_json["properties"]["meta"]["totaldown"]
 
         # Add Swiss Coordinate System Information to the JSON
-        crs = {
-            "type": "name",
-            "properties": {
-                "name": "epsg:21781"
-            }
-        }
+        crs = {"type": "name", "properties": {"name": "epsg:21781"}}
 
-        raw_route_json['geometry']['crs'] = crs
+        raw_route_json["geometry"]["crs"] = crs
 
         # create geom from GeoJSON
-        self.geom = GEOSGeometry(
-            json.dumps(raw_route_json['geometry']),
-            srid=21781)
+        self.geom = GEOSGeometry(json.dumps(raw_route_json["geometry"]), srid=21781)
 
         # save profile data to pandas DataFrame
         self.data = DataFrame(
-            literal_eval(raw_route_json['properties']['profile']),
-            columns=['lat', 'lng', 'altitude', 'length'])
+            literal_eval(raw_route_json["properties"]["profile"]),
+            columns=["lat", "lng", "altitude", "length"],
+        )
 
         # compute elevation data
         self.calculate_cummulative_elevation_differences()
@@ -184,22 +183,11 @@ class SwitzerlandMobilityRoute(Route):
 
         if route_meta_json:
             # save as distance objetcs for easy conversion, e.g. length.mi
-            self.length = Distance(m=route_meta_json['length'])
-            self.totalup = Distance(m=route_meta_json['totalup'])
-            self.totaldown = Distance(m=route_meta_json['totaldown'])
+            self.length = Distance(m=route_meta_json["length"])
+            self.totalup = Distance(m=route_meta_json["totalup"])
+            self.totaldown = Distance(m=route_meta_json["totaldown"])
 
         # In case of error, return the original route and explain the error.
         else:
             message = "Could not retrieve meta-information for route: '{}'."
             raise ConnectionError(message.format(self.name))
-
-    def save(self, *args, **kwargs):
-        """
-        Set the data_source of the route to switzerland_mobility
-        when saving the route.
-        """
-        # set the data_source of the route to switzerland_mobility
-        self.data_source = 'switzerland_mobility'
-
-        # Save with the parent method
-        super(SwitzerlandMobilityRoute, self).save(*args, **kwargs)

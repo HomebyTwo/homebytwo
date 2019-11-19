@@ -22,7 +22,7 @@ from .tasks import import_athlete_strava_activities
 @login_required
 def routes(request):
     routes = Route.objects.order_by("name")
-    routes = routes.filter(owner=request.user)
+    routes = routes.filter(athlete=request.user.athlete)
     context = {
         "routes": routes,
     }

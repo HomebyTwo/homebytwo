@@ -1,5 +1,6 @@
-import factory
 from django.contrib.auth.models import User
+
+import factory
 from social_django.models import UserSocialAuth
 
 from ..routes.models import Athlete
@@ -55,5 +56,5 @@ class AthleteFactory(factory.django.DjangoModelFactory):
                 UserSocialAuth.objects.create(
                     user=self.user,
                     provider="strava",
-                    uid=factory.Faker("random_int", min=1000, max=1000000),
+                    uid=factory.Sequence(lambda n: "100{}".format(n)),
                 )

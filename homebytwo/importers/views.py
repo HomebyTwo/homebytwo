@@ -93,8 +93,11 @@ def strava_route(request, source_id):
     route_places_formset = False
     place_filter = False
 
-    # model instance from source_id
-    route = StravaRoute(source_id=source_id)
+    # create route stub from
+    route = StravaRoute(
+        source_id=source_id,
+        athlete=request.user.athlete,
+    )
 
     # with a POST request try to save route and places
     if request.method == "POST":
@@ -116,9 +119,9 @@ def strava_route(request, source_id):
 
     if request.method == "GET":
 
-        # add user to route to retrieve details from Strava and
+        # add athlete to route to retrieve details from Strava and
         # to check if it has already been imported
-        route.owner = request.user
+        route.athlete = request.user.athlete
 
         # get route details from Strava API
         route.get_route_details()
@@ -174,7 +177,7 @@ def switzerland_mobility_routes(request):
 
     try:
         new_routes, old_routes = manager.get_remote_routes(
-            request.session, request.user,
+            request.session, request.user.athlete,
         )
 
     except ConnectionError as error:
@@ -216,7 +219,10 @@ def switzerland_mobility_route(request, source_id):
     place_filter = False
 
     # model instance with source_id
-    route = SwitzerlandMobilityRoute(source_id=source_id)
+    route = SwitzerlandMobilityRoute(
+        source_id=source_id,
+        athlete=request.user.athlete,
+    )
 
     # with a POST request try to save route and places
     if request.method == "POST":
@@ -252,7 +258,7 @@ def switzerland_mobility_route(request, source_id):
         # no exception
         else:
             # add user to check if route has already been imported
-            route.owner = request.user
+            route.athlete = request.user.athlete
             places_qs = Place.objects.get_places_from_line(route.geom, 75)
 
             # filter bus stops for bike routes

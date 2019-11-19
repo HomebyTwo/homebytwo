@@ -30,7 +30,8 @@ class Athlete(models.Model):
         # return the Strava client
         return StravaClient(access_token=strava_access_token)
 
-    def get_strava_id(self):
+    @property
+    def strava_id(self):
         return self.user.social_auth.get(provider="strava").uid
 
 
