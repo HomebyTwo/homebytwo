@@ -1,4 +1,10 @@
 # Change Log
+## [0.6.4] - 2019-11-20 Handle Strava activities with Celery
+- Import Strava activities with a celery task
+- Handle Webhook events received from Strava
+- Separate tests in multiple files
+- Update Vagrant development box to Debian Buster
+
 ## [0.6.0] - 2019-11-13 Retrieve Activities from Strava
 - An athlete's Strava activities can be retrieved and saved to the database
 - Strava Webhook API subscriptions can be authorized
