@@ -254,7 +254,6 @@ def deploy(tag):
     require('root', 'project_name')
 
     execute(git_push, commit="@")
-    dump_db(get_backups_root())
 
     execute(install_requirements)
     execute(collect_static)
