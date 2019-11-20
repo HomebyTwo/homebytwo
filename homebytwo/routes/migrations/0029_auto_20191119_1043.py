@@ -8,7 +8,7 @@ def forwards_func(apps, schema_editor):
     Route = apps.get_model("routes", "Route")
     db_alias = schema_editor.connection.alias
     for route in Route.objects.using(db_alias).all():
-        route.athlete = route.track.owner.athlete
+        route.athlete = route.owner.athlete
         route.save()
 
 
@@ -16,7 +16,7 @@ def reverse_func(apps, schema_editor):
     Route = apps.get_model("routes", "Route")
     db_alias = schema_editor.connection.alias
     for route in Route.objects.using(db_alias).all():
-        route.owner = route.track.athlete.owner
+        route.owner = route.athlete.owner
         route.save()
 
 
