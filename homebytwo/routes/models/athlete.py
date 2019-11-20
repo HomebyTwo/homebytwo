@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
+
 from social_django.utils import load_strategy
 from stravalib.client import Client as StravaClient
 
@@ -28,6 +29,10 @@ class Athlete(models.Model):
 
         # return the Strava client
         return StravaClient(access_token=strava_access_token)
+
+    @property
+    def strava_id(self):
+        return self.user.social_auth.get(provider="strava").uid
 
 
 """

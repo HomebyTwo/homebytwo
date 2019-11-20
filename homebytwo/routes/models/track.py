@@ -1,20 +1,16 @@
 import os
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
+
 from easy_thumbnails.fields import ThumbnailerImageField
 from numpy import interp
 
-from . import (
-    ActivityPerformance,
-    ActivityType,
-    Place,
-)
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from . import ActivityPerformance, ActivityType, Place
 
 
 def get_image_path(instance, filename):
@@ -40,8 +36,10 @@ class Track(TimeStampedModel):
         ActivityType, default=1, on_delete=models.SET_DEFAULT
     )
 
-    # link to user
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # link to athlete
+    athlete = models.ForeignKey(
+        "Athlete", on_delete=models.CASCADE, related_name="tracks"
+    )
 
     # elevation gain in m
     totalup = models.FloatField("Total elevation gain in m", default=0)

@@ -1,7 +1,8 @@
 -e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
 
+celery
 dj-database-url
-django
+django<2.2
 django-filter
 django-geojson
 django-leaflet

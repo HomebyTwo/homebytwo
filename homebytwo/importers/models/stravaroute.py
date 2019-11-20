@@ -1,4 +1,5 @@
 from django.contrib.gis.geos import LineString
+
 from pandas import DataFrame
 from polyline import decode
 from stravalib import unithelper
@@ -7,42 +8,36 @@ from ...routes.models import ActivityType, Route, RouteManager
 
 
 class StravaRouteManager(RouteManager):
-
     def get_queryset(self):
         """
-        Returns query_sets with Strava Routes only.
+        Returns querysets with Strava Routes only.
         This method is required because StravaRoute
         is a proxy class.
         """
-        return super(StravaRouteManager, self). \
-            get_queryset().filter(data_source='strava')
+        return (
+            super(StravaRouteManager, self).get_queryset().filter(data_source="strava")
+        )
 
     # login to Strava and retrieve route list
-    def get_routes_list_from_server(self, user):
+    def get_routes_list_from_server(self, athlete):
 
-        # retrieve routes from strava
-        strava_routes = user.athlete.strava_client.get_routes()
+        # retrieve routes list from Strava
+        strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
 
         # create model instances with Strava routes data
-        routes = []
-
-        for strava_route in strava_routes:
-            route = StravaRoute(
+        routes = [
+            StravaRoute(
                 source_id=strava_route.id,
-                data_source='strava',
                 name=strava_route.name,
                 totalup=unithelper.meters(strava_route.elevation_gain).num,
                 length=unithelper.meters(strava_route.distance).num,
+                athlete=athlete,
             )
-
-            routes.append(route)
+            for strava_route in strava_routes
+        ]
 
         # split into new and existing routes
-        return self.check_for_existing_routes(
-            owner=user,
-            routes=routes,
-            data_source='strava'
-        )
+        return self.check_for_existing_routes(routes=routes)
 
 
 class StravaRoute(Route):
@@ -50,6 +45,13 @@ class StravaRoute(Route):
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+    def __init__(self, *args, **kwargs):
+        """
+        Set the data_source of the route to strava
+        when instatiatind a route.
+        """
+        super(StravaRoute, self).__init__(*args, **kwargs)
+        self.data_source = "strava"
 
     class Meta:
         proxy = True
@@ -64,7 +66,7 @@ class StravaRoute(Route):
         the source_id of the model instance must be set.
         """
 
-        strava_client = self.owner.athlete.strava_client
+        strava_client = self.athlete.strava_client
 
         # Retrieve route detail and streams
         strava_route = strava_client.get_route(self.source_id)
@@ -78,10 +80,10 @@ class StravaRoute(Route):
         self.data = self._data_from_streams(raw_streams)
 
         # Strava activity types: '1' for ride, '2' for run
-        if strava_route.type == '1':
-            self.activity_type = ActivityType.objects.filter(name='Bike').get()
-        if strava_route.type == '2':
-            self.activity_type = ActivityType.objects.filter(name='Run').get()
+        if strava_route.type == "1":
+            self.activity_type = ActivityType.objects.filter(name="Bike").get()
+        if strava_route.type == "2":
+            self.activity_type = ActivityType.objects.filter(name="Run").get()
 
         # transform geom coords to CH1903 / LV03
         self._transform_coords(self.geom)
@@ -90,10 +92,9 @@ class StravaRoute(Route):
         self.calculate_cummulative_elevation_differences()
 
         # retrieve totaldown from computed data
-        self.totaldown = abs(self.get_data(
-            1,  # line location of the last datapoint
-            'totaldown',
-        ))
+        self.totaldown = abs(
+            self.get_data(1, "totaldown",)  # line location of the last datapoint
+        )
 
     def _polyline_to_linestring(self, polyline):
         """
@@ -126,14 +127,14 @@ class StravaRoute(Route):
 
         for key, stream in streams.items():
             # split latlng in two columns
-            if key == 'latlng':
-                data['lat'], data['lng'] = zip(
+            if key == "latlng":
+                data["lat"], data["lng"] = zip(
                     *[(coords[0], coords[1]) for coords in stream.data]
                 )
 
             # rename distance to length
-            elif key == 'distance':
-                data['length'] = stream.data
+            elif key == "distance":
+                data["length"] = stream.data
 
             else:
                 data[key] = stream.data
@@ -148,14 +149,3 @@ class StravaRoute(Route):
 
         # transform geometry to target srid
         geom.transform(target_srid)
-
-    def save(self, *args, **kwargs):
-        """
-        Set the data_source of the route to strava
-        when saving the route.
-        """
-        # set the data_source of the route to switzerland_mobility
-        self.data_source = 'strava'
-
-        # Save with the parent method
-        super(StravaRoute, self).save(*args, **kwargs)

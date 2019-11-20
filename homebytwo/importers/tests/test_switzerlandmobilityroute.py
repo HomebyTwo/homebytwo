@@ -1,347 +1,25 @@
 from json import loads as json_loads
-from os.path import (
-    dirname,
-    join,
-    realpath,
-)
+from os.path import dirname, realpath
 from re import compile as re_compile
 
-import httpretty
 from django.conf import settings
-from django.core.management import call_command
-from django.core.management.base import CommandError
 from django.forms.models import model_to_dict
-from django.test import (
-    TestCase,
-    override_settings,
-)
+from django.test import TestCase, override_settings
 from django.urls import reverse
-from django.utils.html import escape
-from django.utils.six import StringIO
-from pandas import DataFrame
-from stravalib import Client as StravaClient
 
+import httpretty
 from requests.exceptions import ConnectionError
 
-from ...routes.models import (
-    Place,
-    RoutePlace,
-)
-from ...routes.tests.factories import PlaceFactory
-from ...utils.factories import UserFactory, AthleteFactory
-from ..forms import (
-    ImportersRouteForm,
-    SwitzerlandMobilityLogin,
-)
-from ..models import (
-    StravaRoute,
-    Swissname3dPlace,
-    SwitzerlandMobilityRoute,
-)
+from ...routes.models import RoutePlace
+from ...utils.factories import AthleteFactory, UserFactory
+from ...utils.tests import raise_connection_error, read_data
+from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
+from ..models import SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import (
-    SwitzerlandMobilityError,
-    get_place_type_choices,
-    get_route_form,
-)
-from .factories import (
-    StravaRouteFactory,
-    SwitzerlandMobilityRouteFactory,
-)
+from ..utils import SwitzerlandMobilityError
+from .factories import SwitzerlandMobilityRouteFactory
 
-
-def open_data(file, binary=True):
-    dir_path = dirname(realpath(__file__))
-    data_dir = "data"
-    path = join(dir_path, data_dir, file,)
-
-    if binary:
-        return open(path, 'rb')
-    else:
-        return open(path)
-
-
-def read_data(file, binary=False):
-    return open_data(file, binary).read()
-
-
-def raise_connection_error(self, request, uri, headers):
-    """
-    raises a connection error to use as the body of the mock
-    response in httpretty. Unfortunately httpretty outputs to stdout:
-    cf. https://stackoverflow.com/questions/36491664/
-    """
-    raise ConnectionError("Connection error.")
-
-
-class StravaTestCase(TestCase):
-    """
-    Test the Strava route importer.
-    """
-
-    def setUp(self):
-        # Add user to the test database and log him in
-        self.athlete = AthleteFactory(user__password="testpassword")
-        self.client.login(username=self.athlete.user.username, password="testpassword")
-
-    def intercept_get_athlete(self, body=read_data("strava_athlete.json"), status=200):
-        """
-        intercept the Strava API call to get_athlete. This call is made
-        when creating the strava client to test if the API is
-        available.
-        """
-
-        # athlete API call
-        athlete_url = "https://www.strava.com/api/v3/athlete"
-        httpretty.register_uri(
-            httpretty.GET,
-            athlete_url,
-            content_type="application/json",
-            body=body,
-            status=status,
-        )
-
-    #########
-    # Utils #
-    #########
-
-    def test_get_strava_athlete_success(self):
-
-        # intercept API calls with httpretty
-        httpretty.enable()
-        self.intercept_get_athlete()
-        self.athlete.strava_client.get_athlete()
-        httpretty.disable()
-
-        self.assertIsInstance(self.athlete.strava_client, StravaClient)
-
-    def test_get_strava_athlete_no_connection(self):
-        # intercept API calls with httpretty
-        httpretty.enable()
-        self.intercept_get_athlete(body=raise_connection_error,)
-
-        with self.assertRaises(ConnectionError):
-            self.athlete.strava_client.get_athlete()
-
-    def test_get_route_form(self):
-        route = StravaRouteFactory()
-        route_form = get_route_form(route)
-
-        self.assertEqual(len(route_form.fields), 10)
-
-    def test_get_place_type_choices(self):
-        places = PlaceFactory.create_batch(12)
-        places_types = {place.place_type for place in places}
-        choices = get_place_type_choices(places)
-
-        self.assertEqual(places_types, {choice[0] for choice in choices})
-
-    #########
-    # Model #
-    #########
-
-    def test_data_from_streams(self):
-        source_id = 2325453
-
-        # intercept url with httpretty
-        httpretty.enable()
-        url = "https://www.strava.com/api/v3/routes/%d/streams" % source_id
-        streams_json = read_data("strava_streams.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            url,
-            content_type="application/json",
-            body=streams_json,
-            status=200,
-        )
-
-        streams = self.athlete.strava_client.get_route_streams(source_id)
-
-        strava_route = StravaRouteFactory()
-        data = strava_route._data_from_streams(streams)
-        nb_rows, nb_columns = data.shape
-
-        httpretty.disable()
-
-        self.assertIsInstance(data, DataFrame)
-        self.assertEqual(nb_columns, 4)
-
-    def test_set_activity_type(self):
-        route = StravaRoute(source_id=2325453, owner=self.athlete.user)
-
-        httpretty.enable()
-        # Route details API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % route.source_id
-        route_detail_json = read_data("strava_route_detail.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            route_detail_url,
-            content_type="application/json",
-            body=route_detail_json,
-            status=200,
-        )
-
-        route_streams_url = (
-            "https://www.strava.com/api/v3/routes/%d/streams" % route.source_id
-        )
-        streams_json = read_data("strava_streams.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            route_streams_url,
-            content_type="application/json",
-            body=streams_json,
-            status=200,
-        )
-
-        route.get_route_details()
-        httpretty.disable()
-
-        self.assertEqual(route.activity_type_id, 1)
-
-    #########
-    # views #
-    #########
-    def test_redirect_when_strava_token_missing(self):
-        asocial_user = UserFactory(password="testpassword")
-        self.client.login(username=asocial_user, password="testpassword")
-
-        routes_url = reverse("strava_routes")
-        response = self.client.get(routes_url)
-        connect_url = reverse("strava_connect")
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, connect_url)
-
-    def test_strava_routes_success(self):
-        source_name = "Strava"
-        route_name = escape("Tout d'Aï")
-        length = "12.9km"
-        totalup = "1,880m+"
-
-        # Intercept API calls with httpretty
-        httpretty.enable()
-
-        # Athlete API call
-        self.intercept_get_athlete(body=read_data("strava_athlete.json"))
-
-        # route list API call with athlete id from the athlete json file
-        athlete_json = read_data("strava_athlete.json")
-        athlete = json_loads(athlete_json)
-        strava_athlete_id = athlete["id"]
-
-        route_list_url = (
-            "https://www.strava.com/api/v3/athletes/%d/routes" % strava_athlete_id
-        )
-        route_list_json = read_data("strava_route_list.json")
-        httpretty.register_uri(
-            httpretty.GET,
-            route_list_url,
-            content_type="application/json",
-            body=route_list_json,
-            status=200,
-        )
-
-        url = reverse("strava_routes")
-        response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
-
-        httpretty.disable()
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(source_name in response_content)
-        self.assertTrue(route_name in response_content)
-        self.assertTrue(length in response_content)
-        self.assertTrue(totalup in response_content)
-
-    def test_strava_route_success(self):
-        source_id = 2325453
-
-        # intercept API calls with httpretty
-        httpretty.enable()
-
-        # Athlete API call
-        self.intercept_get_athlete()
-
-        # route details API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % source_id
-        route_detail_json = read_data("strava_route_detail.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            route_detail_url,
-            content_type="application/json",
-            body=route_detail_json,
-            status=200,
-        )
-
-        # route streams API call
-        route_streams_url = (
-            "https://www.strava.com/api/v3/routes/%d/streams" % source_id
-        )
-        streams_json = read_data("strava_streams.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            route_streams_url,
-            content_type="application/json",
-            body=streams_json,
-            status=200,
-        )
-
-        url = reverse("strava_route", args=[source_id])
-        response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
-        httpretty.disable()
-
-        route_name = escape("Tout d'Aï")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(route_name, response_content)
-
-    def test_strava_route_already_imported(self):
-        source_id = 2325453
-        StravaRouteFactory(
-            source_id=source_id, owner=self.athlete.user,
-        )
-
-        # intercept API calls with httpretty
-        httpretty.enable()
-
-        # Route API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % source_id
-        route_detail_json = read_data("strava_route_detail.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            route_detail_url,
-            content_type="application/json",
-            body=route_detail_json,
-            status=200,
-        )
-
-        # Streams API call
-        stream_url = "https://www.strava.com/api/v3/routes/%d/streams" % source_id
-        streams_json = read_data("strava_streams.json")
-
-        httpretty.register_uri(
-            httpretty.GET,
-            stream_url,
-            content_type="application/json",
-            body=streams_json,
-            status=200,
-        )
-
-        url = reverse("strava_route", args=[source_id])
-
-        response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
-        httpretty.disable()
-
-        already_imported = "Already Imported"
-        self.assertIn(already_imported, response_content)
+CURRENT_DIR = dirname(realpath(__file__))
 
 
 @override_settings(
@@ -364,8 +42,8 @@ class SwitzerlandMobility(TestCase):
 
     def setUp(self):
         # Add user to the test database and log him in
-        self.user = UserFactory(password="testpassword")
-        self.client.login(username=self.user.username, password="testpassword")
+        self.athlete = AthleteFactory(user__password="testpassword")
+        self.client.login(username=self.athlete.user.username, password="testpassword")
 
     #########
     # Model #
@@ -381,7 +59,7 @@ class SwitzerlandMobility(TestCase):
         # intercept call with httpretty
         body = '[123456, "Test", null]'
 
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
         httpretty.register_uri(
             httpretty.GET, url, content_type="application/json", body=body, status=200
@@ -401,9 +79,9 @@ class SwitzerlandMobility(TestCase):
         url = "https://testurl.ch"
 
         # intercept call with httpretty
-        html_response = read_data(file="500.html")
+        html_response = read_data(file="500.html", dir_path=CURRENT_DIR)
 
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
         httpretty.register_uri(
             httpretty.GET, url, content_type="text/html", body=html_response, status=500
@@ -420,7 +98,7 @@ class SwitzerlandMobility(TestCase):
         url = "https://testurl.ch"
 
         # intercept call with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
         httpretty.register_uri(
             httpretty.GET, url, body=raise_connection_error,
@@ -431,16 +109,13 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
     def test_get_remote_raw_routes_success(self):
-        # create user
-        user = UserFactory()
-
         # save cookies to session
         session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = read_data("tracks_list.json")
+        json_response = read_data("tracks_list.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -450,7 +125,7 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
         manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes = manager.get_remote_routes(session, user)
+        new_routes, old_routes = manager.get_remote_routes(session, self.athlete)
         httpretty.disable()
 
         self.assertEqual(len(new_routes + old_routes), 37)
@@ -463,7 +138,7 @@ class SwitzerlandMobility(TestCase):
         session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
         json_response = "[]"
 
@@ -488,7 +163,7 @@ class SwitzerlandMobility(TestCase):
         session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
         json_response = "[]"
 
@@ -508,13 +183,13 @@ class SwitzerlandMobility(TestCase):
 
     def test_get_remote_routes_connection_error(self):
         # create user
-        user = UserFactory()
+        athlete = self.athlete
 
         # save cookies to session
         session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
 
         httpretty.register_uri(
@@ -526,16 +201,17 @@ class SwitzerlandMobility(TestCase):
 
         manager = SwitzerlandMobilityRoute.objects
         with self.assertRaises(ConnectionError):
-            manager.get_remote_routes(session, user)
+            manager.get_remote_routes(session, athlete)
 
         httpretty.disable()
 
     def test_format_raw_remote_routes_success(self):
-        raw_routes = json_loads(read_data(file="tracks_list.json"))
-
-        formatted_routes = SwitzerlandMobilityRoute.objects.format_raw_remote_routes(
-            raw_routes
+        raw_routes = json_loads(
+            read_data(file="tracks_list.json", dir_path=CURRENT_DIR)
         )
+
+        manager = SwitzerlandMobilityRoute.objects
+        formatted_routes = manager.format_raw_remote_routes(raw_routes, self.athlete,)
 
         self.assertTrue(type(formatted_routes) is list)
         self.assertEqual(len(formatted_routes), 37)
@@ -546,8 +222,9 @@ class SwitzerlandMobility(TestCase):
     def test_format_raw_remote_routes_empty(self):
         raw_routes = []
 
-        formatted_routes = SwitzerlandMobilityRoute.objects.format_raw_remote_routes(
-            raw_routes
+        routes_manager = SwitzerlandMobilityRoute.objects
+        formatted_routes = routes_manager.format_raw_remote_routes(
+            raw_routes, self.athlete,
         )
 
         self.assertEqual(len(formatted_routes), 0)
@@ -560,9 +237,9 @@ class SwitzerlandMobility(TestCase):
         # Turn the route meta URL into a regular expression
         meta_url = re_compile(meta_url.replace(str(route.source_id), r"(\d+)"))
 
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
 
-        route_json = read_data("track_info.json")
+        route_json = read_data("track_info.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -577,29 +254,32 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(route.totalup.m, 1234.5)
 
     def test_check_for_existing_routes_success(self):
-        # create user
-        user = UserFactory()
 
         # save an existing route
         SwitzerlandMobilityRouteFactory(
-            source_id=2191833,
-            data_source="switzerland_mobility",
-            name="Haute Cime",
-            owner=user,
+            source_id=2191833, name="Haute Cime", athlete=self.athlete,
         )
 
         formatted_routes = [
-            SwitzerlandMobilityRoute(
-                name="Haute Cime", source_id=2191833, description=""
+            SwitzerlandMobilityRouteFactory.build(
+                name="Haute Cime",
+                athlete=self.athlete,
+                source_id=2191833,
             ),
-            SwitzerlandMobilityRoute(
-                name="Grammont", source_id=2433141, description=""
+            SwitzerlandMobilityRouteFactory.build(
+                name="Grammont",
+                athlete=self.athlete,
+                source_id=2433141,
             ),
-            SwitzerlandMobilityRoute(
-                name="Rochers de Nayes", source_id=2692136, description=""
+            SwitzerlandMobilityRouteFactory.build(
+                name="Rochers de Nayes",
+                athlete=self.athlete,
+                source_id=2692136,
             ),
-            SwitzerlandMobilityRoute(
-                name="Villeneuve - Leysin", source_id=3011765, description=""
+            SwitzerlandMobilityRouteFactory.build(
+                name="Villeneuve - Leysin",
+                athlete=self.athlete,
+                source_id=3011765,
             ),
         ]
 
@@ -607,7 +287,7 @@ class SwitzerlandMobility(TestCase):
             new_routes,
             old_routes,
         ) = SwitzerlandMobilityRoute.objects.check_for_existing_routes(
-            owner=user, routes=formatted_routes, data_source="switzerland_mobility"
+            routes=formatted_routes,
         )
 
         self.assertEqual(len(new_routes), 3)
@@ -616,15 +296,14 @@ class SwitzerlandMobility(TestCase):
     def test_get_remote_routes_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
-        user = UserFactory()
 
         # save an existing route
-        SwitzerlandMobilityRouteFactory(owner=user)
+        SwitzerlandMobilityRouteFactory(athlete=self.athlete)
 
         # intercept routes_list call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = read_data("tracks_list.json")
+        json_response = read_data("tracks_list.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -640,7 +319,7 @@ class SwitzerlandMobility(TestCase):
         # Turn the route meta URL into a regular expression
         route_meta_url = re_compile(route_meta_url.replace("%d", r"(\w+)"))
 
-        route_json = read_data("track_info.json")
+        route_json = read_data("track_info.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -651,7 +330,7 @@ class SwitzerlandMobility(TestCase):
         )
 
         new_routes, old_routes = SwitzerlandMobilityRoute.objects.get_remote_routes(
-            session, user
+            session, self.athlete
         )
         httpretty.disable()
 
@@ -663,10 +342,10 @@ class SwitzerlandMobility(TestCase):
         route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
 
-        route_details_json = read_data(file="2191833_show.json")
+        route_details_json = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -688,10 +367,10 @@ class SwitzerlandMobility(TestCase):
         route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
 
-        html_response = read_data(file="404.html")
+        html_response = read_data(file="404.html", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -708,9 +387,9 @@ class SwitzerlandMobility(TestCase):
 
     def test_already_imported(self):
         route = SwitzerlandMobilityRouteFactory.build()
-        self.assertEqual(route.already_imported(), False)
+        self.assertIsNone(route.get_already_imported())
         route = SwitzerlandMobilityRouteFactory()
-        self.assertEqual(route.already_imported(), True)
+        self.assertEqual(route.get_already_imported(), route)
 
     #########
     # Views #
@@ -729,18 +408,16 @@ class SwitzerlandMobility(TestCase):
         content = "Import routes"
         url = reverse("importers_index")
         response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_route_success(self):
         route_id = 2823968
         url = reverse("switzerland_mobility_route", args=[route_id])
 
         # intercept call to Switzerland Mobility with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
-        json_response = read_data(file="2191833_show.json")
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -766,28 +443,27 @@ class SwitzerlandMobility(TestCase):
         )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
-        response_content = response.content.decode("UTF-8")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(title, response_content)
+        self.assertContains(response, title, html=True)
         for start_place_form_element in start_place_form_elements:
-            self.assertIn(start_place_form_element, response_content)
-        self.assertIn(places_formset, response_content)
-        self.assertIn(map_data, response_content)
+            self.assertContains(response, start_place_form_element)
+        self.assertContains(response, places_formset, html=True)
+        self.assertContains(response, map_data, html=True)
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         SwitzerlandMobilityRouteFactory(
-            source_id=route_id, owner=self.user,
+            source_id=route_id,
+            athlete=self.athlete,
         )
 
         url = reverse("switzerland_mobility_route", args=[route_id])
         content = "Already Imported"
 
         # intercept call to Switzerland Mobility with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
-        json_response = read_data(file="2733343_show.json")
+        json_response = read_data(file="2733343_show.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -798,8 +474,10 @@ class SwitzerlandMobility(TestCase):
         )
 
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+
+        httpretty.disable()
+
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_route_server_error(self):
         route_id = 999999999999
@@ -807,9 +485,9 @@ class SwitzerlandMobility(TestCase):
         content = "Error 500"
 
         # intercept call to Switzerland Mobility with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
-        html_response = read_data(file="500.html")
+        html_response = read_data(file="500.html", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -820,11 +498,9 @@ class SwitzerlandMobility(TestCase):
         )
 
         response = self.client.get(url)
-
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_route_post_success_no_places(self):
         route_id = 2191833
@@ -947,20 +623,18 @@ class SwitzerlandMobility(TestCase):
 
         url = reverse("switzerland_mobility_route", args=[route_id])
         response = self.client.post(url, post_data)
-        response_content = response.content.decode("UTF-8")
 
         alert_box = '<li class="box mrgv- alert error">'
         required_field = "This field is required."
         not_a_number = "Enter a number."
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(alert_box, response_content)
-        self.assertIn(required_field, response_content)
-        self.assertIn(not_a_number, response_content)
+        self.assertContains(response, alert_box)
+        self.assertContains(response, required_field)
+        self.assertContains(response, not_a_number)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory(source_id=route_id, owner=self.user,)
+        route = SwitzerlandMobilityRouteFactory(source_id=route_id, athlete=self.athlete)
 
         start_place = route.start_place
         end_place = route.end_place
@@ -993,16 +667,14 @@ class SwitzerlandMobility(TestCase):
 
         url = reverse("switzerland_mobility_route", args=[route_id])
         response = self.client.post(url, post_data)
-        response_content = response.content.decode("UTF-8")
 
         alert_box = '<li class="box mrgv- alert error">'
         integrity_error = (
             "Integrity Error: duplicate key value violates unique constraint"
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(alert_box, response_content)
-        self.assertIn(integrity_error, response_content)
+        self.assertContains(response, alert_box)
+        self.assertContains(response, integrity_error)
 
     def test_switzerland_mobility_routes_success(self):
         url = reverse("switzerland_mobility_routes")
@@ -1010,9 +682,9 @@ class SwitzerlandMobility(TestCase):
         self.add_cookies_to_session()
 
         # intercept call to map.wanderland.ch
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
-        json_response = read_data(file="tracks_list.json")
+        json_response = read_data(file="tracks_list.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -1026,15 +698,14 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(content, response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_routes_error(self):
         url = reverse("switzerland_mobility_routes")
         self.add_cookies_to_session()
 
         # intercept call to map.wanderland.ch
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
         json_response = "[]"
 
@@ -1047,14 +718,12 @@ class SwitzerlandMobility(TestCase):
         )
 
         response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
 
         httpretty.disable()
 
         content = "Error 500: could not retrieve information from %s" % routes_list_url
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(content, response_content)
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_routes_no_cookies(self):
         url = reverse("switzerland_mobility_routes")
@@ -1069,15 +738,14 @@ class SwitzerlandMobility(TestCase):
         content = 'action="%s"' % url
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     def test_switzerland_mobility_login_successful(self):
         url = reverse("switzerland_mobility_login")
         data = {"username": "testuser", "password": "testpassword"}
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
         # successful login response
         json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
@@ -1105,7 +773,7 @@ class SwitzerlandMobility(TestCase):
         data = {"username": "testuser", "password": "testpassword"}
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
         # failed login response
         json_response = (
@@ -1122,8 +790,7 @@ class SwitzerlandMobility(TestCase):
         response = self.client.post(url, data)
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Incorrect login.", response.content.decode("UTF-8"))
+        self.assertContains(response, "Incorrect login.")
         with self.assertRaises(KeyError):
             self.client.session["switzerland_mobility_cookies"]
 
@@ -1133,15 +800,14 @@ class SwitzerlandMobility(TestCase):
         content = "Error 500: logging to Switzeland Mobility."
 
         # intercept call to map.wandland.ch with httpretty
-        httpretty.enable()
+        httpretty.enable(allow_net_connect=False)
         login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
         httpretty.register_uri(httpretty.POST, login_url, status=500)
 
         response = self.client.post(url, data)
         httpretty.disable()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(content in response.content.decode("UTF-8"))
+        self.assertContains(response, content)
 
     #########
     # Forms #
@@ -1191,161 +857,3 @@ class SwitzerlandMobility(TestCase):
         del route_data["geom"]
         form = ImportersRouteForm(data=route_data)
         self.assertFalse(form.is_valid())
-
-
-class Swissname3dModelTest(TestCase):
-    """
-    Test the Swissname3d Model,
-    a Proxy Model to import from the Swissname3d data set
-    """
-
-    def get_place_data(self, data_source="swissname3d"):
-        data = {
-            "swissname3d": {
-                "place_type": "Gipfel",
-                "name": "Place3D_name",
-                "description": "Place3D_description",
-                "altitude": 666,
-                "public_transport": False,
-                "source_id": "1",
-                "geom": "POINT(0 0)",
-            },
-            "homebytwo": {
-                "place_type": "Church",
-                "name": "Other_Name",
-                "description": "Other_description",
-                "altitude": 1000,
-                "public_transport": True,
-                "geom": "POINT(0 0)",
-            },
-        }
-
-        return data[data_source]
-
-    def get_path_to_data(self, file_type="shp"):
-        dir_path = dirname(realpath(__file__))
-
-        if file_type == "shp":
-            # Test file with 35 features only
-            shapefile = join(dir_path, "data", "TestSwissNAMES3D_PKT.shp")
-            return shapefile
-
-        else:
-            # Bad empty data
-            text_data = join(dir_path, "data", "text.txt")
-            return text_data
-
-    def test_create_instance(self):
-        place3d = Swissname3dPlace(**self.get_place_data())
-        self.assertEqual("Place3D_name", str(place3d))
-
-    def test_save_instance(self):
-        place3d = Swissname3dPlace(**self.get_place_data())
-        place3d.save()
-        self.assertEqual(Swissname3dPlace.objects.count(), 1)
-
-    def test_separate_from_other_place_models(self):
-        place3d = Swissname3dPlace(**self.get_place_data())
-        place3d.save()
-        other_place = Place(**self.get_place_data("homebytwo"))
-        other_place.save()
-        self.assertEqual(Swissname3dPlace.objects.count(), 1)
-        self.assertEqual(Place.objects.count(), 2)
-
-    def test_prevent_duplicate_entries(self):
-        place3d_1 = Swissname3dPlace(**self.get_place_data())
-        place3d_1.save()
-
-        place3d_2 = Swissname3dPlace(**self.get_place_data())
-        place3d_2.name = "Other_3D_place"
-        place3d_2.save()
-        self.assertEqual(Place.objects.count(), 1)
-
-        place3d_3 = Swissname3dPlace(**self.get_place_data())
-        place3d_3.source_id = "2"
-        place3d_3.save()
-        self.assertEqual(Place.objects.count(), 2)
-
-    #######################
-    # Management Commands #
-    #######################
-
-    def test_command_output_inexistant_file(self):
-        with self.assertRaises(OSError):
-            call_command("importswissname3d", "toto")
-
-    def test_command_output_incorrect_shapefile(self):
-        with self.assertRaises(CommandError):
-            call_command("importswissname3d", self.get_path_to_data("bad"))
-
-    def test_command_output_correct_shapefile(self):
-        out = StringIO()
-        call_command(
-            "importswissname3d", self.get_path_to_data("shp"), "--no-input", stdout=out
-        )
-        self.assertTrue("Successfully imported" in out.getvalue())
-
-    def test_command_limit_option(self):
-        out = StringIO()
-        call_command(
-            "importswissname3d",
-            "--limit",
-            "10",
-            "--no-input",
-            self.get_path_to_data("shp"),
-            stdout=out,
-        )
-        self.assertTrue("Successfully imported 10 places" in out.getvalue())
-        self.assertEqual(Swissname3dPlace.objects.count(), 10)
-
-    def test_command_limit_higher_than_feature_count(self):
-        out = StringIO()
-        call_command(
-            "importswissname3d",
-            "--limit",
-            "100",
-            "--no-input",
-            self.get_path_to_data("shp"),
-            stdout=out,
-        )
-        self.assertTrue("Successfully imported 35 places" in out.getvalue())
-        self.assertEqual(Swissname3dPlace.objects.count(), 35)
-
-    def test_command_limit_delete_replace_option(self):
-        out = StringIO()
-        call_command(
-            "importswissname3d",
-            "--limit",
-            "10",
-            "--no-input",
-            self.get_path_to_data("shp"),
-            stdout=out,
-        )
-        call_command(
-            "importswissname3d",
-            "--delete",
-            "--no-input",
-            self.get_path_to_data("shp"),
-            stdout=out,
-        )
-        self.assertIn("Successfully deleted 10 places.", out.getvalue())
-        self.assertIn("Successfully imported 35 places.", out.getvalue())
-        self.assertEqual(Swissname3dPlace.objects.count(), 35)
-
-    def test_command_delete_swissname3d_only(self):
-        out = StringIO()
-        place3d = Swissname3dPlace(**self.get_place_data())
-        place3d.save()
-        place = Place(**self.get_place_data("homebytwo"))
-        place.save()
-        self.assertEqual(Place.objects.count(), 2)  # 1 + 1
-        self.assertEqual(Swissname3dPlace.objects.count(), 1)
-        call_command(
-            "importswissname3d",
-            "--delete",
-            "--no-input",
-            self.get_path_to_data("shp"),
-            stdout=out,
-        )
-        self.assertEqual(Place.objects.count(), 36)  # 35 + 1
-        self.assertEqual(Swissname3dPlace.objects.count(), 35)

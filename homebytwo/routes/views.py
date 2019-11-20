@@ -2,10 +2,11 @@ import json
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.measure import D
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -15,12 +16,13 @@ from django.views.generic.list import ListView
 from pytz import utc
 
 from .models import Activity, Route, RoutePlace, WebhookTransaction
+from .tasks import import_athlete_strava_activities
 
 
 @login_required
 def routes(request):
     routes = Route.objects.order_by("name")
-    routes = routes.filter(owner=request.user)
+    routes = routes.filter(athlete=request.user.athlete)
     context = {
         "routes": routes,
     }
@@ -54,6 +56,14 @@ def route(request, pk):
 
     context = {"route": route, "places": places}
     return render(request, "routes/route.html", context)
+
+
+@login_required
+def import_strava_activities(request):
+    if request.method == "GET":
+        import_athlete_strava_activities.delay(request.user.athlete.id)
+        messages.success(request, "We are importing your Strava activities!")
+        return redirect("routes:activities")
 
 
 @csrf_exempt

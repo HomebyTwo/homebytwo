@@ -37,7 +37,7 @@ ENVIRONMENTS = {
     },
     'staging': {
         'root': '/var/www/homebytwo_staging/',
-        'hosts': ['root@myhost'],
+        'hosts': ['root@homebytwo.ch'],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         # 'settings': {
@@ -254,6 +254,7 @@ def deploy(tag):
     require('root', 'project_name')
 
     execute(git_push, commit="@")
+    dump_db(get_backups_root())
 
     execute(install_requirements)
     execute(collect_static)

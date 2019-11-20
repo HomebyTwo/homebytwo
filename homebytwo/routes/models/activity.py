@@ -159,6 +159,7 @@ class Activity(TimeStampedModel):
             strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
             self.save_from_strava(strava_activity)
 
+        # Object not found on Strava: e.g. changed privacy setting
         except ObjectNotFound:
             self.delete()
 

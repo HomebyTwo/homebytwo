@@ -1,5 +1,5 @@
-from django.contrib.postgres.fields import JSONField
 from django.contrib.gis.db import models
+from django.contrib.postgres.fields import JSONField
 
 from ...core.models import TimeStampedModel
 
@@ -8,14 +8,18 @@ class WebhookTransaction(TimeStampedModel):
     UNPROCESSED = 1
     PROCESSED = 2
     ERROR = 3
+    SKIPPED = 4
 
     STATUSES = (
         (UNPROCESSED, "Unprocessed"),
         (PROCESSED, "Processed"),
         (ERROR, "Error"),
+        (SKIPPED, "Skipped"),
     )
 
     # time of generation on Strava side
+    class Meta:
+        ordering = ["-date_generated"]
     date_generated = models.DateTimeField()
     body = JSONField()
     request_meta = JSONField()

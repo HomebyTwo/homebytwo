@@ -1,13 +1,8 @@
-import json
-from datetime import datetime
 from itertools import chain, islice, tee
 
-import requests
-from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
-from django.core.exceptions import ValidationError
 
 from ...core.models import TimeStampedModel
 from ..fields import LineSubstring
@@ -77,7 +72,9 @@ class PlaceManager(models.Manager):
         for segment in segments:
 
             # find additional places along the segment
-            new_places = self.find_places_in_segment(segment, line, max_distance, places)
+            new_places = self.find_places_in_segment(
+                segment, line, max_distance, places
+            )
 
             if new_places:
                 start, end = segment
@@ -113,18 +110,15 @@ class PlaceManager(models.Manager):
         places = places.filter(geom__dwithin=(line, max_d))
 
         # annotate with distance to line
-        places = places.annotate(distance_from_line=Distance('geom', line))
+        places = places.annotate(distance_from_line=Distance("geom", line))
 
         # annotate with location along the line between 0 and 1
-        places = places.annotate(line_location=LineLocatePoint(line, 'geom'))
+        places = places.annotate(line_location=LineLocatePoint(line, "geom"))
 
         # remove start and end places within 1% of start and end location
-        places = places.filter(
-            line_location__gt=0.01,
-            line_location__lt=0.99,
-        )
+        places = places.filter(line_location__gt=0.01, line_location__lt=0.99,)
 
-        places = places.order_by('line_location')
+        places = places.order_by("line_location")
 
         return places
 
@@ -139,16 +133,16 @@ class PlaceManager(models.Manager):
         # well as the start and the end location of the segment where
         # the places were found.
         line_locations = chain(
-            [start],
-            [place.line_location for place in list(places)],
-            [end]
+            [start], [place.line_location for place in list(places)], [end]
         )
 
         # use the custom iterator, exclude segments where start and end
         # locations are the same. Also exclude segment where 'nxt == None`.
-        segments = [(crt, nxt) for crt, nxt
-                    in current_and_next(line_locations)
-                    if crt != nxt and nxt]
+        segments = [
+            (crt, nxt)
+            for crt, nxt in current_and_next(line_locations)
+            if crt != nxt and nxt
+        ]
 
         return segments
 
@@ -169,7 +163,7 @@ class PlaceManager(models.Manager):
         # the original linestring.
         for place in places:
             # relative line location to the start point of the subline
-            length = (place.line_location * (end - start))
+            length = place.line_location * (end - start)
 
             # update attribute with line location on the original line
             place.line_location = start + length
@@ -184,10 +178,10 @@ class PlaceManager(models.Manager):
         places = self.filter(geom__distance_lte=(point, max_d))
 
         # annotate with distance
-        places = places.annotate(distance_from_line=Distance('geom', point))
+        places = places.annotate(distance_from_line=Distance("geom", point))
 
         # sort by distance
-        places = places.order_by('distance_from_line',)
+        places = places.order_by("distance_from_line",)
 
         return places
 
@@ -200,206 +194,137 @@ class Place(TimeStampedModel):
     and for public transport connection.
     """
 
-    PLACE = 'PLA'
-    LOCAL_PLACE = 'LPL'
-    SINGLE_BUILDING = 'BDG'
-    OPEN_BUILDING = 'OBG'
-    TOWER = 'TWR'
-    SACRED_BUILDING = 'SBG'
-    CHAPEL = 'CPL'
-    WAYSIDE_SHRINE = 'SHR'
-    MONUMENT = 'MNT'
-    FOUNTAIN = 'FTN'
-    SUMMIT = 'SUM'
-    HILL = 'HIL'
-    PASS = 'PAS'
-    BELAY = 'BEL'
-    WATERFALL = 'WTF'
-    CAVE = 'CAV'
-    SOURCE = 'SRC'
-    BOULDER = 'BLD'
-    POINT_OF_VIEW = 'POV'
-    BUS_STATION = 'BUS'
-    TRAIN_STATION = 'TRA'
-    OTHER_STATION = 'OTH'
-    BOAT_STATION = 'BOA'
-    EXIT = 'EXT'
-    ENTRY_AND_EXIT = 'EAE'
-    ROAD_PASS = 'RPS'
-    INTERCHANGE = 'ICG'
-    LOADING_STATION = 'LST'
-    PARKING = 'PKG'
-    CUSTOMHOUSE_24H = 'C24'
-    CUSTOMHOUSE_24H_LIMITED = 'C24LT'
-    CUSTOMHOUSE_LIMITED = 'CLT'
-    LANDMARK = 'LMK'
-    HOME = 'HOM'
-    WORK = 'WRK'
-    GYM = 'GYM'
-    HOLIDAY_PLACE = 'HOL'
-    FRIENDS_PLACE = 'FRD'
-    OTHER_PLACE = 'CST'
+    PLACE = "PLA"
+    LOCAL_PLACE = "LPL"
+    SINGLE_BUILDING = "BDG"
+    OPEN_BUILDING = "OBG"
+    TOWER = "TWR"
+    SACRED_BUILDING = "SBG"
+    CHAPEL = "CPL"
+    WAYSIDE_SHRINE = "SHR"
+    MONUMENT = "MNT"
+    FOUNTAIN = "FTN"
+    SUMMIT = "SUM"
+    HILL = "HIL"
+    PASS = "PAS"
+    BELAY = "BEL"
+    WATERFALL = "WTF"
+    CAVE = "CAV"
+    SOURCE = "SRC"
+    BOULDER = "BLD"
+    POINT_OF_VIEW = "POV"
+    BUS_STATION = "BUS"
+    TRAIN_STATION = "TRA"
+    OTHER_STATION = "OTH"
+    BOAT_STATION = "BOA"
+    EXIT = "EXT"
+    ENTRY_AND_EXIT = "EAE"
+    ROAD_PASS = "RPS"
+    INTERCHANGE = "ICG"
+    LOADING_STATION = "LST"
+    PARKING = "PKG"
+    CUSTOMHOUSE_24H = "C24"
+    CUSTOMHOUSE_24H_LIMITED = "C24LT"
+    CUSTOMHOUSE_LIMITED = "CLT"
+    LANDMARK = "LMK"
+    HOME = "HOM"
+    WORK = "WRK"
+    GYM = "GYM"
+    HOLIDAY_PLACE = "HOL"
+    FRIENDS_PLACE = "FRD"
+    OTHER_PLACE = "CST"
 
     PLACE_TYPE_CHOICES = (
-        (PLACE, 'Place'),
-        (LOCAL_PLACE, 'Local Place'),
-        ('Constructions', (
-            (SINGLE_BUILDING, 'Single Building'),
-            (OPEN_BUILDING, 'Open Building'),
-            (TOWER, 'Tower'),
-            (SACRED_BUILDING, 'Sacred Building'),
-            (CHAPEL, 'Chapel'),
-            (WAYSIDE_SHRINE, 'Wayside Shrine'),
-            (MONUMENT, 'Monument'),
-            (FOUNTAIN, 'Fountain'),
-        )
+        (PLACE, "Place"),
+        (LOCAL_PLACE, "Local Place"),
+        (
+            "Constructions",
+            (
+                (SINGLE_BUILDING, "Single Building"),
+                (OPEN_BUILDING, "Open Building"),
+                (TOWER, "Tower"),
+                (SACRED_BUILDING, "Sacred Building"),
+                (CHAPEL, "Chapel"),
+                (WAYSIDE_SHRINE, "Wayside Shrine"),
+                (MONUMENT, "Monument"),
+                (FOUNTAIN, "Fountain"),
+            ),
         ),
-        ('Features', (
-            (SUMMIT, 'Summit'),
-            (HILL, 'Hill'),
-            (PASS, 'Pass'),
-            (BELAY, 'Belay'),
-            (WATERFALL, 'Waterfall'),
-            (CAVE, 'Cave'),
-            (SOURCE, 'Source'),
-            (BOULDER, 'Boulder'),
-            (POINT_OF_VIEW, 'Point of View')
-        )
+        (
+            "Features",
+            (
+                (SUMMIT, "Summit"),
+                (HILL, "Hill"),
+                (PASS, "Pass"),
+                (BELAY, "Belay"),
+                (WATERFALL, "Waterfall"),
+                (CAVE, "Cave"),
+                (SOURCE, "Source"),
+                (BOULDER, "Boulder"),
+                (POINT_OF_VIEW, "Point of View"),
+            ),
         ),
-        ('Public Transport', (
-            (BUS_STATION, 'Bus Station'),
-            (TRAIN_STATION, 'Train Station'),
-            (OTHER_STATION, 'Other Station'),
-            (BOAT_STATION, 'Boat Station'),
-        )
+        (
+            "Public Transport",
+            (
+                (BUS_STATION, "Bus Station"),
+                (TRAIN_STATION, "Train Station"),
+                (OTHER_STATION, "Other Station"),
+                (BOAT_STATION, "Boat Station"),
+            ),
         ),
-        ('Roads', (
-            (EXIT, 'Exit'),
-            (ENTRY_AND_EXIT, 'Entry and Exit'),
-            (ROAD_PASS, 'Road Pass'),
-            (INTERCHANGE, 'Interchange'),
-            (LOADING_STATION, 'Loading Station'),
-            (PARKING, 'Parking'),
-        )
+        (
+            "Roads",
+            (
+                (EXIT, "Exit"),
+                (ENTRY_AND_EXIT, "Entry and Exit"),
+                (ROAD_PASS, "Road Pass"),
+                (INTERCHANGE, "Interchange"),
+                (LOADING_STATION, "Loading Station"),
+                (PARKING, "Parking"),
+            ),
         ),
-        ('Customs', (
-            (CUSTOMHOUSE_24H, 'Customhouse 24h'),
-            (CUSTOMHOUSE_24H_LIMITED, 'Customhouse 24h limited'),
-            (CUSTOMHOUSE_LIMITED, 'Customhouse limited'),
-            (LANDMARK, 'Landmark'),
-        )
+        (
+            "Customs",
+            (
+                (CUSTOMHOUSE_24H, "Customhouse 24h"),
+                (CUSTOMHOUSE_24H_LIMITED, "Customhouse 24h limited"),
+                (CUSTOMHOUSE_LIMITED, "Customhouse limited"),
+                (LANDMARK, "Landmark"),
+            ),
         ),
-        ('Personal', (
-            (HOME, 'Home'),
-            (WORK, 'Work'),
-            (GYM, 'Gym'),
-            (HOLIDAY_PLACE, 'Holiday Place'),
-            (FRIENDS_PLACE, 'Friend\'s place'),
-            (OTHER_PLACE, 'Other place'),
-        )
+        (
+            "Personal",
+            (
+                (HOME, "Home"),
+                (WORK, "Work"),
+                (GYM, "Gym"),
+                (HOLIDAY_PLACE, "Holiday Place"),
+                (FRIENDS_PLACE, "Friend's place"),
+                (OTHER_PLACE, "Other place"),
+            ),
         ),
     )
 
     place_type = models.CharField(max_length=26, choices=PLACE_TYPE_CHOICES)
-    name = models.CharField('Name of the place', max_length=250)
-    description = models.TextField('Text description of the Place', default='')
+    name = models.CharField(max_length=250)
+    description = models.TextField(default="", blank=True)
     altitude = models.FloatField(null=True)
+    data_source = models.CharField(default="homebytwo", max_length=50)
+    source_id = models.CharField("ID at the data source", max_length=50)
     public_transport = models.BooleanField(default=False)
-    data_source = models.CharField('Where the place came from',
-                                   default='homebytwo', max_length=50)
-    source_id = models.CharField('Place ID at the data source', max_length=50)
-
     geom = models.PointField(srid=21781)
 
     objects = PlaceManager()
 
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.
-        unique_together = ('data_source', 'source_id',)
-
-    def get_altitude(self):
-        return D(m=self.altitude)
-
-    def get_public_transport_connections(self,
-                                         destination,
-                                         via=[],
-                                         travel_to_place=False,
-                                         travel_datetime=datetime.now(),
-                                         is_arrival_time=False,
-                                         limit=1,
-                                         bike=0):
-        """
-        Get connection information from the place to a destination
-        using the public transport API.
-        If travelling to the place instead of from the place,
-        the connection can be queried using the travel_to_place=True flag
-        An object is returned containing departure and arrival time
-        """
-
-        # Ensure the place is a public transport stop
-        if not self.public_transport:
-            raise ValidationError(
-                "'%(name)s' is not connected to the public transport network.",
-                code='invalid',
-                params={'name': self.name},
-            )
-
-        # Base public transport API URL
-        url = '%s/connections' % settings.SWISS_PUBLIC_TRANSPORT_API_URL
-
-        # Set origin and destination according to travel_to_place flag
-        if travel_to_place:
-            origin = destination
-            destination = self.name
-        else:
-            origin = self.name
-
-        # Define API call parameters
-        args = {
-            'from': origin,
-            'to': destination,
-            'date': str(travel_datetime.date()),
-            'time': travel_datetime.strftime('%H:%S'),
-            'isArrivalTime': is_arrival_time,
-            'limit': limit,
-            'bike': bike,
-            'fields[]': [
-                'connections/from/departure',
-                'connections/to/arrival',
-                'connections/duration',
-                'connections/products',
-            ]
-        }
-        kwargs = {'params': args}
-
-        # Call the API
-        try:
-            response = requests.get(url, **kwargs)
-        except requests.exceptions.ConnectionError:
-            print('Error: Could not reach network.')
-
-        if not response.ok:
-            print('Server Error: HTTP %s' %
-                  (response.status_code, ))
-            return
-
-        try:
-            data = json.loads(response.text)
-        except ValueError:
-            print('Error: Invalid API response (invalid JSON)')
-            return
-
-        if not data['connections']:
-            msg = 'No connections found from "%s" to "%s".' % \
-                  (data['from']['name'], data['to']['name'])
-            print(msg)
-
-        return data
+        unique_together = (
+            "data_source",
+            "source_id",
+        )
 
     def __str__(self):
-        return self.name
-
-    def __unicode__(self):
         return self.name
 
     def save(self, *args, **kwargs):
@@ -415,15 +340,15 @@ class Place(TimeStampedModel):
         super(Place, self).save(*args, **kwargs)
 
         # in case of manual homebytwo entries, the source_id will be empty.
-        if self.source_id == '':
+        if self.source_id == "":
             self.source_id = str(self.id)
             self.save()
 
 
 class RoutePlace(models.Model):
     # Intermediate model for route - place
-    route = models.ForeignKey('Route', on_delete=models.CASCADE)
-    place = models.ForeignKey('Place', on_delete=models.CASCADE)
+    route = models.ForeignKey("Route", on_delete=models.CASCADE)
+    place = models.ForeignKey("Place", on_delete=models.CASCADE)
 
     # location on the route normalized 0=start 1=end
     line_location = models.FloatField(default=0)
@@ -440,8 +365,5 @@ class RoutePlace(models.Model):
     def __str__(self):
         return self.place.name
 
-    def __unicode__(self):
-        return self.place.name
-
     class Meta:
-        ordering = ('line_location',)
+        ordering = ("line_location",)

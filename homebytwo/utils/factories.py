@@ -1,5 +1,6 @@
-import factory
 from django.contrib.auth.models import User
+
+import factory
 from social_django.models import UserSocialAuth
 
 from ..routes.models import Athlete
@@ -52,8 +53,19 @@ class AthleteFactory(factory.django.DjangoModelFactory):
             try:
                 self.user.social_auth.get(provider="strava")
             except UserSocialAuth.DoesNotExist:
+                """
+                prevent duplicate entries for uid in the test database
+                when tests run in parallel.
+                """
+                latest_social_user = UserSocialAuth.objects.order_by("-uid").first()
+
+                if latest_social_user:
+                    uid = int(latest_social_user.uid) + 1
+                else:
+                    uid = 1
+
                 UserSocialAuth.objects.create(
                     user=self.user,
                     provider="strava",
-                    uid=factory.Faker("random_int", min=1000, max=1000000),
+                    uid=uid,
                 )

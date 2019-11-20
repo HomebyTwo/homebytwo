@@ -86,7 +86,7 @@
 
       {# Submit #}
       <div class="form-group text-center mrg">
-        {% if not route.already_imported %}
+        {% if not route.get_already_imported %}
           <input type="submit" value="Import" class="btn btn--md btn--primary">
         {% else %}
           <p class="btn btn--md btn--default" Disabled>Already Imported</p>

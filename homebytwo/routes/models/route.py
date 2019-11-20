@@ -10,31 +10,25 @@ SourceLink = namedtuple('SourceLink', ['url', 'text'])
 
 
 class RouteManager(models.Manager):
-    def check_for_existing_routes(self, owner, routes, data_source):
+    def check_for_existing_routes(self, routes):
         """
         Split remote routes into old and new routes.
         Old routes have already been imported by the user.
         New routes have not been imported yet.
         """
-        new_routes = []
-        old_routes = []
+
+        new_routes, old_routes = [], []
 
         for route in routes:
-            source_id = route.source_id
-            saved_route = self.filter(owner=owner)
-            saved_route = saved_route.filter(data_source=data_source)
-            saved_route = saved_route.filter(source_id=source_id)
+            # get_already_imported returns the route from db or None
+            existing_route = route.get_already_imported()
 
-            if saved_route.exists():
-                route = saved_route.get()
-                route.url = reverse('routes:route', args=[route.id])
-                old_routes.append(route)
+            if existing_route:
+                existing_route.url = existing_route.get_absolute_url()
+                old_routes.append(existing_route)
 
             else:
-                # named view where the route can be imported e.g.
-                # `strava_route` or `switzerland_mobility_route`
-                route_import_view = "{}_route".format(data_source)
-                route.url = reverse(route_import_view, args=[route.source_id])
+                route.url = route.get_absolute_import_url()
                 new_routes.append(route)
 
         return new_routes, old_routes
@@ -61,13 +55,30 @@ class Route(Track):
     # segments = models.ManyToManyField(Segment)
 
     class Meta:
-        unique_together = ('owner', 'data_source', 'source_id')
+        unique_together = ('athlete', 'data_source', 'source_id')
+
+    def __str__(self):
+        return 'Route: %s' % (self.name)
 
     def get_absolute_url(self):
-        return reverse('routes:route', kwargs={'pk': self.pk})
+        return reverse('routes:route', args=[self.pk])
+
+    def get_absolute_import_url(self):
+        """
+        generate the import URL for a route stub
+        based on data_source and source id.
+        """
+        route_import_view = "{}_route".format(self.data_source)
+        return reverse(route_import_view, args=[self.source_id])
 
     @property
     def source_link(self):
+        """
+        retrieve the route URL on the site that the route was imported from
+
+        The Strava API agreement requires that a link to
+        the original resources be diplayed on the pages that use data from Strava.
+        """
 
         if self.data_source == 'switzerland_mobility':
             url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
@@ -81,17 +92,18 @@ class Route(Track):
 
         return
 
-    def already_imported(self):
+    def get_already_imported(self):
         """
-        check if route has already been imported to the database
+        return route if it has already been imported to the database
         """
         route_class = type(self)
-        imported_route = route_class.objects.filter(
-            source_id=self.source_id,
-            owner=self.owner
-        )
 
-        return imported_route.exists()
+        try:
+            return route_class.objects.get(
+                data_source=self.data_source,
+                source_id=self.source_id,
+                athlete=self.athlete
+            )
 
-    def __str__(self):
-        return 'Route: %s' % (self.name)
+        except route_class.DoesNotExist:
+            return None

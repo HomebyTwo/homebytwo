@@ -8,6 +8,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.utils.translation import gettext_lazy as _
+
 from pandas import DataFrame, read_hdf, read_json
 
 
@@ -15,14 +16,21 @@ def LineSubstring(line, start_location, end_location):
     """
     implements ST_Line_Substring
     """
-    sql = ("SELECT ST_AsText(ST_Line_SubString("
-           "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));")
+    sql = (
+        "SELECT ST_AsText(ST_Line_SubString("
+        "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));"
+    )
 
     with connection.cursor() as cursor:
-        cursor.execute(sql, {'line': line.wkt,
-                             'srid': line.srid,
-                             'start': start_location,
-                             'end': end_location})
+        cursor.execute(
+            sql,
+            {
+                "line": line.wkt,
+                "srid": line.srid,
+                "start": start_location,
+                "end": end_location,
+            },
+        )
         geom = cursor.fetchone()[0]
 
     return GEOSGeometry(geom)
@@ -34,22 +42,22 @@ class DataFrameField(models.CharField):
     as advised in the official pandas documentation:
     http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
     """
+
     default_error_messages = {
-        'invalid': _('Please provide a DataFrame object'),
-        'io_error': _('Could not write to file')
+        "invalid": _("Please provide a DataFrame object"),
+        "io_error": _("Could not write to file"),
     }
 
-    def __init__(self, max_length, save_to='', *args, **kwargs):
+    def __init__(self, max_length, save_to="data", *args, **kwargs):
         self.save_to = save_to
         self.max_length = max_length
-        super(DataFrameField, self).__init__(
-            max_length=max_length, *args, **kwargs)
+        super(DataFrameField, self).__init__(max_length=max_length, *args, **kwargs)
 
     def _generate_unique_filename(self):
         """
         generate a unique filename for the saved file.
         """
-        filename = uuid4().hex + '.h5'
+        filename = uuid4().hex + ".h5"
 
         return filename
 
@@ -59,38 +67,27 @@ class DataFrameField(models.CharField):
         to use the storage instead of using os methods.
         I just could not figure out how to do it with pandas' to_hdf method.
         """
-        dirname = os.path.join(
-            settings.BASE_DIR,
-            settings.MEDIA_ROOT,
-            self.save_to
-        )
+        dirname = os.path.join(settings.BASE_DIR, settings.MEDIA_ROOT, self.save_to)
 
         fullpath = os.path.join(dirname, filename)
 
         if not isinstance(data, DataFrame):
             raise ValidationError(
-                self.error_messages['invalid'],
-                code='invalid',
+                self.error_messages["invalid"], code="invalid",
             )
 
         if not os.path.exists(dirname):
             os.makedirs(dirname)
 
         try:
-            data.to_hdf(fullpath, 'df', mode='w', format='fixed')
+            data.to_hdf(fullpath, "df", mode="w", format="fixed")
         except Exception as exc:
-            raise IOError(
-                self.error_messages['io_error']
-            ) from exc
+            raise IOError(self.error_messages["io_error"]) from exc
 
         return fullpath
 
     def _parse_filename(self, filename):
-        dirname = os.path.join(
-            settings.BASE_DIR,
-            settings.MEDIA_ROOT,
-            self.save_to
-        )
+        dirname = os.path.join(settings.BASE_DIR, settings.MEDIA_ROOT, self.save_to)
 
         fullpath = os.path.join(dirname, filename)
 
@@ -116,13 +113,12 @@ class DataFrameField(models.CharField):
 
         if not isinstance(value, DataFrame):
             raise ValidationError(
-                self.error_messages['invalid'],
-                code='invalid',
+                self.error_messages["invalid"], code="invalid",
             )
 
         # if the valueframe was loaded from the database before,
         # it will has a filename attribute.
-        if hasattr(value, 'filename'):
+        if hasattr(value, "filename"):
             filename = value.filename
 
         else:
@@ -163,8 +159,7 @@ class DataFrameField(models.CharField):
     def validate(self, value, model_instance):
         if not isinstance(value, DataFrame):
             raise ValidationError(
-                self.error_messages['invalid'],
-                code='invalid',
+                self.error_messages["invalid"], code="invalid",
             )
 
     def run_validators(self, value):
@@ -180,14 +175,14 @@ class DataFrameField(models.CharField):
             try:
                 v(value)
             except ValidationError as e:
-                if hasattr(e, 'code') and e.code in self.error_messages:
+                if hasattr(e, "code") and e.code in self.error_messages:
                     e.message = self.error_messages[e.code]
                     errors.extend(e.error_list)
         if errors:
             raise ValidationError(errors)
 
     def formfield(self, **kwargs):
-        defaults = {'form_class': DataFrameFormField}
+        defaults = {"form_class": DataFrameFormField}
         defaults.update(kwargs)
         return super(DataFrameField, self).formfield(**defaults)
 
@@ -203,15 +198,15 @@ class DataFrameFormField(forms.CharField):
         """
         if isinstance(value, DataFrame):
             try:
-                return value.to_json(orient='records') if value is not None else ''
+                return value.to_json(orient="records") if value is not None else ""
             except ValueError:
                 raise ValidationError(
                     _("Could serialize '%(value)s' to json."),
-                    code='invalid',
-                    params={'value': value},
+                    code="invalid",
+                    params={"value": value},
                 )
 
-        return value if value not in self.empty_values else ''
+        return value if value not in self.empty_values else ""
 
     def to_python(self, value):
         """
@@ -227,12 +222,12 @@ class DataFrameFormField(forms.CharField):
             if value in self.empty_values:
                 return None
             try:
-                return read_json(value, orient='records')
+                return read_json(value, orient="records")
             except ValueError:
                 raise ValidationError(
                     _("Could not read json: '%(value)s' into a DataFrame."),
-                    code='invalid',
-                    params={'value': value},
+                    code="invalid",
+                    params={"value": value},
                 )
 
         return None
@@ -249,8 +244,8 @@ class DataFrameFormField(forms.CharField):
         if not isinstance(value, DataFrame):
             raise ValidationError(
                 _("'%(value)s' does not seem to be a DataFrame."),
-                code='invalid',
-                params={'value': value},
+                code="invalid",
+                params={"value": value},
             )
 
     def run_validators(self, value):
@@ -265,7 +260,7 @@ class DataFrameFormField(forms.CharField):
             try:
                 v(value)
             except ValidationError as e:
-                if hasattr(e, 'code') and e.code in self.error_messages:
+                if hasattr(e, "code") and e.code in self.error_messages:
                     e.message = self.error_messages[e.code]
                     errors.extend(e.error_list)
         if errors:
@@ -279,18 +274,18 @@ class DataFrameFormField(forms.CharField):
         except ValidationError:
             return True
 
-        initial_value = initial if initial is not None else ''
-        data_value = data if data is not None else ''
+        initial_value = initial if initial is not None else ""
+        data_value = data if data is not None else ""
 
-        if (isinstance(initial_value, DataFrame) and
-                isinstance(data_value, DataFrame)):
+        if isinstance(initial_value, DataFrame) and isinstance(data_value, DataFrame):
             try:
                 return (initial_value != data_value).any().any()
             except ValueError:
                 return True
 
-        if (not isinstance(initial_value, DataFrame) and
-                not isinstance(data_value, DataFrame)):
+        if not isinstance(initial_value, DataFrame) and not isinstance(
+            data_value, DataFrame
+        ):
             return initial_value != data_value
 
         return True

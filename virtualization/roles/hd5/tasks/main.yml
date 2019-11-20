@@ -1,0 +1,4 @@
+- name: install HDF5 as a prerequisite for PyTable
+  apt:
+    name: libhdf5-dev
+  become: yes

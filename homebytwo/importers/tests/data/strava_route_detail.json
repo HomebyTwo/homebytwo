@@ -1,1 +1,130 @@
-{"athlete":{"id":4679628,"username":"chofstetter","resource_state":2,"firstname":"Cedric","lastname":"Hofstetter","city":"Lausanne","state":"VD","country":"Switzerland","sex":"M","premium":true,"created_at":"2014-05-02T11:47:34Z","updated_at":"2017-03-18T14:59:56Z","badge_type_id":1,"profile_medium":"https://dgalywyr863hv.cloudfront.net/pictures/athletes/4679628/1510518/3/medium.jpg","profile":"https://dgalywyr863hv.cloudfront.net/pictures/athletes/4679628/1510518/3/large.jpg","friend":null,"follower":null},"description":"","distance":12855.296109860454,"elevation_gain":1880.265438938987,"id":2325453,"map":{"id":"r2325453","summary_polyline":"mhuyGqfoi@mFsZuRnDkDeDuMjOqKmIgBxB}DKgPlGsLtNRcDqDy@uHnCeE{AgGwHu@tBoCk@aCuBfBa@gC{CqHnN{CMuBzBLlEgBjIkB?oFuO}GsCwDxMgEdGkGlGuDAoAcDaGqBeG_SY|I_@iBi@tBiDuDaIkh@yE{RuD}DmDcN_GqBK|L_IoHoDwHWeJrDoGwIuOm@uNeCyFfBcAe@u@pCyKyDbAlAwFmESjHcUf@oDuAp@nB}PgB@LgBkEyFL}I~DYkCcJVgRw@wFuIsJuA`CtCzKq@~DcGpCg@nDgJ|HsNlE","resource_state":3,"polyline":"mhuyGqfoi@e@wCcCeMg@}COqBI@AGeAl@wAl@iAPo@C{A?W@e@HBUAUYVmBl@}@^Q_@KEIDEi@WJM[_@q@m@[I@e@R}@n@kCrF_CbDa@XcATs@BiAiAsAkCu@e@u@[}@q@UGu@x@q@~@YDy@OiBAkBd@kB`Ao@FUJgCnBaC`@wAhBaBdAa@d@a@j@i@pAYf@_ArAUT[NMIHYFeANy@i@Rm@GWU]e@c@IqGfCc@F{@Ou@Sc@So@c@KMwAiCqA_A_A{@Qc@O?KFKvAMT[E]UQHSCo@U_As@aAaAA[BGHEL?h@TXHDADIAKGIc@QWc@Sg@We@WMOFEJSdCEPs@b@OZEPIJMDKIMAYRGZA`@U|@aAfAIR[NWECImASUDOVMf@wAz@CdAN`AAz@BHu@dBSx@Sf@AnBGRM?S{@QASvAc@Yq@sAk@{A]gB_@m@sAoEeC{BwCWeBfES`@UZIVKj@BXGREpAGNaAbAeC`Ei@p@cBlA_AfAKRUP[^{@Hy@?_AKQSk@qBQ]g@_@c@Uc@E_BGAMOB_@c@Ea@Bq@Ko@Si@mBaDYiBuA_EEEGJNbABjAE|AKz@Sf@QJIIRy@CYSWWAMNEX@lAw@Y{@kAu@oA@WOo@?i@aAoC@MUqA@a@i@kDyBqJ{@iKeBkE]uCy@wCMwAMi@eCuBo@gAo@yCaAqBQ_CUw@S_@YIy@GkD_BGVWrCRpGOKc@eA]m@MEG@GVGBk@q@a@WiAqAo@k@kAgBoAuCSy@Iu@@yBDe@Ac@E_@OS@w@F_@HMh@]N[BMp@iAVSX{@}@aCa@_BOWM^u@yAKDw@q@_BuD@iBCsAUkBBgAQoAGs@cB_DYq@Gg@f@?g@MfBu@No@c@PRm@e@Tx@oCbAsBRuCyDbAd@cAHiA^u@BYEYMMEJ[@OE[Ju@r@MAIa@Ug@IBCEN]\\aBJ_ANe@Ze@h@c@nAsEh@qA`@mBNqAV}ACCi@p@QJI@KIXcAJ{@Rk@Jq@?k@Dc@CGIJE@AGDIFyAh@yB@o@CQ[ZKw@GLs@`@AETm@@[GWQQk@Ie@[_AgBg@yAEqADcAAaANeCz@BbAY~@Co@cAw@_Dc@_C@i@KgAEmBTsAKaEDk@Ng@F]w@wFg@i@qAMu@y@M_@cAoAYqAQBOk@SICMq@xAc@f@l@z@F\\Vf@?h@\\~AEh@n@dBGt@Yp@@t@Q`@eClAi@r@sAN]dAB|@Mj@i@LWCARMC@^UDB\\g@BHRORk@ViBV[b@ALNDAHq@`AUAkAf@}@t@oC^kA\\g@?oAr@"},"name":"Tout d'Aï","private":true,"resource_state":3,"starred":true,"sub_type":4,"timestamp":1435088803,"type":2,"segments":[{"id":6199824,"resource_state":2,"name":"Tour d'Aï Climb","activity_type":"Run","distance":859.0,"average_grade":22.7,"maximum_grade":49.7,"elevation_high":2087.1,"elevation_low":1891.7,"start_latlng":[46.364435,7.006722],"end_latlng":[46.367649,7.005449],"start_latitude":46.364435,"start_longitude":7.006722,"end_latitude":46.367649,"end_longitude":7.005449,"climb_category":2,"city":"Leysin","state":"VD","country":"Switzerland","private":false,"hazardous":false,"starred":false},{"id":6199825,"resource_state":2,"name":"Tour d'Aï Climb","activity_type":"Run","distance":533.8,"average_grade":25.6,"maximum_grade":46.7,"elevation_high":2205.6,"elevation_low":2069.1,"start_latlng":[46.368527,7.004014],"end_latlng":[46.37208,7.002037],"start_latitude":46.368527,"start_longitude":7.004014,"end_latitude":46.37208,"end_longitude":7.002037,"climb_category":1,"city":"Leysin","state":"VD","country":"Switzerland","private":false,"hazardous":false,"starred":false},{"id":9014267,"resource_state":2,"name":"Vers-Pousaz Climb","activity_type":"Run","distance":405.4,"average_grade":4.5,"maximum_grade":8.5,"elevation_high":432.7,"elevation_low":414.3,"start_latlng":[46.321933,6.968473],"end_latlng":[46.324769,6.96587],"start_latitude":46.321933,"start_longitude":6.968473,"end_latitude":46.324769,"end_longitude":6.96587,"climb_category":0,"city":"Aigle","state":"Vaud","country":"Switzerland","private":false,"hazardous":false,"starred":false}]}
+{
+    "athlete": {
+        "badge_type_id": 1,
+        "city": "Lausanne",
+        "country": "Switzerland",
+        "created_at": "2014-05-02T11:47:34Z",
+        "firstname": "Cedric",
+        "follower": null,
+        "friend": null,
+        "id": 4679628,
+        "lastname": "Hofstetter",
+        "premium": true,
+        "profile": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/4679628/1510518/3/large.jpg",
+        "profile_medium": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/4679628/1510518/3/medium.jpg",
+        "resource_state": 2,
+        "sex": "M",
+        "state": "VD",
+        "updated_at": "2017-03-18T14:59:56Z",
+        "username": "chofstetter"
+    },
+    "description": "",
+    "distance": 12855.296109860454,
+    "elevation_gain": 1880.265438938987,
+    "id": 2325453,
+    "map": {
+        "id": "r2325453",
+        "polyline": "mhuyGqfoi@e@wCcCeMg@}COqBI@AGeAl@wAl@iAPo@C{A?W@e@HBUAUYVmBl@}@^Q_@KEIDEi@WJM[_@q@m@[I@e@R}@n@kCrF_CbDa@XcATs@BiAiAsAkCu@e@u@[}@q@UGu@x@q@~@YDy@OiBAkBd@kB`Ao@FUJgCnBaC`@wAhBaBdAa@d@a@j@i@pAYf@_ArAUT[NMIHYFeANy@i@Rm@GWU]e@c@IqGfCc@F{@Ou@Sc@So@c@KMwAiCqA_A_A{@Qc@O?KFKvAMT[E]UQHSCo@U_As@aAaAA[BGHEL?h@TXHDADIAKGIc@QWc@Sg@We@WMOFEJSdCEPs@b@OZEPIJMDKIMAYRGZA`@U|@aAfAIR[NWECImASUDOVMf@wAz@CdAN`AAz@BHu@dBSx@Sf@AnBGRM?S{@QASvAc@Yq@sAk@{A]gB_@m@sAoEeC{BwCWeBfES`@UZIVKj@BXGREpAGNaAbAeC`Ei@p@cBlA_AfAKRUP[^{@Hy@?_AKQSk@qBQ]g@_@c@Uc@E_BGAMOB_@c@Ea@Bq@Ko@Si@mBaDYiBuA_EEEGJNbABjAE|AKz@Sf@QJIIRy@CYSWWAMNEX@lAw@Y{@kAu@oA@WOo@?i@aAoC@MUqA@a@i@kDyBqJ{@iKeBkE]uCy@wCMwAMi@eCuBo@gAo@yCaAqBQ_CUw@S_@YIy@GkD_BGVWrCRpGOKc@eA]m@MEG@GVGBk@q@a@WiAqAo@k@kAgBoAuCSy@Iu@@yBDe@Ac@E_@OS@w@F_@HMh@]N[BMp@iAVSX{@}@aCa@_BOWM^u@yAKDw@q@_BuD@iBCsAUkBBgAQoAGs@cB_DYq@Gg@f@?g@MfBu@No@c@PRm@e@Tx@oCbAsBRuCyDbAd@cAHiA^u@BYEYMMEJ[@OE[Ju@r@MAIa@Ug@IBCEN]\\aBJ_ANe@Ze@h@c@nAsEh@qA`@mBNqAV}ACCi@p@QJI@KIXcAJ{@Rk@Jq@?k@Dc@CGIJE@AGDIFyAh@yB@o@CQ[ZKw@GLs@`@AETm@@[GWQQk@Ie@[_AgBg@yAEqADcAAaANeCz@BbAY~@Co@cAw@_Dc@_C@i@KgAEmBTsAKaEDk@Ng@F]w@wFg@i@qAMu@y@M_@cAoAYqAQBOk@SICMq@xAc@f@l@z@F\\Vf@?h@\\~AEh@n@dBGt@Yp@@t@Q`@eClAi@r@sAN]dAB|@Mj@i@LWCARMC@^UDB\\g@BHRORk@ViBV[b@ALNDAHq@`AUAkAf@}@t@oC^kA\\g@?oAr@",
+        "resource_state": 3,
+        "summary_polyline": "mhuyGqfoi@mFsZuRnDkDeDuMjOqKmIgBxB}DKgPlGsLtNRcDqDy@uHnCeE{AgGwHu@tBoCk@aCuBfBa@gC{CqHnN{CMuBzBLlEgBjIkB?oFuO}GsCwDxMgEdGkGlGuDAoAcDaGqBeG_SY|I_@iBi@tBiDuDaIkh@yE{RuD}DmDcN_GqBK|L_IoHoDwHWeJrDoGwIuOm@uNeCyFfBcAe@u@pCyKyDbAlAwFmESjHcUf@oDuAp@nB}PgB@LgBkEyFL}I~DYkCcJVgRw@wFuIsJuA`CtCzKq@~DcGpCg@nDgJ|HsNlE"
+    },
+    "name": "Nom de Route",
+    "private": true,
+    "resource_state": 3,
+    "segments": [
+        {
+            "activity_type": "Run",
+            "average_grade": 22.7,
+            "city": "Leysin",
+            "climb_category": 2,
+            "country": "Switzerland",
+            "distance": 859.0,
+            "elevation_high": 2087.1,
+            "elevation_low": 1891.7,
+            "end_latitude": 46.367649,
+            "end_latlng": [
+                46.367649,
+                7.005449
+            ],
+            "end_longitude": 7.005449,
+            "hazardous": false,
+            "id": 6199824,
+            "maximum_grade": 49.7,
+            "name": "Tour d'Aï Climb",
+            "private": false,
+            "resource_state": 2,
+            "starred": false,
+            "start_latitude": 46.364435,
+            "start_latlng": [
+                46.364435,
+                7.006722
+            ],
+            "start_longitude": 7.006722,
+            "state": "VD"
+        },
+        {
+            "activity_type": "Run",
+            "average_grade": 25.6,
+            "city": "Leysin",
+            "climb_category": 1,
+            "country": "Switzerland",
+            "distance": 533.8,
+            "elevation_high": 2205.6,
+            "elevation_low": 2069.1,
+            "end_latitude": 46.37208,
+            "end_latlng": [
+                46.37208,
+                7.002037
+            ],
+            "end_longitude": 7.002037,
+            "hazardous": false,
+            "id": 6199825,
+            "maximum_grade": 46.7,
+            "name": "Tour d'Aï Climb",
+            "private": false,
+            "resource_state": 2,
+            "starred": false,
+            "start_latitude": 46.368527,
+            "start_latlng": [
+                46.368527,
+                7.004014
+            ],
+            "start_longitude": 7.004014,
+            "state": "VD"
+        },
+        {
+            "activity_type": "Run",
+            "average_grade": 4.5,
+            "city": "Aigle",
+            "climb_category": 0,
+            "country": "Switzerland",
+            "distance": 405.4,
+            "elevation_high": 432.7,
+            "elevation_low": 414.3,
+            "end_latitude": 46.324769,
+            "end_latlng": [
+                46.324769,
+                6.96587
+            ],
+            "end_longitude": 6.96587,
+            "hazardous": false,
+            "id": 9014267,
+            "maximum_grade": 8.5,
+            "name": "Vers-Pousaz Climb",
+            "private": false,
+            "resource_state": 2,
+            "starred": false,
+            "start_latitude": 46.321933,
+            "start_latlng": [
+                46.321933,
+                6.968473
+            ],
+            "start_longitude": 6.968473,
+            "state": "Vaud"
+        }
+    ],
+    "starred": true,
+    "sub_type": 4,
+    "timestamp": 1435088803,
+    "type": 2
+}

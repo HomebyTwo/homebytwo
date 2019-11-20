@@ -1,23 +1,14 @@
 import os
-from pytz import utc
+
+from django.contrib.gis.geos import GEOSGeometry
 
 import factory
-from django.contrib.gis.geos import GEOSGeometry
 from factory.django import DjangoModelFactory
 from pandas import read_json
+from pytz import utc
 
-from ...routes.models import (
-    Activity,
-    ActivityType,
-    Gear,
-    Place,
-    Route,
-)
-from ...utils.factories import (
-    AthleteFactory,
-    UserFactory,
-    get_field_choices,
-)
+from ...routes.models import Activity, ActivityType, Gear, Place, Route, WebhookTransaction
+from ...utils.factories import AthleteFactory, get_field_choices
 
 
 def load_data(file):
@@ -81,7 +72,7 @@ class RouteFactory(factory.django.DjangoModelFactory):
     source_id = factory.Sequence(lambda n: "%d" % n)
     data_source = "homebytwo"
     description = factory.Faker("bs")
-    owner = factory.SubFactory(UserFactory)
+    athlete = factory.SubFactory(AthleteFactory)
     totalup = factory.Faker("random_int", min=0, max=5000)
     totaldown = factory.Faker("random_int", min=0, max=5000)
     length = factory.Faker("random_int", min=1, max=5000)
@@ -113,3 +104,21 @@ class ActivityFactory(factory.django.DjangoModelFactory):
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
     gear = factory.SubFactory(GearFactory)
+
+
+class WebhookTransactionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = WebhookTransaction
+
+    date_generated = factory.Faker("past_datetime", tzinfo=utc)
+    status = WebhookTransaction.UNPROCESSED
+    request_meta = {}
+    body = {
+        "updates": {"title": "Messy"},
+        "owner_id": 0,
+        "object_id": 0,
+        "event_time": 0,
+        "aspect_type": "update",
+        "object_type": "activity",
+        "subscription_id": 0,
+    }
