@@ -30,7 +30,11 @@
           {% render_field field class="field field--valid" %}
         {% endif %}  
       {% else %}
-        {% render_field field class="field" %}
+        {% if field|widget_type == "checkboxselectmultiple" %}
+          {% render_field field class="checkbox" %}
+        {% else %}
+          {% render_field field class="field" %}
+        {% endif %}
       {% endif %}
       {% if field.help_text %}
         <p class="field-help">

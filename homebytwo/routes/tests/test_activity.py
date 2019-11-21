@@ -67,7 +67,10 @@ class ActivityTestCase(TestCase):
         self.assertEqual(Activity.objects.count(), 1)
         self.assertTrue(activity.manual)
         self.assertEqual(
-            str(activity), "{} - {}".format(activity.activity_type, activity.name),
+            str(activity),
+            "{}: {} - {}".format(
+                activity.activity_type, activity.name, activity.athlete
+            ),
         )
 
     def test_save_strava_race_run(self):
@@ -252,16 +255,22 @@ class ActivityTestCase(TestCase):
             # first call, content: two activities
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+                body=read_data(
+                    "activities.json", dir_path=CURRENT_DIR
+                ),  # two activities
             ),
             # second call, content one activity
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities_one.json", dir_path=CURRENT_DIR),  # one activity
+                body=read_data(
+                    "activities_one.json", dir_path=CURRENT_DIR
+                ),  # one activity
             ),
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+                body=read_data(
+                    "activities.json", dir_path=CURRENT_DIR
+                ),  # two activities
             ),
             httpretty.Response(content_type="application/json", body="[]"),  # empty
         ]

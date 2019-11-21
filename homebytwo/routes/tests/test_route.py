@@ -19,7 +19,7 @@ from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import open_data
-from ..models import ActivityPerformance, Place
+from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
@@ -179,10 +179,7 @@ class RouteTestCase(TestCase):
             ),
         )
 
-        places = Place.objects.get_places_from_line(route.geom, 100)
-        checkpoints = Place.objects.find_places_along_line(
-            route.geom, places, max_distance=100
-        )
+        checkpoints = route.find_checkpoints(max_distance=100)
 
         self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:

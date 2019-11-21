@@ -5,21 +5,10 @@ from django.shortcuts import redirect, render
 from requests.exceptions import ConnectionError
 from stravalib.exc import AccessUnauthorized
 
-from ..routes.models import Place
 from .decorators import strava_required, switerland_mobility_required
-from .filters import PlaceFilter
-from .forms import SwitzerlandMobilityLogin
+from .forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
-from .utils import (
-    SwitzerlandMobilityError,
-    get_checkpoints,
-    get_place_type_choices,
-    get_route_form,
-    get_route_places_formset,
-    post_route_form,
-    post_route_places_formset,
-    save_detail_forms,
-)
+from .utils import SwitzerlandMobilityError, post_route_form, save_detail_forms
 
 # Switzerland Mobility info for the templates.
 SWITZERLAND_MOBILITY_SOURCE_INFO = {
@@ -88,9 +77,7 @@ def strava_route(request, source_id):
     """
 
     # default values for variables passed to the request context
-    places = False
     route_form = False
-    route_places_formset = False
 
     # create route stub from
     route = StravaRoute(
@@ -101,14 +88,11 @@ def strava_route(request, source_id):
     # with a POST request try to save route and places
     if request.method == "POST":
 
-        # populate route_form with POST data
+        # populate checkpoints_formset with POST data
         route_form = post_route_form(request, route)
 
-        # populate the route_places_formset with POST data
-        route_places_formset = post_route_places_formset(request, route)
-
         # validate forms and save the route and places
-        new_route = save_detail_forms(request, route_form, route_places_formset)
+        new_route = save_detail_forms(request, route_form)
 
         # Success! redirect to the page of the newly imported route
         if new_route:
@@ -118,37 +102,15 @@ def strava_route(request, source_id):
 
     if request.method == "GET":
 
-        # add athlete to route to retrieve details from Strava and
-        # to check if it has already been imported
-        route.athlete = request.user.athlete
-
         # get route details from Strava API
         route.get_route_details()
 
-        # find places along the route
-        places_qs = Place.objects.get_places_from_line(route.geom, 75)
-
-        # filter bus stops for bike routes
-        if route.activity_type == "Bike":
-            places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
-
         # populate the route_form with route details
-        route_form = get_route_form(route)
-
-        # get checkpoints along the way
-        checkpoints = get_checkpoints(route, place_filter.qs)
-
-        # get form to save places along the route
-        route_places_formset = get_route_places_formset(route, checkpoints)
-
-        # prepare zipped list for the template
-        places = zip(checkpoints, route_places_formset.forms)
+        route_form = ImportersRouteForm(instance=route)
 
     context = {
         "route": route,
-        "route_form": route_form,
-        "places": places,
-        "places_form": route_places_formset,
+        "form": route_form,
         "source": STRAVA_SOURCE_INFO,
     }
 
@@ -195,7 +157,7 @@ def switzerland_mobility_route(request, source_id):
     """
     Main import page for Switzerland Mobility.
     There is a modelform for the route and a modelformset
-    for the places found along the route.
+    for the checkpoints found along the route.
 
     The route form is instanciated with the json data retrieved from
     Switzerland Mobility.
@@ -205,10 +167,7 @@ def switzerland_mobility_route(request, source_id):
     """
 
     # default values for variables passed to the request context
-    places = []
     route_form = False
-    route_places_formset = False
-    place_filter = False
 
     # model instance with source_id
     route = SwitzerlandMobilityRoute(
@@ -222,11 +181,8 @@ def switzerland_mobility_route(request, source_id):
         # populate the route_form with POST data
         route_form = post_route_form(request, route)
 
-        # populate the route_places_formset with POST data
-        route_places_formset = post_route_places_formset(request, route)
-
         # validate forms and save the route and places
-        new_route = save_detail_forms(request, route_form, route_places_formset)
+        new_route = save_detail_forms(request, route_form)
 
         # Success! redirect to the page of the newly imported route
         if new_route:
@@ -249,38 +205,13 @@ def switzerland_mobility_route(request, source_id):
 
         # no exception
         else:
-            # add user to check if route has already been imported
-            route.athlete = request.user.athlete
-            places_qs = Place.objects.get_places_from_line(route.geom, 75)
-
-            # filter bus stops for bike routes
-            if route.activity_type == "Bike":
-                places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
-
-            # define place_type filter
-            place_filter = PlaceFilter(request.GET, queryset=places_qs)
-
-            place_type_choices = get_place_type_choices(places_qs)
-            place_filter.form.fields["place_type"].choices = place_type_choices
-
             # populate the route_form with route details
-            route_form = get_route_form(route)
-
-            # find checkpoints along the route
-            checkpoints = get_checkpoints(route, place_filter.qs)
-
-            # get form set to save route places
-            route_places_formset = get_route_places_formset(route, checkpoints)
-
-            # arrange places and formsets for template
-            places = zip(checkpoints, route_places_formset.forms)
+            route, exists = route.refresh_from_db_if_exists()
+            route_form = ImportersRouteForm(instance=route)
 
     context = {
-        "filter": place_filter,
         "route": route,
-        "route_form": route_form,
-        "places": places,
-        "places_form": route_places_formset,
+        "form": route_form,
         "source": SWITZERLAND_MOBILITY_SOURCE_INFO,
     }
 

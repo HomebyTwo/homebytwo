@@ -5,6 +5,7 @@ from polyline import decode
 from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
+from ..utils import split_in_new_and_existing_routes
 
 
 class StravaRouteManager(RouteManager):
@@ -14,12 +15,14 @@ class StravaRouteManager(RouteManager):
         This method is required because StravaRoute
         is a proxy class.
         """
-        return (
-            super(StravaRouteManager, self).get_queryset().filter(data_source="strava")
-        )
+        return super().get_queryset().filter(data_source="strava")
 
     # login to Strava and retrieve route list
     def get_routes_list_from_server(self, athlete):
+        """
+        fetches the athlete's routes from Strava and splits them into
+        new and existing routes.
+        """
 
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
@@ -37,7 +40,7 @@ class StravaRouteManager(RouteManager):
         ]
 
         # split into new and existing routes
-        return self.check_for_existing_routes(routes=routes)
+        return split_in_new_and_existing_routes(routes=routes)
 
 
 class StravaRoute(Route):
@@ -45,12 +48,13 @@ class StravaRoute(Route):
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+
     def __init__(self, *args, **kwargs):
         """
         Set the data_source of the route to strava
         when instatiatind a route.
         """
-        super(StravaRoute, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.data_source = "strava"
 
     class Meta:
@@ -65,7 +69,6 @@ class StravaRoute(Route):
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
-
         strava_client = self.athlete.strava_client
 
         # Retrieve route detail and streams

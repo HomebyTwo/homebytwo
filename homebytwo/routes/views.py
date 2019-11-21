@@ -4,7 +4,6 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.gis.measure import D
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -15,14 +14,16 @@ from django.views.generic.list import ListView
 
 from pytz import utc
 
-from .models import Activity, Route, RoutePlace, WebhookTransaction
+from ..importers.decorators import strava_required
+from .forms import RouteForm
+from .models import Activity, Route, WebhookTransaction
 from .tasks import import_athlete_strava_activities
 
 
 @login_required
 def routes(request):
     routes = Route.objects.order_by("name")
-    routes = routes.filter(athlete=request.user.athlete)
+    routes = Route.objects.for_user(request.user)
     context = {
         "routes": routes,
     }
@@ -37,14 +38,12 @@ def route(request, pk):
     # calculate the schedule based on user data
     route.calculate_projected_time_schedule(request.user)
 
-    # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.filter(route=pk)
-    places = places.select_related("route", "place")
+    # retrieve checkpoints along the way and enrich them with schedule data
+    checkpoints = route.checkpoint_set.all()
+    checkpoints = checkpoints.select_related("route", "place")
 
-    for place in places:
-        place.schedule = route.get_time_data(place.line_location, "schedule")
-        place.altitude = place.get_altitude()
-        place.distance = D(m=place.line_location * route.length)
+    for checkpoint in checkpoints:
+        checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
     # enrich start and end place with data
     if route.start_place_id:
@@ -54,10 +53,11 @@ def route(request, pk):
         route.end_place.schedule = route.get_time_data(1, "schedule")
         route.end_place.altitude = route.get_distance_data(1, "altitude")
 
-    context = {"route": route, "places": places}
+    context = {"route": route, "checkpoints": checkpoints}
     return render(request, "routes/route.html", context)
 
 
+@strava_required
 @login_required
 def import_strava_activities(request):
     if request.method == "GET":
@@ -131,7 +131,7 @@ class RouteDelete(DeleteView):
 @method_decorator(login_required, name="dispatch")
 class RouteEdit(UpdateView):
     model = Route
-    fields = ["activity_type", "name", "description", "image"]
+    form_class = RouteForm
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.
@@ -139,7 +139,7 @@ class RouteEdit(UpdateView):
         if "activity_type" in form.changed_data:
             form.instance.calculate_projected_time_schedule(self.request.user)
 
-        return super(RouteEdit, self).form_valid(form)
+        return super().form_valid(form)
 
 
 @method_decorator(login_required, name="dispatch")
@@ -148,4 +148,4 @@ class ActivityList(ListView):
     context_object_name = "strava_activities"
 
     def get_queryset(self):
-        return Activity.objects.filter(athlete=self.request.user.athlete)
+        return Activity.objects.for_user(self.request.user)

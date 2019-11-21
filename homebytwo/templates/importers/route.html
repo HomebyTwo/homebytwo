@@ -26,7 +26,7 @@
     <form method="post" action="{% url source.route_view route.source_id %}">
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <div class="box alert alert--error" role="alert">
+        <div class="box alert error" role="alert">
           {% for error in form.non_field_errors %}
             {{ error }}
           {% endfor %}
@@ -34,27 +34,26 @@
       {% endif %}
 
       {# Hidden Form Fields #}
-      <div>{{ places_form.management_form }}</div>
-      <div>{{ route_form.source_id }}</div>
-      <div>{{ route_form.name }}</div>
-      <div>{{ route_form.totalup }}</div>
-      <div>{{ route_form.totaldown }}</div>
-      <div>{{ route_form.length }}</div>
-      <div>{{ route_form.geom }}</div>
-      <div>{{ route_form.data }}</div>
+      <div>{{ form.source_id }}</div>
+      <div>{{ form.name }}</div>
+      <div>{{ form.totalup }}</div>
+      <div>{{ form.totaldown }}</div>
+      <div>{{ form.length }}</div>
+      <div>{{ form.geom }}</div>
+      <div>{{ form.data }}</div>
 
       {# Activity Type #}
       <div class="mrgb box box--default pdg-">
-        {{ route_form.activity_type.errors }}
-        <label for="{{ route_form.activity_type.id_for_label }}" class="h4 field-label">Activity Type</label>
-        {% render_field route_form.activity_type class="field" %}
+        {{ form.activity_type.errors }}
+        <label for="{{ form.activity_type.id_for_label }}" class="h4 field-label">Activity Type</label>
+        {% render_field form.activity_type class="field" %}
       </div>
       
       {# Start Place #}
       <div class="mrgb box box--default pdg-">
-        {{ route_form.start_place.errors }}
-        <label for="{{ route_form.start_place.id_for_label }}" class="h4 field-label">Start Place</label>
-        {% render_field route_form.start_place class="field" %}
+        {{ form.start_place.errors }}
+        <label for="{{ form.start_place.id_for_label }}" class="h4 field-label">Start Place</label>
+        {% render_field form.start_place class="field" %}
       </div>
 
       {# Checkpoints #}
@@ -62,17 +61,17 @@
 
       {# Finish Place #}
       <div class="mrgt box box--default pdg-">
-        {{ route_form.end_place.errors }}
-        <label for="{{ route_form.end_place.id_for_label }}" class="h4 field-label">Finish Place</label>
-        {% render_field route_form.end_place class="field" %}
+        {{ form.end_place.errors }}
+        <label for="{{ form.end_place.id_for_label }}" class="h4 field-label">Finish Place</label>
+        {% render_field form.end_place class="field" %}
       </div>
 
       {# Submit #}
       <div class="form-group text-center mrg">
-        {% if not route.get_already_imported %}
-          <input type="submit" value="Import" class="btn btn--md btn--primary">
-        {% else %}
+        {% if route.id %}
           <p class="btn btn--md btn--default" Disabled>Already Imported</p>
+        {% else %}
+          <input type="submit" value="Import" class="btn btn--md btn--primary">
         {% endif %}
       </div>
     </form>

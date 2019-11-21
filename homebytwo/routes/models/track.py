@@ -1,4 +1,3 @@
-import os
 from datetime import timedelta
 
 from django.contrib.gis.db import models
@@ -9,18 +8,10 @@ from easy_thumbnails.fields import ThumbnailerImageField
 from numpy import interp
 
 from ...core.models import TimeStampedModel
+from ...core.utils import get_image_path
 from ..fields import DataFrameField
+from ..utils import get_places_within
 from . import ActivityPerformance, ActivityType, Place
-
-
-def get_image_path(instance, filename):
-    """
-    callable to define the image upload path according
-    to the type of object: segment, route, etc.. and the id of the object.
-    """
-    return os.path.join(
-        "images", instance.__class__.__name__, str(instance.id), filename
-    )
 
 
 class Track(TimeStampedModel):
@@ -28,7 +19,7 @@ class Track(TimeStampedModel):
         abstract = True
 
     name = models.CharField(max_length=100)
-    description = models.TextField("Textual description", blank=True)
+    description = models.TextField(blank=True)
     image = ThumbnailerImageField(upload_to=get_image_path, blank=True, null=True)
 
     # Main activity of the track: default=hike
@@ -104,18 +95,18 @@ class Track(TimeStampedModel):
 
         self.data = data
 
-    def get_performance_data(self, user):
+    def get_performance_data(self, athlete):
         """
         retrieve performance parameters for activity type
         """
         activity_type = self.activity_type
 
-        if user.is_authenticated:
+        if athlete.user.is_authenticated:
             performance = ActivityPerformance.objects
-            performance = performance.filter(athlete=user.athlete)
+            performance = performance.filter(athlete=athlete)
             performance = performance.filter(activity_type=activity_type)
 
-        if user.is_authenticated and performance.exists():
+        if athlete.user.is_authenticated and performance.exists():
             # we have performance values for this athlete and activity
             performance = performance.get()
 
@@ -125,7 +116,7 @@ class Track(TimeStampedModel):
 
         return performance
 
-    def calculate_projected_time_schedule(self, user):
+    def calculate_projected_time_schedule(self, athlete):
         """
         Calculates a time schedule based on activity, user performance,
         and total elevation gain.
@@ -163,7 +154,7 @@ class Track(TimeStampedModel):
             self.calculate_elevation_gain_and_distance()
 
         # get performance data for athlete and activity
-        performance = self.get_performance_data(user)
+        performance = self.get_performance_data(athlete)
 
         # set performance parameters
         slope_squared_param = performance.slope_squared_param
@@ -266,11 +257,30 @@ class Track(TimeStampedModel):
         """
         return self.get_time_data(1, "schedule")
 
-    def get_closest_places_along_line(self, line_location=0, max_distance=100):
+    def get_closest_places_along_line(self, line_location=0, max_distance=200):
+        """
+        retrieve Place objects with a given distance of a point on the line.
+        """
         # create the point from location
         point = self.geom.interpolate_normalized(line_location)
 
         # get closest places to the point
-        places = Place.objects.get_places_within(point, max_distance)
+        places = get_places_within(point, max_distance)
 
         return places
+
+    def get_start_places(self, max_distance=200):
+        """
+        retrieve Place objects close to the start of the track.
+        """
+        return self.get_closest_places_along_line(
+            line_location=0, max_distance=max_distance
+        )
+
+    def get_end_places(self, max_distance=200):
+        """
+        retrieve Place objects close to the end of the track.
+        """
+        return self.get_closest_places_along_line(
+            line_location=1, max_distance=max_distance
+        )

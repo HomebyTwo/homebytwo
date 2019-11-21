@@ -5,8 +5,7 @@ from ...routes.models import Place
 
 class Swissname3dManager(models.Manager):
     def get_queryset(self):
-        return super(Swissname3dManager, self).get_queryset().filter(
-            data_source='swissname3d')
+        return super().get_queryset().filter(data_source="swissname3d")
 
 
 class Swissname3dPlace(Place):
@@ -21,43 +20,43 @@ class Swissname3dPlace(Place):
 
     # translation map for type of places
     PLACE_TYPE_TRANSLATIONS = {
-        'Alpiner Gipfel': Place.SUMMIT,
-        'Ausfahrt': Place.EXIT,
-        'Aussichtspunkt': Place.POINT_OF_VIEW,
-        'Bildstock': Place.WAYSIDE_SHRINE,
-        'Brunnen': Place.FOUNTAIN,
-        'Denkmal': Place.MONUMENT,
-        'Ein- und Ausfahrt': Place.ENTRY_AND_EXIT,
-        'Erratischer Block': Place.BOULDER,
-        'Felsblock': Place.BELAY,
-        'Felskopf': Place.BELAY,
-        'Flurname swisstopo': Place.LOCAL_PLACE,
-        'Gebaeude Einzelhaus': Place.SINGLE_BUILDING,
-        'Gebaeude': Place.SINGLE_BUILDING,
-        'Gipfel': Place.SUMMIT,
-        'Grotte, Hoehle': Place.CAVE,
-        'Haltestelle Bahn': Place.TRAIN_STATION,
-        'Haltestelle Bus': Place.BUS_STATION,
-        'Haltestelle Schiff': Place.BOAT_STATION,
-        'Hauptgipfel': Place.SUMMIT,
-        'Haupthuegel': Place.HILL,
-        'Huegel': Place.HILL,
-        'Kapelle': Place.CHAPEL,
-        'Landesgrenzstein': Place.LANDMARK,
-        'Lokalname swisstopo': Place.PLACE,
-        'Offenes Gebaeude': Place.OPEN_BUILDING,
-        'Pass': Place.PASS,
-        'Quelle': Place.SOURCE,
-        'Sakrales Gebaeude': Place.SACRED_BUILDING,
-        'Strassenpass': Place.ROAD_PASS,
-        'Turm': Place.TOWER,
-        'Uebrige Bahnen': Place.OTHER_STATION,
-        'Verladestation': Place.LOADING_STATION,
-        'Verzweigung': Place.INTERCHANGE,
-        'Wasserfall': Place.WATERFALL,
-        'Zollamt 24h 24h': Place.CUSTOMHOUSE_24H,
-        'Zollamt 24h eingeschraenkt': Place.CUSTOMHOUSE_24H_LIMITED,
-        'Zollamt eingeschraenkt': Place.CUSTOMHOUSE_LIMITED,
+        "Alpiner Gipfel": Place.SUMMIT,
+        "Ausfahrt": Place.EXIT,
+        "Aussichtspunkt": Place.POINT_OF_VIEW,
+        "Bildstock": Place.WAYSIDE_SHRINE,
+        "Brunnen": Place.FOUNTAIN,
+        "Denkmal": Place.MONUMENT,
+        "Ein- und Ausfahrt": Place.ENTRY_AND_EXIT,
+        "Erratischer Block": Place.BOULDER,
+        "Felsblock": Place.BELAY,
+        "Felskopf": Place.BELAY,
+        "Flurname swisstopo": Place.LOCAL_PLACE,
+        "Gebaeude Einzelhaus": Place.SINGLE_BUILDING,
+        "Gebaeude": Place.SINGLE_BUILDING,
+        "Gipfel": Place.SUMMIT,
+        "Grotte, Hoehle": Place.CAVE,
+        "Haltestelle Bahn": Place.TRAIN_STATION,
+        "Haltestelle Bus": Place.BUS_STATION,
+        "Haltestelle Schiff": Place.BOAT_STATION,
+        "Hauptgipfel": Place.SUMMIT,
+        "Haupthuegel": Place.HILL,
+        "Huegel": Place.HILL,
+        "Kapelle": Place.CHAPEL,
+        "Landesgrenzstein": Place.LANDMARK,
+        "Lokalname swisstopo": Place.PLACE,
+        "Offenes Gebaeude": Place.OPEN_BUILDING,
+        "Pass": Place.PASS,
+        "Quelle": Place.SOURCE,
+        "Sakrales Gebaeude": Place.SACRED_BUILDING,
+        "Strassenpass": Place.ROAD_PASS,
+        "Turm": Place.TOWER,
+        "Uebrige Bahnen": Place.OTHER_STATION,
+        "Verladestation": Place.LOADING_STATION,
+        "Verzweigung": Place.INTERCHANGE,
+        "Wasserfall": Place.WATERFALL,
+        "Zollamt 24h 24h": Place.CUSTOMHOUSE_24H,
+        "Zollamt 24h eingeschraenkt": Place.CUSTOMHOUSE_24H_LIMITED,
+        "Zollamt eingeschraenkt": Place.CUSTOMHOUSE_LIMITED,
     }
 
     objects = Swissname3dManager()
@@ -80,6 +79,6 @@ class Swissname3dPlace(Place):
             # Translate place type from German to English.
             self.place_type = self.PLACE_TYPE_TRANSLATIONS[self.place_type]
             # set datasource to swissname3d
-            self.data_source = 'swissname3d'
+            self.data_source = "swissname3d"
             # Save with the parent method
-            super(Swissname3dPlace, self).save(*args, **kwargs)
+            super().save(*args, **kwargs)

@@ -10,13 +10,13 @@ from django.urls import reverse
 import httpretty
 from requests.exceptions import ConnectionError
 
-from ...routes.models import RoutePlace
+from ...routes.models import Checkpoint
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import SwitzerlandMobilityError
+from ..utils import SwitzerlandMobilityError, split_in_new_and_existing_routes
 from .factories import SwitzerlandMobilityRouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -262,31 +262,20 @@ class SwitzerlandMobility(TestCase):
 
         formatted_routes = [
             SwitzerlandMobilityRouteFactory.build(
-                name="Haute Cime",
-                athlete=self.athlete,
-                source_id=2191833,
+                name="Haute Cime", athlete=self.athlete, source_id=2191833,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Grammont",
-                athlete=self.athlete,
-                source_id=2433141,
+                name="Grammont", athlete=self.athlete, source_id=2433141,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Rochers de Nayes",
-                athlete=self.athlete,
-                source_id=2692136,
+                name="Rochers de Nayes", athlete=self.athlete, source_id=2692136,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Villeneuve - Leysin",
-                athlete=self.athlete,
-                source_id=3011765,
+                name="Villeneuve - Leysin", athlete=self.athlete, source_id=3011765,
             ),
         ]
 
-        (
-            new_routes,
-            old_routes,
-        ) = SwitzerlandMobilityRoute.objects.check_for_existing_routes(
+        (new_routes, old_routes,) = split_in_new_and_existing_routes(
             routes=formatted_routes,
         )
 
@@ -385,11 +374,27 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-    def test_already_imported(self):
-        route = SwitzerlandMobilityRouteFactory.build()
-        self.assertIsNone(route.get_already_imported())
-        route = SwitzerlandMobilityRouteFactory()
-        self.assertEqual(route.get_already_imported(), route)
+    def test_refresh_from_db_if_exists(self):
+        route_stub = SwitzerlandMobilityRouteFactory.build()
+        route_stub, exists = route_stub.refresh_from_db_if_exists()
+        self.assertFalse(exists)
+
+        saved_route = SwitzerlandMobilityRouteFactory(
+            athlete=self.athlete,
+            data_source="switzerland_mobility",
+            source_id="123456",
+        )
+        saved_route, exists = saved_route.refresh_from_db_if_exists()
+        self.assertTrue(exists)
+
+        route_stub_like_saved_route = SwitzerlandMobilityRouteFactory.build(
+            athlete=self.athlete,
+            data_source="switzerland_mobility",
+            source_id="123456",
+        )
+        route_stub_like_saved_route, exists = route_stub_like_saved_route.refresh_from_db_if_exists()
+        self.assertTrue(exists)
+        self.assertEqual(route_stub_like_saved_route, saved_route)
 
     #########
     # Views #
@@ -453,8 +458,7 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         SwitzerlandMobilityRouteFactory(
-            source_id=route_id,
-            athlete=self.athlete,
+            source_id=route_id, athlete=self.athlete,
         )
 
         url = reverse("switzerland_mobility_route", args=[route_id])
@@ -580,7 +584,7 @@ class SwitzerlandMobility(TestCase):
 
         # a new route has been created
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        route_places = RoutePlace.objects.filter(route=route.id)
+        route_places = Checkpoint.objects.filter(route=route.id)
         self.assertEqual(route_places.count(), 2)
 
         redirect_url = reverse("routes:route", args=[route.id])
@@ -634,7 +638,9 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory(source_id=route_id, athlete=self.athlete)
+        route = SwitzerlandMobilityRouteFactory(
+            source_id=route_id, athlete=self.athlete
+        )
 
         start_place = route.start_place
         end_place = route.end_place
