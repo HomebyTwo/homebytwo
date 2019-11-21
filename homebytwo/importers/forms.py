@@ -101,7 +101,7 @@ class SwitzerlandMobilityLogin(forms.Form):
             messages.error(request, message)
             return False
 
-        # no exception
+        # no connection error
         else:
             if r.status_code == codes.ok:
 

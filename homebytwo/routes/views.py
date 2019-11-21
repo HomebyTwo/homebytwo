@@ -24,9 +24,7 @@ from .tasks import import_athlete_strava_activities
 def routes(request):
     routes = Route.objects.order_by("name")
     routes = Route.objects.for_user(request.user)
-    context = {
-        "routes": routes,
-    }
+    context = {"routes": routes}
 
     return render(request, "routes/routes.html", context)
 
@@ -42,6 +40,8 @@ def route(request, pk):
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
+    # doesn't work as a calculated property, because the route schedule
+    # is missing at instantiation
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
@@ -76,6 +76,10 @@ def route_checkpoints_list(request, pk):
 @strava_required
 @login_required
 def import_strava_activities(request):
+    """
+    send a task to import the athlete's Strava activities and redirects to the activity list.
+    still work in progress
+    """
     if request.method == "GET":
         import_athlete_strava_activities.delay(request.user.athlete.id)
         messages.success(request, "We are importing your Strava activities!")
@@ -88,8 +92,9 @@ def strava_webhook(request):
     handle events sent by the Strava Webhook Events API
 
     Strava validates a subscription with a GET request to the callback URL.
-    Events from the subscriptions are POSTed to the callback URL.
-    Documentation available at https://developers.strava.com/docs/webhooks/
+    Events from the subscriptions are POSTed to the callback URL. For now
+    Strava has no verification mechanism for the POST requests.
+    Documentation is available at https://developers.strava.com/docs/webhooks/
     """
 
     # subscription validation

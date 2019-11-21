@@ -18,7 +18,7 @@ class StravaRouteManager(RouteManager):
         return super().get_queryset().filter(data_source="strava")
 
     # login to Strava and retrieve route list
-    def get_routes_list_from_server(self, athlete):
+    def get_remote_routes_list(self, athlete):
         """
         fetches the athlete's routes from Strava and splits them into
         new and existing routes.

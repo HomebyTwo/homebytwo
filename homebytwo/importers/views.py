@@ -42,11 +42,13 @@ def strava_connect(request):
 @login_required
 @strava_required
 def strava_routes(request):
+    """
+    retrieve the athlete's list of routes on Strava
+    """
 
     template = "importers/routes.html"
-    context = {"source": STRAVA_SOURCE_INFO}
 
-    # Retrieve routes from Strava
+    # retrieve remote routes list
     try:
         new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
             athlete=request.user.athlete
@@ -55,16 +57,18 @@ def strava_routes(request):
     except ConnectionError as error:
         message = "Could not connect to Strava: {}".format(error)
         messages.error(request, message)
-        return render(request, template, context)
+        new_routes, old_routes = [], []
 
     except AccessUnauthorized:
         message = "Strava Authorization refused. Try to connect to Strava again"
         messages.error(request, message)
         return redirect("strava_connect")
 
-    context.update(
-        {"new_routes": new_routes, "old_routes": old_routes}
-    )
+    context = {
+        "source": STRAVA_SOURCE_INFO,
+        "new_routes": new_routes,
+        "old_routes": old_routes
+    }
 
     return render(request, template, context)
 
@@ -73,13 +77,15 @@ def strava_routes(request):
 @strava_required
 def strava_route(request, source_id):
     """
-    Detail view to import a route from Strava.
-    """
+    import form for Strava
 
-    # default values for variables passed to the request context
+    There is a modelform for the route with custom __init__ ans save methods
+    to find available checkpoints and save the ones selected by the athlete
+    to the route.
+    """
     route_form = False
 
-    # create route stub from
+    # create route stub from the athlete and source_id
     route = StravaRoute(
         source_id=source_id,
         athlete=request.user.athlete,
@@ -102,10 +108,21 @@ def strava_route(request, source_id):
 
     if request.method == "GET":
 
-        # get route details from Strava API
-        route.get_route_details()
+        # fetch route details from Strava API
+        try:
+            route.get_route_details()
+
+        except ConnectionError as error:
+            message = "Could not connect to Strava: {}".format(error)
+            messages.error(request, message)
+
+        except AccessUnauthorized:
+            message = "Strava Authorization refused. Try to connect to Strava again"
+            messages.error(request, message)
+            return redirect("strava_connect")
 
         # populate the route_form with route details
+        route, exists = route.refresh_from_db_if_exists()
         route_form = ImportersRouteForm(instance=route)
 
     context = {
@@ -123,26 +140,26 @@ def strava_route(request, source_id):
 @switerland_mobility_required
 def switzerland_mobility_routes(request):
     """
-    retrieve the list of Switzerland Mobility Plus routes
-    for the user.
+    retrieve the athlete's list of routes on Switzerland Mobility Plus
     """
-    # Retrieve remote routes from Switzerland Mobility
-    manager = SwitzerlandMobilityRoute.objects
 
+    template = "importers/routes.html"
+
+    # retrieve remote routes list
     try:
-        new_routes, old_routes = manager.get_remote_routes(
+        new_routes, old_routes = SwitzerlandMobilityRoute.objects.get_remote_routes_list(
             request.session, request.user.athlete,
         )
 
     except ConnectionError as error:
-        messages.error(request, error)
-        new_routes, old_routes = None, None
+        message = "Could not connect to Switzerland Mobility Plus: {}".format(error)
+        messages.error(request, message)
+        new_routes, old_routes = [], []
 
     except SwitzerlandMobilityError as error:
         messages.error(request, error)
-        new_routes, old_routes = None, None
+        new_routes, old_routes = [], []
 
-    template = "importers/routes.html"
     context = {
         "source": SWITZERLAND_MOBILITY_SOURCE_INFO,
         "new_routes": new_routes,
@@ -155,21 +172,17 @@ def switzerland_mobility_routes(request):
 @login_required
 def switzerland_mobility_route(request, source_id):
     """
-    Main import page for Switzerland Mobility.
-    There is a modelform for the route and a modelformset
-    for the checkpoints found along the route.
+    import form for Switzerland Mobility
 
-    The route form is instanciated with the json data retrieved from
-    Switzerland Mobility.
-
-    The places_form is populated with places found along the retrieved route
-    using a query to the database.
+    There is a modelform for the route with custom __init__ ans save methods
+    to find available checkpoints and save the ones selected by the athlete
+    to the route.
     """
 
     # default values for variables passed to the request context
     route_form = False
 
-    # model instance with source_id
+    # create route stub from the athlete and source_id
     route = SwitzerlandMobilityRoute(
         source_id=source_id,
         athlete=request.user.athlete,
@@ -190,7 +203,6 @@ def switzerland_mobility_route(request, source_id):
             messages.success(request, message)
             return redirect("routes:route", pk=new_route.id)
 
-    # GET request
     if request.method == "GET":
 
         # fetch route details from Switzerland Mobility

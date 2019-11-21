@@ -387,14 +387,14 @@ class SwitzerlandMobility(TestCase):
         saved_route, exists = saved_route.refresh_from_db_if_exists()
         self.assertTrue(exists)
 
-        route_stub_like_saved_route = SwitzerlandMobilityRouteFactory.build(
+        stub_like_saved_route = SwitzerlandMobilityRouteFactory.build(
             athlete=self.athlete,
             data_source="switzerland_mobility",
             source_id="123456",
         )
-        route_stub_like_saved_route, exists = route_stub_like_saved_route.refresh_from_db_if_exists()
+        stub_like_saved_route, exists = stub_like_saved_route.refresh_from_db_if_exists()
         self.assertTrue(exists)
-        self.assertEqual(route_stub_like_saved_route, saved_route)
+        self.assertEqual(stub_like_saved_route, saved_route)
 
     #########
     # Views #

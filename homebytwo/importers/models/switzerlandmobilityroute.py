@@ -25,7 +25,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         """
         return super().get_queryset().filter(data_source="switzerland_mobility")
 
-    def get_remote_routes(self, session, athlete):
+    def get_remote_routes_list(self, session, athlete):
         """
         Use the authorization cookies saved in the session
         to return the athlete's raw route list as json and format
