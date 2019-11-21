@@ -91,7 +91,6 @@ def strava_route(request, source_id):
     places = False
     route_form = False
     route_places_formset = False
-    place_filter = False
 
     # create route stub from
     route = StravaRoute(
@@ -133,12 +132,6 @@ def strava_route(request, source_id):
         if route.activity_type == "Bike":
             places_qs = places_qs.exclude(place_type=Place.BUS_STATION)
 
-        # define place_type filter
-        place_filter = PlaceFilter(request.GET, queryset=places_qs,)
-
-        place_type_choices = get_place_type_choices(places_qs)
-        place_filter.form.fields["place_type"].choices = place_type_choices
-
         # populate the route_form with route details
         route_form = get_route_form(route)
 
@@ -152,7 +145,6 @@ def strava_route(request, source_id):
         places = zip(checkpoints, route_places_formset.forms)
 
     context = {
-        "filter": place_filter,
         "route": route,
         "route_form": route_form,
         "places": places,

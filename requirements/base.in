@@ -3,7 +3,6 @@
 celery
 dj-database-url
 django<2.2
-django-filter
 django-geojson
 django-leaflet
 django-widget-tweaks
