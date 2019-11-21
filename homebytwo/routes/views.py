@@ -57,6 +57,22 @@ def route(request, pk):
     return render(request, "routes/route.html", context)
 
 
+def route_checkpoints_list(request, pk):
+    route = get_object_or_404(Route, pk=pk, owner=request.user)
+
+    checkpoints = route.find_checkpoints()
+    checkpoints_dicts = [
+        {
+            "name": checkpoint.place.name,
+            "line_location": checkpoint.line_location,
+            "geom": json.loads(checkpoint.place.geom.json),
+        }
+        for checkpoint in checkpoints
+    ]
+
+    return JsonResponse({"checkpoints": checkpoints_dicts})
+
+
 @strava_required
 @login_required
 def import_strava_activities(request):
