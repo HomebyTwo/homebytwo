@@ -47,6 +47,8 @@ class Route(Track):
     class Meta:
         unique_together = ("athlete", "data_source", "source_id")
 
+    objects = RouteManager()
+
     def __str__(self):
         return "Route: %s" % (self.name)
 

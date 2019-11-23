@@ -179,7 +179,7 @@ class RouteTestCase(TestCase):
             ),
         )
 
-        checkpoints = route.find_checkpoints(max_distance=100)
+        checkpoints = route.find_possible_checkpoints(max_distance=100)
 
         self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:

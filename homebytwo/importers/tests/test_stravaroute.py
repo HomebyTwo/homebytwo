@@ -9,11 +9,10 @@ from pandas import DataFrame
 from requests.exceptions import ConnectionError
 from stravalib import Client as StravaClient
 
-from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
 from ..models import StravaRoute
-from ..utils import get_place_type_choices, get_route_form
+from ..utils import get_route_form
 from .factories import StravaRouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -76,14 +75,7 @@ class StravaTestCase(TestCase):
         route = StravaRouteFactory()
         route_form = get_route_form(route)
 
-        self.assertEqual(len(route_form.fields), 10)
-
-    def test_get_place_type_choices(self):
-        places = PlaceFactory.create_batch(12)
-        places_types = {place.place_type for place in places}
-        choices = get_place_type_choices(places)
-
-        self.assertEqual(places_types, {choice[0] for choice in choices})
+        self.assertEqual(len(route_form.fields), 11)
 
     #########
     # Model #

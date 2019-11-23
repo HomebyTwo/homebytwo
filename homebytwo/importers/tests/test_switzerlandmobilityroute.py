@@ -11,6 +11,7 @@ import httpretty
 from requests.exceptions import ConnectionError
 
 from ...routes.models import Checkpoint
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
 from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
@@ -125,7 +126,7 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
         manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes = manager.get_remote_routes(session, self.athlete)
+        new_routes, old_routes = manager.get_remote_routes_list(session, self.athlete)
         httpretty.disable()
 
         self.assertEqual(len(new_routes + old_routes), 37)
@@ -150,12 +151,12 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
         manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes = manager.get_remote_routes(session, user)
+        new_routes, old_routes = manager.get_remote_routes_list(session, user)
         httpretty.disable()
 
         self.assertEqual(len(new_routes + old_routes), 0)
 
-    def test_get_remote_routes_server_error(self):
+    def test_get_remote_routes_list_server_error(self):
         # create user
         user = UserFactory()
 
@@ -177,11 +178,11 @@ class SwitzerlandMobility(TestCase):
 
         routes_manager = SwitzerlandMobilityRoute.objects
         with self.assertRaises(SwitzerlandMobilityError):
-            routes_manager.get_remote_routes(session, user)
+            routes_manager.get_remote_routes_list(session, user)
 
         httpretty.disable()
 
-    def test_get_remote_routes_connection_error(self):
+    def test_get_remote_routes_list_connection_error(self):
         # create user
         athlete = self.athlete
 
@@ -201,7 +202,7 @@ class SwitzerlandMobility(TestCase):
 
         manager = SwitzerlandMobilityRoute.objects
         with self.assertRaises(ConnectionError):
-            manager.get_remote_routes(session, athlete)
+            manager.get_remote_routes_list(session, athlete)
 
         httpretty.disable()
 
@@ -282,7 +283,7 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(len(new_routes), 3)
         self.assertEqual(len(old_routes), 1)
 
-    def test_get_remote_routes_success(self):
+    def test_get_remote_routes_list_success(self):
         # save cookies to session
         session = self.add_cookies_to_session()
 
@@ -318,7 +319,10 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
 
-        new_routes, old_routes = SwitzerlandMobilityRoute.objects.get_remote_routes(
+        (
+            new_routes,
+            old_routes,
+        ) = SwitzerlandMobilityRoute.objects.get_remote_routes_list(
             session, self.athlete
         )
         httpretty.disable()
@@ -392,7 +396,10 @@ class SwitzerlandMobility(TestCase):
             data_source="switzerland_mobility",
             source_id="123456",
         )
-        stub_like_saved_route, exists = stub_like_saved_route.refresh_from_db_if_exists()
+        (
+            stub_like_saved_route,
+            exists,
+        ) = stub_like_saved_route.refresh_from_db_if_exists()
         self.assertTrue(exists)
         self.assertEqual(stub_like_saved_route, saved_route)
 
@@ -438,21 +445,16 @@ class SwitzerlandMobility(TestCase):
 
         title = "<title>Home by Two - Import Haute Cime</title>"
         start_place_form_elements = [
-            'name="route-start_place"',
+            'name="start_place"',
             'class="field"',
-            'id="id_route-start_place"',
+            'id="id_start_place"',
         ]
-        places_formset = (
-            '<input type="hidden" name="places-TOTAL_FORMS" '
-            'value="0" id="id_places-TOTAL_FORMS">'
-        )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
 
         self.assertContains(response, title, html=True)
         for start_place_form_element in start_place_form_elements:
             self.assertContains(response, start_place_form_element)
-        self.assertContains(response, places_formset, html=True)
         self.assertContains(response, map_data, html=True)
 
     def test_switzerland_mobility_route_already_imported(self):
@@ -510,26 +512,19 @@ class SwitzerlandMobility(TestCase):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        route.start_place.save()
+        route.end_place.save()
 
-        route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        post_data = model_to_dict(route)
+        del post_data["image"]
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 0,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
+                "activity_type": 1,
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
+                "geom": route.geom.wkt,
+                "data": route.data.to_json(orient="records"),
             }
         )
 
@@ -542,40 +537,49 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_route_post_success_place(self):
+    def test_switzerland_mobility_route_post_success_with_checkpoints(self):
+        # route to save
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        # save start and end place
+        route.start_place.save()
+        route.end_place.save()
 
-        route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        # checkpoints
+        number_of_route_coordinates = len(route.geom.coords)
+        place1 = PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.25)]
+            )
+        )
+        place2 = PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.5)]
+            )
+        )
+        place3 = PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.75)]
+            )
+        )
+
+        # post data dict from route stub
+        post_data = model_to_dict(route)
+        del post_data["image"]
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-line_location": 0.0207291870756597,
-                "places-0-altitude_on_route": 123,
-                "places-0-id": "",
-                "places-0-include": True,
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
-                "places-1-include": True,
+                "activity_type": 1,
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
+                "geom": route.geom.wkt,
+                "data": route.data.to_json(orient="records"),
+                "checkpoints": [
+                    str(place1.id) + "_" + "0.25",
+                    str(place2.id) + "_" + "0.5",
+                    str(place3.id) + "_" + "0.75",
+                ],
             }
         )
 
@@ -584,57 +588,46 @@ class SwitzerlandMobility(TestCase):
 
         # a new route has been created
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        route_places = Checkpoint.objects.filter(route=route.id)
-        self.assertEqual(route_places.count(), 2)
+        checkpoints = Checkpoint.objects.filter(route=route.id)
+        self.assertEqual(checkpoints.count(), 3)
 
+        # user is redirected
         redirect_url = reverse("routes:route", args=[route.id])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_route_post_no_validation_places(self):
+    def test_switzerland_mobility_route_post_invalid_choice(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        route.start_place.save()
+        route.end_place.save()
 
-        route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        post_data = model_to_dict(route)
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-altitude_on_route": "not a number",
-                "places-0-id": "",
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
+                "geom": route.geom.wkt,
+                "data": route.data.to_json(orient="records"),
+                "checkpoints": ["not_valid"],
             }
         )
+
+        del post_data["activity_type"]
+        del post_data["image"]
 
         url = reverse("switzerland_mobility_route", args=[route_id])
         response = self.client.post(url, post_data)
 
         alert_box = '<li class="box mrgv- alert error">'
         required_field = "This field is required."
-        not_a_number = "Enter a number."
+        invalid_value = "Invalid value"
 
         self.assertContains(response, alert_box)
         self.assertContains(response, required_field)
-        self.assertContains(response, not_a_number)
+        self.assertContains(response, invalid_value)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
         route_id = 2191833
@@ -642,34 +635,18 @@ class SwitzerlandMobility(TestCase):
             source_id=route_id, athlete=self.athlete
         )
 
-        start_place = route.start_place
-        end_place = route.end_place
-
         route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-
-        del post_data["route-image"]
+        post_data = {key: value for key, value in route_data.items()}
 
         post_data.update(
             {
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-line_location": 0.0207291870756597,
-                "places-0-altitude_on_route": 123,
-                "places-0-id": "",
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
+                "activity_type": 1,
+                "geom": route.geom.wkt,
+                "data": route.data.to_json(orient="records"),
             }
         )
+
+        del post_data["image"]
 
         url = reverse("switzerland_mobility_route", args=[route_id])
         response = self.client.post(url, post_data)

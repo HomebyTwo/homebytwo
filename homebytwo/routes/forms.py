@@ -53,28 +53,58 @@ class RouteForm(ModelForm):
     class CheckpointsChoiceField(MultipleChoiceField):
         def to_python(self, value):
             """ Normalize data to a tuple (place.id, line_location)"""
-            if value:
-                try:
-                    value = [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
-                except KeyError:
+            if not value:
+                return []
+            try:
+                return [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
+
+            except KeyError:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": value},
+                )
+
+        def validate(self, value):
+            """
+            Skipping validation by the Parent class for now, as
+            it fetches seems to fetch all places in the Database.
+            """
+            # make sure we have two elements in the tuple
+            for checkpoint in value:
+                if len(checkpoint) != 2:
                     raise ValidationError(
                         _("Invalid value: %(value)s"),
                         code="invalid",
-                        params={"value": value},
+                        params={"value": checkpoint},
                     )
 
-                return value
+                # check that first half can be an int
+                try:
+                    int(checkpoint[0])
+                except ValueError:
+                    raise ValidationError(
+                        _("Invalid value: %(value)s"),
+                        code="invalid",
+                        params={"value": checkpoint},
+                    )
 
-        def validate(self, value):
-            # Validate
-            if value not in [None, []]:
-                for checkpoint in value:
-                    if len(checkpoint) != 2:
+                # check that second half is a float and
+                # is not greater than 1.0
+                try:
+                    if float(checkpoint[1]) > 1:
                         raise ValidationError(
                             _("Invalid value: %(value)s"),
                             code="invalid",
                             params={"value": checkpoint},
                         )
+
+                except ValueError:
+                    raise ValidationError(
+                        _("Invalid value: %(value)s"),
+                        code="invalid",
+                        params={"value": checkpoint},
+                    )
 
     checkpoints = CheckpointsChoiceField(widget=CheckboxSelectMultiple, required=False,)
 

@@ -14,6 +14,7 @@ class StravaRouteManager(RouteManager):
         Returns querysets with Strava Routes only.
         This method is required because StravaRoute
         is a proxy class.
+        Methods from the RouteManager, e.g. for_user can also be used.
         """
         return super().get_queryset().filter(data_source="strava")
 

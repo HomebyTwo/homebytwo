@@ -78,9 +78,11 @@ class RouteFactory(factory.django.DjangoModelFactory):
     length = factory.Faker("random_int", min=1, max=5000)
     geom = GEOSGeometry(route_geojson, srid=21781)
     start_place = factory.SubFactory(
-        PlaceFactory, geom="POINT (%s %s)" % geom.coords[0]
+        PlaceFactory, geom="POINT ({} {})".format(*geom.coords[0])
     )
-    end_place = factory.SubFactory(PlaceFactory, geom="POINT (%s %s)" % geom.coords[-1])
+    end_place = factory.SubFactory(
+        PlaceFactory, geom="POINT ({} {})".format(*geom.coords[-1])
+    )
     data = read_json(route_data_json, orient="records")
 
 

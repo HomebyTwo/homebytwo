@@ -50,7 +50,7 @@ def strava_routes(request):
 
     # retrieve remote routes list
     try:
-        new_routes, old_routes = StravaRoute.objects.get_routes_list_from_server(
+        new_routes, old_routes = StravaRoute.objects.get_remote_routes_list(
             athlete=request.user.athlete
         )
 
@@ -67,7 +67,7 @@ def strava_routes(request):
     context = {
         "source": STRAVA_SOURCE_INFO,
         "new_routes": new_routes,
-        "old_routes": old_routes
+        "old_routes": old_routes,
     }
 
     return render(request, template, context)
@@ -86,10 +86,7 @@ def strava_route(request, source_id):
     route_form = False
 
     # create route stub from the athlete and source_id
-    route = StravaRoute(
-        source_id=source_id,
-        athlete=request.user.athlete,
-    )
+    route = StravaRoute(source_id=source_id, athlete=request.user.athlete)
 
     # with a POST request try to save route and places
     if request.method == "POST":
@@ -147,7 +144,10 @@ def switzerland_mobility_routes(request):
 
     # retrieve remote routes list
     try:
-        new_routes, old_routes = SwitzerlandMobilityRoute.objects.get_remote_routes_list(
+        (
+            new_routes,
+            old_routes,
+        ) = SwitzerlandMobilityRoute.objects.get_remote_routes_list(
             request.session, request.user.athlete,
         )
 
@@ -183,10 +183,7 @@ def switzerland_mobility_route(request, source_id):
     route_form = False
 
     # create route stub from the athlete and source_id
-    route = SwitzerlandMobilityRoute(
-        source_id=source_id,
-        athlete=request.user.athlete,
-    )
+    route = SwitzerlandMobilityRoute(source_id=source_id, athlete=request.user.athlete)
 
     # with a POST request try to save route and places
     if request.method == "POST":

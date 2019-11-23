@@ -95,18 +95,18 @@ class Track(TimeStampedModel):
 
         self.data = data
 
-    def get_performance_data(self, athlete):
+    def get_performance_data(self, user):
         """
         retrieve performance parameters for activity type
         """
         activity_type = self.activity_type
 
-        if athlete.user.is_authenticated:
+        if user.is_authenticated:
             performance = ActivityPerformance.objects
-            performance = performance.filter(athlete=athlete)
+            performance = performance.filter(athlete=user.athlete)
             performance = performance.filter(activity_type=activity_type)
 
-        if athlete.user.is_authenticated and performance.exists():
+        if user.is_authenticated and performance.exists():
             # we have performance values for this athlete and activity
             performance = performance.get()
 
@@ -116,7 +116,7 @@ class Track(TimeStampedModel):
 
         return performance
 
-    def calculate_projected_time_schedule(self, athlete):
+    def calculate_projected_time_schedule(self, user):
         """
         Calculates a time schedule based on activity, user performance,
         and total elevation gain.
@@ -154,7 +154,7 @@ class Track(TimeStampedModel):
             self.calculate_elevation_gain_and_distance()
 
         # get performance data for athlete and activity
-        performance = self.get_performance_data(athlete)
+        performance = self.get_performance_data(user)
 
         # set performance parameters
         slope_squared_param = performance.slope_squared_param

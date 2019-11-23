@@ -60,7 +60,7 @@ def route(request, pk):
 def route_checkpoints_list(request, pk):
     route = get_object_or_404(Route, pk=pk, owner=request.user)
 
-    checkpoints = route.find_checkpoints()
+    checkpoints = route.find_possible_checkpoints()
     checkpoints_dicts = [
         {
             "name": checkpoint.place.name,
