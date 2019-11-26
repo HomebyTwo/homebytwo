@@ -19,7 +19,6 @@ class RouteQuerySet(models.QuerySet):
 
 
 class RouteManager(models.Manager):
-
     def get_queryset(self):
         return RouteQuerySet(self.model, using=self._db)
 
@@ -60,37 +59,72 @@ class Route(Track):
         generate the import URL for a route stub
         based on data_source and source id.
         """
-        route_import_view = "{}_route".format(self.data_source)
-        return reverse(route_import_view, args=[self.source_id])
+        return reverse(
+            "import_route",
+            kwargs={"data_source": self.data_source, "source_id": self.source_id},
+        )
 
     @property
     def source_link(self):
         """
         retrieve the route URL on the site that the route was imported from
 
-        The Strava API agreement requires that a link to
-        the original resources be diplayed on the pages that use data from Strava.
+        The Strava API agreement requires that a link to the original resources
+        be diplayed on the pages that use data from Strava.
         """
+        switzerland_mobility_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+        switzerland_mobility_text = "Switzerland Mobility Plus"
 
-        if self.data_source == "switzerland_mobility":
-            url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
-            text = "Switzerland Mobility"
-            return Link(url, text)
+        strava_url = settings.STRAVA_ROUTE_URL % int(self.source_id)
+        strava_text = "Strava"
 
-        if self.data_source == "strava":
-            url = settings.STRAVA_ROUTE_URL % int(self.source_id)
-            text = "Strava"
-            return Link(url, text)
+        data_source_link = {
+            "switzerland_mobility": Link(switzerland_mobility_url, switzerland_mobility_text),
+            "strava": Link(strava_url, strava_text),
+
+        }
+
+        return data_source_link.get(self.data_source)
 
     @property
     def url(self):
         """
-        Return the import url if the route does not exist in the database
+        Return the the absolute url if the route exists in the database,
+        return the import url if it does not exist in the database.
         """
         if self.pk:
             return self.get_absolute_url()
         else:
             return self.get_absolute_import_url()
+
+    @property
+    def svg(self):
+        """
+        return the default svg image to display for each data source.
+        """
+        data_source_svg = {
+            "switzerland_mobility": "images/switzerland_mobility.svg",
+            "strava": "images/strava.svg",
+        }
+
+        return data_source_svg.get(self.data_source)
+
+    @property
+    def svg_muted(self):
+        """
+        return the default svg image to display for each data source.
+        """
+        data_source_svg = {
+            "switzerland_mobility": "images/switzerland_mobility_muted.svg",
+            "strava": "images/strava_muted.svg",
+        }
+
+        return data_source_svg.get(self.data_source)
+
+    @property
+    def source_name(self):
+        words = self.data_source.split("_")
+        return " ".join([word.capitalize() for word in words])
 
     def refresh_from_db_if_exists(self):
         """
@@ -137,9 +171,7 @@ class Route(Track):
             segment = segments.popleft()
 
             # find additional checkpoints along the segment
-            new_places = get_places_from_segment(
-                segment, self.geom, max_distance
-            )
+            new_places = get_places_from_segment(segment, self.geom, max_distance)
 
             if new_places:
                 # create checkpoint stubs and add them to the list

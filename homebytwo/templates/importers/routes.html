@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Home by Two - Import {{ source.name }} Routes{% endblock %}
+{% block title %}Home by Two - Import {{ data_source_name }} Routes{% endblock %}
 
 {% block content %}
-  <h1>Import Routes from {{ source.name }}</h1>
+  <h1>Import Routes from {{ data_source_name }}</h1>
 
   {# New Routes#}
   {% if new_routes %}
@@ -32,7 +32,7 @@
   {% if not new_routes and not old_routes %}
     <div class="box">
       <h3>No route found</h3>
-      <p>Go create some at {{ source.name }} and come back here to import them.</p>
+      <p>Go create some at {{ data_source_name }} and come back here to import them.</p>
     </div>
   {% endif %}
 {% endblock content %}

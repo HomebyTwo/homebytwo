@@ -18,13 +18,12 @@
       <h3 class="mrgt0">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
 
       <div class="pull-left mrgb">
-        &lsaquo; <a href="{% url source.routes_view %}" title="list of {{ source.name }} routes">Back to the Routes</a>
+        &lsaquo; <a href="{% url "import_routes" data_source=route.data_source %}" title="list of {{ source.name }} routes">Back to the Routes</a>
       </div>
     </div>
 
     {# Forms #}
-    <form method="post" action="{% url source.route_view route.source_id %}">
-      {% csrf_token %}
+    <form method="post" action="{{ route.get_import_url }}">
       {% if form.non_field_errors %}
         <div class="box alert error" role="alert">
           {% for error in form.non_field_errors %}
@@ -34,13 +33,11 @@
       {% endif %}
 
       {# Hidden Form Fields #}
-      <div>{{ form.source_id }}</div>
+      {% csrf_token %}
+
+      {# Name and description #}
       <div>{{ form.name }}</div>
-      <div>{{ form.totalup }}</div>
-      <div>{{ form.totaldown }}</div>
-      <div>{{ form.length }}</div>
-      <div>{{ form.geom }}</div>
-      <div>{{ form.data }}</div>
+      <div>{{ form.description }}</div>
 
       {# Activity Type #}
       <div class="mrgb box box--default pdg-">

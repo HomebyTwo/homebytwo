@@ -1,11 +1,8 @@
 from django.contrib import messages
 from django.db import IntegrityError
-from django.forms import modelform_factory
 
 from requests import codes, get
 from requests.exceptions import ConnectionError
-
-from .forms import ImportersRouteForm
 
 
 class SwitzerlandMobilityError(Exception):
@@ -59,26 +56,6 @@ def split_in_new_and_existing_routes(routes):
             new_routes.append(route)
 
     return new_routes, old_routes
-
-
-def get_route_form(route):
-    """
-    GET detail view: instanciate route_form with model instance and
-    set the query for start and end places.
-    """
-    RouteForm = modelform_factory(type(route), form=ImportersRouteForm)
-    route_form = RouteForm(instance=route)
-
-    return route_form
-
-
-def post_route_form(request, route):
-    """
-    POST detail view: instanciate Route model form with POST values according to type:
-    StravaRoute or SwitzerlandMobilityRoute.
-    """
-    RouteForm = modelform_factory(type(route), form=ImportersRouteForm)
-    return RouteForm(request.POST, instance=route)
 
 
 def save_detail_forms(request, route_form):

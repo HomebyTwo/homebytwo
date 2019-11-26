@@ -1,24 +1,15 @@
 {% load static humanize %}
+{% static route.svg as svg %}
 
 <li>
   <a href="{% url 'routes:route' route.pk %}">
     <div class="media">
       <div class="media__left">
         <img
-        {% if route.image %}
-        src="{{ route.image.thumb.url }}"
-        {% else %}
-        {% if route.data_source == 'strava' %}
-        src="{% static 'images/strava.svg' %}"
-        {% elif route.data_source == 'switzerland_mobility' %}
-        src="{% static 'images/switzerland_mobility.svg' %}"
-        {% else %}
-        src="{% static 'images/homebytwo.svg' %}"
-        {% endif %}
-        {% endif %}
-        alt="{{ source.img_alt }}"
-        height="45px"
-        width="45px"
+          src="{{ route.image.thumb.url|default:svg }}"
+          alt=""
+          height="45px"
+          width="45px"
         />
       </div>
       <div class="media__body relative-parent">

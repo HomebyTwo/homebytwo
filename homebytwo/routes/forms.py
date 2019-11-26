@@ -1,124 +1,47 @@
 from django.db import IntegrityError, transaction
-from django.forms import (
-    CheckboxSelectMultiple,
-    ModelChoiceField,
-    ModelForm,
-    MultipleChoiceField,
-    ValidationError,
-)
-from django.utils.translation import gettext as _
+from django.forms import CheckboxSelectMultiple, ModelChoiceField, ModelForm
 
+from .fields import CheckpointsChoiceField
 from .models import Checkpoint, Place, Route
 
 
 class RouteForm(ModelForm):
+    """
+    ModelForm used to import and edit routes.
+
+    Does the heavy lifting of managing
+    the 'start_place', 'end_place' and 'checkpoints' fields, all based the
+    route geometry.
+
+    """
+    # override __init__ to provide initial data for the
+    # 'start_place', 'end_place' and checkpoints field
     def __init__(self, *args, **kwargs):
+
+        # parent class (ModelForm) __init__
         super().__init__(*args, **kwargs)
 
+        # make sure the route has a linestring, because "start_place", "end_place"
+        # and "checkpoints" are based on it.
         if self.instance.geom:
-            if "start_place" in self.fields:
-                self.fields["start_place"].queryset = self.instance.get_start_places()
+            self.fields["start_place"].queryset = self.instance.get_start_places()
+            self.fields["end_place"].queryset = self.instance.get_end_places()
 
-            if "end_place" in self.fields:
-                self.fields["end_place"].queryset = self.instance.get_end_places()
+            # retrieve checkpoints within range of the route
+            checkpoints = self.instance.find_possible_checkpoints()
 
-            if "checkpoints" in self.fields:
-                checkpoints = self.instance.find_possible_checkpoints()
+            # set choices to all possible checkpoints
+            self.fields["checkpoints"].choices = [
+                (checkpoint.field_value, str(checkpoint))
+                for checkpoint in checkpoints
+            ]
 
-                # set available choices to the list of all possible checkpoints
-                self.fields["checkpoints"].choices = [
-                    (checkpoint.field_value, str(checkpoint))
-                    for checkpoint in checkpoints
-                ]
-
-                # checkpoints that are already associated with the route
-                self.initial["checkpoints"] = [
-                    checkpoint.field_value
-                    for checkpoint in checkpoints
-                    if checkpoint.id
-                ]
-
-    def clean_checkpoints(self):
-        checkpoints = self.cleaned_data["checkpoints"]
-        return checkpoints
-
-    start_place = ModelChoiceField(
-        queryset=Place.objects.all(), empty_label=None, required=False,
-    )
-
-    end_place = ModelChoiceField(
-        queryset=Place.objects.all(), empty_label=None, required=False,
-    )
-
-    class CheckpointsChoiceField(MultipleChoiceField):
-        def to_python(self, value):
-            """ Normalize data to a tuple (place.id, line_location)"""
-            if not value:
-                return []
-            try:
-                return [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
-
-            except KeyError:
-                raise ValidationError(
-                    _("Invalid value: %(value)s"),
-                    code="invalid",
-                    params={"value": value},
-                )
-
-        def validate(self, value):
-            """
-            Skipping validation by the Parent class for now, as
-            it fetches seems to fetch all places in the Database.
-            """
-            # make sure we have two elements in the tuple
-            for checkpoint in value:
-                if len(checkpoint) != 2:
-                    raise ValidationError(
-                        _("Invalid value: %(value)s"),
-                        code="invalid",
-                        params={"value": checkpoint},
-                    )
-
-                # check that first half can be an int
-                try:
-                    int(checkpoint[0])
-                except ValueError:
-                    raise ValidationError(
-                        _("Invalid value: %(value)s"),
-                        code="invalid",
-                        params={"value": checkpoint},
-                    )
-
-                # check that second half is a float and
-                # is not greater than 1.0
-                try:
-                    if float(checkpoint[1]) > 1:
-                        raise ValidationError(
-                            _("Invalid value: %(value)s"),
-                            code="invalid",
-                            params={"value": checkpoint},
-                        )
-
-                except ValueError:
-                    raise ValidationError(
-                        _("Invalid value: %(value)s"),
-                        code="invalid",
-                        params={"value": checkpoint},
-                    )
-
-    checkpoints = CheckpointsChoiceField(widget=CheckboxSelectMultiple, required=False,)
-
-    class Meta:
-        model = Route
-        fields = [
-            "image",
-            "name",
-            "activity_type",
-            "description",
-            "start_place",
-            "checkpoints",
-            "end_place",
-        ]
+            # set initial values the checkpoints already associated with the route
+            self.initial["checkpoints"] = [
+                checkpoint.field_value
+                for checkpoint in checkpoints
+                if checkpoint.id
+            ]
 
     def save(self, commit=True):
         model = super().save(commit=False)
@@ -143,7 +66,9 @@ class RouteForm(ModelForm):
                         checkpoints_saved.append(checkpoint)
 
                     # delete places removed from the form
-                    checkpoints_to_delete = set(old_checkpoints) - set(checkpoints_saved)
+                    checkpoints_to_delete = set(old_checkpoints) - set(
+                        checkpoints_saved
+                    )
                     for checkpoint in checkpoints_to_delete:
                         checkpoint.delete()
 
@@ -151,3 +76,28 @@ class RouteForm(ModelForm):
                 raise
 
         return model
+
+    class Meta:
+        model = Route
+        fields = [
+            "image",
+            "name",
+            "activity_type",
+            "description",
+            "start_place",
+            "checkpoints",
+            "end_place",
+        ]
+
+    start_place = ModelChoiceField(
+        queryset=Place.objects.all(), empty_label=None, required=False,
+    )
+
+    end_place = ModelChoiceField(
+        queryset=Place.objects.all(), empty_label=None, required=False,
+    )
+
+    checkpoints = CheckpointsChoiceField(
+        widget=CheckboxSelectMultiple,
+        required=False,
+    )

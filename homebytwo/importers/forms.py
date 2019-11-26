@@ -8,37 +8,6 @@ from requests import codes
 from requests import exceptions as requests_exceptions
 from requests import post
 
-from ..routes.forms import RouteForm
-from ..routes.models import Route
-
-
-class ImportersRouteForm(RouteForm):
-    class Meta:
-        model = Route
-        fields = [
-            "name",
-            "activity_type",
-            "start_place",
-            "end_place",
-            "length",
-            "source_id",
-            "totaldown",
-            "totalup",
-            "geom",
-            "data",
-        ]
-
-        # Do not display the following fields in the form.
-        # These values are retrieved from the original route
-        widgets = {
-            "name": forms.HiddenInput,
-            "source_id": forms.HiddenInput,
-            "totalup": forms.HiddenInput,
-            "totaldown": forms.HiddenInput,
-            "length": forms.HiddenInput,
-            "geom": forms.HiddenInput,
-        }
-
 
 class SwitzerlandMobilityLogin(forms.Form):
     """

@@ -7,6 +7,7 @@ from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
 from django.db import connection
+from django.forms import MultipleChoiceField
 from django.utils.translation import gettext_lazy as _
 
 from pandas import DataFrame, read_hdf, read_json
@@ -289,3 +290,60 @@ class DataFrameFormField(forms.CharField):
             return initial_value != data_value
 
         return True
+
+
+class CheckpointsChoiceField(MultipleChoiceField):
+    def to_python(self, value):
+        """ Normalize data to a tuple (place.id, line_location)"""
+        if not value:
+            return []
+        try:
+            return [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
+
+        except KeyError:
+            raise ValidationError(
+                _("Invalid value: %(value)s"),
+                code="invalid",
+                params={"value": value},
+            )
+
+    def validate(self, value):
+        """
+        skip validation by the Parent class for now, as
+        it seems to trigger an infinite loop..
+        """
+        # make sure we have two elements in the tuple
+        for checkpoint in value:
+            if len(checkpoint) != 2:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )
+
+            # check that first half can be an int
+            try:
+                int(checkpoint[0])
+            except ValueError:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )
+
+            # check that second half is a float and
+            # is not greater than 1.0
+            try:
+                if float(checkpoint[1]) > 1.0:
+                    raise ValidationError(
+                        _("Invalid value: %(value)s"),
+                        code="invalid",
+                        params={"value": checkpoint},
+                    )
+
+            except ValueError:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )

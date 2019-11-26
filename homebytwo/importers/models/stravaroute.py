@@ -19,7 +19,7 @@ class StravaRouteManager(RouteManager):
         return super().get_queryset().filter(data_source="strava")
 
     # login to Strava and retrieve route list
-    def get_remote_routes_list(self, athlete):
+    def get_remote_routes_list(self, athlete, session):
         """
         fetches the athlete's routes from Strava and splits them into
         new and existing routes.
@@ -49,6 +49,9 @@ class StravaRoute(Route):
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+
+    # data source name to display in templates
+    DATA_SOURCE_NAME = "Strava"
 
     def __init__(self, *args, **kwargs):
         """
@@ -83,7 +86,7 @@ class StravaRoute(Route):
         self.geom = self._polyline_to_linestring(strava_route.map.polyline)
         self.data = self._data_from_streams(raw_streams)
 
-        # Strava activity types: '1' for ride, '2' for run
+        # Strava only knows two activity types for routes: '1' for ride, '2' for run
         if strava_route.type == "1":
             self.activity_type = ActivityType.objects.filter(name="Bike").get()
         if strava_route.type == "2":

@@ -6,9 +6,9 @@
     <div class="media">
       <div class="media__left">
           <img
-            {% if new %} src="{% static source.svg %}" {% endif %}
-            {% if not new %} src="{% static source.muted_svg %}" {% endif %}
-            alt="{{ source.img_alt }}"
+            {% if new %} src="{% static route.svg %}"
+            {% else %} src="{% static route.svg_muted %}" {% endif %}
+            alt=""
           />
       </div>
       <div class="media__body {% if not new %} text-muted {% endif %}">

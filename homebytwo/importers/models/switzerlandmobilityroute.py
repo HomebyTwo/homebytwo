@@ -82,6 +82,9 @@ class SwitzerlandMobilityRoute(Route):
     Proxy for Route Model with specific methods and custom manager.
     """
 
+    # data source name to display in templates
+    DATA_SOURCE_NAME = "Switzerland Mobility Plus"
+
     def __init__(self, *args, **kwargs):
         """
         Set the data_source of the route to Switzerland Mobility
