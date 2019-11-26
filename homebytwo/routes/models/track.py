@@ -8,9 +8,8 @@ from easy_thumbnails.fields import ThumbnailerImageField
 from numpy import interp
 
 from ...core.models import TimeStampedModel
-from ...core.utils import get_image_path
 from ..fields import DataFrameField
-from ..utils import get_places_within
+from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
 
 

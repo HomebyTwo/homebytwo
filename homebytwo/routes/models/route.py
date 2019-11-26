@@ -4,9 +4,8 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.urls import reverse
 
-from ...core.utils import Link
 from ..models import Checkpoint, Track
-from ..utils import create_segments_from_checkpoints, get_places_from_segment
+from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
 
 
 class RouteQuerySet(models.QuerySet):

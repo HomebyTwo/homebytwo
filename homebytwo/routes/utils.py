@@ -1,11 +1,37 @@
-from itertools import chain
+from collections import namedtuple
+from itertools import chain, islice, tee
+from os import path
 
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
 
-from ..core.utils import current_and_next
 from .fields import LineSubstring
 from .models import Place
+
+# named tupple to handle Urls
+Link = namedtuple("Link", ["url", "text"])
+
+
+def get_image_path(instance, filename):
+    """
+    callable to define the image upload path according
+    to the type of object: segment, route, etc.. as well as
+    the id of the object.
+    """
+    return path.join(
+        "images", instance.__class__.__name__, str(instance.id), filename
+    )
+
+
+def current_and_next(some_iterable):
+    """
+    use itertools to make current and next item of an iterable available:
+    http://stackoverflow.com/questions/1011938/python-previous-and-next-values-inside-a-loop
+    used to 'create_segments_from_checkpoints'.
+    """
+    items, nexts = tee(some_iterable, 2)
+    nexts = chain(islice(nexts, 1, None), [None])
+    return zip(items, nexts)
 
 
 def create_segments_from_checkpoints(checkpoints, start=0, end=1):
