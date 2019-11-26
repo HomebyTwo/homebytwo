@@ -4,9 +4,8 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 
-from requests import codes
+from requests import Session, codes
 from requests import exceptions as requests_exceptions
-from requests import post
 
 
 class SwitzerlandMobilityLogin(forms.Form):
@@ -60,38 +59,39 @@ class SwitzerlandMobilityLogin(forms.Form):
             "password": self.cleaned_data["password"],
         }
 
-        # Try to login to map.wanderland.ch
-        try:
-            r = post(login_url, data=json_dumps(credentials))
+        with Session() as session:
+            # Try to login to map.wanderland.ch
+            try:
+                request = session.post(login_url, data=json_dumps(credentials))
 
-        # catch the connection error and inform the user
-        except requests_exceptions.ConnectionError:
-            message = "Connection Error: could not connect to %s. " % login_url
-            messages.error(request, message)
-            return False
-
-        # no connection error
-        else:
-            if r.status_code == codes.ok:
-
-                # log-in was successful, return cookies
-                if r.json()["loginErrorCode"] == 200:
-                    cookies = dict(r.cookies)
-                    message = "Successfully logged-in to Switzerland Mobility"
-                    messages.success(request, message)
-                    return cookies
-
-                # log-in failed
-                else:
-                    message = r.json()["loginErrorMsg"]
-                    messages.error(request, message)
-                    return False
-
-            # Some other server error
-            else:
-                message = (
-                    "Error %s: logging to Switzeland Mobility. "
-                    "Try again later" % r.status_code
-                )
+            # catch the connection error and inform the user
+            except requests_exceptions.ConnectionError:
+                message = "Connection Error: could not connect to %s. " % login_url
                 messages.error(request, message)
                 return False
+
+            # no connection error
+            else:
+                if request.status_code == codes.ok:
+
+                    # log-in was successful, return cookies
+                    if request.json()["loginErrorCode"] == 200:
+                        cookies = dict(request.cookies)
+                        message = "Successfully logged-in to Switzerland Mobility"
+                        messages.success(request, message)
+                        return cookies
+
+                    # log-in failed
+                    else:
+                        message = request.json()["loginErrorMsg"]
+                        messages.error(request, message)
+                        return False
+
+                # Some other server error
+                else:
+                    message = (
+                        "Error %s: logging to Switzeland Mobility. "
+                        "Try again later" % request.status_code
+                    )
+                    messages.error(request, message)
+                    return False

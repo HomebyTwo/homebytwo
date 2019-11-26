@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.db import IntegrityError
 
-from requests import codes, get
+from requests import Session, codes
 from requests.exceptions import ConnectionError
 
 
@@ -19,24 +19,25 @@ def request_json(url, cookies=None):
     Makes a get call to an url to retrieve a json
     while managing server and connection errors.
     """
-    try:
-        r = get(url, cookies=cookies)
+    with Session() as session:
+        try:
+            request = session.get(url, cookies=cookies)
 
-    # connection error and inform the user
-    except ConnectionError:
-        message = "Connection Error: could not connect to {0}. "
-        raise ConnectionError(message.format(url))
+        # connection error and inform the user
+        except ConnectionError:
+            message = "Connection Error: could not connect to {0}. "
+            raise ConnectionError(message.format(url))
 
-    else:
-        # if request is successful save json object
-        if r.status_code == codes.ok:
-            json = r.json()
-            return json
-
-        # server error: display the status code
         else:
-            message = "Error {0}: could not retrieve information from {1}"
-            raise SwitzerlandMobilityError(message.format(r.status_code, url))
+            # if request is successful return json object
+            if request.status_code == codes.ok:
+                json = request.json()
+                return json
+
+            # server error: display the status code
+            else:
+                message = "Error {0}: could not retrieve information from {1}"
+                raise SwitzerlandMobilityError(message.format(request.status_code, url))
 
 
 def split_in_new_and_existing_routes(routes):
