@@ -9,7 +9,8 @@ from pandas import DataFrame
 from requests.exceptions import ConnectionError
 
 from ...routes.models import Route, RouteManager
-from ..utils import request_json, split_in_new_and_existing_routes
+from ...routes.utils import Link
+from ..utils import request_json
 
 
 class SwitzerlandMobilityRouteManager(RouteManager):
@@ -29,7 +30,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         """
         Use the authorization cookies saved in the session
         to return the athlete's raw route list as json and format
-        them for display
+        them for display.
         """
         cookies = session["switzerland_mobility_cookies"]
 
@@ -41,14 +42,11 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         if raw_routes:
 
             # format routes into dictionary
-            formatted_routes = self.format_raw_remote_routes(raw_routes, athlete)
+            return self.format_raw_remote_routes(raw_routes, athlete)
 
-            # split routes in two  lists: into old and new routes
-            return split_in_new_and_existing_routes(formatted_routes)
-
-        # return two empty lits if no raw_routes were found
+        # return empty list if no raw_routes were found
         else:
-            return [], []
+            return []
 
     def format_raw_remote_routes(self, raw_routes, athlete):
         """
@@ -84,6 +82,9 @@ class SwitzerlandMobilityRoute(Route):
 
     # data source name to display in templates
     DATA_SOURCE_NAME = "Switzerland Mobility Plus"
+    DATA_SOURCE_LINK = Link(
+        "https://map.schweizmobil.ch/?lang=en&showLogin=true", DATA_SOURCE_NAME,
+    )
 
     def __init__(self, *args, **kwargs):
         """

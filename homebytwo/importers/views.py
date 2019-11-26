@@ -53,28 +53,53 @@ def import_routes(request, data_source):
 
     # retrieve remote routes list
     try:
-        new_routes, old_routes = route_class.objects.get_remote_routes_list(
+        remote_routes = route_class.objects.get_remote_routes_list(
             athlete=request.user.athlete, session=request.session
         )
 
     except ConnectionError as error:
         message = "Could not connect to Strava: {}".format(error)
         messages.error(request, message)
-        new_routes, old_routes = [], []
+        remote_routes = []
 
     except SwitzerlandMobilityError as error:
         messages.error(request, error)
-        new_routes, old_routes = [], []
+        remote_routes = []
 
     except AccessUnauthorized:
         message = "Strava Authorization refused. Try to connect to Strava again"
         messages.error(request, message)
         return redirect("strava_connect")
 
+    local_routes = route_class.objects.for_user(request.user)
+
+    new_routes = [
+        remote_route
+        for remote_route in remote_routes
+        if remote_route.source_id
+        not in [local_route.source_id for local_route in local_routes]
+    ]
+
+    existing_routes = [
+        local_route
+        for local_route in local_routes
+        if local_route.source_id
+        in [remote_route.source_id for remote_route in remote_routes]
+    ]
+
+    deleted_routes = [
+        local_route
+        for local_route in local_routes
+        if local_route.source_id
+        not in [remote_route.source_id for remote_route in remote_routes]
+    ]
+
     context = {
         "new_routes": new_routes,
-        "old_routes": old_routes,
+        "existing_routes": existing_routes,
+        "deleted_routes": deleted_routes,
         "data_source_name": route_class.DATA_SOURCE_NAME,
+        "data_source_link": route_class.DATA_SOURCE_LINK,
     }
 
     return render(request, template, context)

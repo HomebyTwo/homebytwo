@@ -8,7 +8,7 @@
 
   {# New Routes#}
   {% if new_routes %}
-    <h2>New Routes</h2>
+    <h2>New Routes from {{ data_source_name }}</h2>
 
     <ul class="routes list-stacked list-stacked--tight">
       {% for route in new_routes %}
@@ -17,22 +17,33 @@
     </ul>
   {% endif %}
 
-  {# Old Routes#}
-  {% if old_routes %}
-    <h2>Already Imported Routes</h2>
+  {# Existing Routes#}
+  {% if existing_routes %}
+    <h2>Routes Already Imported from {{ data_source_name }}</h2>
 
     <ul class="routes list-stacked list-stacked--tight">
-      {% for route in old_routes %}
-        {% include "importers/_route_card.html" %}
+      {% for route in existing_routes %}
+        {% include "importers/_route_card.html" with existing=True %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {# Deleted Routes#}
+  {% if deleted_routes %}
+    <h2>Routes Deleted from {{ data_source_name }}</h2>
+
+    <ul class="routes list-stacked list-stacked--tight">
+      {% for route in deleted_routes %}
+        {% include "importers/_route_card.html" with deleted=True %}
       {% endfor %}
     </ul>
   {% endif %}
 
   {#No Routes#}
-  {% if not new_routes and not old_routes %}
-    <div class="box">
-      <h3>No route found</h3>
-      <p>Go create some at {{ data_source_name }} and come back here to import them.</p>
+  {% if not new_routes and not existing_routes %}
+    <div class="box box--default">
+      <h3>No route foun on {{ data_source_name }}</h3>
+      <p>Go create some at <a href="{{ data_source_link.url }}" target="_blank">{{ data_source_link.text }}</a> and come back here to import them.</p>
     </div>
   {% endif %}
 {% endblock content %}

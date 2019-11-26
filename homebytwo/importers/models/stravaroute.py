@@ -5,7 +5,7 @@ from polyline import decode
 from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
-from ..utils import split_in_new_and_existing_routes
+from ...routes.utils import Link
 
 
 class StravaRouteManager(RouteManager):
@@ -21,15 +21,15 @@ class StravaRouteManager(RouteManager):
     # login to Strava and retrieve route list
     def get_remote_routes_list(self, athlete, session):
         """
-        fetches the athlete's routes from Strava and splits them into
-        new and existing routes.
+        fetches the athlete's routes list from Strava and returns them
+        as a list of StravaRoute stubs.
         """
 
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
 
         # create model instances with Strava routes data
-        routes = [
+        return [
             StravaRoute(
                 source_id=strava_route.id,
                 name=strava_route.name,
@@ -40,9 +40,6 @@ class StravaRouteManager(RouteManager):
             for strava_route in strava_routes
         ]
 
-        # split into new and existing routes
-        return split_in_new_and_existing_routes(routes=routes)
-
 
 class StravaRoute(Route):
 
@@ -52,6 +49,9 @@ class StravaRoute(Route):
 
     # data source name to display in templates
     DATA_SOURCE_NAME = "Strava"
+    DATA_SOURCE_LINK = Link(
+        "https://www.strava.com/athlete/routes", DATA_SOURCE_NAME,
+    )
 
     def __init__(self, *args, **kwargs):
         """

@@ -50,18 +50,43 @@ class Route(Track):
     def __str__(self):
         return "Route: %s" % (self.name)
 
-    def get_absolute_url(self):
-        return reverse("routes:route", args=[self.pk])
+    def get_absolute_url(self, action="display"):
+        """
+        return the relative URL for the route based on the action requested.
 
-    def get_absolute_import_url(self):
         """
-        generate the import URL for a route stub
-        based on data_source and source id.
-        """
-        return reverse(
-            "import_route",
-            kwargs={"data_source": self.data_source, "source_id": self.source_id},
-        )
+        route_kwargs = {"pk": self.pk}
+        import_kwargs = {"data_source": self.data_source, "source_id": self.source_id}
+
+        action_reverse = {
+            "display": ("routes:route", route_kwargs),
+            "edit": ("routes:edit", route_kwargs),
+            "update": ("routes:update", route_kwargs),
+            "delete": ("routes:delete", route_kwargs),
+            "import": ("import_route", import_kwargs)
+        }
+        if action_reverse.get(action):
+            return reverse(action_reverse[action][0], kwargs=action_reverse[action][1])
+
+    @property
+    def display_url(self):
+        return self.get_absolute_url("display")
+
+    @property
+    def edit_url(self):
+        return self.get_absolute_url("edit")
+
+    @property
+    def update_url(self):
+        return self.get_absolute_url("update")
+
+    @property
+    def delete_url(self):
+        return self.get_absolute_url("delete")
+
+    @property
+    def import_url(self):
+        return self.get_absolute_url("import")
 
     @property
     def source_link(self):
@@ -84,17 +109,6 @@ class Route(Track):
         }
 
         return data_source_link.get(self.data_source)
-
-    @property
-    def url(self):
-        """
-        Return the the absolute url if the route exists in the database,
-        return the import url if it does not exist in the database.
-        """
-        if self.pk:
-            return self.get_absolute_url()
-        else:
-            return self.get_absolute_import_url()
 
     @property
     def svg(self):

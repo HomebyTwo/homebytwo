@@ -40,25 +40,6 @@ def request_json(url, cookies=None):
                 raise SwitzerlandMobilityError(message.format(request.status_code, url))
 
 
-def split_in_new_and_existing_routes(routes):
-    """
-    Split retrieved routes into old and new routes.
-    old routes are replaced by the object from the DB.
-    """
-
-    new_routes, old_routes = [], []
-
-    for route in routes:
-        route, exists = route.refresh_from_db_if_exists()
-
-        if exists:
-            old_routes.append(route)
-        else:
-            new_routes.append(route)
-
-    return new_routes, old_routes
-
-
 def save_detail_forms(request, route_form):
     """
     POST detail view: if the forms validate, try to save the routes
