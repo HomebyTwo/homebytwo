@@ -1,5 +1,5 @@
 from django.db import IntegrityError, transaction
-from django.forms import CheckboxSelectMultiple, ModelChoiceField, ModelForm
+from django.forms import ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
 from .models import Checkpoint, Place, Route
@@ -14,6 +14,7 @@ class RouteForm(ModelForm):
     route geometry.
 
     """
+
     # override __init__ to provide initial data for the
     # 'start_place', 'end_place' and checkpoints field
     def __init__(self, *args, **kwargs):
@@ -32,16 +33,17 @@ class RouteForm(ModelForm):
 
             # set choices to all possible checkpoints
             self.fields["checkpoints"].choices = [
-                (checkpoint.field_value, str(checkpoint))
-                for checkpoint in checkpoints
+                (checkpoint, str(checkpoint)) for checkpoint in checkpoints
             ]
 
             # set initial values the checkpoints already associated with the route
             self.initial["checkpoints"] = [
-                checkpoint.field_value
-                for checkpoint in checkpoints
-                if checkpoint.id
+                checkpoint for checkpoint in checkpoints if checkpoint.id
             ]
+
+            # check all checkboxes for convenience if no previous values exist
+            if self.initial["checkpoints"] == []:
+                self.initial["checkpoints"] = checkpoints
 
     def save(self, commit=True):
         model = super().save(commit=False)
@@ -56,10 +58,10 @@ class RouteForm(ModelForm):
                     model.save()
 
                     # save form checkpoints
-                    for place, line_location in self.cleaned_data["checkpoints"]:
+                    for place_id, line_location in self.cleaned_data["checkpoints"]:
                         checkpoint, created = Checkpoint.objects.get_or_create(
                             route=model,
-                            place=Place.objects.get(pk=place),
+                            place=Place.objects.get(pk=place_id),
                             line_location=line_location,
                         )
 
@@ -97,7 +99,4 @@ class RouteForm(ModelForm):
         queryset=Place.objects.all(), empty_label=None, required=False,
     )
 
-    checkpoints = CheckpointsChoiceField(
-        widget=CheckboxSelectMultiple,
-        required=False,
-    )
+    checkpoints = CheckpointsChoiceField(required=False)

@@ -92,9 +92,9 @@
         const icon = L.divIcon({
           className: 'placeIcon placeIcon--default',
         });
-        const places = Array.from(document.querySelectorAll('.place'));
-        const markers = places.map(place => {
-          L.geoJson(JSON.parse(place.dataset.geom), {
+        const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
+        const markers = checkpoints.map(checkpoint => {
+          L.geoJson(JSON.parse(checkpoint.dataset.geom), {
             pointToLayer: (feature, latlng) => L.marker(latlng, {
               icon: icon,
               title: feature.properties.name

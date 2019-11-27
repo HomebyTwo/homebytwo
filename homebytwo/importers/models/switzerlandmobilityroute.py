@@ -2,8 +2,10 @@ import json
 from ast import literal_eval
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import Distance
+from django.shortcuts import redirect
 
 from pandas import DataFrame
 from requests.exceptions import ConnectionError
@@ -72,6 +74,22 @@ class SwitzerlandMobilityRouteManager(RouteManager):
             formatted_routes.append(formatted_route)
 
         return formatted_routes
+
+    def check_user_credentials(self, request):
+        """
+        view function provided to check whether a user has access
+        to Switzerland Mobility Plus before call the service.
+        """
+        # Check if logged-in to Switzeland Mobility
+        try:
+            request.session["switzerland_mobility_cookies"]
+
+        # login cookies missing
+        except KeyError:
+            # redirect to the switzeland mobility login page
+            message = "Please log-in to Switzerland Mobility Plus"
+            messages.info(request, message)
+            return redirect("switzerland_mobility_login")
 
 
 class SwitzerlandMobilityRoute(Route):

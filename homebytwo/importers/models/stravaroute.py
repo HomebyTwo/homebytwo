@@ -1,7 +1,10 @@
+from django.contrib import messages
 from django.contrib.gis.geos import LineString
+from django.shortcuts import redirect
 
 from pandas import DataFrame
 from polyline import decode
+from social_django.models import UserSocialAuth
 from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
@@ -40,6 +43,21 @@ class StravaRouteManager(RouteManager):
             for strava_route in strava_routes
         ]
 
+    def check_user_credentials(request):
+        """
+        view function provided to check whether a user
+        has access to Strava.
+        """
+        # check if the user has an associated Strava account
+        try:
+            request.user.social_auth.get(provider="strava")
+
+        # redirect to login with strava page
+        except UserSocialAuth.DoesNotExist:
+            message = "Please log-in to Strava"
+            messages.info(request, message)
+            return redirect("strava_connect")
+
 
 class StravaRoute(Route):
 
@@ -49,9 +67,7 @@ class StravaRoute(Route):
 
     # data source name to display in templates
     DATA_SOURCE_NAME = "Strava"
-    DATA_SOURCE_LINK = Link(
-        "https://www.strava.com/athlete/routes", DATA_SOURCE_NAME,
-    )
+    DATA_SOURCE_LINK = Link("https://www.strava.com/athlete/routes", DATA_SOURCE_NAME,)
 
     def __init__(self, *args, **kwargs):
         """

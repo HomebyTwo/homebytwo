@@ -1,4 +1,5 @@
 from django.contrib.gis.db import models
+from django.core.serializers import serialize
 
 from ...core.models import TimeStampedModel
 
@@ -158,6 +159,9 @@ class Place(TimeStampedModel):
         if self.source_id == "":
             self.source_id = str(self.id)
             self.save()
+
+    def get_geojson(self, fields=["name", "place_type"]):
+        return serialize("geojson", [self], geometry_field="geom", fields=fields)
 
 
 class Checkpoint(models.Model):

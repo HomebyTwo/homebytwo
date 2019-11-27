@@ -7,7 +7,6 @@ from requests.exceptions import ConnectionError
 from stravalib.exc import AccessUnauthorized
 
 from ..routes.forms import RouteForm
-from .decorators import strava_required, switerland_mobility_required
 from .forms import SwitzerlandMobilityLogin
 from .models import StravaRoute, SwitzerlandMobilityRoute
 from .utils import SwitzerlandMobilityError, save_detail_forms
@@ -24,6 +23,8 @@ def get_route_class_from_data_source(request, data_source):
     """
     route_class = DATA_SOURCE_CLASSES.get(data_source)
     if route_class:
+        # check if user has access credentials
+        route_class.objects.check_user_credentials(request)
         return route_class
     else:
         raise Http404("Data Source does not exist")
@@ -40,7 +41,6 @@ def strava_connect(request):
 
 
 @login_required
-@strava_required
 def import_routes(request, data_source):
     """
     retrieve the athlete's list of routes on Strava
@@ -71,8 +71,10 @@ def import_routes(request, data_source):
         messages.error(request, message)
         return redirect("strava_connect")
 
+    # retrieve the athlete's list of routes already saved in homebytwo
     local_routes = route_class.objects.for_user(request.user)
 
+    # routes in remote service but not in homebytwo
     new_routes = [
         remote_route
         for remote_route in remote_routes
@@ -80,6 +82,7 @@ def import_routes(request, data_source):
         not in [local_route.source_id for local_route in local_routes]
     ]
 
+    # routes in both remote service and homebytwo
     existing_routes = [
         local_route
         for local_route in local_routes
@@ -87,6 +90,7 @@ def import_routes(request, data_source):
         in [remote_route.source_id for remote_route in remote_routes]
     ]
 
+    # routes in homebytwo but deleted in remote service
     deleted_routes = [
         local_route
         for local_route in local_routes
@@ -106,7 +110,6 @@ def import_routes(request, data_source):
 
 
 @login_required
-@strava_required
 def import_route(request, data_source, source_id):
     """
     import form for Strava
@@ -166,7 +169,7 @@ def import_route(request, data_source, source_id):
         "form": route_form,
     }
 
-    template = "importers/route.html"
+    template = "routes/route_form.html"
 
     return render(request, template, context)
 

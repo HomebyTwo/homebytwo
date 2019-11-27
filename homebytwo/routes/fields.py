@@ -8,9 +8,12 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
 from django.db import connection
 from django.forms import MultipleChoiceField
+from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
 
 from pandas import DataFrame, read_hdf, read_json
+
+from ..routes.models import Checkpoint
 
 
 def LineSubstring(line, start_location, end_location):
@@ -292,7 +295,31 @@ class DataFrameFormField(forms.CharField):
         return True
 
 
+class CheckpointsSelectMultiple(CheckboxSelectMultiple):
+    """
+    Override the default CheckboxSelectMultiple Widget to serialize checkpoints
+    as strings containing the place id and the line_location.
+    """
+
+    def create_option(
+        self, name, value, label, selected, index, subindex=None, attrs=None
+    ):
+        # make sure it's a checkpoint
+        if isinstance(value, Checkpoint):
+            # add checkpoint place location as data-attribute in geojson to display on the map.
+            attrs.update({"data-geom": value.place.get_geojson(fields=["name"])})
+
+            # convert chekpoint to 'place_id' + "_" + 'line_location' string
+            value = value.field_value
+
+        return super().create_option(
+            name, value, label, selected, index, subindex, attrs
+        )
+
+
 class CheckpointsChoiceField(MultipleChoiceField):
+    widget = CheckpointsSelectMultiple
+
     def to_python(self, value):
         """ Normalize data to a tuple (place.id, line_location)"""
         if not value:
@@ -302,9 +329,7 @@ class CheckpointsChoiceField(MultipleChoiceField):
 
         except KeyError:
             raise ValidationError(
-                _("Invalid value: %(value)s"),
-                code="invalid",
-                params={"value": value},
+                _("Invalid value: %(value)s"), code="invalid", params={"value": value},
             )
 
     def validate(self, value):
