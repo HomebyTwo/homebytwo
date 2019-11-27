@@ -1,7 +1,6 @@
 import os
 
 import dj_database_url
-from celery.schedules import crontab
 
 from .. import get_project_root_path
 from . import get_env_variable

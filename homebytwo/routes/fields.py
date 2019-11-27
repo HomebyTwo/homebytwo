@@ -301,12 +301,15 @@ class CheckpointsSelectMultiple(CheckboxSelectMultiple):
     as strings containing the place id and the line_location.
     """
 
+    template_name = "forms/widgets/_checkpoints_multiple_input.html"
+
     def create_option(
         self, name, value, label, selected, index, subindex=None, attrs=None
     ):
         # make sure it's a checkpoint
         if isinstance(value, Checkpoint):
-            # add checkpoint place location as data-attribute in geojson to display on the map.
+
+            # add checkpoint place geojson as data-attribute to display on the map.
             attrs.update({"data-geom": value.place.get_geojson(fields=["name"])})
 
             # convert chekpoint to 'place_id' + "_" + 'line_location' string
@@ -318,6 +321,11 @@ class CheckpointsSelectMultiple(CheckboxSelectMultiple):
 
 
 class CheckpointsChoiceField(MultipleChoiceField):
+    """
+    Custom form field to handle parsing and validation of
+    checkpoints in the route form.
+    """
+
     widget = CheckpointsSelectMultiple
 
     def to_python(self, value):
