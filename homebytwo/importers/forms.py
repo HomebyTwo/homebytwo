@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib import messages
 
 from requests import Session, codes
-from requests import exceptions as requests_exceptions
 
 
 class SwitzerlandMobilityLogin(forms.Form):
@@ -60,38 +59,30 @@ class SwitzerlandMobilityLogin(forms.Form):
         }
 
         with Session() as session:
+
             # Try to login to map.wanderland.ch
-            try:
-                request = session.post(login_url, data=json_dumps(credentials))
+            login_request = session.post(login_url, data=json_dumps(credentials))
 
-            # catch the connection error and inform the user
-            except requests_exceptions.ConnectionError:
-                message = "Connection Error: could not connect to %s. " % login_url
-                messages.error(request, message)
-                return False
+            if login_request.status_code == codes.ok:
 
-            # no connection error
-            else:
-                if request.status_code == codes.ok:
+                # log-in was successful, return cookies
+                if login_request.json()["loginErrorCode"] == 200:
+                    cookies = dict(login_request.cookies)
+                    message = "Successfully logged-in to Switzerland Mobility"
+                    messages.success(request, message)
+                    return cookies
 
-                    # log-in was successful, return cookies
-                    if request.json()["loginErrorCode"] == 200:
-                        cookies = dict(request.cookies)
-                        message = "Successfully logged-in to Switzerland Mobility"
-                        messages.success(request, message)
-                        return cookies
-
-                    # log-in failed
-                    else:
-                        message = request.json()["loginErrorMsg"]
-                        messages.error(request, message)
-                        return False
-
-                # Some other server error
+                # log-in failed
                 else:
-                    message = (
-                        "Error %s: logging to Switzeland Mobility. "
-                        "Try again later" % request.status_code
-                    )
+                    message = login_request.json()["loginErrorMsg"]
                     messages.error(request, message)
                     return False
+
+            # Some other server error
+            else:
+                message = (
+                    "Error %s: logging to Switzeland Mobility. "
+                    "Try again later" % login_request.status_code
+                )
+                messages.error(request, message)
+                return False

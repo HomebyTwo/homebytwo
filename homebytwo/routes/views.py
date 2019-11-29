@@ -9,18 +9,20 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 from pytz import utc
 
-from ..importers.decorators import strava_required
+from ..importers.decorators import remote_connection, strava_required
 from .forms import RouteForm
 from .models import Activity, Route, WebhookTransaction
 from .tasks import import_athlete_strava_activities
 
 
 @login_required
+@require_safe
 def routes(request):
     routes = Route.objects.order_by("name")
     routes = Route.objects.for_user(request.user)
@@ -29,6 +31,7 @@ def routes(request):
     return render(request, "routes/routes.html", context)
 
 
+@require_safe
 def route(request, pk):
     # load route from Database
     route = get_object_or_404(Route, id=pk)
@@ -57,15 +60,17 @@ def route(request, pk):
     return render(request, "routes/route.html", context)
 
 
+@require_safe
 def route_checkpoints_list(request, pk):
-    route = get_object_or_404(Route, pk=pk, owner=request.user)
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
     checkpoints = route.find_possible_checkpoints()
     checkpoints_dicts = [
         {
             "name": checkpoint.place.name,
             "line_location": checkpoint.line_location,
-            "geom": json.loads(checkpoint.place.geom.json),
+            "geom": checkpoint.place.get_geojson(fields=["name"]),
+            "place_type": checkpoint.place.get_place_type_display(),
         }
         for checkpoint in checkpoints
     ]
@@ -153,6 +158,7 @@ class RouteDelete(DeleteView):
 class RouteEdit(UpdateView):
     model = Route
     form_class = RouteForm
+    template_name = "routes/route_form.html"
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.
@@ -164,6 +170,20 @@ class RouteEdit(UpdateView):
 
 
 @method_decorator(login_required, name="dispatch")
+@method_decorator(remote_connection, name="dispatch")
+class RouteUpdate(RouteEdit):
+
+    def get_object(self, queryset=None):
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        if pk is not None:
+            route = get_object_or_404(Route, pk=pk)
+            return route.update_from_remote()
+        else:
+            return super().get_object(queryset)
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(require_safe, name="dispatch")
 class ActivityList(ListView):
     paginate_by = 50
     context_object_name = "strava_activities"

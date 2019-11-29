@@ -1,5 +1,6 @@
 from collections import deque
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.urls import reverse
@@ -27,12 +28,17 @@ class RouteManager(models.Manager):
 
 class Route(Track):
     """
-
-    specific instance of track that holds source info and checkpoints
+    Subclass of track with source information and relations to checkpoints.
 
     The StravaRoute and SwitzerlandMobilityRoute proxy models
     inherit from Route.
     """
+
+    # link the data source to the corresponding proxy models
+    DATA_SOURCE_PROXY_MODELS = {
+        "strava": "importers.StravaRoute",
+        "switzerland_mobility": "importers.SwitzerlandMobilityRoute",
+    }
 
     # source and unique id (at the source) that the route came from
     source_id = models.BigIntegerField()
@@ -48,7 +54,7 @@ class Route(Track):
     objects = RouteManager()
 
     def __str__(self):
-        return "Route: %s" % (self.name)
+        return "Route: {}".format(self.name)
 
     def get_absolute_url(self, action="display"):
         """
@@ -63,7 +69,7 @@ class Route(Track):
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
-            "import": ("import_route", import_kwargs)
+            "import": ("import_route", import_kwargs),
         }
         if action_reverse.get(action):
             return reverse(action_reverse[action][0], kwargs=action_reverse[action][1])
@@ -96,16 +102,19 @@ class Route(Track):
         The Strava API agreement requires that a link to the original resources
         be diplayed on the pages that use data from Strava.
         """
-        switzerland_mobility_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % self.source_id
+        switzerland_mobility_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % int(
+            self.source_id
+        )
         switzerland_mobility_text = "Switzerland Mobility Plus"
 
         strava_url = settings.STRAVA_ROUTE_URL % int(self.source_id)
         strava_text = "Strava"
 
         data_source_link = {
-            "switzerland_mobility": Link(switzerland_mobility_url, switzerland_mobility_text),
+            "switzerland_mobility": Link(
+                switzerland_mobility_url, switzerland_mobility_text
+            ),
             "strava": Link(strava_url, strava_text),
-
         }
 
         return data_source_link.get(self.data_source)
@@ -135,9 +144,37 @@ class Route(Track):
         return data_source_svg.get(self.data_source)
 
     @property
-    def source_name(self):
-        words = self.data_source.split("_")
-        return " ".join([word.capitalize() for word in words])
+    def proxy_class(self):
+        return apps.get_model(self.DATA_SOURCE_PROXY_MODELS[self.data_source])
+
+    @property
+    def can_be_imported(self):
+        """
+        check if a route stub is already in the database.
+        """
+        if not self.pk:
+            return not Route.objects.filter(
+                data_source=self.data_source,
+                source_id=self.source_id,
+                athlete=self.athlete,
+            ).exists()
+
+    def update_from_remote(self):
+        """
+        update an existing route with the data from the remote service.
+        """
+        route_class = self.proxy_class
+
+        if route_class:
+            route = route_class.objects.get(pk=self.pk)
+
+            # overwrite route with remote info
+            route.get_route_details()
+
+            # reset the checkpoints, the price of updating from remote
+            route.checkpoint_set.all().delete()
+
+            return route
 
     def refresh_from_db_if_exists(self):
         """

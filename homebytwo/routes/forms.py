@@ -41,10 +41,6 @@ class RouteForm(ModelForm):
                 checkpoint for checkpoint in checkpoints if checkpoint.id
             ]
 
-            # check all checkboxes for convenience if no previous values exist
-            if self.initial["checkpoints"] == []:
-                self.initial["checkpoints"] = checkpoints
-
     def save(self, commit=True):
         model = super().save(commit=False)
 
@@ -85,7 +81,6 @@ class RouteForm(ModelForm):
             "image",
             "name",
             "activity_type",
-            "description",
             "start_place",
             "checkpoints",
             "end_place",

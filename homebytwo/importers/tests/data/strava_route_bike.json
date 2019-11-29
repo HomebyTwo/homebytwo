@@ -1,0 +1,24 @@
+{
+    "athlete": {},
+    "created_at": "2019-11-29T18:57:29Z",
+    "description": "Access to Obergabelhorn",
+    "distance": 11635.405455150389,
+    "elevation_gain": 815.4931552890796,
+    "estimated_moving_time": 1734,
+    "id": 22798494,
+    "map": {
+        "id": "r22798494",
+        "polyline": "u}{wGughn@bCrAbBt@|ExA`@X\\`@\\PfDn@b@@PoBNy@pCoFrAjBjFnK`AnC^v@h@t@p@bCXj@dAhAlChB^HnG|C\\Ed@Oh@i@Ze@fAoDF_AJuKJc@N[HC|ChAnADpCMNFLL~@jGYfEBV~@rCJNLBhAAPGLOBg@I{ADOVWRKX?`@FxAh@h@b@Vt@\\v@b@X\\l@j@PUcAYkCu@yDcAoDiCqCKa@l@U`ABvCrFd@fB~BvB|@~CrCzBdHfJ~@bDGnE@b@d@ZpA`@xBGP\\@^Vf@^FfAY~D~Ax@Td@b@J^`@hD?p@Ir@w@hD]hAHrAIr@u@dAaA|@sAIk@Fo@ZI`@^xAf@`AFz@?x@S\\u@E]Gc@P_@j@EpAy@pAm@?[\\IbAu@VS`AJbACdBgAlBSr@Gh@DfBOl@A|AVdCJ^h@fATr@N|AFdBEnAi@tAE^LlCJ^X^BNCPSXEPGnFeAfE_@d@q@lAMf@KfBe@jAUlB]tAe@t@_@rACvBWjAaAdCi@r@MVY|@QTeA`@mAlAKNMb@KpA]xBC\\@TFXLRFP@^I^]`@?LHBEv@?p@FhAJf@Rb@Jf@Dj@XnICrAmApFWb@KfAzAdDHdCiAtCF`BSvAIfEDlAPtAP|@rArD^bE?|@Lr@Rb@J^@f@SvBA`AD^LXHZFv@B|DO|HBfBJv@Nt@Bb@?l@NlANx@NXTB^A\\Rh@t@DZ@zANpA?jC^`C|@fAPt@~@hBJf@B`@ILMIWgAU@SXOd@Ex@J~BTnALb@P`@\\d@f@L`@vChAbDzBhCv@tALh@@d@Ir@Az@LjCCRMLQBUHk@f@a@ReDx@Yl@WXg@T[XMj@s@tIQv@Wb@MLc@PWBWAsBb@aC\\sAQGKo@NQd@DfARbC@dACt@W\\YJc@BSAMWg@pABeAEEITAmAo@pDUXMCA\\O?AZIKGPO?Av@TTd@LJh@CbA[^Sv@BnA_@hDC|BWpDk@tCuAbE@`ACPT`AGXBv@IvCMF",
+        "resource_state": 3,
+        "summary_polyline": "u}{wGughn@nVbJrDyKvOh\\bOzIpEuGx@yO|KvAh@jNjAbDhBELcDdAc@hI|GiDyPuCsDnBQzJrRxLbNx@vK~R~FrAlF_B`NgH|CdArHkC`@}FjKgBhRzBdNc@pUmJh`@eIdL{@lGpAlZuBpLdBjHiAtCU`KjEnWHr]~@fIlCdBv@vMzCnGeB^ZhGdKtSPjIcL|GyBjNuMfADlJ_DdBMcCiCfG`AhEgB`SaCxIGfK"
+    },
+    "name": "Zermatt - Arben",
+    "private": true,
+    "resource_state": 3,
+    "segments": [],
+    "starred": false,
+    "sub_type": 2,
+    "timestamp": 1575053849,
+    "type": 1,
+    "updated_at": "2019-11-29T18:57:31Z"
+}

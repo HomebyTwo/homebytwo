@@ -15,10 +15,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.six import StringIO
 
+import httpretty
 from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import open_data
+from ...utils.tests import open_data, read_data
 from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
@@ -34,6 +35,14 @@ class RouteTestCase(TestCase):
     #########
     # Model #
     #########
+
+    def test_str(self):
+        route = RouteFactory()
+        self.assertEqual(str(route), "Route: {}".format(route.name))
+
+    def test_display_url(self):
+        route = RouteFactory()
+        self.assertEqual(route.display_url, route.get_absolute_url())
 
     def test_get_length(self):
         route = RouteFactory.build(length=12345)
@@ -270,7 +279,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory(data_source="switzerland_mobility", source_id=777)
         source_url = "https://switzerland_mobility_route_url/777"
         self.assertEqual(route.source_link.url, source_url)
-        self.assertEqual(route.source_link.text, "Switzerland Mobility")
+        self.assertEqual(route.source_link.text, "Switzerland Mobility Plus")
 
         route = RouteFactory()
         self.assertIsNone(route.source_link)
@@ -278,6 +287,13 @@ class RouteTestCase(TestCase):
     #########
     # Views #
     #########
+
+    def test_import_routes_unknown_data_source(self):
+        unknown_data_source_routes_url = reverse(
+            "import_routes", kwargs={"data_source": "spam"}
+        )
+        response = self.client.get(unknown_data_source_routes_url)
+        self.assertEqual(response.status_code, 404)
 
     def test_route_404(self):
         url = "routes/0/"
@@ -445,7 +461,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=self.athlete)
         url = reverse("routes:edit", args=[route.id])
         response = self.client.get(url)
-        content = '<h2 class="text-center">Edit Route: %s</h2>' % route.name
+        content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
         self.assertContains(response, content, html=True)
 
     def test_get_route_edit_form_not_logged(self):
@@ -490,6 +506,91 @@ class RouteTestCase(TestCase):
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 401)
+
+    def test_get_route_update_form(self):
+        route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
+        url = reverse("routes:update", args=[route.id])
+
+        httpretty.enable(allow_net_connect=False)
+        remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            remote_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        response = self.client.get(url)
+        httpretty.disable()
+
+        remote_route_name = "Haute Cime"
+        content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
+        self.assertContains(response, content, html=True)
+
+    def test_post_route_update_form(self):
+        route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
+        url = reverse("routes:update", args=[route.id])
+        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
+            post_data = {
+                "name": route.name,
+                "activity_type": route.activity_type.id,
+                "description": route.description,
+                "image": SimpleUploadedFile(image.name, image.read()),
+            }
+        httpretty.enable(allow_net_connect=False)
+        remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            remote_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        response = self.client.post(url, post_data)
+        httpretty.disable()
+
+        redirect_url = reverse("routes:route", args=[route.id])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_get_checkpoints_list_empty(self):
+        route = RouteFactory(athlete=self.athlete)
+        url = reverse("routes:checkpoints_list", args=[route.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["checkpoints"], [])
+
+    def test_get_checkpoints_list(self):
+        route = RouteFactory(athlete=self.athlete)
+
+        # checkpoints
+        number_of_route_coordinates = len(route.geom.coords)
+        PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.25)]
+            )
+        )
+        PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.5)]
+            )
+        )
+        PlaceFactory(
+            geom="POINT ({} {})".format(
+                *route.geom.coords[int(number_of_route_coordinates * 0.75)]
+            )
+        )
+
+        url = reverse("routes:checkpoints_list", args=[route.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["checkpoints"]), 3)
 
     #######################
     # Management Commands #

@@ -2,16 +2,13 @@ import json
 from ast import literal_eval
 
 from django.conf import settings
-from django.contrib import messages
 from django.contrib.gis.geos import GEOSGeometry
-from django.contrib.gis.measure import Distance
-from django.shortcuts import redirect
 
 from pandas import DataFrame
-from requests.exceptions import ConnectionError
 
 from ...routes.models import Route, RouteManager
 from ...routes.utils import Link
+from ..exceptions import SwitzerlandMobilityMissingCredentials
 from ..utils import request_json
 
 
@@ -86,10 +83,7 @@ class SwitzerlandMobilityRouteManager(RouteManager):
 
         # login cookies missing
         except KeyError:
-            # redirect to the switzeland mobility login page
-            message = "Please log-in to Switzerland Mobility Plus"
-            messages.info(request, message)
-            return redirect("switzerland_mobility_login")
+            raise SwitzerlandMobilityMissingCredentials
 
 
 class SwitzerlandMobilityRoute(Route):
@@ -157,30 +151,3 @@ class SwitzerlandMobilityRoute(Route):
 
         # compute elevation data
         self.calculate_cummulative_elevation_differences()
-
-    def add_route_remote_meta(self):
-        """
-        Gets a route's meta information from map.wanderland.ch
-        and ads them to an existing route json.
-
-        Example response:
-        {"length": 6047.5,
-        "totalup": 214.3,
-        "totaldown": 48.7,
-        ...}
-        """
-        meta_url = settings.SWITZERLAND_MOBILITY_META_URL % self.source_id
-
-        # request metadata
-        route_meta_json = request_json(meta_url)
-
-        if route_meta_json:
-            # save as distance objetcs for easy conversion, e.g. length.mi
-            self.length = Distance(m=route_meta_json["length"])
-            self.totalup = Distance(m=route_meta_json["totalup"])
-            self.totaldown = Distance(m=route_meta_json["totaldown"])
-
-        # In case of error, return the original route and explain the error.
-        else:
-            message = "Could not retrieve meta-information for route: '{}'."
-            raise ConnectionError(message.format(self.name))

@@ -1,6 +1,4 @@
-from django.contrib import messages
 from django.contrib.gis.geos import LineString
-from django.shortcuts import redirect
 
 from pandas import DataFrame
 from polyline import decode
@@ -9,6 +7,7 @@ from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
 from ...routes.utils import Link
+from ..exceptions import StravaMissingCredentials
 
 
 class StravaRouteManager(RouteManager):
@@ -43,7 +42,7 @@ class StravaRouteManager(RouteManager):
             for strava_route in strava_routes
         ]
 
-    def check_user_credentials(request):
+    def check_user_credentials(self, request):
         """
         view function provided to check whether a user
         has access to Strava.
@@ -54,9 +53,7 @@ class StravaRouteManager(RouteManager):
 
         # redirect to login with strava page
         except UserSocialAuth.DoesNotExist:
-            message = "Please log-in to Strava"
-            messages.info(request, message)
-            return redirect("strava_connect")
+            raise StravaMissingCredentials
 
 
 class StravaRoute(Route):

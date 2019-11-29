@@ -2,7 +2,7 @@
 {% static route.svg as svg %}
 
 <li>
-  <a href="{% url 'routes:route' route.pk %}">
+  <a href="{{ route.edit_url }}">
     <div class="media">
       <div class="media__left">
         <img

@@ -1,23 +1,18 @@
 from django.contrib import messages
 from django.db import IntegrityError
+from django.http import Http404
 
 from requests import Session, codes
 from requests.exceptions import ConnectionError
 
-
-class SwitzerlandMobilityError(Exception):
-    """
-    When the connection to Switzerland Mobility Plus works but the server
-    responds with an error code: 404, 500, etc.
-    """
-
-    pass
+from ..routes.models import Route
+from .exceptions import SwitzerlandMobilityError
 
 
 def request_json(url, cookies=None):
     """
-    Makes a get call to an url to retrieve a json
-    while managing server and connection errors.
+    Makes a get call to an url to retrieve a json from Switzerland Mobility
+    while trying to handle server and connection errors.
     """
     with Session() as session:
         try:
@@ -59,3 +54,49 @@ def save_detail_forms(request, route_form):
         message = "Integrity Error: {}. ".format(error)
         messages.error(request, message)
         return False
+
+
+def split_routes(remote_routes, local_routes):
+    """
+    splits the list of remote routes in  3 groups: new, existiing and deleted
+    """
+
+    # routes in remote service but not in homebytwo
+    new_routes = [
+        remote_route
+        for remote_route in remote_routes
+        if remote_route.source_id
+        not in [local_route.source_id for local_route in local_routes]
+    ]
+
+    # routes in both remote service and homebytwo
+    existing_routes = [
+        local_route
+        for local_route in local_routes
+        if local_route.source_id
+        in [remote_route.source_id for remote_route in remote_routes]
+    ]
+
+    # routes in homebytwo but deleted in remote service
+    deleted_routes = [
+        local_route
+        for local_route in local_routes
+        if local_route.source_id
+        not in [remote_route.source_id for remote_route in remote_routes]
+    ]
+
+    return new_routes, existing_routes, deleted_routes
+
+
+def get_route_class_from_data_source(request, data_source):
+    """
+    retrieve route class from "data source" value in the url or raise 404
+    """
+    try:
+        route_class = Route(data_source=data_source).proxy_class
+    except KeyError:
+        raise Http404("Data Source does not exist")
+    else:
+        # check if user has access credentials for the remote service
+        route_class.objects.check_user_credentials(request)
+        return route_class
