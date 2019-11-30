@@ -1,6 +1,5 @@
-from .base import *  # NOQA
 from . import get_env_variable
-
+from .base import *  # NOQA
 
 LOGGING = {
     "version": 1,
@@ -21,7 +20,7 @@ LOGGING = {
 # Force Celery Broker URL #
 ###########################
 
-CELERY_BROKER_URL = get_env_variable('CELERY_BROKER_URL')
+CELERY_BROKER_URL = get_env_variable("CELERY_BROKER_URL")
 
 ###########################
 # Force Mailchimp API Key #
@@ -45,8 +44,6 @@ SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
 # Force Strava related Settings #
 #################################
 
-STRAVA_CLIENT_ID = get_env_variable("STRAVA_CLIENT_ID")
-STRAVA_CLIENT_SECRET = get_env_variable("STRAVA_CLIENT_SECRET")
 STRAVA_VERIFY_TOKEN = get_env_variable("STRAVA_VERIFY_TOKEN")
 STRAVA_ROUTE_URL = get_env_variable("STRAVA_ROUTE_URL")
 

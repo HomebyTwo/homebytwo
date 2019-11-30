@@ -493,8 +493,6 @@ class SwitzerlandMobility(TestCase):
             if key in RouteForm.Meta.fields
         }
 
-        del post_data["image"]
-
         post_data.update(
             {
                 "activity_type": 1,
@@ -565,8 +563,6 @@ class SwitzerlandMobility(TestCase):
             for key, value in route_data.items()
             if key in RouteForm.Meta.fields
         }
-
-        del post_data["image"]
 
         post_data.update(
             {
@@ -642,8 +638,6 @@ class SwitzerlandMobility(TestCase):
         )
 
         del post_data["activity_type"]
-        del post_data["image"]
-
         url = reverse(
             "import_route",
             kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
@@ -689,8 +683,6 @@ class SwitzerlandMobility(TestCase):
         }
 
         post_data["activity_type"] = 1
-        del post_data["image"]
-
         url = reverse(
             "import_route",
             kwargs={"data_source": "switzerland_mobility", "source_id": route_id},

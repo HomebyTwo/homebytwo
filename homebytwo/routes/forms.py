@@ -78,7 +78,6 @@ class RouteForm(ModelForm):
     class Meta:
         model = Route
         fields = [
-            "image",
             "name",
             "activity_type",
             "start_place",
