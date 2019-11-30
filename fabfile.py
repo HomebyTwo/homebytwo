@@ -26,27 +26,23 @@ from gitric import api as gitric
 # dict will be made available as a fabric task and the properties you put in a
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
-    'prod': {
-        'root': '/var/www/homebytwo/',
-        'hosts': ['root@homebytwo.ch'],
+    "prod": {
+        "root": "/var/www/homebytwo/",
+        "hosts": ["root@homebytwo.ch"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
-        'settings': {
-            'ALLOWED_HOSTS': 'www.homebytwo.ch',
-        }
+        "settings": {"ALLOWED_HOSTS": "www.homebytwo.ch"},
     },
-    'staging': {
-        'root': '/var/www/homebytwo_staging/',
-        'hosts': ['root@homebytwo.ch'],
+    "staging": {
+        "root": "/var/www/html/staging_homebytwo/",
+        "hosts": ["root@staging.homebytwo.ch"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
-        # 'settings': {
-        #     'ALLOWED_HOSTS': 'www.myhost.com',
-        # }
-    }
+        "settings": {"ALLOWED_HOSTS": "staging.homebytwo.ch"},
+    },
 }
 
-env.project_name = 'homebytwo'
+env.project_name = "homebytwo"
 
 
 def ls(path):
@@ -67,7 +63,7 @@ def git_push(commit):
     hash, a tag or a branch.
     """
     gitric.git_seed(get_project_root(), commit)
-    gitric.git_reset(get_project_root(), 'master')
+    gitric.git_reset(get_project_root(), "master")
 
 
 def get_project_root():
@@ -81,7 +77,7 @@ def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return os.path.join(env.root, 'venv')
+    return os.path.join(env.root, "venv")
 
 
 def get_backups_root():
@@ -95,21 +91,21 @@ def run_in_virtualenv(cmd, args):
     """
     Run the given command from the remote virtualenv.
     """
-    return run('%s %s' % (os.path.join(get_virtualenv_root(), 'bin', cmd), args))
+    return run("%s %s" % (os.path.join(get_virtualenv_root(), "bin", cmd), args))
 
 
 def run_pip(args):
     """
     Run the pip command in the remote virtualenv.
     """
-    return run_in_virtualenv('pip', args)
+    return run_in_virtualenv("pip", args)
 
 
 def run_python(args):
     """
     Run the python command in the remote virtualenv.
     """
-    return run_in_virtualenv('python', args)
+    return run_in_virtualenv("python", args)
 
 
 def install_requirements():
@@ -144,9 +140,13 @@ def generate_secret_key():
     """
     Generate a random secret key, suitable to be used as a SECRET_KEY setting.
     """
-    return ''.join(
-        [random.SystemRandom().choice(
-            'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)') for i in range(50)]
+    return "".join(
+        [
+            random.SystemRandom().choice(
+                "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
+            )
+            for i in range(50)
+        ]
     )
 
 
@@ -154,11 +154,11 @@ def create_structure():
     """
     Create the basic directory structure on the remote server.
     """
-    run('mkdir -p %s' % env.root)
+    run("mkdir -p %s" % env.root)
 
     with cd(env.root):
-        run('mkdir -p static backups')
-        run('python3 -m venv venv')
+        run("mkdir -p static backups")
+        run("python3 -m venv venv")
 
 
 @task
@@ -180,7 +180,7 @@ def set_setting(setting_key, value=None, description=None):
     if value is None:
         value = prompt("Please provide value for setting %s: " % setting_key)
 
-    with cd(os.path.join(get_project_root(), 'envdir')):
+    with cd(os.path.join(get_project_root(), "envdir")):
         put(StringIO(value), setting_key)
 
 
@@ -195,21 +195,25 @@ def bootstrap():
     """
     create_structure()
 
-    execute(git_push, commit='master')
+    execute(git_push, commit="master")
 
     required_settings = set(
         [
-            'DATABASE_URL',
-            'MEDIA_ROOT',
-            'STATIC_ROOT',
-            'MEDIA_URL',
-            'STATIC_URL',
-            'ALLOWED_HOSTS',
-            'MAILCHIMP_API_KEY',
-            'MAILCHIMP_LIST_ID',
-            'SWITZERLAND_MOBILITY_LIST_URL',
-            'SWITZERLAND_MOBILITY_LOGIN_URL',
-            'SWITZERLAND_MOBILITY_ROUTE_DATA_URL'
+            "DATABASE_URL",
+            "MEDIA_ROOT",
+            "STATIC_ROOT",
+            "MEDIA_URL",
+            "STATIC_URL",
+            "ALLOWED_HOSTS",
+            "MAILCHIMP_API_KEY",
+            "MAILCHIMP_LIST_ID",
+            "SWITZERLAND_MOBILITY_LIST_URL",
+            "SWITZERLAND_MOBILITY_LOGIN_URL",
+            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL",
+            "STRAVA_VERIFY_TOKEN",
+            "STRAVA_ROUTE_URL",
+            "CELERY_BROKER_URL",
+            "MAPBOX_ACCESS_TOKEN",
         ]
     )
 
@@ -222,10 +226,8 @@ def bootstrap():
     for setting in required_settings - set(env_settings.keys()):
         set_setting(setting)
 
-    set_setting(
-        'DJANGO_SETTINGS_MODULE', value='%s.settings.base' % env.project_name
-    )
-    set_setting('SECRET_KEY', value=generate_secret_key())
+    set_setting("DJANGO_SETTINGS_MODULE", value="%s.settings.base" % env.project_name)
+    set_setting("SECRET_KEY", value=generate_secret_key())
 
     execute(install_requirements)
     execute(collect_static)
@@ -251,7 +253,7 @@ def compile_assets():
 
 @task
 def deploy(tag):
-    require('root', 'project_name')
+    require("root", "project_name")
 
     execute(git_push, commit="@")
 
@@ -371,10 +373,12 @@ def is_supported_db_engine(engine):
 # Environment handling stuff
 ############################
 
+
 def get_environment_func(key, value):
     def load_environment():
         env.update(value)
         env.environment = key
+
     load_environment.__name__ = key
     load_environment.__doc__ = "Definition of the %s environment." % key
 

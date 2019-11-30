@@ -27,6 +27,10 @@ from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 CURRENT_DIR = dirname(realpath(__file__))
 
 
+@override_settings(
+    SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
+    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d"
+)
 class RouteTestCase(TestCase):
     def setUp(self):
         self.athlete = AthleteFactory(user__password="testpassword")

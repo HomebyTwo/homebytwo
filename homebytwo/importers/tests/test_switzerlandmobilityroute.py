@@ -30,6 +30,7 @@ CURRENT_DIR = dirname(realpath(__file__))
     SWITZERLAND_MOBILITY_LIST_URL="https://example.com/tracks",
     SWITZERLAND_MOBILITY_META_URL="https://example.com/track/%d/getmeta",
     SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
+    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d"
 )
 class SwitzerlandMobility(TestCase):
     """
