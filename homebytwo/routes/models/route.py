@@ -102,22 +102,20 @@ class Route(Track):
         The Strava API agreement requires that a link to the original resources
         be diplayed on the pages that use data from Strava.
         """
-        switzerland_mobility_url = settings.SWITZERLAND_MOBILITY_ROUTE_URL % int(
-            self.source_id
-        )
-        switzerland_mobility_text = "Switzerland Mobility Plus"
 
-        strava_url = settings.STRAVA_ROUTE_URL % int(self.source_id)
-        strava_text = "Strava"
+        # Switzerland Mobility Route
+        if self.data_source == "switzerland_mobility":
+            return Link(
+                url=settings.SWITZERLAND_MOBILITY_ROUTE_URL % int(self.source_id),
+                text="Switzerland Mobility Plus"
+            )
 
-        data_source_link = {
-            "switzerland_mobility": Link(
-                switzerland_mobility_url, switzerland_mobility_text
-            ),
-            "strava": Link(strava_url, strava_text),
-        }
-
-        return data_source_link.get(self.data_source)
+        # Strava Route
+        elif self.data_source == "strava":
+            return Link(
+                url=settings.STRAVA_ROUTE_URL % int(self.source_id),
+                text="Strava"
+            )
 
     @property
     def svg(self):
