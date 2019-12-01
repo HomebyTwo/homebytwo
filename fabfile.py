@@ -62,6 +62,7 @@ def git_push(commit):
     repository to the given commit. The commit can be any git object, be it a
     hash, a tag or a branch.
     """
+    gitric.force_push()
     gitric.git_seed(get_project_root(), commit)
     gitric.git_reset(get_project_root(), "master")
 
