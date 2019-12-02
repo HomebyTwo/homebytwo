@@ -367,6 +367,27 @@ def clean_old_database_backups(nb_backups_to_keep):
         print("No backups to delete.")
 
 
+@task
+def fetch_media(local_media_root="/vagrant/homebytwo/media"):
+    """
+    sync local media folder with remote data
+    """
+    # absolute media root on environement
+    with cd(get_project_root()), quiet():
+        remote_media_root = run("cat envdir/MEDIA_ROOT")
+
+    local(
+        "rsync -e 'ssh -p {port}' -r "
+        "{user}@{host}:{remote_media_root} {local_media_root}".format(
+            user=env.user,
+            host=env.host,
+            port=env.port,
+            remote_media_root=remote_media_root,
+            local_media_root=local_media_root,
+        )
+    )
+
+
 def is_supported_db_engine(engine):
     return engine in (
         "django.db.backends.postgresql_psycopg2",
