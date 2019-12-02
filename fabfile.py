@@ -257,7 +257,7 @@ def deploy(tag):
     require("root", "project_name")
 
     execute(git_push, commit="@")
-
+    dump_db(get_backups_root())
     execute(install_requirements)
     execute(collect_static)
     execute(migrate_database)
@@ -368,7 +368,10 @@ def clean_old_database_backups(nb_backups_to_keep):
 
 
 def is_supported_db_engine(engine):
-    return engine == "django.db.backends.postgresql_psycopg2"
+    return engine in (
+        "django.db.backends.postgresql_psycopg2",
+        "django.contrib.gis.db.backends.postgis",
+    )
 
 
 # Environment handling stuff
