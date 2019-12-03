@@ -69,7 +69,7 @@ def route_checkpoints_list(request, pk):
         {
             "name": checkpoint.place.name,
             "line_location": checkpoint.line_location,
-            "geom": checkpoint.place.get_geojson(fields=["name"]),
+            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
             "place_type": checkpoint.place.get_place_type_display(),
         }
         for checkpoint in checkpoints

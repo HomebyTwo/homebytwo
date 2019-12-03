@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -216,8 +216,6 @@ class Track(TimeStampedModel):
         if time_data is not None:
             return timedelta(seconds=int(time_data))
 
-        return
-
     def get_start_altitude(self):
         start_altitude = self.get_distance_data(0, "altitude")
         return start_altitude
@@ -227,10 +225,10 @@ class Track(TimeStampedModel):
         return end_altitude
 
     def get_start_point(self):
-        return GEOSGeometry("POINT (%s %s)" % self.geom[0], srid=21781)
+        return Point(self.geom[0], srid=21781)
 
     def get_end_point(self):
-        return GEOSGeometry("POINT (%s %s)" % self.geom[-1], srid=21781)
+        return Point(self.geom[-1], srid=21781)
 
     def get_length(self):
         """

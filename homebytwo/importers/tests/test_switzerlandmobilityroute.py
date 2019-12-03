@@ -3,6 +3,7 @@ from os.path import dirname, realpath
 from re import compile as re_compile
 
 from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -30,7 +31,7 @@ CURRENT_DIR = dirname(realpath(__file__))
     SWITZERLAND_MOBILITY_LIST_URL="https://example.com/tracks",
     SWITZERLAND_MOBILITY_META_URL="https://example.com/track/%d/getmeta",
     SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
-    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d"
+    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d",
 )
 class SwitzerlandMobility(TestCase):
     """
@@ -533,31 +534,29 @@ class SwitzerlandMobility(TestCase):
     def test_switzerland_mobility_route_post_success_with_checkpoints(self):
         # route to save
         route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
+        route = SwitzerlandMobilityRouteFactory.build(source_id=route_id,)
 
         # save start and end place
         route.start_place.save()
         route.end_place.save()
 
         # checkpoints
+        checkpoints_data = []
         number_of_route_coordinates = len(route.geom.coords)
-        place1 = PlaceFactory(
-            geom="POINT ({} {})".format(
-                *route.geom.coords[int(number_of_route_coordinates * 0.25)]
-            )
-        )
-        place2 = PlaceFactory(
-            geom="POINT ({} {})".format(
-                *route.geom.coords[int(number_of_route_coordinates * 0.5)]
-            )
-        )
-        place3 = PlaceFactory(
-            geom="POINT ({} {})".format(
-                *route.geom.coords[int(number_of_route_coordinates * 0.75)]
-            )
-        )
+        number_of_checkpoints = 5
 
-        # post data dict from route stub
+        for index in range(1, number_of_checkpoints + 1):
+            line_location = index / (number_of_checkpoints + 1)
+            place = PlaceFactory(
+                geom=Point(
+                    *route.geom.coords[
+                        int(number_of_route_coordinates * line_location)
+                    ],
+                    srid=21781
+                )
+            )
+            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
+
         route_data = model_to_dict(route)
         post_data = {
             key: value
@@ -570,11 +569,7 @@ class SwitzerlandMobility(TestCase):
                 "activity_type": 1,
                 "start_place": route.start_place.id,
                 "end_place": route.end_place.id,
-                "checkpoints": [
-                    str(place1.id) + "_" + "0.25",
-                    str(place2.id) + "_" + "0.5",
-                    str(place3.id) + "_" + "0.75",
-                ],
+                "checkpoints": checkpoints_data,
             }
         )
 
@@ -604,13 +599,12 @@ class SwitzerlandMobility(TestCase):
         checkpoint_choices = get_response.context["form"].fields["checkpoints"].choices
 
         self.assertEqual(get_response.status_code, 200)
-        self.assertEqual(len(checkpoint_choices), 3)
-        self.assertEqual(checkpoint_choices[0][0].place, place1)
+        self.assertEqual(len(checkpoint_choices), number_of_checkpoints)
 
         # a new route has been created with the post response
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
         checkpoints = Checkpoint.objects.filter(route=route.id)
-        self.assertEqual(checkpoints.count(), 3)
+        self.assertEqual(checkpoints.count(), number_of_checkpoints)
 
         # user is redirected
         redirect_url = reverse("routes:route", args=[route.id])
@@ -634,7 +628,13 @@ class SwitzerlandMobility(TestCase):
             {
                 "start_place": route.start_place.id,
                 "end_place": route.end_place.id,
-                "checkpoints": ["not_valid", "invalid", "0_valid", "1_2", "still_not_valid"],
+                "checkpoints": [
+                    "not_valid",
+                    "invalid",
+                    "0_valid",
+                    "1_2",
+                    "still_not_valid",
+                ],
             }
         )
 
@@ -908,10 +908,7 @@ class SwitzerlandMobility(TestCase):
         route = SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update(
-            {
-                "start_place": route.start_place.id,
-                "end_place": route.end_place.id,
-            }
+            {"start_place": route.start_place.id, "end_place": route.end_place.id}
         )
         del route_data["activity_type"]
         form = RouteForm(data=route_data)
