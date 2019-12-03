@@ -25,7 +25,9 @@
 
   {% include 'routes/_course.html' %}
 
+  {# map #}
   {% if route.geom %}
+    <h4 class="mrgh-">Route Map</h4>
     {% leaflet_map "main" callback="route_map_init" %}
   {% endif %}
 
