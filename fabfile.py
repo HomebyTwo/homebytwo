@@ -243,6 +243,7 @@ def bootstrap():
             "SWITZERLAND_MOBILITY_LIST_URL",
             "SWITZERLAND_MOBILITY_LOGIN_URL",
             "SWITZERLAND_MOBILITY_ROUTE_DATA_URL",
+            "SWITZERLAND_MOBILITY_ROUTE_URL",
         ]
     )
 
