@@ -54,3 +54,9 @@ STRAVA_VERIFY_TOKEN = get_env_variable("STRAVA_VERIFY_TOKEN")
 #################################
 
 MAPBOX_ACCESS_TOKEN = get_env_variable("MAPBOX_ACCESS_TOKEN")
+
+#############
+# Force GTM #
+#############
+
+GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID")
