@@ -21,7 +21,7 @@ def LineSubstring(line, start_location, end_location):
     implements ST_Line_Substring
     """
     sql = (
-        "SELECT ST_AsText(ST_Line_SubString("
+        "SELECT ST_AsText(ST_LineSubstring("
         "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));"
     )
 
