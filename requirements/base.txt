@@ -6,43 +6,43 @@
 #
 -e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
 amqp==2.5.2               # via kombu
-arrow==0.13.0             # via stravalib
+arrow==0.15.4             # via stravalib
 billiard==3.6.1.0         # via celery
 celery==4.3.0
-certifi==2018.11.29       # via requests
+certifi==2019.11.28       # via requests
 chardet==3.0.4            # via requests
-defusedxml==0.5.0         # via python3-openid
+defusedxml==0.6.0         # via python3-openid
 dj-database-url==0.5.0
-django-filter==2.1.0
 django-geojson==2.12.0
-django-leaflet==0.24.0
-django-widget-tweaks==1.4.3
-django==2.1.11
-easy-thumbnails==2.5
+django-leaflet==0.25.0
+django-widget-tweaks==1.4.5
+django==2.2.7
+easy-thumbnails==2.6
 idna==2.8                 # via requests
 importlib-metadata==0.23  # via kombu
 kombu==4.6.6              # via celery
-more-itertools==7.2.0     # via zipp
-numexpr==2.6.9            # via tables
-numpy==1.16.0             # via numexpr, pandas, tables
-oauthlib==3.0.0           # via requests-oauthlib
-pandas==0.23.4
+more-itertools==8.0.0     # via zipp
+numexpr==2.7.0            # via tables
+numpy==1.17.4             # via numexpr, pandas, tables
+oauthlib==3.1.0           # via requests-oauthlib
+pandas==0.25.3
 pillow==6.2.1
-polyline==1.3.2
-psycopg2-binary==2.7.7
+polyline==1.4.0
+psycopg2-binary==2.8.4
 pyjwt==1.7.1
-python-dateutil==2.7.5    # via arrow, pandas
+python-dateutil==2.8.1    # via arrow, pandas
 python3-openid==3.1.0
-pytz==2018.9              # via celery, django, pandas, stravalib
+pytz==2019.3              # via celery, django, pandas, stravalib
 rcssmin==1.0.6
-requests-oauthlib==1.2.0
+requests-oauthlib==1.3.0
 requests==2.22.0
-six==1.12.0               # via django-geojson, polyline, python-dateutil, social-auth-app-django, stravalib, tables
+six==1.13.0               # via django-geojson, polyline, python-dateutil, social-auth-app-django, stravalib
 social-auth-app-django==3.1.0
+sqlparse==0.3.0           # via django
 stravalib==0.10.2
-tables==3.4.4
+tables==3.6.1
 unidecode==1.1.1
 units==0.7                # via stravalib
-urllib3==1.25.6           # via requests
+urllib3==1.25.7           # via requests
 vine==1.3.0               # via amqp, celery
 zipp==0.6.0               # via importlib-metadata

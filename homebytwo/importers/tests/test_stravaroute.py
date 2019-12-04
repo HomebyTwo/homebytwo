@@ -9,11 +9,9 @@ from pandas import DataFrame
 from requests.exceptions import ConnectionError
 from stravalib import Client as StravaClient
 
-from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
 from ..models import StravaRoute
-from ..utils import get_place_type_choices, get_route_form
 from .factories import StravaRouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -30,9 +28,7 @@ class StravaTestCase(TestCase):
         self.client.login(username=self.athlete.user.username, password="testpassword")
 
     def intercept_get_athlete(
-        self,
-        body=read_data("strava_athlete.json", dir_path=CURRENT_DIR),
-        status=200,
+        self, body=read_data("strava_athlete.json", dir_path=CURRENT_DIR), status=200,
     ):
         """
         intercept the Strava API call to get_athlete. This call is made
@@ -50,9 +46,9 @@ class StravaTestCase(TestCase):
             status=status,
         )
 
-    #########
-    # Utils #
-    #########
+    ########################
+    # Utils and decorators #
+    ########################
 
     def test_get_strava_athlete_success(self):
 
@@ -72,18 +68,55 @@ class StravaTestCase(TestCase):
         with self.assertRaises(ConnectionError):
             self.athlete.strava_client.get_athlete()
 
-    def test_get_route_form(self):
-        route = StravaRouteFactory()
-        route_form = get_route_form(route)
+    def test_strava_unauthorized(self):
+        httpretty.enable(allow_net_connect=False)
+        route_list_api_url = (
+            "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
+        )
 
-        self.assertEqual(len(route_form.fields), 10)
+        unauthorized_json = read_data("strava_athlete_unauthorized.json", dir_path=CURRENT_DIR)
 
-    def test_get_place_type_choices(self):
-        places = PlaceFactory.create_batch(12)
-        places_types = {place.place_type for place in places}
-        choices = get_place_type_choices(places)
+        httpretty.register_uri(
+            httpretty.GET,
+            route_list_api_url,
+            content_type="application/json",
+            body=unauthorized_json,
+            status=401,
+        )
 
-        self.assertEqual(places_types, {choice[0] for choice in choices})
+        error = "Strava Authorization refused."
+        strava_routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
+        response = self.client.get(strava_routes_url, follow=False)
+        redirected_response = self.client.get(strava_routes_url, follow=True)
+
+        httpretty.disable
+
+        self.assertRedirects(response, reverse("strava_connect"))
+        self.assertContains(redirected_response, error)
+
+    def test_strava_connection_error(self):
+        httpretty.enable(allow_net_connect=False)
+        route_list_api_url = (
+            "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
+        )
+
+        httpretty.register_uri(
+            httpretty.GET,
+            route_list_api_url,
+            content_type="application/json",
+            body=raise_connection_error,
+        )
+
+        error = "Could not connect to the remote server."
+        strava_routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
+
+        response = self.client.get(strava_routes_url, follow=False)
+        redirected_response = self.client.get(strava_routes_url, follow=True)
+
+        httpretty.disable
+
+        self.assertRedirects(response, reverse("routes:routes"))
+        self.assertContains(redirected_response, error)
 
     #########
     # Model #
@@ -157,7 +190,7 @@ class StravaTestCase(TestCase):
         asocial_user = UserFactory(password="testpassword")
         self.client.login(username=asocial_user, password="testpassword")
 
-        routes_url = reverse("strava_routes")
+        routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
         response = self.client.get(routes_url)
         connect_url = reverse("strava_connect")
 
@@ -190,7 +223,7 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        url = reverse("strava_routes")
+        url = reverse("import_routes", kwargs={"data_source": "strava"})
         response = self.client.get(url)
 
         httpretty.disable()
@@ -237,7 +270,9 @@ class StravaTestCase(TestCase):
             match_querystring=False,
         )
 
-        url = reverse("strava_route", args=[source_id])
+        url = reverse(
+            "import_route", kwargs={"data_source": "strava", "source_id": source_id}
+        )
         response = self.client.get(url)
         httpretty.disable()
 
@@ -246,7 +281,7 @@ class StravaTestCase(TestCase):
         self.assertContains(response, route_name)
 
     def test_strava_route_already_imported(self):
-        source_id = 2325453
+        source_id = 22798494
         StravaRouteFactory(
             source_id=source_id, athlete=self.athlete,
         )
@@ -256,7 +291,7 @@ class StravaTestCase(TestCase):
 
         # Route API call
         route_detail_url = "https://www.strava.com/api/v3/routes/%d" % source_id
-        route_detail_json = read_data("strava_route_detail.json", dir_path=CURRENT_DIR)
+        route_detail_json = read_data("strava_route_bike.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
@@ -278,7 +313,9 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        url = reverse("strava_route", args=[source_id])
+        url = reverse(
+            "import_route", kwargs={"data_source": "strava", "source_id": source_id}
+        )
 
         response = self.client.get(url)
         httpretty.disable()

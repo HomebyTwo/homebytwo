@@ -7,8 +7,9 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 import httpretty
+from mock import patch
 
-from ...utils.factories import AthleteFactory
+from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import Activity, Gear, WebhookTransaction
 from ..tasks import ProcessStravaEvents
@@ -56,6 +57,16 @@ class ActivityTestCase(TestCase):
 
         return strava_activity
 
+    def test_no_strava_token(self):
+
+        non_strava_user = UserFactory(password="testpassword")
+        self.client.login(username=non_strava_user.username, password="testpassword")
+
+        url = reverse("routes:import_strava")
+        response = self.client.get(url)
+
+        self.assertRedirects(response, reverse("strava_connect"))
+
     def test_save_strava_activity_new_manual_activity(self):
 
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")
@@ -67,7 +78,10 @@ class ActivityTestCase(TestCase):
         self.assertEqual(Activity.objects.count(), 1)
         self.assertTrue(activity.manual)
         self.assertEqual(
-            str(activity), "{} - {}".format(activity.activity_type, activity.name),
+            str(activity),
+            "{}: {} - {}".format(
+                activity.activity_type, activity.name, activity.athlete
+            ),
         )
 
     def test_save_strava_race_run(self):
@@ -252,16 +266,22 @@ class ActivityTestCase(TestCase):
             # first call, content: two activities
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+                body=read_data(
+                    "activities.json", dir_path=CURRENT_DIR
+                ),  # two activities
             ),
             # second call, content one activity
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities_one.json", dir_path=CURRENT_DIR),  # one activity
+                body=read_data(
+                    "activities_one.json", dir_path=CURRENT_DIR
+                ),  # one activity
             ),
             httpretty.Response(
                 content_type="application/json",
-                body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+                body=read_data(
+                    "activities.json", dir_path=CURRENT_DIR
+                ),  # two activities
             ),
             httpretty.Response(content_type="application/json", body="[]"),  # empty
         ]
@@ -562,3 +582,19 @@ class ActivityTestCase(TestCase):
         self.assertIsNone(transactions.filter(status=self.UNPROCESSED).first())
         self.assertIsNone(transactions.filter(status=self.ERROR).first())
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
+
+    def test_import_all_activities_from_strava(self):
+        import_url = reverse("routes:import_strava")
+
+        with patch(
+            "homebytwo.routes.tasks.import_athlete_strava_activities.delay"
+        ) as mock_task:
+            response = self.client.get(import_url)
+            self.assertRedirects(response, reverse("routes:activities"))
+            self.assertTrue(mock_task.called)
+
+    def test_view_activity_list_empty(self):
+        activity_list_url = reverse("routes:activities")
+        response = self.client.get(activity_list_url)
+
+        self.assertEqual(response.status_code, 200)

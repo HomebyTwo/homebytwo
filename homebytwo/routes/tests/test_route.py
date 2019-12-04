@@ -7,25 +7,32 @@ from unittest import skip
 from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import Distance
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.six import StringIO
 
+import httpretty
 from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import open_data
-from ..models import ActivityPerformance, Place
+from ...utils.tests import open_data, read_data
+from ..forms import RouteForm
+from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
 
 
+@override_settings(
+    SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
+    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d",
+)
 class RouteTestCase(TestCase):
     def setUp(self):
         self.athlete = AthleteFactory(user__password="testpassword")
@@ -34,6 +41,14 @@ class RouteTestCase(TestCase):
     #########
     # Model #
     #########
+
+    def test_str(self):
+        route = RouteFactory()
+        self.assertEqual(str(route), "Route: {}".format(route.name))
+
+    def test_display_url(self):
+        route = RouteFactory()
+        self.assertEqual(route.display_url, route.get_absolute_url())
 
     def test_get_length(self):
         route = RouteFactory.build(length=12345)
@@ -89,7 +104,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory.build()
         start_point = route.get_start_point()
 
-        self.assertIsInstance(start_point, GEOSGeometry)
+        self.assertIsInstance(start_point, Point)
 
     def test_get_distance_data(self):
         data = DataFrame(
@@ -122,67 +137,46 @@ class RouteTestCase(TestCase):
 
         PlaceFactory(
             name="Sur Frête",
-            geom=GEOSGeometry(
-                "POINT (565586.0225000009 112197.4462499991)", srid=21781
-            ),
+            geom=Point(x=565586.0225000009, y=112197.4462499991, srid=21781),
         )
         PlaceFactory(
             name="Noudane Dessus",
-            geom=GEOSGeometry(
-                "POINT (565091.2349999994 111464.0387500003)", srid=21781
-            ),
+            geom=Point(x=565091.2349999994, y=111464.0387500003, srid=21781),
         )
         PlaceFactory(
             name="Col du Jorat",
-            geom=GEOSGeometry(
-                "POINT (564989.3350000009 111080.0012499988)", srid=21781
-            ),
+            geom=Point(x=564989.3350000009, y=111080.0012499988, srid=21781),
         )
         PlaceFactory(
             name="Saut Peca",
-            geom=GEOSGeometry(
-                "POINT (564026.3412499987 110762.4175000004)", srid=21781
-            ),
+            geom=Point(x=564026.3412499987, y=110762.4175000004, srid=21781),
         )
         PlaceFactory(
             name="Haute Cime",
-            geom=GEOSGeometry(
-                "POINT (560188.0975000001 112309.0137500018)", srid=21781
-            ),
+            geom=Point(x=560188.0975000001, y=112309.0137500018, srid=21781),
         )
         PlaceFactory(
             name="Col des Paresseux",
-            geom=GEOSGeometry("POINT (560211.875 112011.8737500012)", srid=21781),
+            geom=Point(x=560211.875, y=112011.8737500012, srid=21781),
         )
         PlaceFactory(
             name="Col de Susanfe",
-            geom=GEOSGeometry(
-                "POINT (559944.7375000007 110888.6424999982)", srid=21781
-            ),
+            geom=Point(x=559944.7375000007, y=110888.6424999982, srid=21781),
         )
         PlaceFactory(
             name="Cabane de Susanfe CAS",
-            geom=GEOSGeometry(
-                "POINT (558230.2575000003 109914.8912499994)", srid=21781
-            ),
+            geom=Point(x=558230.2575000003, y=109914.8912499994, srid=21781),
         )
         PlaceFactory(
             name="Pas d'Encel",
-            geom=GEOSGeometry(
-                "POINT (556894.5662500001 110045.9137500003)", srid=21781
-            ),
+            geom=Point(x=556894.5662500001, y=110045.9137500003, srid=21781),
         )
         PlaceFactory(
             name="Refuge de Bonaveau",
-            geom=GEOSGeometry(
-                "POINT (555775.7837500013 111198.6625000015)", srid=21781
-            ),
+            geom=Point(x=555775.7837500013, y=111198.6625000015, srid=21781),
         )
 
-        places = Place.objects.get_places_from_line(route.geom, 100)
-        checkpoints = Place.objects.find_places_along_line(
-            route.geom, places, max_distance=100
-        )
+        checkpoints = route.find_possible_checkpoints(max_distance=100)
 
         self.assertEqual(len(checkpoints), 12)
         for checkpoint in checkpoints:
@@ -273,7 +267,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory(data_source="switzerland_mobility", source_id=777)
         source_url = "https://switzerland_mobility_route_url/777"
         self.assertEqual(route.source_link.url, source_url)
-        self.assertEqual(route.source_link.text, "Switzerland Mobility")
+        self.assertEqual(route.source_link.text, "Switzerland Mobility Plus")
 
         route = RouteFactory()
         self.assertIsNone(route.source_link)
@@ -281,6 +275,13 @@ class RouteTestCase(TestCase):
     #########
     # Views #
     #########
+
+    def test_import_routes_unknown_data_source(self):
+        unknown_data_source_routes_url = reverse(
+            "import_routes", kwargs={"data_source": "spam"}
+        )
+        response = self.client.get(unknown_data_source_routes_url)
+        self.assertEqual(response.status_code, 404)
 
     def test_route_404(self):
         url = "routes/0/"
@@ -448,7 +449,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=self.athlete)
         url = reverse("routes:edit", args=[route.id])
         response = self.client.get(url)
-        content = '<h2 class="text-center">Edit Route: %s</h2>' % route.name
+        content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
         self.assertContains(response, content, html=True)
 
     def test_get_route_edit_form_not_logged(self):
@@ -465,34 +466,141 @@ class RouteTestCase(TestCase):
     def test_post_route_edit_form(self):
         route = RouteFactory(athlete=self.athlete)
         url = reverse("routes:edit", args=[route.id])
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {
-                "name": route.name,
-                "activity_type": route.activity_type.id,
-                "description": route.description,
-                "image": SimpleUploadedFile(image.name, image.read()),
-            }
+        post_data = {
+            "name": route.name,
+            "activity_type": 2,
+        }
 
         response = self.client.post(url, post_data)
         redirect_url = reverse("routes:route", args=[route.id])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
+    def test_post_route_remove_checkpoints(self):
+        route = RouteFactory(athlete=self.athlete)
+
+        # checkpoints
+        number_of_route_coordinates = len(route.geom.coords)
+        number_of_checkpoints = 20
+        checkpoints_data = []
+
+        for index in range(1, number_of_checkpoints + 1):
+            line_location = index / (number_of_checkpoints + 1)
+            place = PlaceFactory(
+                geom="POINT ({} {})".format(
+                    *route.geom.coords[int(number_of_route_coordinates * line_location)]
+                )
+            )
+            route.places.add(place, through_defaults={"line_location": line_location})
+            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
+
+        route_data = model_to_dict(route)
+        post_data = {
+            key: value
+            for key, value in route_data.items()
+            if key in RouteForm.Meta.fields
+        }
+
+        post_data["checkpoints"] = checkpoints_data[: number_of_checkpoints - 2]
+
+        # post
+        url = reverse("routes:edit", args=[route.id])
+        self.client.post(url, post_data)
+        self.assertEqual(route.checkpoint_set.count(), number_of_checkpoints - 2)
+
     @skip  # until rules is implemented
     def test_post_route_edit_not_owner(self):
         route = RouteFactory(athlete=AthleteFactory())
         url = reverse("routes:edit", args=[route.id])
 
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {
-                "name": route.name,
-                "description": route.description,
-                "image": SimpleUploadedFile(image.name, image.read()),
-            }
+        post_data = {
+            "name": route.name,
+            "description": route.description,
+        }
 
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 401)
+
+    def test_get_route_update_form(self):
+        route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
+        url = reverse("routes:update", args=[route.id])
+
+        httpretty.enable(allow_net_connect=False)
+        remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            remote_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        response = self.client.get(url)
+        httpretty.disable()
+
+        remote_route_name = "Haute Cime"
+        content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
+        self.assertContains(response, content, html=True)
+
+    def test_post_route_update_form(self):
+        route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
+        url = reverse("routes:update", args=[route.id])
+        post_data = {
+            "name": route.name,
+            "activity_type": route.activity_type.id,
+        }
+        httpretty.enable(allow_net_connect=False)
+        remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            remote_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        response = self.client.post(url, post_data)
+        httpretty.disable()
+
+        redirect_url = reverse("routes:route", args=[route.id])
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, redirect_url)
+
+    def test_get_checkpoints_list_empty(self):
+        route = RouteFactory(athlete=self.athlete)
+        url = reverse("routes:checkpoints_list", args=[route.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["checkpoints"], [])
+
+    def test_get_checkpoints_list(self):
+        route = RouteFactory(athlete=self.athlete, start_place=None, end_place=None)
+
+        # checkpoints
+        number_of_checkpoints = 5
+        number_of_route_coordinates = len(route.geom.coords)
+
+        for index in range(1, number_of_checkpoints + 1):
+            line_location = index / (number_of_checkpoints + 1)
+            PlaceFactory(
+                geom=Point(
+                    *route.geom.coords[
+                        int(number_of_route_coordinates * line_location)
+                    ],
+                    srid=21781
+                )
+            )
+
+        url = reverse("routes:checkpoints_list", args=[route.pk])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["checkpoints"]), number_of_checkpoints)
 
     #######################
     # Management Commands #

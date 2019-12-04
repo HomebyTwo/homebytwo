@@ -4,32 +4,34 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.gis.measure import D
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 from pytz import utc
 
-from .models import Activity, Route, RoutePlace, WebhookTransaction
+from ..importers.decorators import remote_connection, strava_required
+from .forms import RouteForm
+from .models import Activity, Route, WebhookTransaction
 from .tasks import import_athlete_strava_activities
 
 
 @login_required
+@require_safe
 def routes(request):
     routes = Route.objects.order_by("name")
-    routes = routes.filter(athlete=request.user.athlete)
-    context = {
-        "routes": routes,
-    }
+    routes = Route.objects.for_user(request.user)
+    context = {"routes": routes}
 
     return render(request, "routes/routes.html", context)
 
 
+@require_safe
 def route(request, pk):
     # load route from Database
     route = get_object_or_404(Route, id=pk)
@@ -37,14 +39,14 @@ def route(request, pk):
     # calculate the schedule based on user data
     route.calculate_projected_time_schedule(request.user)
 
-    # retrieve checkpoints along the way and enrich them with data
-    places = RoutePlace.objects.filter(route=pk)
-    places = places.select_related("route", "place")
+    # retrieve checkpoints along the way and enrich them with schedule data
+    checkpoints = route.checkpoint_set.all()
+    checkpoints = checkpoints.select_related("route", "place")
 
-    for place in places:
-        place.schedule = route.get_time_data(place.line_location, "schedule")
-        place.altitude = place.get_altitude()
-        place.distance = D(m=place.line_location * route.length)
+    # doesn't work as a calculated property, because the route schedule
+    # is missing at instantiation
+    for checkpoint in checkpoints:
+        checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
     # enrich start and end place with data
     if route.start_place_id:
@@ -54,12 +56,35 @@ def route(request, pk):
         route.end_place.schedule = route.get_time_data(1, "schedule")
         route.end_place.altitude = route.get_distance_data(1, "altitude")
 
-    context = {"route": route, "places": places}
+    context = {"route": route, "checkpoints": checkpoints}
     return render(request, "routes/route.html", context)
 
 
+@require_safe
+def route_checkpoints_list(request, pk):
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+
+    checkpoints = route.find_possible_checkpoints()
+    checkpoints_dicts = [
+        {
+            "name": checkpoint.place.name,
+            "line_location": checkpoint.line_location,
+            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
+            "place_type": checkpoint.place.get_place_type_display(),
+        }
+        for checkpoint in checkpoints
+    ]
+
+    return JsonResponse({"checkpoints": checkpoints_dicts})
+
+
+@strava_required
 @login_required
 def import_strava_activities(request):
+    """
+    send a task to import the athlete's Strava activities and redirects to the activity list.
+    still work in progress
+    """
     if request.method == "GET":
         import_athlete_strava_activities.delay(request.user.athlete.id)
         messages.success(request, "We are importing your Strava activities!")
@@ -72,8 +97,9 @@ def strava_webhook(request):
     handle events sent by the Strava Webhook Events API
 
     Strava validates a subscription with a GET request to the callback URL.
-    Events from the subscriptions are POSTed to the callback URL.
-    Documentation available at https://developers.strava.com/docs/webhooks/
+    Events from the subscriptions are POSTed to the callback URL. For now
+    Strava has no verification mechanism for the POST requests.
+    Documentation is available at https://developers.strava.com/docs/webhooks/
     """
 
     # subscription validation
@@ -131,7 +157,8 @@ class RouteDelete(DeleteView):
 @method_decorator(login_required, name="dispatch")
 class RouteEdit(UpdateView):
     model = Route
-    fields = ["activity_type", "name", "description", "image"]
+    form_class = RouteForm
+    template_name = "routes/route_form.html"
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.
@@ -139,13 +166,27 @@ class RouteEdit(UpdateView):
         if "activity_type" in form.changed_data:
             form.instance.calculate_projected_time_schedule(self.request.user)
 
-        return super(RouteEdit, self).form_valid(form)
+        return super().form_valid(form)
 
 
 @method_decorator(login_required, name="dispatch")
+@method_decorator(remote_connection, name="dispatch")
+class RouteUpdate(RouteEdit):
+
+    def get_object(self, queryset=None):
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        if pk is not None:
+            route = get_object_or_404(Route, pk=pk)
+            return route.update_from_remote()
+        else:
+            return super().get_object(queryset)
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(require_safe, name="dispatch")
 class ActivityList(ListView):
     paginate_by = 50
     context_object_name = "strava_activities"
 
     def get_queryset(self):
-        return Activity.objects.filter(athlete=self.request.user.athlete)
+        return Activity.objects.for_user(self.request.user)

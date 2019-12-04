@@ -7,7 +7,23 @@ from stravalib.exc import ObjectNotFound
 from ...core.models import TimeStampedModel
 
 
+class ActivityQuerySet(models.QuerySet):
+    def for_user(self, user):
+        """
+        return all routes of a given user.
+        this is convinient with the 'request.user' object in views.
+        """
+        return self.filter(athlete=user.athlete)
+
+
 class ActivityManager(models.Manager):
+
+    def get_queryset(self):
+        return ActivityQuerySet(self.model, using=self._db)
+
+    def for_user(self, user):
+        return self.get_queryset().for_user(user)
+
     def update_user_activities_from_strava(
         self, athlete, after=None, before=None, limit=0
     ):
@@ -139,7 +155,7 @@ class Activity(TimeStampedModel):
     objects = ActivityManager()
 
     def __str__(self):
-        return "{0} - {1}".format(self.activity_type, self.name)
+        return "{0}: {1} - {2}".format(self.activity_type, self.name, self.athlete)
 
     def get_strava_url(self):
         # return the absolute URL to the activity on Strava

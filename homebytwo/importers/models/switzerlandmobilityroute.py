@@ -3,39 +3,13 @@ from ast import literal_eval
 
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
-from django.contrib.gis.measure import Distance
 
 from pandas import DataFrame
-from requests import codes, get
-from requests.exceptions import ConnectionError
 
 from ...routes.models import Route, RouteManager
-from ..utils import SwitzerlandMobilityError
-
-
-def request_json(url, cookies=None):
-    """
-    Makes get call the map.wanderland.ch website and retrieves a json
-    while managing server and connection errors.
-    """
-    try:
-        r = get(url, cookies=cookies)
-
-    # connection error and inform the user
-    except ConnectionError:
-        message = "Connection Error: could not connect to {0}. "
-        raise ConnectionError(message.format(url))
-
-    else:
-        # if request is successful save json object
-        if r.status_code == codes.ok:
-            json = r.json()
-            return json
-
-        # server error: display the status code
-        else:
-            message = "Error {0}: could not retrieve information from {1}"
-            raise SwitzerlandMobilityError(message.format(r.status_code, url))
+from ...routes.utils import Link
+from ..exceptions import SwitzerlandMobilityMissingCredentials
+from ..utils import request_json
 
 
 class SwitzerlandMobilityRouteManager(RouteManager):
@@ -49,17 +23,13 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         This method is required because SwitzerlandMobilityRoute
         is a proxy class.
         """
-        return (
-            super(SwitzerlandMobilityRouteManager, self)
-            .get_queryset()
-            .filter(data_source="switzerland_mobility")
-        )
+        return super().get_queryset().filter(data_source="switzerland_mobility")
 
-    def get_remote_routes(self, session, athlete):
+    def get_remote_routes_list(self, session, athlete):
         """
         Use the authorization cookies saved in the session
         to return the athlete's raw route list as json and format
-        them for display
+        them for display.
         """
         cookies = session["switzerland_mobility_cookies"]
 
@@ -71,14 +41,11 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         if raw_routes:
 
             # format routes into dictionary
-            formatted_routes = self.format_raw_remote_routes(raw_routes, athlete)
+            return self.format_raw_remote_routes(raw_routes, athlete)
 
-            # split routes in two  lists: into old and new routes
-            return self.check_for_existing_routes(formatted_routes)
-
-        # return two empty lits if no raw_routes were found
+        # return empty list if no raw_routes were found
         else:
-            return [], []
+            return []
 
     def format_raw_remote_routes(self, raw_routes, athlete):
         """
@@ -105,18 +72,38 @@ class SwitzerlandMobilityRouteManager(RouteManager):
 
         return formatted_routes
 
+    def check_user_credentials(self, request):
+        """
+        view function provided to check whether a user has access
+        to Switzerland Mobility Plus before call the service.
+        """
+        # Check if logged-in to Switzeland Mobility
+        try:
+            request.session["switzerland_mobility_cookies"]
+
+        # login cookies missing
+        except KeyError:
+            raise SwitzerlandMobilityMissingCredentials
+
 
 class SwitzerlandMobilityRoute(Route):
 
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+
+    # data source name to display in templates
+    DATA_SOURCE_NAME = "Switzerland Mobility Plus"
+    DATA_SOURCE_LINK = Link(
+        "https://map.schweizmobil.ch/?lang=en&showLogin=true", DATA_SOURCE_NAME,
+    )
+
     def __init__(self, *args, **kwargs):
         """
         Set the data_source of the route to Switzerland Mobility
         when instatiatind a route.
         """
-        super(SwitzerlandMobilityRoute, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.data_source = "switzerland_mobility"
 
     class Meta:
@@ -164,30 +151,3 @@ class SwitzerlandMobilityRoute(Route):
 
         # compute elevation data
         self.calculate_cummulative_elevation_differences()
-
-    def add_route_remote_meta(self):
-        """
-        Gets a route's meta information from map.wanderland.ch
-        and ads them to an existing route json.
-
-        Example response:
-        {"length": 6047.5,
-        "totalup": 214.3,
-        "totaldown": 48.7,
-        ...}
-        """
-        meta_url = settings.SWITZERLAND_MOBILITY_META_URL % self.source_id
-
-        # request metadata
-        route_meta_json = request_json(meta_url)
-
-        if route_meta_json:
-            # save as distance objetcs for easy conversion, e.g. length.mi
-            self.length = Distance(m=route_meta_json["length"])
-            self.totalup = Distance(m=route_meta_json["totalup"])
-            self.totaldown = Distance(m=route_meta_json["totaldown"])
-
-        # In case of error, return the original route and explain the error.
-        else:
-            message = "Could not retrieve meta-information for route: '{}'."
-            raise ConnectionError(message.format(self.name))

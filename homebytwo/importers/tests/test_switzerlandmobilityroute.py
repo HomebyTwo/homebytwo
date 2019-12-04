@@ -3,6 +3,7 @@ from os.path import dirname, realpath
 from re import compile as re_compile
 
 from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -10,13 +11,16 @@ from django.urls import reverse
 import httpretty
 from requests.exceptions import ConnectionError
 
-from ...routes.models import RoutePlace
+from ...routes.forms import RouteForm
+from ...routes.models import Checkpoint
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
-from ..forms import ImportersRouteForm, SwitzerlandMobilityLogin
+from ..exceptions import SwitzerlandMobilityError
+from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
-from ..utils import SwitzerlandMobilityError
+from ..utils import split_routes
 from .factories import SwitzerlandMobilityRouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -27,32 +31,32 @@ CURRENT_DIR = dirname(realpath(__file__))
     SWITZERLAND_MOBILITY_LIST_URL="https://example.com/tracks",
     SWITZERLAND_MOBILITY_META_URL="https://example.com/track/%d/getmeta",
     SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
+    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d",
 )
 class SwitzerlandMobility(TestCase):
     """
     Test the Switzerland Mobility route importer
     """
 
-    def add_cookies_to_session(self):
-        cookies = {"mf-chmobil": "xxx", "srv": "yyy"}
-        session = self.client.session
-        session["switzerland_mobility_cookies"] = cookies
-        session.save()
-        return session
-
     def setUp(self):
-        # Add user to the test database and log him in
+        # Add athlete to the test database and log him in
         self.athlete = AthleteFactory(user__password="testpassword")
         self.client.login(username=self.athlete.user.username, password="testpassword")
+
+        # add Switzerland Mobility cookies to the session
+        session = self.client.session
+        session["switzerland_mobility_cookies"] = {
+            "mf-chmobil": "xxx",
+            "srv": "yyy",
+        }
+        session.save()
 
     #########
     # Model #
     #########
 
     def test_request_json_success(self):
-        # save cookies to session
-        session = self.add_cookies_to_session()
-        cookies = session["switzerland_mobility_cookies"]
+        cookies = self.client.session["switzerland_mobility_cookies"]
 
         url = "https://testurl.ch"
 
@@ -72,9 +76,7 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(json_loads(body), json_response)
 
     def test_request_json_server_error(self):
-        # save cookies to session
-        session = self.add_cookies_to_session()
-        cookies = session["switzerland_mobility_cookies"]
+        cookies = self.client.session["switzerland_mobility_cookies"]
 
         url = "https://testurl.ch"
 
@@ -92,9 +94,7 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
     def test_request_json_connection_error(self):
-        # save cookies to session
-        session = self.add_cookies_to_session()
-        cookies = session["switzerland_mobility_cookies"]
+        cookies = self.client.session["switzerland_mobility_cookies"]
         url = "https://testurl.ch"
 
         # intercept call with httpretty
@@ -109,9 +109,6 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
     def test_get_remote_raw_routes_success(self):
-        # save cookies to session
-        session = self.add_cookies_to_session()
-
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
@@ -125,17 +122,16 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
         manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes = manager.get_remote_routes(session, self.athlete)
+        remote_routes = manager.get_remote_routes_list(
+            self.client.session, self.athlete
+        )
         httpretty.disable()
 
-        self.assertEqual(len(new_routes + old_routes), 37)
+        self.assertEqual(len(remote_routes), 37)
 
     def test_get_remote_routes_empty(self):
         # create user
         user = UserFactory()
-
-        # save cookies to session
-        session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)
@@ -150,17 +146,14 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
         manager = SwitzerlandMobilityRoute.objects
-        new_routes, old_routes = manager.get_remote_routes(session, user)
+        remote_routes = manager.get_remote_routes_list(self.client.session, user)
         httpretty.disable()
 
-        self.assertEqual(len(new_routes + old_routes), 0)
+        self.assertEqual(len(remote_routes), 0)
 
-    def test_get_remote_routes_server_error(self):
+    def test_get_remote_routes_list_server_error(self):
         # create user
         user = UserFactory()
-
-        # save cookies to session
-        session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)
@@ -177,16 +170,13 @@ class SwitzerlandMobility(TestCase):
 
         routes_manager = SwitzerlandMobilityRoute.objects
         with self.assertRaises(SwitzerlandMobilityError):
-            routes_manager.get_remote_routes(session, user)
+            routes_manager.get_remote_routes_list(self.client.session, user)
 
         httpretty.disable()
 
-    def test_get_remote_routes_connection_error(self):
+    def test_get_remote_routes_list_connection_error(self):
         # create user
         athlete = self.athlete
-
-        # save cookies to session
-        session = self.add_cookies_to_session()
 
         # intercept call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)
@@ -201,7 +191,7 @@ class SwitzerlandMobility(TestCase):
 
         manager = SwitzerlandMobilityRoute.objects
         with self.assertRaises(ConnectionError):
-            manager.get_remote_routes(session, athlete)
+            manager.get_remote_routes_list(self.client.session, athlete)
 
         httpretty.disable()
 
@@ -230,29 +220,6 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(len(formatted_routes), 0)
         self.assertTrue(type(formatted_routes) is list)
 
-    def test_add_route_meta_success(self):
-        route = SwitzerlandMobilityRoute(source_id=2191833)
-        meta_url = settings.SWITZERLAND_MOBILITY_META_URL % route.source_id
-
-        # Turn the route meta URL into a regular expression
-        meta_url = re_compile(meta_url.replace(str(route.source_id), r"(\d+)"))
-
-        httpretty.enable(allow_net_connect=False)
-
-        route_json = read_data("track_info.json", dir_path=CURRENT_DIR)
-
-        httpretty.register_uri(
-            httpretty.GET,
-            meta_url,
-            content_type="application/json",
-            body=route_json,
-            status=200,
-        )
-
-        route.add_route_remote_meta()
-
-        self.assertEqual(route.totalup.m, 1234.5)
-
     def test_check_for_existing_routes_success(self):
 
         # save an existing route
@@ -260,42 +227,34 @@ class SwitzerlandMobility(TestCase):
             source_id=2191833, name="Haute Cime", athlete=self.athlete,
         )
 
-        formatted_routes = [
+        # save a route not on the remote
+        SwitzerlandMobilityRouteFactory(source_id=1234567, athlete=self.athlete)
+
+        remote_routes = [
             SwitzerlandMobilityRouteFactory.build(
-                name="Haute Cime",
-                athlete=self.athlete,
-                source_id=2191833,
+                name="Haute Cime", athlete=self.athlete, source_id=2191833,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Grammont",
-                athlete=self.athlete,
-                source_id=2433141,
+                name="Grammont", athlete=self.athlete, source_id=2433141,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Rochers de Nayes",
-                athlete=self.athlete,
-                source_id=2692136,
+                name="Rochers de Nayes", athlete=self.athlete, source_id=2692136,
             ),
             SwitzerlandMobilityRouteFactory.build(
-                name="Villeneuve - Leysin",
-                athlete=self.athlete,
-                source_id=3011765,
+                name="Villeneuve - Leysin", athlete=self.athlete, source_id=3011765,
             ),
         ]
 
-        (
-            new_routes,
-            old_routes,
-        ) = SwitzerlandMobilityRoute.objects.check_for_existing_routes(
-            routes=formatted_routes,
+        local_routes = SwitzerlandMobilityRoute.objects.for_user(self.athlete.user)
+        new_routes, existing_routes, deleted_routes = split_routes(
+            remote_routes, local_routes
         )
 
         self.assertEqual(len(new_routes), 3)
-        self.assertEqual(len(old_routes), 1)
+        self.assertEqual(len(existing_routes), 1)
+        self.assertEqual(len(deleted_routes), 1)
 
-    def test_get_remote_routes_success(self):
-        # save cookies to session
-        session = self.add_cookies_to_session()
+    def test_get_remote_routes_list_success(self):
 
         # save an existing route
         SwitzerlandMobilityRouteFactory(athlete=self.athlete)
@@ -329,13 +288,12 @@ class SwitzerlandMobility(TestCase):
             status=200,
         )
 
-        new_routes, old_routes = SwitzerlandMobilityRoute.objects.get_remote_routes(
-            session, self.athlete
+        remote_routes = SwitzerlandMobilityRoute.objects.get_remote_routes_list(
+            self.client.session, self.athlete
         )
         httpretty.disable()
 
-        self.assertEqual(len(new_routes), 36)
-        self.assertEqual(len(old_routes), 1)
+        self.assertEqual(len(remote_routes), 37)
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
@@ -385,11 +343,30 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-    def test_already_imported(self):
-        route = SwitzerlandMobilityRouteFactory.build()
-        self.assertIsNone(route.get_already_imported())
-        route = SwitzerlandMobilityRouteFactory()
-        self.assertEqual(route.get_already_imported(), route)
+    def test_refresh_from_db_if_exists(self):
+        route_stub = SwitzerlandMobilityRouteFactory.build()
+        route_stub, exists = route_stub.refresh_from_db_if_exists()
+        self.assertFalse(exists)
+
+        saved_route = SwitzerlandMobilityRouteFactory(
+            athlete=self.athlete,
+            data_source="switzerland_mobility",
+            source_id="123456",
+        )
+        saved_route, exists = saved_route.refresh_from_db_if_exists()
+        self.assertTrue(exists)
+
+        stub_like_saved_route = SwitzerlandMobilityRouteFactory.build(
+            athlete=self.athlete,
+            data_source="switzerland_mobility",
+            source_id="123456",
+        )
+        (
+            stub_like_saved_route,
+            exists,
+        ) = stub_like_saved_route.refresh_from_db_if_exists()
+        self.assertTrue(exists)
+        self.assertEqual(stub_like_saved_route, saved_route)
 
     #########
     # Views #
@@ -412,7 +389,10 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_success(self):
         route_id = 2823968
-        url = reverse("switzerland_mobility_route", args=[route_id])
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable(allow_net_connect=False)
@@ -433,31 +413,28 @@ class SwitzerlandMobility(TestCase):
 
         title = "<title>Home by Two - Import Haute Cime</title>"
         start_place_form_elements = [
-            'name="route-start_place"',
+            'name="start_place"',
             'class="field"',
-            'id="id_route-start_place"',
+            'id="id_start_place"',
         ]
-        places_formset = (
-            '<input type="hidden" name="places-TOTAL_FORMS" '
-            'value="0" id="id_places-TOTAL_FORMS">'
-        )
 
         map_data = '<div id="main" class="leaflet-container-default"></div>'
 
         self.assertContains(response, title, html=True)
         for start_place_form_element in start_place_form_elements:
             self.assertContains(response, start_place_form_element)
-        self.assertContains(response, places_formset, html=True)
         self.assertContains(response, map_data, html=True)
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         SwitzerlandMobilityRouteFactory(
-            source_id=route_id,
-            athlete=self.athlete,
+            source_id=route_id, athlete=self.athlete,
         )
 
-        url = reverse("switzerland_mobility_route", args=[route_id])
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
         content = "Already Imported"
 
         # intercept call to Switzerland Mobility with httpretty
@@ -481,8 +458,10 @@ class SwitzerlandMobility(TestCase):
 
     def test_switzerland_mobility_route_server_error(self):
         route_id = 999999999999
-        url = reverse("switzerland_mobility_route", args=[route_id])
-        content = "Error 500"
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
 
         # intercept call to Switzerland Mobility with httpretty
         httpretty.enable(allow_net_connect=False)
@@ -500,37 +479,51 @@ class SwitzerlandMobility(TestCase):
         response = self.client.get(url)
         httpretty.disable()
 
-        self.assertContains(response, content)
+        self.assertRedirects(response, reverse("routes:routes"))
 
-    def test_switzerland_mobility_route_post_success_no_places(self):
+    def test_switzerland_mobility_route_post_success_no_checkpoints(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        route.start_place.save()
+        route.end_place.save()
 
         route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        post_data = {
+            key: value
+            for key, value in route_data.items()
+            if key in RouteForm.Meta.fields
+        }
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 0,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
+                "activity_type": 1,
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
             }
         )
 
-        url = reverse("switzerland_mobility_route", args=[route_id])
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
+
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable(allow_net_connect=False)
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            details_json_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
         response = self.client.post(url, post_data)
+
+        httpretty.disable()
 
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
         redirect_url = reverse("routes:route", args=[route.id])
@@ -538,135 +531,180 @@ class SwitzerlandMobility(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_route_post_success_place(self):
+    def test_switzerland_mobility_route_post_success_with_checkpoints(self):
+        # route to save
         route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
+        route = SwitzerlandMobilityRouteFactory.build(source_id=route_id,)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        # save start and end place
+        route.start_place.save()
+        route.end_place.save()
+
+        # checkpoints
+        checkpoints_data = []
+        number_of_route_coordinates = len(route.geom.coords)
+        number_of_checkpoints = 5
+
+        for index in range(1, number_of_checkpoints + 1):
+            line_location = index / (number_of_checkpoints + 1)
+            place = PlaceFactory(
+                geom=Point(
+                    *route.geom.coords[
+                        int(number_of_route_coordinates * line_location)
+                    ],
+                    srid=21781
+                )
+            )
+            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
 
         route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        post_data = {
+            key: value
+            for key, value in route_data.items()
+            if key in RouteForm.Meta.fields
+        }
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-line_location": 0.0207291870756597,
-                "places-0-altitude_on_route": 123,
-                "places-0-id": "",
-                "places-0-include": True,
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
-                "places-1-include": True,
+                "activity_type": 1,
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
+                "checkpoints": checkpoints_data,
             }
         )
 
-        url = reverse("switzerland_mobility_route", args=[route_id])
-        response = self.client.post(url, post_data)
+        import_url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
 
-        # a new route has been created
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable(allow_net_connect=False)
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            details_json_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        get_response = self.client.post(import_url)
+        post_response = self.client.post(import_url, post_data)
+
+        httpretty.disable()
+
+        checkpoint_choices = get_response.context["form"].fields["checkpoints"].choices
+
+        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(len(checkpoint_choices), number_of_checkpoints)
+
+        # a new route has been created with the post response
         route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        route_places = RoutePlace.objects.filter(route=route.id)
-        self.assertEqual(route_places.count(), 2)
+        checkpoints = Checkpoint.objects.filter(route=route.id)
+        self.assertEqual(checkpoints.count(), number_of_checkpoints)
 
+        # user is redirected
         redirect_url = reverse("routes:route", args=[route.id])
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
+        self.assertRedirects(post_response, redirect_url)
 
-    def test_switzerland_mobility_route_post_no_validation_places(self):
+    def test_switzerland_mobility_route_post_invalid_choice(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
 
-        start_place = route.start_place
-        start_place.save()
-        end_place = route.end_place
-        end_place.save()
+        route.start_place.save()
+        route.end_place.save()
 
         route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-        del post_data["route-image"]
+        post_data = {
+            key: value
+            for key, value in route_data.items()
+            if key in RouteForm.Meta.fields
+        }
 
         post_data.update(
             {
-                "route-activity_type": 1,
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-altitude_on_route": "not a number",
-                "places-0-id": "",
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
+                "start_place": route.start_place.id,
+                "end_place": route.end_place.id,
+                "checkpoints": [
+                    "not_valid",
+                    "invalid",
+                    "0_valid",
+                    "1_2",
+                    "still_not_valid",
+                ],
             }
         )
 
-        url = reverse("switzerland_mobility_route", args=[route_id])
+        del post_data["activity_type"]
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
+
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable(allow_net_connect=False)
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            details_json_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
         response = self.client.post(url, post_data)
+
+        httpretty.disable()
 
         alert_box = '<li class="box mrgv- alert error">'
         required_field = "This field is required."
-        not_a_number = "Enter a number."
+        invalid_value = "Invalid value"
 
         self.assertContains(response, alert_box)
         self.assertContains(response, required_field)
-        self.assertContains(response, not_a_number)
+        self.assertContains(response, invalid_value)
 
     def test_switzerland_mobility_route_post_integrity_error(self):
+
         route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory(source_id=route_id, athlete=self.athlete)
-
-        start_place = route.start_place
-        end_place = route.end_place
-
-        route_data = model_to_dict(route)
-        post_data = {"route-" + key: value for key, value in route_data.items()}
-
-        del post_data["route-image"]
-
-        post_data.update(
-            {
-                "route-start_place": start_place.id,
-                "route-end_place": end_place.id,
-                "route-geom": route.geom.wkt,
-                "route-data": route.data.to_json(orient="records"),
-                "places-TOTAL_FORMS": 2,
-                "places-INITIAL_FORMS": 0,
-                "places-MIN_NUM_FORMS": 0,
-                "places-MAX_NUM_FORMS": 1000,
-                "places-0-place": start_place.id,
-                "places-0-line_location": 0.0207291870756597,
-                "places-0-altitude_on_route": 123,
-                "places-0-id": "",
-                "places-1-place": end_place.id,
-                "places-1-line_location": 0.039107325861928,
-                "places-1-altitude_on_route": 123,
-                "places-1-id": "",
-            }
+        route = SwitzerlandMobilityRouteFactory(
+            source_id=route_id, athlete=self.athlete
         )
 
-        url = reverse("switzerland_mobility_route", args=[route_id])
+        route_data = model_to_dict(route)
+        post_data = {
+            key: value
+            for key, value in route_data.items()
+            if key in RouteForm.Meta.fields
+        }
+
+        post_data["activity_type"] = 1
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
+
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable(allow_net_connect=False)
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            details_json_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
         response = self.client.post(url, post_data)
+
+        httpretty.disable()
 
         alert_box = '<li class="box mrgv- alert error">'
         integrity_error = (
@@ -677,9 +715,12 @@ class SwitzerlandMobility(TestCase):
         self.assertContains(response, integrity_error)
 
     def test_switzerland_mobility_routes_success(self):
-        url = reverse("switzerland_mobility_routes")
-        content = "Import Routes from Switzerland Mobility Plus"
-        self.add_cookies_to_session()
+        # deleted route
+        SwitzerlandMobilityRouteFactory(athlete=self.athlete, source_id=123456)
+
+        url = reverse("import_routes", kwargs={"data_source": "switzerland_mobility"})
+        title_content = "Import Routes from Switzerland Mobility Plus"
+        subsection_content = "<h2>Routes Deleted from Switzerland Mobility Plus</h2>"
 
         # intercept call to map.wanderland.ch
         httpretty.enable(allow_net_connect=False)
@@ -698,11 +739,11 @@ class SwitzerlandMobility(TestCase):
 
         httpretty.disable()
 
-        self.assertContains(response, content)
+        self.assertContains(response, title_content)
+        self.assertContains(response, subsection_content, html=True)
 
     def test_switzerland_mobility_routes_error(self):
-        url = reverse("switzerland_mobility_routes")
-        self.add_cookies_to_session()
+        url = reverse("import_routes", kwargs={"data_source": "switzerland_mobility"})
 
         # intercept call to map.wanderland.ch
         httpretty.enable(allow_net_connect=False)
@@ -717,16 +758,22 @@ class SwitzerlandMobility(TestCase):
             status=500,
         )
 
-        response = self.client.get(url)
+        response = self.client.get(url, follow=False)
+        redirected_response = self.client.get(url, follow=True)
 
         httpretty.disable()
 
         content = "Error 500: could not retrieve information from %s" % routes_list_url
 
-        self.assertContains(response, content)
+        self.assertRedirects(response, reverse("routes:routes"))
+        self.assertContains(redirected_response, content)
 
     def test_switzerland_mobility_routes_no_cookies(self):
-        url = reverse("switzerland_mobility_routes")
+        session = self.client.session
+        del session["switzerland_mobility_cookies"]
+        session.save()
+
+        url = reverse("import_routes", kwargs={"data_source": "switzerland_mobility"})
         redirect_url = reverse("switzerland_mobility_login")
         response = self.client.get(url)
 
@@ -749,7 +796,7 @@ class SwitzerlandMobility(TestCase):
         login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
         # successful login response
         json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
-        adding_headers = {"Set-Cookie": "mf-chmobil=xxx"}
+        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
 
         httpretty.register_uri(
             httpretty.POST,
@@ -765,10 +812,18 @@ class SwitzerlandMobility(TestCase):
         mobility_cookies = self.client.session["switzerland_mobility_cookies"]
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("switzerland_mobility_routes"))
-        self.assertEqual(mobility_cookies["mf-chmobil"], "xxx")
+        self.assertEqual(
+            response.url,
+            reverse("import_routes", kwargs={"data_source": "switzerland_mobility"}),
+        )
+        self.assertEqual(mobility_cookies["mf-chmobil"], "123")
 
     def test_switzerland_mobility_login_failed(self):
+        # remove switzerland mobiility cookies
+        session = self.client.session
+        del session["switzerland_mobility_cookies"]
+        session.save()
+
         url = reverse("switzerland_mobility_login")
         data = {"username": "testuser", "password": "testpassword"}
 
@@ -809,6 +864,13 @@ class SwitzerlandMobility(TestCase):
 
         self.assertContains(response, content)
 
+    def test_switzerland_mobility_login_method_not_allowed(self):
+        url = reverse("switzerland_mobility_login")
+        data = {"username": "testuser", "password": "testpassword"}
+        response = self.client.put(url, data)
+
+        self.assertEqual(response.status_code, 405)
+
     #########
     # Forms #
     #########
@@ -829,31 +891,25 @@ class SwitzerlandMobility(TestCase):
 
         self.assertFalse(form.is_valid())
 
-    def test_switzerland_mobility_valid_model_form(self):
+    def test_switzerland_mobility_valid_route_form(self):
         route = SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update(
             {
                 "activity_type": 1,
-                "geom": route.geom.wkt,
-                "data": route.data.to_json(orient="records"),
                 "start_place": route.start_place.id,
                 "end_place": route.end_place.id,
             }
         )
-        form = ImportersRouteForm(data=route_data)
+        form = RouteForm(data=route_data)
         self.assertTrue(form.is_valid())
 
-    def test_switzerland_mobility_invalid_model_form(self):
+    def test_switzerland_mobility_invalid_route_form(self):
         route = SwitzerlandMobilityRouteFactory.build()
         route_data = model_to_dict(route)
         route_data.update(
-            {
-                "geom": route.geom.wkt,
-                "start_place": route.start_place.id,
-                "end_place": route.end_place.id,
-            }
+            {"start_place": route.start_place.id, "end_place": route.end_place.id}
         )
-        del route_data["geom"]
-        form = ImportersRouteForm(data=route_data)
+        del route_data["activity_type"]
+        form = RouteForm(data=route_data)
         self.assertFalse(form.is_valid())

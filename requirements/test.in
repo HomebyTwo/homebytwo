@@ -6,6 +6,7 @@ factory-boy
 flake8
 httpretty
 isort
+mock
 pytest
 pytest-cov
 pytest-django

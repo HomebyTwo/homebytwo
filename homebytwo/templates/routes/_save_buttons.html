@@ -1,0 +1,20 @@
+<div class="form-group grid grid--right">
+  <div class="grid__item md-w-4/5 grid grid--tight">
+    {# Edit or Update Route #}
+    {% if object.pk %}
+    <a href="{{ object.display_url }}" class="btn btn--default btn--block mrgt-">Cancel</a>
+    <input class="btn btn--primary btn--block mrgt-" type="submit" value="Save {{ object.name }}" />
+    {# Import Route #}
+    {% elif object.can_be_imported %}
+    <input class="btn btn--primary btn--block mrgt-" type="submit" value="Import {{ object.name }}" />
+    {# Already Imported #}
+    {% else %}
+    <button class="btn btn--default btn--disabled btn--block mrgt-" disabled>Route Already Imported</button>
+    {% endif %}
+  </div>
+  <div class="grid__item md-w-4/5">
+    {% if object.pk %}
+    <a href="{{ object.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ object.name }}</a>
+    {% endif %}
+  </div>
+</div>

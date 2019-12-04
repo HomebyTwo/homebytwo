@@ -54,7 +54,7 @@ class Swissname3dModelTest(TestCase):
 
     def test_create_instance(self):
         place3d = Swissname3dPlace(**self.get_place_data())
-        self.assertEqual("Place3D_name", str(place3d))
+        self.assertEqual("Place3D_name - Gipfel", str(place3d))
 
     def test_save_instance(self):
         place3d = Swissname3dPlace(**self.get_place_data())

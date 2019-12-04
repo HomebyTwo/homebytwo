@@ -16,14 +16,14 @@
 
   {# checkpoints #}
   <h4 class="mrgh-">Checkpoints</h4>
-  {% for place in places %}
-    <li class="box box--default box--tight mrgv- pdg- place place--checkpoint place--known"
-        data-geom='{{ place.place|geojsonfeature:"name" }}'>
+  {% for checkpoint in checkpoints %}
+    <li class="box box--default box--tight mrgv- pdg- checkpoint place--checkpoint place--known"
+        data-geom='{{ checkpoint.place|geojsonfeature:"name" }}'>
       <div class="grid grid--tight">
-        <div class="w-2/3 sm-w-4/5 grid__item place__name">{{ place.place.name }}, {{ place.altitude.m|floatformat:0|intcomma }}m </div>
-        <div class="w-1/3 sm-w-1/5 grid__item text-right">{{ place.schedule|duration:'hike' }}</div>
+        <div class="w-2/3 sm-w-4/5 grid__item place__name">{{ checkpoint.place.name }}, {{ checkpoint.altitude_on_route.m|floatformat:0|intcomma }}m </div>
+        <div class="w-1/3 sm-w-1/5 grid__item text-right">{{ checkpoint.schedule|duration:'hike' }}</div>
       </div>
-      <div class="text-small text-right">{{ place.place.get_place_type_display }} - {{ place.distance.km|floatformat:2|intcomma }}km</div>
+      <div class="text-small text-right">{{ checkpoint.place.get_place_type_display }} - {{ checkpoint.distance_from_start.km|floatformat:2|intcomma }}km</div>
 
     </li>
 

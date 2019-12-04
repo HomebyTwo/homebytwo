@@ -1,8 +1,7 @@
-import os
 from datetime import timedelta
 
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -10,17 +9,8 @@ from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
-
-
-def get_image_path(instance, filename):
-    """
-    callable to define the image upload path according
-    to the type of object: segment, route, etc.. and the id of the object.
-    """
-    return os.path.join(
-        "images", instance.__class__.__name__, str(instance.id), filename
-    )
 
 
 class Track(TimeStampedModel):
@@ -28,7 +18,7 @@ class Track(TimeStampedModel):
         abstract = True
 
     name = models.CharField(max_length=100)
-    description = models.TextField("Textual description", blank=True)
+    description = models.TextField(blank=True)
     image = ThumbnailerImageField(upload_to=get_image_path, blank=True, null=True)
 
     # Main activity of the track: default=hike
@@ -226,8 +216,6 @@ class Track(TimeStampedModel):
         if time_data is not None:
             return timedelta(seconds=int(time_data))
 
-        return
-
     def get_start_altitude(self):
         start_altitude = self.get_distance_data(0, "altitude")
         return start_altitude
@@ -237,10 +225,10 @@ class Track(TimeStampedModel):
         return end_altitude
 
     def get_start_point(self):
-        return GEOSGeometry("POINT (%s %s)" % self.geom[0], srid=21781)
+        return Point(self.geom[0], srid=21781)
 
     def get_end_point(self):
-        return GEOSGeometry("POINT (%s %s)" % self.geom[-1], srid=21781)
+        return Point(self.geom[-1], srid=21781)
 
     def get_length(self):
         """
@@ -266,11 +254,30 @@ class Track(TimeStampedModel):
         """
         return self.get_time_data(1, "schedule")
 
-    def get_closest_places_along_line(self, line_location=0, max_distance=100):
+    def get_closest_places_along_line(self, line_location=0, max_distance=200):
+        """
+        retrieve Place objects with a given distance of a point on the line.
+        """
         # create the point from location
         point = self.geom.interpolate_normalized(line_location)
 
         # get closest places to the point
-        places = Place.objects.get_places_within(point, max_distance)
+        places = get_places_within(point, max_distance)
 
         return places
+
+    def get_start_places(self, max_distance=200):
+        """
+        retrieve Place objects close to the start of the track.
+        """
+        return self.get_closest_places_along_line(
+            line_location=0, max_distance=max_distance
+        )
+
+    def get_end_places(self, max_distance=200):
+        """
+        retrieve Place objects close to the end of the track.
+        """
+        return self.get_closest_places_along_line(
+            line_location=1, max_distance=max_distance
+        )

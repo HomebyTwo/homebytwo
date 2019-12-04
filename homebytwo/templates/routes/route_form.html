@@ -1,23 +1,57 @@
 {% extends "base.html" %}
+{% load leaflet_tags geojson_tags humanize %}
 
-{% block title %}Home by Two - Edit {{ route.name }}{% endblock %}
+
+{% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
+
+{% block extralinks %}
+  {% leaflet_js %}
+  {% leaflet_css %}
+{% endblock extralinks %}
 
 {% block content %}
-<div class="box clearfix">
-  <h2 class="text-center">Edit Route: {{ route.name }}</h2>
-  <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
-    {% include "_kanbasu_form.html" with form=form %}
-    <div class="">
-      <div class="form-group grid grid--right">
-        <div class="grid__item md-w-4/5 grid grid--tight">
-          <a href="{% url 'routes:route' route.pk %}" class="btn btn--default btn--block mrgt-">Cancel</a>
-          <input class="btn btn--primary btn--block mrgt-" type="submit" value="Update {{ route.name }}" />
-        </div>
-        <div class="grid__item md-w-4/5">
-          <a href="{% url 'routes:delete' route.pk %}" class="btn btn--delete btn--block mrgt-">Delete {{ route.name }}</a>
-        </div>
-      </div>
-    </div>
-  </form>
-</div>
+<h2 class="text-center mrgb0">{{ object.name }}</h2>
+<h3 class="text-center mrgt0">{{ object.get_length.km|floatformat:1|intcomma }}km - {{ object.get_totalup.m|floatformat:0|intcomma }}m+ - {{ object.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
+
+{# map #}
+{% include "routes/_route_map.html" with form=form %}
+
+<form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+
+  {# form fields #}
+  {% include "_kanbasu_form.html" with form=form %}
+
+  {# buttons #}
+  {% include "routes/_save_buttons.html" %}
+</form>
+
 {% endblock content %}
+
+{% if object.geom %}
+  {% block extrajs %}
+    <script type="text/javascript">
+      function route_map_init (map, options) {
+        const route = L.geoJson({{ object|geojsonfeature|safe }});
+        route.addTo(map);
+        map.fitBounds(route.getBounds());
+        map.scrollWheelZoom.disable();
+        map.touchZoom.disable();
+        map.boxZoom.disable();
+        const icon = L.divIcon({
+          className: 'placeIcon placeIcon--default',
+        });
+        const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
+        const markers = checkpoints.map(checkpoint => {
+          L.geoJson(JSON.parse(checkpoint.dataset.geom), {
+            pointToLayer: (feature, latlng) => L.marker(latlng, {
+              icon: icon,
+              title: feature.properties.name
+            }),
+            style: feature => ({color: '000000'}),
+            onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
+          }).addTo(map);
+        });
+      }
+    </script>
+  {% endblock extrajs %}
+{% endif %}

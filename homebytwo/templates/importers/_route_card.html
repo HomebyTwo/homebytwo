@@ -2,16 +2,16 @@
 {% load humanize %}
 
 <li>
-  <a href="{{ route.url }}">
+  <a href="{% if new %}{{ route.import_url }}{% elif existing %}{{ route.update_url }}{% else %}{{ route.delete_url }}{% endif %}">
     <div class="media">
       <div class="media__left">
           <img
-            {% if new %} src="{% static source.svg %}" {% endif %}
-            {% if not new %} src="{% static source.muted_svg %}" {% endif %}
-            alt="{{ source.img_alt }}"
+            {% if new or existing %} src="{% static route.svg %}"
+            {% else %} src="{% static route.svg_muted %}" {% endif %}
+            alt=""
           />
       </div>
-      <div class="media__body {% if not new %} text-muted {% endif %}">
+      <div class="media__body {% if deleted %} text-muted {% endif %}">
         <h4 class="mrgv0">{{ route.name }}</h4>
         <p class="mrgv0">
           {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
@@ -20,6 +20,10 @@
         </p>
         {% if new %}
         <p class="mrgt0 pull-right">import &rsaquo;</p>
+        {% elif existing %}
+        <p class="mrgt0 pull-right">update &rsaquo;</p>
+        {% else %}
+        <p class="mrgt0 pull-right">delete &rsaquo;</p>
         {% endif %}
       </div>
     </div>

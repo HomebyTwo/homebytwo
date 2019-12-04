@@ -7,9 +7,13 @@ from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
 from django.db import connection
+from django.forms import MultipleChoiceField
+from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
 
 from pandas import DataFrame, read_hdf, read_json
+
+from ..routes.models import Checkpoint
 
 
 def LineSubstring(line, start_location, end_location):
@@ -17,7 +21,7 @@ def LineSubstring(line, start_location, end_location):
     implements ST_Line_Substring
     """
     sql = (
-        "SELECT ST_AsText(ST_Line_SubString("
+        "SELECT ST_AsText(ST_LineSubstring("
         "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));"
     )
 
@@ -129,7 +133,7 @@ class DataFrameField(models.CharField):
 
         return filename
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         """
         use the filename from the database to load the DataFrame from file.
         """
@@ -289,3 +293,90 @@ class DataFrameFormField(forms.CharField):
             return initial_value != data_value
 
         return True
+
+
+class CheckpointsSelectMultiple(CheckboxSelectMultiple):
+    """
+    Override the default CheckboxSelectMultiple Widget to serialize checkpoints
+    as strings containing the place id and the line_location.
+    """
+
+    template_name = "forms/widgets/_checkpoints_multiple_input.html"
+
+    def create_option(
+        self, name, value, label, selected, index, subindex=None, attrs=None
+    ):
+        # make sure it's a checkpoint
+        if isinstance(value, Checkpoint):
+
+            # add checkpoint place geojson as data-attribute to display on the map.
+            attrs.update({"data-geom": value.place.get_geojson(fields=["name"])})
+
+            # convert chekpoint to 'place_id' + "_" + 'line_location' string
+            value = value.field_value
+
+        return super().create_option(
+            name, value, label, selected, index, subindex, attrs
+        )
+
+
+class CheckpointsChoiceField(MultipleChoiceField):
+    """
+    Custom form field to handle parsing and validation of
+    checkpoints in the route form.
+    """
+
+    widget = CheckpointsSelectMultiple
+
+    def to_python(self, value):
+        """ Normalize data to a tuple (place.id, line_location)"""
+        if not value:
+            return []
+        try:
+            return [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
+
+        except KeyError:
+            raise ValidationError(
+                _("Invalid value: %(value)s"), code="invalid", params={"value": value},
+            )
+
+    def validate(self, value):
+        """
+        skip validation by the Parent class for now, as
+        it seems to trigger an infinite loop..
+        """
+        # make sure we have two elements in the tuple
+        for checkpoint in value:
+            if len(checkpoint) != 2:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )
+
+            # check that first half can be an int
+            try:
+                int(checkpoint[0])
+            except ValueError:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )
+
+            # check that second half is a float and
+            # is not greater than 1.0
+            try:
+                if float(checkpoint[1]) > 1.0:
+                    raise ValidationError(
+                        _("Invalid value: %(value)s"),
+                        code="invalid",
+                        params={"value": checkpoint},
+                    )
+
+            except ValueError:
+                raise ValidationError(
+                    _("Invalid value: %(value)s"),
+                    code="invalid",
+                    params={"value": checkpoint},
+                )

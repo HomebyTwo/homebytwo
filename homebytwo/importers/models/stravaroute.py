@@ -2,9 +2,12 @@ from django.contrib.gis.geos import LineString
 
 from pandas import DataFrame
 from polyline import decode
+from social_django.models import UserSocialAuth
 from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
+from ...routes.utils import Link
+from ..exceptions import StravaMissingCredentials
 
 
 class StravaRouteManager(RouteManager):
@@ -13,19 +16,22 @@ class StravaRouteManager(RouteManager):
         Returns querysets with Strava Routes only.
         This method is required because StravaRoute
         is a proxy class.
+        Methods from the RouteManager, e.g. for_user can also be used.
         """
-        return (
-            super(StravaRouteManager, self).get_queryset().filter(data_source="strava")
-        )
+        return super().get_queryset().filter(data_source="strava")
 
     # login to Strava and retrieve route list
-    def get_routes_list_from_server(self, athlete):
+    def get_remote_routes_list(self, athlete, session):
+        """
+        fetches the athlete's routes list from Strava and returns them
+        as a list of StravaRoute stubs.
+        """
 
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
 
         # create model instances with Strava routes data
-        routes = [
+        return [
             StravaRoute(
                 source_id=strava_route.id,
                 name=strava_route.name,
@@ -36,8 +42,18 @@ class StravaRouteManager(RouteManager):
             for strava_route in strava_routes
         ]
 
-        # split into new and existing routes
-        return self.check_for_existing_routes(routes=routes)
+    def check_user_credentials(self, request):
+        """
+        view function provided to check whether a user
+        has access to Strava.
+        """
+        # check if the user has an associated Strava account
+        try:
+            request.user.social_auth.get(provider="strava")
+
+        # redirect to login with strava page
+        except UserSocialAuth.DoesNotExist:
+            raise StravaMissingCredentials
 
 
 class StravaRoute(Route):
@@ -45,12 +61,17 @@ class StravaRoute(Route):
     """
     Proxy for Route Model with specific methods and custom manager.
     """
+
+    # data source name to display in templates
+    DATA_SOURCE_NAME = "Strava"
+    DATA_SOURCE_LINK = Link("https://www.strava.com/athlete/routes", DATA_SOURCE_NAME,)
+
     def __init__(self, *args, **kwargs):
         """
         Set the data_source of the route to strava
         when instatiatind a route.
         """
-        super(StravaRoute, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.data_source = "strava"
 
     class Meta:
@@ -65,7 +86,6 @@ class StravaRoute(Route):
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
-
         strava_client = self.athlete.strava_client
 
         # Retrieve route detail and streams
@@ -79,7 +99,7 @@ class StravaRoute(Route):
         self.geom = self._polyline_to_linestring(strava_route.map.polyline)
         self.data = self._data_from_streams(raw_streams)
 
-        # Strava activity types: '1' for ride, '2' for run
+        # Strava only knows two activity types for routes: '1' for ride, '2' for run
         if strava_route.type == "1":
             self.activity_type = ActivityType.objects.filter(name="Bike").get()
         if strava_route.type == "2":

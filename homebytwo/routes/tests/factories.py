@@ -1,14 +1,37 @@
 import os
 
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import GEOSGeometry, Point
 
-import factory
+from factory import Faker, Sequence, SubFactory
 from factory.django import DjangoModelFactory
+from faker.providers import BaseProvider
 from pandas import read_json
 from pytz import utc
 
 from ...routes.models import Activity, ActivityType, Gear, Place, Route, WebhookTransaction
 from ...utils.factories import AthleteFactory, get_field_choices
+
+
+class DjangoGeoLocationProvider(BaseProvider):
+    """
+    https://stackoverflow.com/a/58783744/12427785
+    """
+
+    countries = ["CH", "DE", "FR", "IT"]
+
+    def location(self, country=None):
+        """
+        generate a GeoDjango Point object with a custom Faker provider
+        """
+        country_code = (
+            country or Faker("random_element", elements=self.countries).generate()
+        )
+        faker = Faker("local_latlng", country_code=country_code, coords_only=True)
+        coords = faker.generate()
+        return Point(x=float(coords[1]), y=float(coords[0]), srid=4326)
+
+
+Faker.add_provider(DjangoGeoLocationProvider)
 
 
 def load_data(file):
@@ -20,14 +43,14 @@ def load_data(file):
     return open(json_path).read()
 
 
-class GearFactory(factory.django.DjangoModelFactory):
+class GearFactory(DjangoModelFactory):
     class Meta:
         model = Gear
 
-    name = factory.Faker("text", max_nb_chars=50)
-    brand_name = factory.Faker("company")
-    strava_id = factory.Sequence(lambda n: "g%d" % n)
-    athlete = factory.SubFactory(AthleteFactory)
+    name = Faker("text", max_nb_chars=50)
+    brand_name = Faker("company")
+    strava_id = Sequence(lambda n: "g%d" % n)
+    athlete = SubFactory(AthleteFactory)
 
 
 class ActivityTypeFactory(DjangoModelFactory):
@@ -35,31 +58,31 @@ class ActivityTypeFactory(DjangoModelFactory):
         model = ActivityType
         django_get_or_create = ("name",)
 
-    name = factory.Faker(
+    name = Faker(
         "random_element",
         elements=list(get_field_choices(ActivityType.ACTIVITY_NAME_CHOICES)),
     )
-    slope_squared_param = factory.Faker("pyfloat", min_value=3, max_value=10)
-    slope_param = factory.Faker("pyfloat", min_value=0, max_value=1)
-    flat_param = factory.Faker("pyfloat", min_value=0, max_value=1)
-    total_elevation_gain_param = factory.Faker("pyfloat", min_value=0, max_value=1)
+    slope_squared_param = Faker("pyfloat", min_value=3, max_value=10)
+    slope_param = Faker("pyfloat", min_value=0, max_value=1)
+    flat_param = Faker("pyfloat", min_value=0, max_value=1)
+    total_elevation_gain_param = Faker("pyfloat", min_value=0, max_value=1)
 
 
-class PlaceFactory(factory.django.DjangoModelFactory):
+class PlaceFactory(DjangoModelFactory):
     class Meta:
         model = Place
 
-    place_type = factory.Faker(
+    place_type = Faker(
         "random_element", elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
     )
-    name = factory.Faker("city")
-    description = factory.Faker("bs")
-    altitude = factory.Faker("random_int", min=0, max=4808)
-    public_transport = factory.Faker("boolean", chance_of_getting_true=10)
-    geom = GEOSGeometry("POINT(0 0)", srid=21781)
+    name = Faker("city")
+    description = Faker("bs")
+    altitude = Faker("random_int", min=0, max=4808)
+    public_transport = Faker("boolean", chance_of_getting_true=10)
+    geom = Faker("location")
 
 
-class RouteFactory(factory.django.DjangoModelFactory):
+class RouteFactory(DjangoModelFactory):
     class Meta:
         model = Route
         exclude = ("route_geojson", "route_data_json")
@@ -67,50 +90,48 @@ class RouteFactory(factory.django.DjangoModelFactory):
     route_geojson = load_data("route_geom.json")
     route_data_json = load_data("route_data.json")
 
-    activity_type = factory.SubFactory(ActivityTypeFactory)
-    name = factory.Faker("text", max_nb_chars=100)
-    source_id = factory.Sequence(lambda n: "%d" % n)
+    activity_type = SubFactory(ActivityTypeFactory)
+    name = Faker("text", max_nb_chars=100)
+    source_id = Sequence(lambda n: "%d" % n)
     data_source = "homebytwo"
-    description = factory.Faker("bs")
-    athlete = factory.SubFactory(AthleteFactory)
-    totalup = factory.Faker("random_int", min=0, max=5000)
-    totaldown = factory.Faker("random_int", min=0, max=5000)
-    length = factory.Faker("random_int", min=1, max=5000)
+    description = Faker("bs")
+    athlete = SubFactory(AthleteFactory)
+    totalup = Faker("random_int", min=0, max=5000)
+    totaldown = Faker("random_int", min=0, max=5000)
+    length = Faker("random_int", min=1, max=5000)
     geom = GEOSGeometry(route_geojson, srid=21781)
-    start_place = factory.SubFactory(
-        PlaceFactory, geom="POINT (%s %s)" % geom.coords[0]
-    )
-    end_place = factory.SubFactory(PlaceFactory, geom="POINT (%s %s)" % geom.coords[-1])
+    start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0]))
+    end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1]))
     data = read_json(route_data_json, orient="records")
 
 
-class ActivityFactory(factory.django.DjangoModelFactory):
+class ActivityFactory(DjangoModelFactory):
     class Meta:
         model = Activity
 
-    name = factory.Faker("sentence")
-    description = factory.Faker("bs")
-    strava_id = factory.Sequence(lambda n: "100%d" % n)
-    start_date = factory.Faker("past_datetime", tzinfo=utc)
-    athlete = factory.SubFactory(AthleteFactory)
-    activity_type = factory.SubFactory(ActivityTypeFactory)
+    name = Faker("sentence")
+    description = Faker("bs")
+    strava_id = Sequence(lambda n: "100%d" % n)
+    start_date = Faker("past_datetime", tzinfo=utc)
+    athlete = SubFactory(AthleteFactory)
+    activity_type = SubFactory(ActivityTypeFactory)
     manual = False
-    distance = factory.Faker("random_int", min=500, max=5000)
-    totalup = factory.Faker("random_int", min=0, max=5000)
-    elapsed_time = factory.Faker("time_delta")
+    distance = Faker("random_int", min=500, max=5000)
+    totalup = Faker("random_int", min=0, max=5000)
+    elapsed_time = Faker("time_delta")
     moving_time = elapsed_time
-    workout_type = factory.Faker(
+    workout_type = Faker(
         "random_element",
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
-    gear = factory.SubFactory(GearFactory)
+    gear = SubFactory(GearFactory)
 
 
-class WebhookTransactionFactory(factory.django.DjangoModelFactory):
+class WebhookTransactionFactory(DjangoModelFactory):
     class Meta:
         model = WebhookTransaction
 
-    date_generated = factory.Faker("past_datetime", tzinfo=utc)
+    date_generated = Faker("past_datetime", tzinfo=utc)
     status = WebhookTransaction.UNPROCESSED
     request_meta = {}
     body = {
