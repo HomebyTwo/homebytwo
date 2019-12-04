@@ -23,7 +23,8 @@ def email_signup(request):
 
     # process the form data if it has been POSTed to this view
     if request.method == 'POST':
-        # create a form instance and populate it with data from the request:
+
+        # populate form instance with post data
         form = EmailSubscriptionForm(request.POST)
 
         # The posted form data is valid, try to subscribe the email to Mailchimp
@@ -44,7 +45,7 @@ def email_signup(request):
             else:
                 return redirect('home')
 
-    # if it was a any other request, just display the empty form
+    # if it was any other request, just display the empty form
     else:
         form = EmailSubscriptionForm()
 
