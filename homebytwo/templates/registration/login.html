@@ -2,45 +2,28 @@
 {% load static %}
 
 {% block header %}
-{% include "_masterhead.html" with mastersize="medium" banner_image="images/banner-login.jpg" no_navigation=True %}
+{% include "_masterhead.html" with mastersize="small" banner_image="images/banner-login.jpg" no_navigation=True %}
 {% endblock header %}
 
 {% block content %}
-  {% if next %}
-    {% if user.is_authenticated %}
-      <div class="box alert alert--info mrgv">
-        <p>Your account doesn't have access to this page.
-        To proceed, please login with an other account that has access:</p>
-      </div>
-    {% else %}
-      <div class="box alert alert--info mrgv">
-        <p>Please login to see this page:</p>
-      </div>
-    {% endif %}
-  {% endif %}
-  <div class="mrgt grid grid--center">
-    <form class="grid__item md-w-1/2 mrgb" method="post" action="{% url 'login' %}">
-      {% csrf_token %}
-      {% include "_kanbasu_form.html" with form=form %}
-      <div class="form-group grid grid--right">
-        <div class="grid__item md-w-4/5">
-          <input type="submit" class="btn btn--primary" value="Log in" />
-        </div>
-      </div>
-      <div class="form-group grid grid--right">
-        <div class="grid__item md-w-4/5">
-          <a href="{% url 'password_reset' %}">Lost password?</a>
-        </div>
-      </div>
-    </form>
-    <div class="grid__item md-w-1/2">
-      {% include "importers/strava/_connect_with_strava.html" %}
-      <p>
-        No Strava account?
-        <a href="{% url "register" %}">
-          Create a regular homebytwo account instead.
-        </a>
-      </p>
-    </div>
+{% if next %}
+{% if user.is_authenticated %}
+<div class="box alert alert--info mrgv">
+  <p>Your account doesn't have access to this page.
+  To proceed, please login with an other account that has access:</p>
+</div>
+{% else %}
+<div class="box alert alert--info mrgv">
+  <p>Please login to see this page:</p>
+</div>
+{% endif %}
+{% endif %}
+<div class="mrgt grid grid--center">
+  <div class="grid__item md-w-1/2">
+    {% include "importers/strava/_connect_with_strava.html" %}
+    <p>
+      No Strava account? Go create one at <a href="http://www.strava.com">Strava</a>. It's free! 
+    </p>
   </div>
+</div>
 {% endblock content %}

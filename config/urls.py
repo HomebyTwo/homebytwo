@@ -10,9 +10,6 @@ urlpatterns = [
     path("", landingpage_views.home, name="home"),
     # email-signup/
     path("email-signup/", landingpage_views.email_signup, name="email_signup"),
-    # register
-    path("register/", landingpage_views.register, name="register"),
-    # URL patterns to other apps
     # django social auth
     path("", include("social_django.urls", namespace="social")),
     # routes/

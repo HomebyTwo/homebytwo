@@ -1,7 +1,8 @@
-import httpretty
 from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
+import httpretty
 
 from .forms import EmailSubscriptionForm
 
@@ -39,15 +40,6 @@ class LandingpageTest(TestCase):
             url = reverse("home")
             resp = self.client.get(url)
             self.assertFalse(gtm_url in str(resp.content))
-
-    # Register
-    def test_landingpage_register_view(self):
-        signup_form_content = "Required. 150 characters or fewer."
-        url = reverse("register")
-        resp = self.client.get(url)
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn(signup_form_content, resp.content.decode('UTF-8'))
 
     # Email signup
     def test_get_email_signup_view(self):

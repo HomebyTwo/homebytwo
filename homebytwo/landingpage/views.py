@@ -1,10 +1,10 @@
 from django.contrib import messages
-from django.contrib.auth import authenticate, login
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render
+
 from requests.exceptions import ConnectionError, HTTPError
 
-from .forms import EmailSubscriptionForm, UserRegistrationForm
+from .forms import EmailSubscriptionForm
 
 
 def home(request):
@@ -47,24 +47,5 @@ def email_signup(request):
     # if it was a any other request, just display the empty form
     else:
         form = EmailSubscriptionForm()
-
-    return render(request, template, {'form': form})
-
-
-def register(request):
-
-    template = 'landingpage/register.html'
-
-    if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            username = form.cleaned_data.get('username')
-            raw_password = form.cleaned_data.get('password1')
-            user = authenticate(username=username, password=raw_password)
-            login(request, user)
-            return redirect('routes:routes')
-    else:
-        form = UserRegistrationForm()
 
     return render(request, template, {'form': form})
