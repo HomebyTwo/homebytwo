@@ -200,21 +200,23 @@ def bootstrap():
 
     required_settings = set(
         [
-            "DATABASE_URL",
-            "MEDIA_ROOT",
-            "STATIC_ROOT",
-            "MEDIA_URL",
-            "STATIC_URL",
             "ALLOWED_HOSTS",
+            "CELERY_BROKER_URL",
+            "DATABASE_URL",
             "MAILCHIMP_API_KEY",
             "MAILCHIMP_LIST_ID",
+            "MAPBOX_ACCESS_TOKEN",
+            "MEDIA_ROOT",
+            "MEDIA_URL",
+            "STATIC_ROOT",
+            "STATIC_URL",
+            "STRAVA_CLIENT_ID",
+            "STRAVA_CLIENT_SECRET",
+            "STRAVA_ROUTE_URL",
+            "STRAVA_VERIFY_TOKEN",
             "SWITZERLAND_MOBILITY_LIST_URL",
             "SWITZERLAND_MOBILITY_LOGIN_URL",
             "SWITZERLAND_MOBILITY_ROUTE_DATA_URL",
-            "STRAVA_VERIFY_TOKEN",
-            "STRAVA_ROUTE_URL",
-            "CELERY_BROKER_URL",
-            "MAPBOX_ACCESS_TOKEN",
         ]
     )
 
