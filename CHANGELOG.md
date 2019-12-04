@@ -1,4 +1,7 @@
 # Change Log
+## [0.7.0] - 2019-12-04 Edit route checkpoints after import
+- Route checkpoints can now be added or removed in the route edit form
+
 ## [0.6.4] - 2019-11-20 Handle Strava activities with Celery
 - Import Strava activities with a celery task
 - Handle Webhook events received from Strava
