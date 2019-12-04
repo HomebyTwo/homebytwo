@@ -27,18 +27,44 @@ from gitric import api as gitric
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
     "prod": {
-        "root": "/var/www/homebytwo/",
+        "root": "/var/www/html/production_homebytwo/",
         "hosts": ["root@homebytwo.ch"],
+        "gunicorn_service_name": "gunicorn",
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
-        "settings": {"ALLOWED_HOSTS": "www.homebytwo.ch"},
+        "settings": {
+            "ALLOWED_HOSTS": "www.homebytwo.ch",
+            "CELERY_BROKER_URL": "amqp://localhost",
+            "MEDIA_ROOT": "/var/www/html/production_homebytwo/media",
+            "MEDIA_URL": "/media/",
+            "STATIC_ROOT": "/var/www/html/production_homebytwo/static",
+            "STATIC_URL": "/static/",
+            "STRAVA_ROUTE_URL": "https://www.strava.com/routes/%d",
+            "SWITZERLAND_MOBILITY_LIST_URL": "https://map.wanderland.ch/api/4/tracks_list",
+            "SWITZERLAND_MOBILITY_LOGIN_URL": "https://map.wanderland.ch/api/4/login",
+            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL": "https://map.wanderland.ch/api/4/tracks/%d",
+            "SWITZERLAND_MOBILITY_ROUTE_URL": "https://map.wanderland.ch/?trackId=%d",
+        },
     },
     "staging": {
         "root": "/var/www/html/staging_homebytwo/",
         "hosts": ["root@staging.homebytwo.ch"],
+        "gunicorn_service_name": "staging_gunicorn",
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
-        "settings": {"ALLOWED_HOSTS": "staging.homebytwo.ch"},
+        "settings": {
+            "ALLOWED_HOSTS": "staging.homebytwo.ch",
+            "CELERY_BROKER_URL": "amqp://localhost",
+            "MEDIA_ROOT": "/var/www/html/staging_homebytwo/media",
+            "MEDIA_URL": "/media/",
+            "STATIC_ROOT": "/var/www/html/staging_homebytwo/static",
+            "STATIC_URL": "/static/",
+            "STRAVA_ROUTE_URL": "https://www.strava.com/routes/%d",
+            "SWITZERLAND_MOBILITY_LIST_URL": "https://map.wanderland.ch/api/4/tracks_list",
+            "SWITZERLAND_MOBILITY_LOGIN_URL": "https://map.wanderland.ch/api/4/login",
+            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL": "https://map.wanderland.ch/api/4/tracks/%d",
+            "SWITZERLAND_MOBILITY_ROUTE_URL": "https://map.wanderland.ch/?trackId=%d",
+        },
     },
 }
 
@@ -134,7 +160,7 @@ def restart_process():
     """
     Restart the WSGI process
     """
-    sudo("systemctl restart gunicorn")
+    sudo("systemctl restart {}".format(env.gunicorn_service_name))
 
 
 def generate_secret_key():
@@ -200,21 +226,23 @@ def bootstrap():
 
     required_settings = set(
         [
-            "DATABASE_URL",
-            "MEDIA_ROOT",
-            "STATIC_ROOT",
-            "MEDIA_URL",
-            "STATIC_URL",
             "ALLOWED_HOSTS",
+            "CELERY_BROKER_URL",
+            "DATABASE_URL",
             "MAILCHIMP_API_KEY",
             "MAILCHIMP_LIST_ID",
+            "MAPBOX_ACCESS_TOKEN",
+            "MEDIA_ROOT",
+            "MEDIA_URL",
+            "STATIC_ROOT",
+            "STATIC_URL",
+            "STRAVA_CLIENT_ID",
+            "STRAVA_CLIENT_SECRET",
+            "STRAVA_ROUTE_URL",
+            "STRAVA_VERIFY_TOKEN",
             "SWITZERLAND_MOBILITY_LIST_URL",
             "SWITZERLAND_MOBILITY_LOGIN_URL",
             "SWITZERLAND_MOBILITY_ROUTE_DATA_URL",
-            "STRAVA_VERIFY_TOKEN",
-            "STRAVA_ROUTE_URL",
-            "CELERY_BROKER_URL",
-            "MAPBOX_ACCESS_TOKEN",
         ]
     )
 

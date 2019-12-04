@@ -18,34 +18,23 @@
       </a>
 
       {% if user.is_authenticated %}
-        <ul class="list-inline list-inline--divided list-inline--center">
-          <li class="text-uppercase">
-            <a href="{% url 'routes:routes' %}">
-              My Routes
-            </a>
-          </li>
-        </ul>
+      <ul class="list-inline list-inline--divided list-inline--center">
+        <li class="text-uppercase">
+          <a href="{% url 'routes:routes' %}">
+            My Routes
+          </a>
+        </li>
+      </ul>
+      {% else %}
+      {% include "landingpage/_strava_connect_button.html" with height="42px" %}
       {% endif %}
     </li>
 
     <li class="nav__item">
-      {% if not user.is_authenticated %}
-        <ul class="list-inline list-inline--center list-inline--tight">
-          <li>
-            <a href="{% url 'register' %}" class="btn btn--small">
-            Register
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'login' %}" class="btn btn--small">
-            Login
-            </a>
-          </li>
-        </ul>
-      {% else %}
-          <a href="{% url 'logout' %}" class="btn btn--small">
-          Logout
-          </a>
+      {% if user.is_authenticated %}
+      <a href="{% url 'logout' %}" class="btn btn--small">
+        Logout
+      </a>
       {% endif %}
     </li>
   </ul>

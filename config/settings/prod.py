@@ -1,3 +1,6 @@
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
 from . import get_env_variable
 from .base import *  # NOQA
 
@@ -8,13 +11,20 @@ LOGGING = {
         "file": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": "/var/log/django.log",
+            "filename": "/var/log/django/{host}.log".format(host=ALLOWED_HOSTS[0]),
         },
     },
-    "loggers": {
-        "django": {"handlers": ["file"], "level": "ERROR", "propagate": True,},
-    },
+    "loggers": {"django": {"handlers": ["file"], "level": "ERROR", "propagate": True}},
 }
+
+######################
+# Sentry Integration #
+######################
+
+sentry_sdk.init(
+    dsn="https://98f1c311a2574ef786731e08bd17e712@sentry.io/1823093",
+    integrations=[DjangoIntegration()],
+)
 
 ###########################
 # Force Celery Broker URL #
@@ -44,11 +54,19 @@ SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
 # Force Strava related Settings #
 #################################
 
-STRAVA_VERIFY_TOKEN = get_env_variable("STRAVA_VERIFY_TOKEN")
+STRAVA_CLIENT_ID = get_env_variable("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = get_env_variable("STRAVA_CLIENT_SECRET")
 STRAVA_ROUTE_URL = get_env_variable("STRAVA_ROUTE_URL")
+STRAVA_VERIFY_TOKEN = get_env_variable("STRAVA_VERIFY_TOKEN")
 
 #################################
 # Force Mapbox related Settings #
 #################################
 
 MAPBOX_ACCESS_TOKEN = get_env_variable("MAPBOX_ACCESS_TOKEN")
+
+#############
+# Force GTM #
+#############
+
+GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID")
