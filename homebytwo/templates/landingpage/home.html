@@ -3,20 +3,13 @@
 {% block title %}Home by Two{% endblock %}
 
 {% block header %}
-    {% include "_masterhead.html" with mastersize="big" banner_image="images/banner.jpg" %}
+{% include "_masterhead.html" with mastersize="medium" banner_image="images/banner.jpg" %}
 {% endblock header %}
 
 {% block content %}
-    <!-- Header -->
-    <!-- Page Content -->
-    {% include "landingpage/_pitch.html" %}
-    <!-- Email Signup -->
-    <div class="mrgt0 grid grid--center pdgt-- box box--default">
-    <div class="sm-w-2/3 grid__item">
-        <h4 class=>We are still working on it...</h4>
-        <p class="mrgt0">Sign up to find out when we launch and test the preview the app before everyone else:</p>
-    </div>
-    <div class="sm-w-2/3 grid__item">{% include "landingpage/_email_signup_form.html" %}</div>
-</div>
-
+{% include "landingpage/_tagline.html" %}
+{% include "landingpage/_pitch_boxes.html" %}
+{% include "landingpage/_get_homebytwo.html" %}
+{% include "landingpage/_how_it_works.html" %}
+{% include "landingpage/_email_signup.html" %}
 {% endblock content %}

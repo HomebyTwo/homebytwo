@@ -1,12 +1,10 @@
 {% load static %}
 
-<div class="box box--default">
-  <h2 class="mrgt0">Why connect with Strava?</h2>
+  <h2 class="mrgt0">Connect with Strava</h2>
   <ul>
-    <li>Log-in faster without homebytwo credentials.</li>
-    <li>Import routes from Strava and schedule them.</li>
+    <li>Use your routes from Strava</li>
+    <li>Get schedules based on your performance</li>
   </ul>
   <a href="{% url "social:begin" "strava" %}{% if next %}?next={{ next }}{% endif %}">
     <img src="{% static 'images/strava_connect.svg' %}" alt="Connect with Strava" height="48px"/>
   </a>
-</div>
