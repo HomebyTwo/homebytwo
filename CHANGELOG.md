@@ -1,4 +1,8 @@
 # Change Log
+## [0.7.1] - 2019-12-05 Improve landing page
+- Athletes can only log-in with Strava
+- Install Sentry for error reporting
+
 ## [0.7.0] - 2019-12-04 Edit route checkpoints after import
 - Route checkpoints can now be added or removed in the route edit form
 
