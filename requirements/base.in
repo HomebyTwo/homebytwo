@@ -7,12 +7,14 @@ django-geojson
 django-leaflet
 django-widget-tweaks
 easy_thumbnails
+gunicorn
 pandas
 pillow
 polyline
 psycopg2-binary
 rcssmin
 requests
+sentry-sdk==0.13.4
 social-auth-app-django
 stravalib
 tables
