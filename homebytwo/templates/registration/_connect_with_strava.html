@@ -1,0 +1,13 @@
+{% load static %}
+
+<h2 class="mrgt0">Connect with Strava</h2>
+<ul>
+  <li>Import your routes from Strava</li>
+  <li>Get schedules based on your individual performance</li>
+  <li>Compare Strava activities with route schedules</li>
+</ul>
+<p>
+  <a href="{% url "social:begin" "strava" %}{% if next %}?next={{ next }}{% endif %}">
+    <img src="{% static 'images/strava_connect.svg' %}" alt="Connect with Strava" height="48px"/>
+  </a>
+</p>

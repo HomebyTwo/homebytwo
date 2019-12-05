@@ -1,0 +1,12 @@
+{% load static %}
+
+<section class="section section--hero relative-parent" style="background-image: url({% static banner_image|default:'images/banner-trift.jpg' %})">
+  <div class="hero__overlay">
+    <div class="text-center pdgv+ hero__body">
+      <h1 class="text-primary">Homebytwo</h1>
+      <h2 class="mrgt0">Schedule your outdoor activities</h2>
+      <p>Import routes from your favorite mapping service and plan your adventure based on your past performance on Strava.</p>
+      <p class="mrgv+">{% include "_strava_connect_button.html" %}</p>
+    </div>
+  </div>
+</section>

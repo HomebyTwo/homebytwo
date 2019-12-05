@@ -96,9 +96,9 @@ module.exports = {
   ],
   devServer: {
     proxy: {
-      '**': 'http://homebytwo.lo',
+      '**': 'http://local.homebytwo.ch',
     },
-    public: 'homebytwo.lo:3000',
+    public: 'local.homebytwo.ch:3000',
     host: '0.0.0.0',
     port: 3000,
     compress: true,

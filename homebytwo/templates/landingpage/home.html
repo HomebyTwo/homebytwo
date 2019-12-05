@@ -3,22 +3,19 @@
 {% block title %}Homebytwo{% endblock %}
 
 {% block header %}
-{% include "_masterhead.html" with mastersize="medium" banner_image="images/banner.jpg" %}
+{% include "landingpage/_hero_landingpage.html" %}
 {% endblock header %}
 
 {% block content %}
-<h1>Will you be back on time?</h1>
-<div class="mrgv grid grid--center grid--small">
-  <div class="grid__item md-w-2/3">
-    {% include "landingpage/_tagline.html" %}
+{% include "landingpage/_how_it_works.html" %}
+{% include "landingpage/_pitch_boxes.html" %}
+{% include "landingpage/_testimony.html" %}
+<div class="mrgv grid grid--center grid--small grid--even">
+  <div class="grid__item md-w-2/3 mrgb">
+    {% include "landingpage/_email_signup.html" %}
   </div>
-  <div class="grid__item md-w-1/3 hidden-md-down">
+  <div class="grid__item md-w-1/3 mrgb">
     {% include "landingpage/_github_issues.html" %}
   </div>  
 </div>
-
-{% include "landingpage/_pitch_boxes.html" %}
-{% include "landingpage/_get_homebytwo.html" %}
-{% include "landingpage/_how_it_works.html" %}
-{% include "landingpage/_email_signup.html" %}
 {% endblock content %}

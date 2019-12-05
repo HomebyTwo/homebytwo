@@ -62,15 +62,14 @@ def remote_connection(view_func):
             messages.error(request, message)
             return redirect("routes:routes")
 
-        except StravaAccessUnauthorized:
-            message = "Strava Authorization refused. Try to connect to Strava again"
+        except (StravaAccessUnauthorized, StravaMissingCredentials):
+            message = "There was an issue connecting to Strava. Please try again"
             messages.error(request, message)
-            return redirect("strava_connect")
-
-        except StravaMissingCredentials:
-            message = "Please connect to Strava, first."
-            messages.info(request, message)
-            return redirect("strava_connect")
+            return redirect(
+                "{login_url}?next={next}".format(
+                    login_url=reverse("login"), next=request.path
+                )
+            )
 
         except SwitzerlandMobilityMissingCredentials:
             message = "Please connect to Switzerland Mobility, first."

@@ -35,10 +35,10 @@
     {% include '_nav.html' %}
     {% block header %}{% endblock %}
 
-    <div class="container">
-      {% include "_messages.html" %}
+    <section class="section section--content container">
+      {# {% include "_messages.html" %} #}
       {% block content %}{% endblock %}
-    </div>
+    </section>
 
     {% include '_footer.html' %}
 
