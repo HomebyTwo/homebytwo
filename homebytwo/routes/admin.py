@@ -4,39 +4,35 @@ from django.contrib.gis import admin
 
 from leaflet.admin import LeafletGeoAdmin
 
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Athlete,
-    Place,
-    Route,
-    WebhookTransaction,
-)
+from .models import Activity, ActivityPerformance, Athlete, Place, Route, WebhookTransaction
 
-# Route admin
-admin.site.register(Route, LeafletGeoAdmin)
+
+class RouteAdmin(LeafletGeoAdmin):
+    readonly_fields = ("source_link",)
+    list_display = ["name", "athlete", "activity_type"]
+    fieldsets = [
+        (None, {"fields": ("name", "athlete", "activity_type")}),
+        ("Map", {"fields": ("geom",)}),
+        (
+            "Source Information",
+            {
+                "fields": ("data_source", "source_id", "source_link"),
+                "classes": ("collapse",),
+            },
+        ),
+    ]
 
 
 class PlaceAdmin(LeafletGeoAdmin):
     # Custom administration for Place
     fieldsets = [
-        (
-            None,
-            {'fields': ['name', 'description', 'place_type', 'altitude']}
-        ),
-        (
-            'Date',
-            {'fields': ['geom']}
-        )
+        (None, {"fields": ["name", "description", "place_type", "altitude"]}),
+        ("Map", {"fields": ["geom"]}),
     ]
 
 
-admin.site.register(Place, PlaceAdmin)
-admin.site.register(ActivityType, LeafletGeoAdmin)
-admin.site.register(ActivityPerformance)
-admin.site.register(Activity)
-admin.site.register(WebhookTransaction)
+class ActivityAdmin(LeafletGeoAdmin):
+    list_display = ["name", "athlete", "activity_type"]
 
 
 class AthleteInline(admin.StackedInline):
@@ -45,8 +41,15 @@ class AthleteInline(admin.StackedInline):
 
 
 class UserAdmin(BaseUserAdmin):
-    inlines = [AthleteInline, ]
+    inlines = [
+        AthleteInline,
+    ]
 
 
+admin.site.register(Route, RouteAdmin)
+admin.site.register(Place, PlaceAdmin)
+admin.site.register(Activity, ActivityAdmin)
+admin.site.register(ActivityPerformance)
+admin.site.register(WebhookTransaction)
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
