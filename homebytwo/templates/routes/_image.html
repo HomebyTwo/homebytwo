@@ -1,16 +1,16 @@
 {% if route.image %}
-    <div class="box box--tight text-center relative-parent">
-        <p>
-            <img class="img-block"
-            src="{{ route.image.poster.url }}"
-            alt="{{ route.name }} image" />
-        </p>
-            {% if route.athlete == request.user.athlete %}
-                <p><a href="{% url 'routes:image' route.id %}" class="btn btn--default btn--small">Edit Image</a></p>
-            {% endif %}
-    </div>
+<div class="box box--tight text-center relative-parent">
+  <img class="img-block" src="{{ route.image.poster.url }}" alt="{{ route.name }} image" />
+  {% if route.athlete == request.user.athlete %}
+  <p>
+    <a href="{% url 'routes:image' route.id %}" class="btn btn--default btn--small">Edit Image</a>
+  </p>
+  {% endif %}
+</div>
 {% elif route.athlete == request.user.athlete %}
-    <div class="box box--default text-center">
-        <p><a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--small">Add an image for this route</a></p>
-    </div>
+<div class="box box--default text-center">
+  <p>
+    <a href="{% url 'routes:image' route.id %}" class="btn btn--primary btn--small">Add an image for this route</a>
+  </p>
+</div>
 {% endif %}

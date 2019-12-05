@@ -1,4 +1,5 @@
 import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from . import get_env_variable
@@ -23,7 +24,7 @@ LOGGING = {
 
 sentry_sdk.init(
     dsn="https://98f1c311a2574ef786731e08bd17e712@sentry.io/1823093",
-    integrations=[DjangoIntegration()],
+    integrations=[DjangoIntegration(), CeleryIntegration()],
 )
 
 ###########################
