@@ -4,6 +4,7 @@ from datetime import datetime
 from io import StringIO
 
 import dj_database_url
+from config import get_project_root_path
 from fabric.api import (
     cd,
     env,
@@ -397,22 +398,28 @@ def clean_old_database_backups(nb_backups_to_keep):
 
 
 @task
-def fetch_media(local_media_root="/vagrant/homebytwo/media"):
+def fetch_media():
     """
     sync local media folder with remote data
     """
-    # absolute media root on environement
+    # absolute media root on remote environement
     with cd(get_project_root()), quiet():
         remote_media_root = run("cat envdir/MEDIA_ROOT")
 
+    if os.path.exists("envdir/MEDIA_ROOT"):
+        with open("envdir/MEDIA_ROOT", "r") as media_root_file:
+            local_media_root = media_root_file.read()
+    else:
+        local_media_root = get_project_root_path("homebytwo/media")
+
     local(
-        "rsync -e 'ssh -p {port}' -r "
-        "{user}@{host}:{remote_media_root} {local_media_root}".format(
+        "rsync -e 'ssh -p {port}' -rv "
+        "{user}@{host}:{source_directory} {target_directory}".format(
             user=env.user,
             host=env.host,
             port=env.port,
-            remote_media_root=remote_media_root,
-            local_media_root=local_media_root,
+            source_directory=os.path.join(remote_media_root, ""),  # add trailing slash
+            target_directory=local_media_root,
         )
     )
 
