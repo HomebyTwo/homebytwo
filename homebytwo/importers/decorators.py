@@ -30,7 +30,13 @@ def strava_required(view_func):
 
         # redirect to login with strava page
         except UserSocialAuth.DoesNotExist:
-            return redirect(reverse("strava_connect"))
+            message = "You are not connected to Strava."
+            messages.error(request, message)
+            return redirect(
+                "{login_url}?next={next}".format(
+                    login_url=reverse("login"), next=request.path
+                )
+            )
 
         # call the original function
         response = view_func(request, *args, **kwargs)
@@ -63,7 +69,7 @@ def remote_connection(view_func):
             return redirect("routes:routes")
 
         except (StravaAccessUnauthorized, StravaMissingCredentials):
-            message = "There was an issue connecting to Strava. Please try again"
+            message = "There was an issue connecting to Strava. Try again later!"
             messages.error(request, message)
             return redirect(
                 "{login_url}?next={next}".format(

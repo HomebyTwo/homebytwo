@@ -1,4 +1,8 @@
 # Change Log
+## [0.7.2] - 2019-12-06 make better use of admin
+- Routes can be browsed in Django admin
+- Improved landing page
+
 ## [0.7.1] - 2019-12-05 Improve landing page
 - Athletes can only log-in with Strava
 - Install Sentry for error reporting

@@ -15,11 +15,6 @@ def index(request):
 
 
 @login_required
-def strava_connect(request):
-    return render(request, "importers/strava/connect.html")
-
-
-@login_required
 @remote_connection
 def import_routes(request, data_source):
     """

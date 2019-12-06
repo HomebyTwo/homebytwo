@@ -16,7 +16,7 @@ class LandingpageTest(TestCase):
 
     # Home view
     def test_landingpage_home_view(self):
-        content = "Home by Two"
+        content = "Homebytwo"
         signup_form = EmailSubscriptionForm()
         url = reverse("home")
         response = self.client.get(url)

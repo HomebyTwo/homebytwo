@@ -74,7 +74,9 @@ class StravaTestCase(TestCase):
             "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
         )
 
-        unauthorized_json = read_data("strava_athlete_unauthorized.json", dir_path=CURRENT_DIR)
+        unauthorized_json = read_data(
+            "strava_athlete_unauthorized.json", dir_path=CURRENT_DIR
+        )
 
         httpretty.register_uri(
             httpretty.GET,
@@ -84,14 +86,15 @@ class StravaTestCase(TestCase):
             status=401,
         )
 
-        error = "Strava Authorization refused."
         strava_routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
+        login_url = "{url}?next={next}".format(url=reverse("login"), next=strava_routes_url)
+        error = "There was an issue connecting to Strava. Try again later!"
         response = self.client.get(strava_routes_url, follow=False)
         redirected_response = self.client.get(strava_routes_url, follow=True)
 
         httpretty.disable
 
-        self.assertRedirects(response, reverse("strava_connect"))
+        self.assertRedirects(response, login_url)
         self.assertContains(redirected_response, error)
 
     def test_strava_connection_error(self):
@@ -107,7 +110,7 @@ class StravaTestCase(TestCase):
             body=raise_connection_error,
         )
 
-        error = "Could not connect to the remote server."
+        error = "Could not connect to the remote server. Try again later:"
         strava_routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
 
         response = self.client.get(strava_routes_url, follow=False)
@@ -192,10 +195,10 @@ class StravaTestCase(TestCase):
 
         routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
         response = self.client.get(routes_url)
-        connect_url = reverse("strava_connect")
+        login_url = "{url}?next={next}".format(url=reverse("login"), next=routes_url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, connect_url)
+        self.assertEqual(response.url, login_url)
 
     def test_strava_routes_success(self):
         self.athlete = AthleteFactory(user__password="testpassword")

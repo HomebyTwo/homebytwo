@@ -64,8 +64,13 @@ class ActivityTestCase(TestCase):
 
         url = reverse("routes:import_strava")
         response = self.client.get(url)
+        redirected_response = self.client.get(url, follow=True)
 
-        self.assertRedirects(response, reverse("strava_connect"))
+        login_url = "{url}?next={next}".format(url=reverse("login"), next=url)
+        error = "You are not connected to Strava."
+
+        self.assertRedirects(response, login_url)
+        self.assertContains(redirected_response, error)
 
     def test_save_strava_activity_new_manual_activity(self):
 
