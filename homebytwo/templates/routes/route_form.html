@@ -16,7 +16,7 @@
 {# map #}
 {% include "routes/_route_map.html" with form=form %}
 
-<form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
 
   {# form fields #}
   {% include "_kanbasu_form.html" with form=form %}
@@ -29,7 +29,7 @@
 
 {% if object.geom %}
   {% block extrajs %}
-    <script type="text/javascript">
+    <script>
       function route_map_init (map, options) {
         const route = L.geoJson({{ object|geojsonfeature|safe }});
         route.addTo(map);

@@ -14,10 +14,10 @@
 
 {% for field in form.visible_fields %}
   <div class="form-group grid">
-    <label for="{{ field.id_for_label }}" class="field-label grid__item md-w-1/5">
+    <label {% if not field|widget_type == "checkpointsselectmultiple" %}for="{{ field.id_for_label }}"{% endif %} class="field-label grid__item lg-w-1/5">
       {{ field.label }}
     </label>
-    <div class="grid__item md-w-4/5">
+    <div class="grid__item lg-w-4/5">
       {% if form.is_bound %}
         {% if field.errors %}
           {% render_field field class="field field--invalid" %}
@@ -43,5 +43,4 @@
       {% endif %}
     </div>
   </div>
-
 {% endfor %}

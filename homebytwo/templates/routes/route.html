@@ -41,7 +41,7 @@
 
 {% if route.geom %}
   {% block extrajs %}
-    <script type="text/javascript">
+    <script>
       function route_map_init (map, options) {
         const route = L.geoJson({{ route|geojsonfeature|safe }});
         route.addTo(map);
@@ -63,7 +63,6 @@
           }).addTo(map);
         });
       }
-
     </script>
   {% endblock extrajs %}
 {% endif %}
