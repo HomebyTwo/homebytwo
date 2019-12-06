@@ -78,8 +78,8 @@ def route_checkpoints_list(request, pk):
     return JsonResponse({"checkpoints": checkpoints_dicts})
 
 
-@strava_required
 @login_required
+@strava_required
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.

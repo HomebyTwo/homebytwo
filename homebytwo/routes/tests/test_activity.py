@@ -72,6 +72,19 @@ class ActivityTestCase(TestCase):
         self.assertRedirects(response, login_url)
         self.assertContains(redirected_response, error)
 
+    def test_not_logged_in(self):
+        self.client.logout()
+
+        url = reverse("routes:import_strava")
+        response = self.client.get(url)
+        redirected_response = self.client.get(url, follow=True)
+
+        login_url = "{url}?next={next}".format(url=reverse("login"), next=url)
+        error = "Please login to see this page."
+
+        self.assertRedirects(response, login_url)
+        self.assertContains(redirected_response, error)
+
     def test_save_strava_activity_new_manual_activity(self):
 
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")

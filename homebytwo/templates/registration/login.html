@@ -8,14 +8,10 @@
 {% block content %}
 {% if next %}
   {% if user.is_authenticated %}
-  <div class="box alert info">
-    Your account doesn't have access to this page.<br>
-    To proceed, please login with an other account that has access.
+  <div class="box alert info">Your account doesn't have access to this page.<br>To proceed, please login with an other account that has access.
   </div>
   {% else %}
-  <div class="box alert info">
-    Please login to see this page
-  </div>
+  <div class="box alert info">Please login to see this page.</div>
   {% endif %}
 {% endif %}
 <div class="mrgt grid grid--center">
