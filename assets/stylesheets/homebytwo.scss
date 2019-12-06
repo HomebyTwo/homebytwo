@@ -50,6 +50,8 @@
 @import '../../node_modules/kanbasu/src/scss/helpers/images';
 @import '../../node_modules/kanbasu/src/scss/helpers/positionning';
 @import '../../node_modules/kanbasu/src/scss/helpers/display';
+@import '../../node_modules/kanbasu/src/scss/helpers/align';
+@import '../../node_modules/kanbasu/src/scss/helpers/align-responsive';
 
 
 /**
@@ -77,14 +79,15 @@
 /**
 * Homebytwo Components
 */
-@import "components/routes";
-@import "components/nav";
 @import 'components/alert';
 @import 'components/box';
 @import 'components/buttons';
 @import 'components/course';
 @import 'components/footer';
+@import 'components/hero';
+@import 'components/icon';
+@import 'components/img';
 @import 'components/map';
 @import 'components/masterhead';
-@import 'components/icon';
-@import 'components/hero';
+@import 'components/nav';
+@import 'components/routes';

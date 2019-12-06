@@ -1,4 +1,4 @@
 {% load static %}
 <a href="{% url "social:begin" "strava" %}?next={% url "routes:routes" %}">
-  <img src="{% static 'images/strava_connect.svg' %}" alt="Connect with Strava" height={{ height|default:"48px" }}/>
+  <img class="align-center" src="{% static 'images/strava_connect.svg' %}" alt="Connect with Strava" height={{ height|default:"48px" }}/>
 </a>
