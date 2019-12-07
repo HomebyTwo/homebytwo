@@ -201,7 +201,7 @@ class SwitzerlandMobility(TestCase):
         )
 
         manager = SwitzerlandMobilityRoute.objects
-        formatted_routes = manager.format_raw_remote_routes(raw_routes, self.athlete,)
+        formatted_routes = manager._format_raw_remote_routes(raw_routes, self.athlete)
 
         self.assertTrue(type(formatted_routes) is list)
         self.assertEqual(len(formatted_routes), 37)
@@ -213,7 +213,7 @@ class SwitzerlandMobility(TestCase):
         raw_routes = []
 
         routes_manager = SwitzerlandMobilityRoute.objects
-        formatted_routes = routes_manager.format_raw_remote_routes(
+        formatted_routes = routes_manager._format_raw_remote_routes(
             raw_routes, self.athlete,
         )
 

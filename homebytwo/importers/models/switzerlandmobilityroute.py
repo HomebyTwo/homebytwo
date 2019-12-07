@@ -41,13 +41,13 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         if raw_routes:
 
             # format routes into dictionary
-            return self.format_raw_remote_routes(raw_routes, athlete)
+            return self._format_raw_remote_routes(raw_routes, athlete)
 
         # return empty list if no raw_routes were found
         else:
             return []
 
-    def format_raw_remote_routes(self, raw_routes, athlete):
+    def _format_raw_remote_routes(self, raw_routes, athlete):
         """
         Take routes list returned by Switzerland Mobility as list of 3 values
         e.g. [2692136, u'Rochers de Nayes', None] and create a new
