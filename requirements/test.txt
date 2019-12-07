@@ -14,11 +14,11 @@ celery==4.3.0
 certifi==2019.11.28       # via requests, sentry-sdk
 chardet==3.0.4            # via requests
 coverage==4.5.4
-coveralls==1.8.2
+coveralls==1.9.2
 defusedxml==0.6.0         # via python3-openid
 dj-database-url==0.5.0
 django-geojson==2.12.0
-django-leaflet==0.25.0
+django-leaflet==0.26.0
 django-widget-tweaks==1.4.5
 django==2.2.8
 docopt==0.6.2             # via coveralls
@@ -26,17 +26,19 @@ easy-thumbnails==2.6
 entrypoints==0.3          # via flake8
 execnet==1.7.1            # via pytest-xdist
 factory-boy==2.12.0
-faker==2.0.4              # via factory-boy
+faker==3.0.0              # via factory-boy
 flake8==3.7.9
+gpxpy==1.3.5
 gunicorn==20.0.4
 httpretty==0.9.7
 idna==2.8                 # via requests
-importlib-metadata==0.23  # via kombu
+importlib-metadata==1.2.0  # via kombu, pluggy, pytest
 isort==4.3.21
-kombu==4.6.6              # via celery
+kombu==4.6.7              # via celery
+lxml==4.4.2
 mccabe==0.6.1             # via flake8
 mock==3.0.5
-more-itertools==8.0.0     # via pytest, zipp
+more-itertools==8.0.2     # via pytest, zipp
 numexpr==2.7.0            # via tables
 numpy==1.17.4             # via numexpr, pandas, tables
 oauthlib==3.1.0           # via requests-oauthlib

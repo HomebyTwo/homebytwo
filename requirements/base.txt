@@ -14,15 +14,17 @@ chardet==3.0.4            # via requests
 defusedxml==0.6.0         # via python3-openid
 dj-database-url==0.5.0
 django-geojson==2.12.0
-django-leaflet==0.25.0
+django-leaflet==0.26.0
 django-widget-tweaks==1.4.5
 django==2.2.8
 easy-thumbnails==2.6
+gpxpy==1.3.5
 gunicorn==20.0.4
 idna==2.8                 # via requests
-importlib-metadata==0.23  # via kombu
-kombu==4.6.6              # via celery
-more-itertools==8.0.0     # via zipp
+importlib-metadata==1.2.0  # via kombu
+kombu==4.6.7              # via celery
+lxml==4.4.2
+more-itertools==8.0.2     # via zipp
 numexpr==2.7.0            # via tables
 numpy==1.17.4             # via numexpr, pandas, tables
 oauthlib==3.1.0           # via requests-oauthlib

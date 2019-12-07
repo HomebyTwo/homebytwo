@@ -7,7 +7,9 @@ django-geojson
 django-leaflet
 django-widget-tweaks
 easy_thumbnails
+gpxpy
 gunicorn
+lxml
 pandas
 pillow
 polyline
