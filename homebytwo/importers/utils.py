@@ -97,6 +97,4 @@ def get_route_class_from_data_source(request, data_source):
     except KeyError:
         raise Http404("Data Source does not exist")
     else:
-        # check if user has access credentials for the remote service
-        route_class.objects.check_user_credentials(request)
         return route_class

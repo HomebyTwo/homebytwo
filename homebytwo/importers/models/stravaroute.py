@@ -27,6 +27,9 @@ class StravaRouteManager(RouteManager):
         as a list of StravaRoute stubs.
         """
 
+        # ensure athlete is connected to Strava
+        self.check_user_credentials()
+
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
 
@@ -86,6 +89,9 @@ class StravaRoute(Route):
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
+
+        # ensure athlete is connected to Strava
+        self.check_user_credentials()
         strava_client = self.athlete.strava_client
 
         # Retrieve route detail and streams

@@ -31,7 +31,12 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         to return the athlete's raw route list as json and format
         them for display.
         """
-        cookies = session["switzerland_mobility_cookies"]
+        try:
+            cookies = session["switzerland_mobility_cookies"]
+
+        # login cookies missing
+        except KeyError:
+            raise SwitzerlandMobilityMissingCredentials
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
@@ -71,19 +76,6 @@ class SwitzerlandMobilityRouteManager(RouteManager):
             formatted_routes.append(formatted_route)
 
         return formatted_routes
-
-    def check_user_credentials(self, request):
-        """
-        view function provided to check whether a user has access
-        to Switzerland Mobility Plus before call the service.
-        """
-        # Check if logged-in to Switzeland Mobility
-        try:
-            request.session["switzerland_mobility_cookies"]
-
-        # login cookies missing
-        except KeyError:
-            raise SwitzerlandMobilityMissingCredentials
 
 
 class SwitzerlandMobilityRoute(Route):
