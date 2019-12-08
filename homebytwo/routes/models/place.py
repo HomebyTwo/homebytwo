@@ -182,6 +182,9 @@ class Checkpoint(models.Model):
 
     @property
     def field_value(self):
+        """
+        value used in the ModelForm to serialize checkpoints
+        """
         return "{}_{}".format(self.place.id, self.line_location)
 
     class Meta:

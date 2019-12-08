@@ -16,7 +16,8 @@
 {# map #}
 {% include "routes/_route_map.html" with form=form %}
 
-<form method="post" enctype="multipart/form-data">{% csrf_token %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
 
   {# form fields #}
   {% include "_kanbasu_form.html" with form=form %}

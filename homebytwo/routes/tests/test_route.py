@@ -480,15 +480,14 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=self.athlete)
 
         # checkpoints
-        number_of_route_coordinates = len(route.geom.coords)
         number_of_checkpoints = 20
         checkpoints_data = []
 
         for index in range(1, number_of_checkpoints + 1):
             line_location = index / (number_of_checkpoints + 1)
             place = PlaceFactory(
-                geom="POINT ({} {})".format(
-                    *route.geom.coords[int(number_of_route_coordinates * line_location)]
+                geom=Point(
+                    *route.geom.coords[int(route.geom.num_coords * line_location)]
                 )
             )
             route.places.add(place, through_defaults={"line_location": line_location})
@@ -583,14 +582,13 @@ class RouteTestCase(TestCase):
 
         # checkpoints
         number_of_checkpoints = 5
-        number_of_route_coordinates = len(route.geom.coords)
 
         for index in range(1, number_of_checkpoints + 1):
             line_location = index / (number_of_checkpoints + 1)
             PlaceFactory(
                 geom=Point(
                     *route.geom.coords[
-                        int(number_of_route_coordinates * line_location)
+                        int(route.geom.num_coords * line_location)
                     ],
                     srid=21781
                 )

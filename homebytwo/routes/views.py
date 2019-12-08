@@ -4,7 +4,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -76,6 +76,19 @@ def route_checkpoints_list(request, pk):
     ]
 
     return JsonResponse({"checkpoints": checkpoints_dicts})
+
+
+@login_required
+def download_route_gpx(request, pk):
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+    route.calculate_projected_time_schedule(request.user)
+
+    filename = "homebytwo_{}.gpx".format(route.pk)
+    content_type = ("application/gpx+xml; charset=utf-8")
+
+    response = FileResponse(route.get_gpx(), content_type=content_type)
+    response["Content-Disposition"] = "attachment; filename={}".format(filename)
+    return response
 
 
 @login_required
@@ -172,7 +185,6 @@ class RouteEdit(UpdateView):
 @method_decorator(login_required, name="dispatch")
 @method_decorator(remote_connection, name="dispatch")
 class RouteUpdate(RouteEdit):
-
     def get_object(self, queryset=None):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:

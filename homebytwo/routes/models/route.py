@@ -1,9 +1,14 @@
 from collections import deque
+from datetime import datetime, timedelta
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import Point
 from django.urls import reverse
+
+import gpxpy
+import gpxpy.gpx
 
 from ..models import Checkpoint, Track
 from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
@@ -107,14 +112,13 @@ class Route(Track):
         if self.data_source == "switzerland_mobility":
             return Link(
                 url=settings.SWITZERLAND_MOBILITY_ROUTE_URL % int(self.source_id),
-                text="Switzerland Mobility Plus"
+                text="Switzerland Mobility Plus",
             )
 
         # Strava Route
         elif self.data_source == "strava":
             return Link(
-                url=settings.STRAVA_ROUTE_URL % int(self.source_id),
-                text="Strava"
+                url=settings.STRAVA_ROUTE_URL % int(self.source_id), text="Strava"
             )
 
     @property
@@ -240,3 +244,54 @@ class Route(Track):
         checkpoints = sorted(checkpoints, key=lambda o: o.line_location)
 
         return checkpoints
+
+    def get_gpx(self):
+        """
+        returns the route as a GPX with track schedule and waypoints
+        https://www.topografix.com/gpx.asp
+        """
+        # instantiate GPX object
+        gpx = gpxpy.gpx.GPX()
+
+        # GPX requires datetime objects, route.data["schedule"] id in timedelta
+        start_datetime = datetime.utcnow()
+
+        # append route checkpoints as GPX waypoints
+        for checkpoint in self.checkpoint_set.all():
+            longitude, latitude = checkpoint.place.geom.transform(
+                4326, clone=True
+            ).coords
+            datetime_at_checkpoint = start_datetime + self.get_time_data(
+                checkpoint.line_location, "schedule"
+            )
+            waypoint = gpxpy.gpx.GPXWaypoint(
+                name=checkpoint.place.name,
+                longitude=longitude,
+                latitude=latitude,
+                elevation=checkpoint.altitude_on_route,
+                type=checkpoint.place.get_place_type_display(),
+                time=datetime_at_checkpoint,
+            )
+            gpx.waypoints.append(waypoint)
+
+        # GPX Track
+        gpx_track = gpxpy.gpx.GPXTrack(name=self.name)
+        gpx_track.type = self.activity_type.name
+        gpx.tracks.append(gpx_track)
+
+        # GPX Segment in Track
+        gpx_segment = gpxpy.gpx.GPXTrackSegment()
+        gpx_track.segments.append(gpx_segment)
+
+        data = self.data
+        for lng, lat, altitude, seconds in zip(
+            data["lng"], data["lat"], data["altitude"], data["schedule"]
+        ):
+            lng, lat = Point(lat, lng, srid=21781).transform(4326, clone=True).coords
+            schedule = start_datetime + timedelta(seconds=seconds)
+            gpx_segment.points.append(
+                gpxpy.gpx.GPXTrackPoint(
+                    latitude=lat, longitude=lng, elevation=altitude, time=schedule
+                )
+            )
+        return gpx.to_xml()
