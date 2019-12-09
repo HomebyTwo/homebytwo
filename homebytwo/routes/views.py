@@ -37,7 +37,8 @@ def route(request, pk):
     route = get_object_or_404(Route, id=pk)
 
     # calculate the schedule based on user data
-    route.calculate_projected_time_schedule(request.user)
+    if not request.user == route.athlete.user:
+        route.calculate_projected_time_schedule(request.user)
 
     # retrieve checkpoints along the way and enrich them with schedule data
     checkpoints = route.checkpoint_set.all()
@@ -81,7 +82,10 @@ def route_checkpoints_list(request, pk):
 @login_required
 def download_route_gpx(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
-    route.calculate_projected_time_schedule(request.user)
+
+    # calculate individual personalized schedule if necessary
+    if not request.user == route.athlete.user:
+        route.calculate_projected_time_schedule(request.user)
 
     filename = "homebytwo_{}.gpx".format(route.pk)
     content_type = ("application/gpx+xml; charset=utf-8")

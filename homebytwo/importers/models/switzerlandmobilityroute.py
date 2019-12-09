@@ -125,6 +125,9 @@ class SwitzerlandMobilityRoute(Route):
         if raw_route_json:
             self.format_raw_route_details(raw_route_json)
 
+        # calculate schedule for route owner
+        self.calculate_projected_time_schedule(self.athlete.user)
+
     def format_raw_route_details(self, raw_route_json):
         """
         Converts the json returned by Switzerland mobility

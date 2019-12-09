@@ -111,6 +111,9 @@ class StravaRoute(Route):
         # compute elevation
         self.calculate_cummulative_elevation_differences()
 
+        # calculate schedule for route owner
+        self.calculate_projected_time_schedule(self.athlete.user)
+
         # retrieve totaldown from computed data
         self.totaldown = abs(
             self.get_data(1, "totaldown",)  # line location of the last datapoint
