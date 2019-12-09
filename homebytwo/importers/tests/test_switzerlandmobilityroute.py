@@ -297,7 +297,7 @@ class SwitzerlandMobility(TestCase):
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
-        route = SwitzerlandMobilityRoute(source_id=route_id)
+        route = SwitzerlandMobilityRoute(source_id=route_id, athlete=self.athlete)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)

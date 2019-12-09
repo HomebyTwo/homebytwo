@@ -9,6 +9,7 @@ from django.urls import reverse
 import httpretty
 from mock import patch
 
+from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import Activity, Gear, WebhookTransaction
@@ -58,19 +59,17 @@ class ActivityTestCase(TestCase):
         return strava_activity
 
     def test_no_strava_token(self):
+        """
+        Logged-in user with no Strava auth connected, i.e. from createsuperuser
+        """
 
         non_strava_user = UserFactory(password="testpassword")
         self.client.login(username=non_strava_user.username, password="testpassword")
 
         url = reverse("routes:import_strava")
-        response = self.client.get(url)
-        redirected_response = self.client.get(url, follow=True)
 
-        login_url = "{url}?next={next}".format(url=reverse("login"), next=url)
-        error = "You are not connected to Strava."
-
-        self.assertRedirects(response, login_url)
-        self.assertContains(redirected_response, error)
+        with self.assertRaises(StravaMissingCredentials):
+            self.client.get(url)
 
     def test_not_logged_in(self):
         self.client.logout()

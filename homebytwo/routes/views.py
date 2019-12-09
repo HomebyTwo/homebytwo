@@ -106,7 +106,7 @@ def download_route_gpx(request, pk):
 
 
 @login_required
-@strava_required
+@strava_required  # the superuser account should be the only one logged-in without Strava
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.
