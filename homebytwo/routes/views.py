@@ -98,7 +98,7 @@ def download_route_gpx(request, pk):
             route.save(update_fields="data")
 
     filename = "homebytwo_{}.gpx".format(route.pk)
-    content_type = ("application/gpx+xml; charset=utf-8")
+    content_type = "application/gpx+xml; charset=utf-8"
 
     response = FileResponse(route.get_gpx(), content_type=content_type)
     response["Content-Disposition"] = "attachment; filename={}".format(filename)

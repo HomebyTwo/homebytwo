@@ -1,3 +1,5 @@
+from xml.dom import minidom
+
 from django.contrib.gis.geos import Point
 from django.test import TestCase
 from django.urls import reverse
@@ -27,13 +29,39 @@ class GPXTestCase(TestCase):
                 place, through_defaults={"line_location": line_location}
             )
 
-    def test_gpx_export_view(self):
-        xml_waypoint = '<wpt lng="{}" lat="{}">'.format(*self.route.places.first().geom.transform(4326, clone=True).coords)
-        xml_segment_name = "some xml content"
-        xml_trkpnt = "some xml content"
+    def test_gpx_no_checkpoint(self):
+        self.route.checkpoint_set.all().delete()
+        xml_doc = minidom.parseString(self.route.get_gpx())
+        waypoints = xml_doc.getElementsByTagName("wpt")
+        track = xml_doc.getElementsByTagName("trk")
 
-        response = self.client.get(
-            reverse("routes:as_gpx", kwargs={"pk": self.route.pk})
+        self.assertEqual(len(waypoints), 0)
+        self.assertEqual(len(track), 1)
+
+    def test_gpx_success(self):
+        xml_doc = minidom.parseString(self.route.get_gpx())
+        waypoints = xml_doc.getElementsByTagName("wpt")
+
+        self.assertEqual(len(waypoints), self.route.places.count())
+
+    def test_download_route_gpx_view(self):
+        xml_waypoints = [
+            '<wpt lat="{1}" lon="{0}">'.format(
+                *place.geom.transform(4326, clone=True).coords
+            )
+            for place in self.route.places.all()
+        ]
+
+        xml_segment_name = "<name>{}</name>".format(self.route.name)
+        xml_trkpnt = '<trkpt lat="{1}" lon="{0}">'.format(
+            *self.route.geom.transform(4326, clone=True).coords[5]
         )
-        import pdb; pdb.set_trace()
-        self.assertContains(response, xml_waypoint, html=True)
+
+        url = reverse("routes:as_gpx", kwargs={"pk": self.route.pk})
+        response = self.client.get(url)
+        file_content = b"".join(response.streaming_content).decode("utf-8")
+
+        for xml_waypoint in xml_waypoints:
+            self.assertIn(xml_waypoint, file_content)
+        self.assertIn(xml_segment_name, file_content)
+        self.assertIn(xml_trkpnt, file_content)
