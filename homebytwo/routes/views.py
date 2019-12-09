@@ -33,19 +33,25 @@ def routes(request):
 
 @require_safe
 def route(request, pk):
+    """
+    display route with schedule based on user performance.
+    """
     # load route from Database
-    route = get_object_or_404(Route, id=pk)
+    route = get_object_or_404(Route.objects.select_related(), id=pk)
 
-    # calculate the schedule based on user data
-    if not request.user == route.athlete.user:
+    # calculate personalized schedule if absent or different from ownwer
+    if not route.athlete.user == request.user or "schedule" not in route.data.columns:
         route.calculate_projected_time_schedule(request.user)
+
+        # adding schedule to old routes one-by-one, instead of migrating
+        if request.user == route.athlete.user:
+            route.save()
 
     # retrieve checkpoints along the way and enrich them with schedule data
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # doesn't work as a calculated property, because the route schedule
-    # is missing at instantiation
+    # not a calculated property on Checkpoint, because the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
@@ -83,9 +89,13 @@ def route_checkpoints_list(request, pk):
 def download_route_gpx(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    # calculate individual personalized schedule if necessary
-    if not request.user == route.athlete.user:
+    # calculate personalized schedule if necessary
+    if not request.user == route.athlete.user or "schedule" not in route.data.columns:
         route.calculate_projected_time_schedule(request.user)
+
+        # updating old routes one-by-one, migrating was difficult
+        if request.user == route.athlete.user:
+            route.save(update_fields="data")
 
     filename = "homebytwo_{}.gpx".format(route.pk)
     content_type = ("application/gpx+xml; charset=utf-8")
