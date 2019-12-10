@@ -71,3 +71,11 @@ MAPBOX_ACCESS_TOKEN = get_env_variable("MAPBOX_ACCESS_TOKEN")
 #############
 
 GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID")
+
+##################
+# Force GARMIN CONNECT #
+##################
+
+GARMIN_CONNECT_USERNAME = get_env_variable("GARMIN_CONNECT_USERNAME")
+GARMIN_CONNECT_PASSWORD = get_env_variable("GARMIN_CONNECT_PASSWORD")
+GARMIN_ACTIVITY_URL = get_env_variable("GARMIN_ACTIVITY_URL")

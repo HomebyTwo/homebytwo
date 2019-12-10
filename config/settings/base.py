@@ -252,6 +252,14 @@ SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
     "SWITZERLAND_MOBILITY_ROUTE_DATA_URL", ""
 )
 
+##################
+# GARMIN CONNECT #
+##################
+
+GARMIN_CONNECT_USERNAME = get_env_variable("GARMIN_CONNECT_USERNAME", "")
+GARMIN_CONNECT_PASSWORD = get_env_variable("GARMIN_CONNECT_PASSWORD", "")
+GARMIN_ACTIVITY_URL = get_env_variable("GARMIN_ACTIVITY_URL", "")
+
 ##############################
 # Swiss public transport API #
 ##############################

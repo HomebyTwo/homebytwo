@@ -6,18 +6,18 @@ from io import StringIO
 import dj_database_url
 from config import get_project_root_path
 from fabric.api import (
-    cd,
-    env,
-    execute,
-    get,
-    local,
-    put,
-    require,
-    run,
-    settings,
-    shell_env,
-    sudo,
-    task,
+  cd,
+  env,
+  execute,
+  get,
+  local,
+  put,
+  require,
+  run,
+  settings,
+  shell_env,
+  sudo,
+  task,
 )
 from fabric.context_managers import quiet
 from fabric.operations import prompt
@@ -36,6 +36,7 @@ ENVIRONMENTS = {
         "settings": {
             "ALLOWED_HOSTS": "www.homebytwo.ch",
             "CELERY_BROKER_URL": "amqp://localhost",
+            "GARMIN_ACTIVITY_URL": "https://connect.garmin.com/modern/activity/{}",
             "MEDIA_ROOT": "/var/www/html/production_homebytwo/media",
             "MEDIA_URL": "/media/",
             "STATIC_ROOT": "/var/www/html/production_homebytwo/static",
@@ -56,6 +57,7 @@ ENVIRONMENTS = {
         "settings": {
             "ALLOWED_HOSTS": "staging.homebytwo.ch",
             "CELERY_BROKER_URL": "amqp://localhost",
+            "GARMIN_ACTIVITY_URL": "https://connect.garmin.com/modern/activity/{}",
             "MEDIA_ROOT": "/var/www/html/staging_homebytwo/media",
             "MEDIA_URL": "/media/",
             "STATIC_ROOT": "/var/www/html/staging_homebytwo/static",
@@ -230,6 +232,9 @@ def bootstrap():
             "ALLOWED_HOSTS",
             "CELERY_BROKER_URL",
             "DATABASE_URL",
+            "GARMIN_ACTIVITY_URL",
+            "GARMIN_CONNECT_USERNAME",
+            "GARMIN_CONNECT_PASSWORD",
             "MAILCHIMP_API_KEY",
             "MAILCHIMP_LIST_ID",
             "MAPBOX_ACCESS_TOKEN",

@@ -51,7 +51,11 @@ class Route(Track):
         "Where the route came from", default="homebytwo", max_length=50
     )
 
+    # many-2-many relationship to Place over the Checkpoint relationship table
     places = models.ManyToManyField("Place", through="Checkpoint", blank=True)
+
+    # Activity id on Garmin
+    garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
         unique_together = ("athlete", "data_source", "source_id")
