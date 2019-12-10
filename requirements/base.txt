@@ -4,6 +4,7 @@
 #
 #    pip-compile --output-file=requirements/base.txt requirements/base.in
 #
+-e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
 -e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
 amqp==2.5.2               # via kombu
 arrow==0.15.4             # via stravalib

@@ -1,4 +1,5 @@
 -e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
+-e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
 
 celery
 dj-database-url
