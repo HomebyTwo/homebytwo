@@ -10,8 +10,9 @@ from django.urls import reverse
 
 import gpxpy
 import gpxpy.gpx
-from garmin_uploader.api import GarminAPI
+from garmin_uploader.api import GarminAPI, GarminAPIException
 from garmin_uploader.workflow import Activity as GarminActivity
+from requests.exceptions import HTTPError
 
 from ..models import ActivityType, Checkpoint, Track
 from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
@@ -273,8 +274,7 @@ class Route(Track):
         """
         # instantiate GPX object
         gpx = gpxpy.gpx.GPX()
-        gpx.creator = "homebytwo.ch"
-        gpx.link = "https://homebytwo.ch" + self.get_absolute_url()
+        gpx.creator = "Homebytwo -- homebytwo.ch"
 
         # GPX requires datetime objects, route.data["schedule"] id in timedelta
         start_datetime = datetime.utcnow()
@@ -385,6 +385,17 @@ class Route(Track):
         session = garmin_api.authenticate(
             settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
         )
+
+        # delete existing activity on Garmmin
+        if self.garmin_id:
+            delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
+            garmin_response = session.delete(delete_url.format(self.garmin_id))
+            try:
+                garmin_response.raise_for_status()
+            except HTTPError as error:
+                raise GarminAPIException(
+                    "Failed to delete activity {}: {}".format(self.garmin_id, error)
+                )
 
         # write GPX content to temporary file
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:

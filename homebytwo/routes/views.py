@@ -111,10 +111,10 @@ def upload_route_to_garmin(request, pk):
 
     # restrict to route owner for now
     if not route.athlete.user == request.user:
-        message = "Error: cannot export route: '{route}' to Garmin connect. You are not the route onwer."
+        message = "Error: cannot upload route to Garmin connect. You are not the route onwer."
         messages.error(request, message.format(route=str(route)))
 
-    # route uploads to Garmin with a Celery task
+    # upload route to Garmin with a Celery task
     else:
         upload_route_to_garmin_task.delay(route.id, route.athlete.id)
         message = "Your route is uploading to Garmin. Check back soon to access it."
