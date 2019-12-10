@@ -1,5 +1,6 @@
 from collections import deque
 from datetime import datetime, timedelta
+from tempfile import NamedTemporaryFile
 
 from django.apps import apps
 from django.conf import settings
@@ -9,8 +10,10 @@ from django.urls import reverse
 
 import gpxpy
 import gpxpy.gpx
+from garmin_uploader.api import GarminAPI
+from garmin_uploader.workflow import Activity as GarminActivity
 
-from ..models import Checkpoint, Track
+from ..models import ActivityType, Checkpoint, Track
 from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
 
 
@@ -63,7 +66,9 @@ class Route(Track):
     objects = RouteManager()
 
     def __str__(self):
-        return "Route: {}".format(self.name)
+        return "{activity_type}: {name}".format(
+            activity_type=str(self.activity_type), name=self.name
+        )
 
     def get_absolute_url(self, action="display"):
         """
@@ -126,6 +131,14 @@ class Route(Track):
             )
 
     @property
+    def garmin_activity_url(self):
+        return (
+            settings.GARMIN_ACTIVITY_URL.format(self.garmin_id)
+            if self.garmin_id > 0
+            else None
+        )
+
+    @property
     def svg(self):
         """
         return the default svg image to display for each data source.
@@ -164,6 +177,10 @@ class Route(Track):
                 source_id=self.source_id,
                 athlete=self.athlete,
             ).exists()
+
+    @property
+    def gpx_filename(self):
+        return "homebytwo_{}.gpx".format(self.pk)
 
     def update_from_remote(self):
         """
@@ -256,6 +273,8 @@ class Route(Track):
         """
         # instantiate GPX object
         gpx = gpxpy.gpx.GPX()
+        gpx.creator = "homebytwo.ch"
+        gpx.link = "https://homebytwo.ch" + self.get_absolute_url()
 
         # GPX requires datetime objects, route.data["schedule"] id in timedelta
         start_datetime = datetime.utcnow()
@@ -299,3 +318,94 @@ class Route(Track):
                 )
             )
         return gpx.to_xml()
+
+    def upload_to_garmin(self, athlete=None):
+        """
+        uploads a route schedule as activity to the Homebytwo account on
+        Garmin Connect using the garmin_uploader library:
+        https://github.com/JohanWieslander/garmin-uploader
+
+        Athletes can then use the "race against activity" feature on
+        compatible Garmin devices.
+        """
+
+        activity_type_map = {
+            ActivityType.ALPINESKI: "resort_skiing_snowboarding",
+            ActivityType.BACKCOUNTRYSKI: "backcountry_skiing_snowboarding",
+            ActivityType.CANOEING: "other",
+            ActivityType.CROSSFIT: "other",
+            ActivityType.EBIKERIDE: "other",
+            ActivityType.ELLIPTICAL: "elliptical",
+            ActivityType.GOLF: "other",
+            ActivityType.HANDCYCLE: "",
+            ActivityType.HIKE: "hiking",
+            ActivityType.ICESKATE: "skating",
+            ActivityType.INLINESKATE: "skating",
+            ActivityType.KAYAKING: "other",
+            ActivityType.KITESURF: "other",
+            ActivityType.NORDICSKI: "cross_country_skiing",
+            ActivityType.RIDE: "cycling",
+            ActivityType.ROCKCLIMBING: "rock_climbing",
+            ActivityType.ROLLERSKI: "other",
+            ActivityType.ROWING: "rowing",
+            ActivityType.RUN: "running",
+            ActivityType.SAIL: "other",
+            ActivityType.SKATEBOARD: "other",
+            ActivityType.SNOWBOARD: "resort_skiing_snowboarding",
+            ActivityType.SNOWSHOE: "hiking",
+            ActivityType.SOCCER: "other",
+            ActivityType.STAIRSTEPPER: "fitness_equipment",
+            ActivityType.STANDUPPADDLING: "stand_up_paddleboarding",
+            ActivityType.SURFING: "other",
+            ActivityType.SWIM: "swimming",
+            ActivityType.VELOMOBILE: "other",
+            ActivityType.VIRTUALRIDE: "cycling",
+            ActivityType.VIRTUALRUN: "running",
+            ActivityType.WALK: "walk",
+            ActivityType.WEIGHTTRAINING: "fitness_equipment",
+            ActivityType.WHEELCHAIR: "other",
+            ActivityType.WINDSURF: "other",
+            ActivityType.WORKOUT: "strength_training",
+            ActivityType.YOGA: "other",
+        }
+
+        # retrieve athlete
+        athlete = athlete or self.athlete
+
+        # calculate schedule if needed
+        if not athlete == self.athlete or "schedule" not in self.data.columns:
+            self.calculate_projected_time_schedule(athlete.user)
+
+            # adding schedule to old routes one-by-one, instead of migrating
+            if athlete == self.athlete.user:
+                self.save()
+
+        # instantiate API from garmin_uploader and authenticate
+        garmin_api = GarminAPI()
+        session = garmin_api.authenticate(
+            settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
+        )
+
+        # write GPX content to temporary file
+        with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
+            file.write(bytes(self.get_gpx(), encoding="utf-8"))
+
+            # instantiate activity object from garmin_uploade
+            activity = GarminActivity(
+                path=file.name,
+                name="Homebytwo {}".format(str(self)),
+                type=activity_type_map[self.activity_type.name],
+            )
+
+            # upload to Garmin
+            activity.id, uploaded = garmin_api.upload_activity(session, activity)
+
+        if uploaded:
+            self.garmin_id = activity.id
+            self.save()
+
+            # adapt type and name on Garmin connect
+            garmin_api.set_activity_name(session, activity)
+            garmin_api.set_activity_type(session, activity)
+
+        return self.garmin_activity_url, uploaded

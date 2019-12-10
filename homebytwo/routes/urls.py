@@ -31,6 +31,8 @@ urlpatterns = [
                 path("delete/", views.RouteDelete.as_view(), name="delete"),
                 # route as gpx: /routes/5/gpx/
                 path("gpx/", views.download_route_gpx, name="as_gpx"),
+                # garmin upload: /routes/5/garmin_upload/
+                path("garmin_upload/", views.upload_route_to_garmin, name="garmin_upload"),
             ]
         ),
     ),

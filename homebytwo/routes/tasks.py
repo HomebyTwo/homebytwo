@@ -5,14 +5,15 @@ from django.template.defaultfilters import pluralize
 from celery import shared_task
 from celery.schedules import crontab
 from celery.task import PeriodicTask
+from garmin_uploader.api import GarminAPIException
 
-from .models import Activity, Athlete, WebhookTransaction
+from .models import Activity, Athlete, Route, WebhookTransaction
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def import_athlete_strava_activities(athlete_id):
+def import_strava_activities_task(athlete_id):
     """
     import or update all Strava activities for an athlete.
 
@@ -25,6 +26,35 @@ def import_athlete_strava_activities(athlete_id):
     )
 
 
+def upload_route_to_garmin_task(route_id, athlete_id=None):
+    """
+    uploads a route schedule as activity to the Homebytwo account on
+    Garmin Connect.
+
+    This allows athletes to use the race against activity feature on
+    compatible Garmin devices.
+    """
+
+    # retrieve route
+    route = Route.objects.select_related("athlete").get(pk=route_id)
+
+    # retrieve athlete from DB if different from route athlete
+    if athlete_id and athlete_id != route.athlete.id:
+        athlete = Athlete.objects.get(pk=athlete_id)
+    else:
+        athlete = None
+
+    try:
+        garmin_activity_url, uploaded = route.upload_to_garmin(athlete)
+    except GarminAPIException as e:
+        return 'Garmin API failure: {}'.format(e)
+
+    if uploaded:
+        return "Route '{route}' successfully updated to Garmin connect at {url}".format(
+            route=str(route), url=garmin_activity_url
+        )
+
+
 class ProcessStravaEvents(PeriodicTask):
     """
     process events received from Strava and saved as transactions in the database
@@ -33,6 +63,7 @@ class ProcessStravaEvents(PeriodicTask):
     is processed for each object.
 
     """
+
     run_every = crontab(minute="*/15")  # this will run every 15 minutes
 
     def run(self):

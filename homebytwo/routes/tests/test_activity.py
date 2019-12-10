@@ -600,11 +600,11 @@ class ActivityTestCase(TestCase):
         self.assertIsNone(transactions.filter(status=self.ERROR).first())
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
 
-    def test_import_all_activities_from_strava(self):
+    def test_import_strava_activities_task(self):
         import_url = reverse("routes:import_strava")
 
         with patch(
-            "homebytwo.routes.tasks.import_athlete_strava_activities.delay"
+            "homebytwo.routes.tasks.import_strava_activities_task.delay"
         ) as mock_task:
             response = self.client.get(import_url)
             self.assertRedirects(response, reverse("routes:activities"))

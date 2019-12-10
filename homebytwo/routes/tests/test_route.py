@@ -44,7 +44,12 @@ class RouteTestCase(TestCase):
 
     def test_str(self):
         route = RouteFactory()
-        self.assertEqual(str(route), "Route: {}".format(route.name))
+        self.assertEqual(
+            str(route),
+            "{activity_type}: {name}".format(
+                activity_type=str(route.activity_type), name=route.name
+            ),
+        )
 
     def test_display_url(self):
         route = RouteFactory()
@@ -587,9 +592,7 @@ class RouteTestCase(TestCase):
             line_location = index / (number_of_checkpoints + 1)
             PlaceFactory(
                 geom=Point(
-                    *route.geom.coords[
-                        int(route.geom.num_coords * line_location)
-                    ],
+                    *route.geom.coords[int(route.geom.num_coords * line_location)],
                     srid=21781
                 )
             )

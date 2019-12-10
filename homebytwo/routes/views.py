@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from io import BytesIO
 
 from django.conf import settings
 from django.contrib import messages
@@ -18,7 +19,7 @@ from pytz import utc
 from ..importers.decorators import remote_connection, strava_required
 from .forms import RouteForm
 from .models import Activity, Route, WebhookTransaction
-from .tasks import import_athlete_strava_activities
+from .tasks import import_strava_activities_task, upload_route_to_garmin_task
 
 
 @login_required
@@ -31,7 +32,6 @@ def routes(request):
     return render(request, "routes/routes.html", context)
 
 
-@require_safe
 def route(request, pk):
     """
     display route with schedule based on user performance.
@@ -97,12 +97,30 @@ def download_route_gpx(request, pk):
         if request.user == route.athlete.user:
             route.save(update_fields="data")
 
-    filename = "homebytwo_{}.gpx".format(route.pk)
-    content_type = "application/gpx+xml; charset=utf-8"
+    return FileResponse(
+        BytesIO(bytes(route.get_gpx(), encoding="utf-8")),
+        as_attachment=True,
+        filename=route.gpx_filename,
+        content_type="application/gpx+xml; charset=utf-8",
+    )
 
-    response = FileResponse(route.get_gpx(), content_type=content_type)
-    response["Content-Disposition"] = "attachment; filename={}".format(filename)
-    return response
+
+@login_required
+def upload_route_to_garmin(request, pk):
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+
+    # restrict to route owner for now
+    if not route.athlete.user == request.user:
+        message = "Error: cannot export route: '{route}' to Garmin connect. You are not the route onwer."
+        messages.error(request, message.format(route=str(route)))
+
+    # route uploads to Garmin with a Celery task
+    else:
+        upload_route_to_garmin_task.delay(route.id, route.athlete.id)
+        message = "Your route is uploading to Garmin. Check back soon to access it."
+        messages.error(request, message)
+
+    return redirect(route)
 
 
 @login_required
@@ -113,7 +131,7 @@ def import_strava_activities(request):
     still work in progress
     """
     if request.method == "GET":
-        import_athlete_strava_activities.delay(request.user.athlete.id)
+        import_strava_activities_task.delay(request.user.athlete.id)
         messages.success(request, "We are importing your Strava activities!")
         return redirect("routes:activities")
 
