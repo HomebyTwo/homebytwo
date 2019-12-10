@@ -1,0 +1,29 @@
+{% if user == route.athlete.user %}
+<div class="grid grid--multiline grid--center grid--small">
+  <div class="grid__item sm-w-1/2 md-w-1/3 lg-w-1/4">
+    <a class="btn btn--default btn--block" href="{% url 'routes:edit' route.id %}">Edit Route</a>
+  </div>
+  <div class="grid__item sm-w-1/2 md-w-1/3 lg-w-1/4">
+    <a class="btn btn--default btn--block" href="{% url 'routes:as_gpx' route.id %}">Download Route as GPX</a>
+  </div>
+</div>
+<div class="box box--default mrgv">
+  <h3 class="mrgt0">Race against this route</h3>
+  <p>If you are the proud owner of a compatible Garmin device, you can download the route schedule and use the Virtual Racer feature to track your progress during your adventure.</p>
+  <div class="mrgt grid grid--multiline grid--center grid--small">
+    {% if route.garmin_id %}
+    <div class="grid__item sm-w-2/3 md-w-3/4 lg-w-4/5">
+      <a class="btn btn--primary btn--block" href="{{ route.garmin_activity_url }}">View route on Garmin Connect </a>
+    </div>
+    <div class="grid__item sm-w-2/3 md-w-3/4 lg-w-4/5">
+      <a class="btn btn--block" href="{% url 'routes:garmin_upload' route.id %}">Update route on Garmin Connect</a>
+    </div>
+
+    {% else %}
+    <div class="grid__item sm-w-1/2 md-w-1/3 lg-w-1/4">
+      <a class="btn btn--primary btn--block" href="{% url 'routes:garmin_upload' route.id %}">Upload Route to Garmin Connect</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

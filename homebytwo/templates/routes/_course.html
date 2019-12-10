@@ -2,7 +2,7 @@
 
 
 {# start place #}
-<h4 class="mrgh-">Start Place</h4>
+<h2>Start Place</h2>
 <div class="box box--default box--tight mrgv- mrgh0 pdg- place place--start{% if route.start_place %} place--known{% endif %}" {% if route.start_place %}data-geom="{{ route.start_place|geojsonfeature:'name' }}"{% endif %}>
   <div class="grid grid--tight">
     <div class="grid__item place__name">{{ route.start_place.name|default:'Unknown Place' }}, {{ route.get_start_altitude.m|floatformat:0|intcomma }}m</div>
@@ -12,7 +12,7 @@
 </div>
 
 {# checkpoints #}
-<h4 class="mrgh-">Checkpoints</h4>
+<h2>Checkpoints</h2>
 
 <ul class="list list--stacked">
   {% for checkpoint in checkpoints %}
@@ -31,7 +31,7 @@
 </ul>
 
 {# finish place #}
-<h4 class="mrgh-">End Place</h4>
+<h2>End Place</h2>
 <div class="box box--default box--tight mrgv- pdg- place place--finish {% if route.end_place %} place--known{% endif %}" {% if route.end_place %}data-geom='{{ route.end_place|geojsonfeature:"name" }}'{% endif %}>
   <div class="grid grid--tight">
     <div class="w-2/3 sm-w-4/5 grid__item place__name">{{ route.end_place.name|default:'Unknown place' }}, {{ route.get_end_altitude.m|floatformat:0|intcomma }}m</div>

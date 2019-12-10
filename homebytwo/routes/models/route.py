@@ -332,41 +332,26 @@ class Route(Track):
         activity_type_map = {
             ActivityType.ALPINESKI: "resort_skiing_snowboarding",
             ActivityType.BACKCOUNTRYSKI: "backcountry_skiing_snowboarding",
-            ActivityType.CANOEING: "other",
-            ActivityType.CROSSFIT: "other",
-            ActivityType.EBIKERIDE: "other",
             ActivityType.ELLIPTICAL: "elliptical",
-            ActivityType.GOLF: "other",
-            ActivityType.HANDCYCLE: "",
+            ActivityType.HANDCYCLE: "cycling",
             ActivityType.HIKE: "hiking",
             ActivityType.ICESKATE: "skating",
             ActivityType.INLINESKATE: "skating",
-            ActivityType.KAYAKING: "other",
-            ActivityType.KITESURF: "other",
             ActivityType.NORDICSKI: "cross_country_skiing",
             ActivityType.RIDE: "cycling",
             ActivityType.ROCKCLIMBING: "rock_climbing",
-            ActivityType.ROLLERSKI: "other",
             ActivityType.ROWING: "rowing",
             ActivityType.RUN: "running",
-            ActivityType.SAIL: "other",
-            ActivityType.SKATEBOARD: "other",
             ActivityType.SNOWBOARD: "resort_skiing_snowboarding",
             ActivityType.SNOWSHOE: "hiking",
-            ActivityType.SOCCER: "other",
             ActivityType.STAIRSTEPPER: "fitness_equipment",
             ActivityType.STANDUPPADDLING: "stand_up_paddleboarding",
-            ActivityType.SURFING: "other",
             ActivityType.SWIM: "swimming",
-            ActivityType.VELOMOBILE: "other",
             ActivityType.VIRTUALRIDE: "cycling",
             ActivityType.VIRTUALRUN: "running",
             ActivityType.WALK: "walk",
             ActivityType.WEIGHTTRAINING: "fitness_equipment",
-            ActivityType.WHEELCHAIR: "other",
-            ActivityType.WINDSURF: "other",
             ActivityType.WORKOUT: "strength_training",
-            ActivityType.YOGA: "other",
         }
 
         # retrieve athlete
@@ -396,6 +381,9 @@ class Route(Track):
                 raise GarminAPIException(
                     "Failed to delete activity {}: {}".format(self.garmin_id, error)
                 )
+            else:
+                self.garmin_id = None
+                self.save()
 
         # write GPX content to temporary file
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
@@ -405,7 +393,7 @@ class Route(Track):
             activity = GarminActivity(
                 path=file.name,
                 name="Homebytwo {}".format(str(self)),
-                type=activity_type_map[self.activity_type.name],
+                type=activity_type_map.get(self.activity_type.name, "other"),
             )
 
             # upload to Garmin

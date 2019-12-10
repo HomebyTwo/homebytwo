@@ -1,0 +1,7 @@
+{% if route.source_link %}
+<div>
+  <p class="text-center">
+    <a href="{{ route.source_link.url }}" target="_blank">See this route on {{ route.source_link.text }}</a>
+  </p>
+</div>
+{% endif %}

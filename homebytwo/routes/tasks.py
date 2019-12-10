@@ -26,6 +26,7 @@ def import_strava_activities_task(athlete_id):
     )
 
 
+@shared_task
 def upload_route_to_garmin_task(route_id, athlete_id=None):
     """
     uploads a route schedule as activity to the Homebytwo account on

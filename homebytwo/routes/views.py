@@ -118,7 +118,7 @@ def upload_route_to_garmin(request, pk):
     else:
         upload_route_to_garmin_task.delay(route.id, route.athlete.id)
         message = "Your route is uploading to Garmin. Check back soon to access it."
-        messages.error(request, message)
+        messages.success(request, message)
 
     return redirect(route)
 
