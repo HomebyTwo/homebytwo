@@ -16,8 +16,9 @@
 {% block content %}
   {% include "routes/_course.html" %}
   {% include "routes/_route_map.html" %}
-  {% include "routes/_route_source_link.html" %}
   {% include "routes/_route_owner_buttons.html" %}
+  {% include "routes/_route_source_link.html" %}
+  {% include "routes/_garmin_activity_buttons.html" %}
 {% endblock content %}
 
 {% if route.geom %}
