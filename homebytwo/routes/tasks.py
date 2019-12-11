@@ -45,9 +45,15 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
     else:
         athlete = None
 
+    # upload to Garmin Connect
     try:
         garmin_activity_url, uploaded = route.upload_to_garmin(athlete)
     except GarminAPIException as e:
+        # remove Garmin ID if status was uploading
+        if route.garmin_id == 1:
+            route.garmin_id = None
+            route.save(update_fields=["garmin_id"])
+
         return 'Garmin API failure: {}'.format(e)
 
     if uploaded:

@@ -116,6 +116,10 @@ def upload_route_to_garmin(request, pk):
 
     # upload route to Garmin with a Celery task
     else:
+        # set garmin_id to 1 == upload requested
+        route.garmin_id = 1
+        route.save(update_fields=["garmin_id"])
+
         upload_route_to_garmin_task.delay(route.id, route.athlete.id)
         message = "Your route is uploading to Garmin. Check back soon to access it."
         messages.success(request, message)

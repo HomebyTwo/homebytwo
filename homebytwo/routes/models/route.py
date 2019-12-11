@@ -84,6 +84,8 @@ class Route(Track):
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
+            "gpx": ("routes:gpx", route_kwargs),
+            "garmin_upload": ("routes:garmin_upload", route_kwargs),
             "import": ("import_route", import_kwargs),
         }
         if action_reverse.get(action):
@@ -104,6 +106,14 @@ class Route(Track):
     @property
     def delete_url(self):
         return self.get_absolute_url("delete")
+
+    @property
+    def gpx_url(self):
+        return self.get_absolute_url("gpx")
+
+    @property
+    def garmin_upload_url(self):
+        return self.get_absolute_url("garmin_upload")
 
     @property
     def import_url(self):
@@ -133,11 +143,8 @@ class Route(Track):
 
     @property
     def garmin_activity_url(self):
-        return (
-            settings.GARMIN_ACTIVITY_URL.format(self.garmin_id)
-            if self.garmin_id > 0
-            else None
-        )
+        if self.garmin_id and self.garmin_id > 1:
+            return settings.GARMIN_ACTIVITY_URL.format(self.garmin_id)
 
     @property
     def svg(self):
@@ -372,7 +379,7 @@ class Route(Track):
         )
 
         # delete existing activity on Garmmin
-        if self.garmin_id:
+        if self.garmin_id > 1:
             delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
             garmin_response = session.delete(delete_url.format(self.garmin_id))
             try:
@@ -383,7 +390,7 @@ class Route(Track):
                 )
             else:
                 self.garmin_id = None
-                self.save()
+                self.save(update_fields=["garmin_id"])
 
         # write GPX content to temporary file
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
@@ -401,7 +408,7 @@ class Route(Track):
 
         if uploaded:
             self.garmin_id = activity.id
-            self.save()
+            self.save(update_fields=["garmin_id"])
 
             # adapt type and name on Garmin connect
             garmin_api.set_activity_name(session, activity)
