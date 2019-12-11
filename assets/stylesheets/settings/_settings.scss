@@ -152,16 +152,21 @@ $btn-primary-bkg-color:             $brand-color;
 $btn-primary-hover-bkg-color:       lighten($btn-primary-bkg-color, 8%);
 $btn-primary-active-bkg-color:      darken($btn-primary-bkg-color, 5%);
 
+$btn-secondary-color:               $brand-color;
+$btn-secondary-bkg-color:           $white;
+$btn-secondary-hover-bkg-color:     darken($btn-secondary-bkg-color, 10%);
+$btn-secondary-active-bkg-color:    darken($btn-secondary-bkg-color, 16%);
+
+$btn-delete-color:                  white;
+$btn-delete-bkg-color:              $mountain-red;
+$btn-delete-hover-bkg-color:        lighten($btn-delete-bkg-color, 8%);
+$btn-delete-active-bkg-color:       darken($btn-delete-bkg-color, 5%);
 
 /**
  * Forms
  */
 
 $field-padding:                     $spacing-unit-small/$ratio $spacing-unit-small;
-$btn-delete-color:                  white;
-$btn-delete-bkg-color:              $mountain-red;
-$btn-delete-hover-bkg-color:        lighten($btn-delete-bkg-color, 8%);
-$btn-delete-active-bkg-color:       darken($btn-delete-bkg-color, 5%);
 
 $field-color:                       inherit;
 $field-font-size:                   inherit;

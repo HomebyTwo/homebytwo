@@ -14,3 +14,21 @@
     background-color: $btn-delete-active-bkg-color;
   }
 }
+
+
+.#{$namespace}btn--secondary,
+%btn--secondary {
+  color: $btn-secondary-color;
+  border: 1px solid $btn-secondary-color;
+
+  background-color: $btn-secondary-bkg-color;
+
+  &:hover,
+  &:focus {
+    text-decoration: underline;
+  }
+
+  &:active {
+    text-decoration: underline;
+  }
+}
