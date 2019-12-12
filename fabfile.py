@@ -5,20 +5,7 @@ from io import StringIO
 
 import dj_database_url
 from config import get_project_root_path
-from fabric.api import (
-  cd,
-  env,
-  execute,
-  get,
-  local,
-  put,
-  require,
-  run,
-  settings,
-  shell_env,
-  sudo,
-  task,
-)
+from fabric.api import cd, env, execute, get, local, put, require, run, settings, shell_env, sudo, task
 from fabric.context_managers import quiet
 from fabric.operations import prompt
 from gitric import api as gitric
@@ -30,7 +17,7 @@ ENVIRONMENTS = {
     "prod": {
         "root": "/var/www/html/production_homebytwo/",
         "hosts": ["root@homebytwo.ch"],
-        "gunicorn_service_name": "gunicorn",
+        "services_to_restart": ["celeryd", "celerybeat", "gunicorn"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         "settings": {
@@ -51,7 +38,8 @@ ENVIRONMENTS = {
     "staging": {
         "root": "/var/www/html/staging_homebytwo/",
         "hosts": ["root@staging.homebytwo.ch"],
-        "gunicorn_service_name": "staging_gunicorn",
+        "services_to_restart": ["staging_celeryd", "staging_celerybeat", "staging_gunicorn"],
+
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         "settings": {
@@ -163,7 +151,8 @@ def restart_process():
     """
     Restart the WSGI process
     """
-    sudo("systemctl restart {}".format(env.gunicorn_service_name))
+    for service in env.services_to_restart:
+        sudo("systemctl restart {}".format(service))
 
 
 def generate_secret_key():
