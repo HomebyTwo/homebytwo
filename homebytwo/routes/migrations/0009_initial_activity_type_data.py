@@ -25,13 +25,13 @@ def forwards_func(apps, schema_editor):
             default_flat_pace="4000",
         ),
         ActivityType(
-            name="Bike",
+            name="Ride",
             default_vam_up="1200",
             default_vam_down="10000",
             default_flat_pace="20000",
         ),
         ActivityType(
-            name="Ski",
+            name="BackcountrySki",
             default_vam_up="400",
             default_vam_down="10000",
             default_flat_pace="4000",
@@ -46,8 +46,8 @@ def reverse_func(apps, schema_editor):
     db_alias = schema_editor.connection.alias
     ActivityType.objects.using(db_alias).filter(name="Run").delete()
     ActivityType.objects.using(db_alias).filter(name="Hike").delete()
-    ActivityType.objects.using(db_alias).filter(name="Bike").delete()
-    ActivityType.objects.using(db_alias).filter(name="Ski").delete()
+    ActivityType.objects.using(db_alias).filter(name="Ride").delete()
+    ActivityType.objects.using(db_alias).filter(name="BackcountrySki").delete()
 
 
 class Migration(migrations.Migration):

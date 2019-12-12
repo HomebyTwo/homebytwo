@@ -141,16 +141,15 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        streams = self.athlete.strava_client.get_route_streams(source_id)
-
+        strava_client = self.athlete.strava_client
         strava_route = StravaRouteFactory()
-        data = strava_route._data_from_streams(streams)
+        data = strava_route.get_route_data_streams(strava_client)
         nb_rows, nb_columns = data.shape
 
         httpretty.disable()
 
         self.assertIsInstance(data, DataFrame)
-        self.assertEqual(nb_columns, 4)
+        self.assertEqual(nb_columns, 3)
 
     def test_set_activity_type(self):
         route = StravaRoute(source_id=2325453, athlete=self.athlete)

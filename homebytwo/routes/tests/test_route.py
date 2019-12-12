@@ -315,7 +315,9 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a href="%s">Edit Route</a>' % edit_url
+        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+            edit_url
+        )
 
         response = self.client.get(url)
 

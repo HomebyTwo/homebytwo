@@ -1,4 +1,5 @@
 from collections import deque
+from copy import copy
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
@@ -284,47 +285,84 @@ class Route(Track):
         gpx.creator = "Homebytwo -- homebytwo.ch"
 
         # GPX requires datetime objects, route.data["schedule"] id in timedelta
-        start_datetime = datetime.utcnow()
+        start_time = datetime.utcnow()
 
-        # append route checkpoints as GPX waypoints
-        for checkpoint in self.checkpoint_set.all():
-            longitude, latitude = checkpoint.place.geom.transform(
-                4326, clone=True
-            ).coords
-            datetime_at_checkpoint = start_datetime + self.get_time_data(
-                checkpoint.line_location, "schedule"
-            )
-            waypoint = gpxpy.gpx.GPXWaypoint(
-                name=checkpoint.place.name,
-                longitude=longitude,
-                latitude=latitude,
-                elevation=checkpoint.altitude_on_route,
-                type=checkpoint.place.get_place_type_display(),
-                time=datetime_at_checkpoint,
-            )
-            gpx.waypoints.append(waypoint)
+        # add route waypoints
+        gpx.waypoints.extend(self.get_gpx_waypoints(start_time))
+        gpx.tracks.append(self.get_gpx_track(start_time))
 
-        # GPX Track
+        return gpx.to_xml()
+
+    def get_gpx_waypoints(self, start_time=datetime.utcnow()):
+        """
+        return the set of all waypoints including start and end place
+        as GPXWaypoint objects.
+        """
+
+        # get GPX from checkpoints
+        gpx_checkpoints = [
+            checkpoint.get_gpx_waypoint(route=self, start_time=start_time)
+            for checkpoint in self.checkpoint_set.all()
+        ]
+        gpx_waypoints = deque(gpx_checkpoints)
+
+        # retrieve start_place GPX
+        if self.start_place:
+            gpx_start_place = self.start_place.get_gpx_waypoint(
+                route=self, line_location=0, start_time=start_time
+            )
+            gpx_waypoints.appendleft(gpx_start_place)
+
+        # retrieve end_place GPX
+        if self.end_place:
+            gpx_end_place = self.end_place.get_gpx_waypoint(
+                route=self, line_location=0, start_time=start_time
+            )
+            gpx_waypoints.append(gpx_end_place)
+
+        return gpx_waypoints
+
+    def get_gpx_track(self, start_time=datetime.utcnow()):
+        """
+        return the GPXTrack object corresponding to the route
+
+        According to GPX specificatioins, GPS tracks can contain one or segments of
+        continuous GPS tracking. For our scchedule, we create a single segement.
+        """
+        # Instantiate GPX Track
         gpx_track = gpxpy.gpx.GPXTrack(name=self.name)
-        gpx_track.type = self.activity_type.name
-        gpx.tracks.append(gpx_track)
 
         # GPX Segment in Track
         gpx_segment = gpxpy.gpx.GPXTrackSegment()
         gpx_track.segments.append(gpx_segment)
 
-        data = self.data
-        for lng, lat, altitude, seconds in zip(
-            data["lng"], data["lat"], data["altitude"], data["schedule"]
+        # create a clone of the route geom in SRID 4326
+        geom = self.geom.transform(4326, clone=True)
+
+        # we cannot start from the route geometry
+        # because it can have a different number of coords than the number of rows
+        # in the route data. We start from the length column in the route data and
+        # save the corresponding Point in the Linestring geometry to lat, lng columns.
+        self.data["lng"], self.data["lat"] = zip(  # unpack list of coords tupples
+            *(self.data["length"] / self.data["length"].max())  # line location
+            .apply(lambda x: geom.interpolate_normalized(x).coords)  # get Point
+            .to_list()  # dump list of coords tupples
+        )
+
+        # create the GPXTrackPoints from the route data and append them to the segment
+        for lng, lat, altitude, schedule in zip(
+            self.data.lng, self.data.lat, self.data.altitude, self.data.schedule,
         ):
-            lng, lat = Point(lat, lng, srid=21781).transform(4326, clone=True).coords
-            schedule = start_datetime + timedelta(seconds=seconds)
-            gpx_segment.points.append(
-                gpxpy.gpx.GPXTrackPoint(
-                    latitude=lat, longitude=lng, elevation=altitude, time=schedule
-                )
+            gpx_track_point = gpxpy.gpx.GPXTrackPoint(
+                latitude=lat,
+                longitude=lng,
+                elevation=altitude,
+                time=start_time + timedelta(seconds=schedule),
             )
-        return gpx.to_xml()
+
+            gpx_segment.points.append(gpx_track_point)
+
+        return gpx_track
 
     def upload_to_garmin(self, athlete=None):
         """
@@ -361,7 +399,7 @@ class Route(Track):
             ActivityType.WORKOUT: "strength_training",
         }
 
-        # retrieve athlete
+        # retrieve athlete to calculate an alternative schedule
         athlete = athlete or self.athlete
 
         # calculate schedule if needed
@@ -380,17 +418,7 @@ class Route(Track):
 
         # delete existing activity on Garmmin
         if self.garmin_id > 1:
-            delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
-            garmin_response = session.delete(delete_url.format(self.garmin_id))
-            try:
-                garmin_response.raise_for_status()
-            except HTTPError as error:
-                raise GarminAPIException(
-                    "Failed to delete activity {}: {}".format(self.garmin_id, error)
-                )
-            else:
-                self.garmin_id = None
-                self.save(update_fields=["garmin_id"])
+            self.delete_on_garmin(session)
 
         # write GPX content to temporary file
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
@@ -415,3 +443,27 @@ class Route(Track):
             garmin_api.set_activity_type(session, activity)
 
         return self.garmin_activity_url, uploaded
+
+    def delete_garmin_activity(self, session):
+        """
+        delete an existing activity on Garmin based on the route garmin_id
+
+        If it fails
+        """
+        delete_url = (
+            "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
+        )
+
+        garmin_response = session.delete(delete_url.format(self.garmin_id))
+        try:
+            # 404 is ok, job was already done
+            if not garmin_response.status_code == 404:
+                garmin_response.raise_for_status()
+
+        except HTTPError as error:
+            raise GarminAPIException(
+                "Failed to delete activity {}: {}".format(self.garmin_id, error)
+            )
+        else:
+            self.garmin_id = None
+            self.save(update_fields=["garmin_id"])

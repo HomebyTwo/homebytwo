@@ -55,20 +55,28 @@ class Track(TimeStampedModel):
     # track data as a pandas DataFrame
     data = DataFrameField(null=True, max_length=100, save_to="data")
 
+    def update_route_details_from_data(self):
+        """
+        set track details from the track data,
+        usually replacing remote information received for the route
+        """
+        if not all(column in ["totalup", "totaldown"] for column in self.data.columns):
+            self.calculate_cummulative_elevation_differences()
+
+        # update length, totalup and totaldown from data
+        self.length = self.data.length.max()
+        self.totaldown = abs(self.data.totaldown.min())
+        self.totalup = self.data.totalup.max()
+
     def calculate_elevation_gain_and_distance(self):
         """
-        calculate the gain and distance columns of the data Dataframe.
+        add elevation gain and distance between each point to the track data
         """
-
-        data = self.data
-
         # calculate distance between each point
-        data["distance"] = data["length"].diff().fillna(value=0)
+        self.data["distance"] = self.data["length"].diff().fillna(value=0)
 
         # calculate elevation gain between each point
-        data["gain"] = data["altitude"].diff().fillna(value=0)
-
-        self.data = data
+        self.data["gain"] = self.data["altitude"].diff().fillna(value=0)
 
     def calculate_cummulative_elevation_differences(self):
         """

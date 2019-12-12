@@ -213,7 +213,7 @@ class RouteEdit(UpdateView):
         # This method is called when valid form data has been POSTed.
         # if the activity_type has changed recalculate the route schedule
         if "activity_type" in form.changed_data:
-            form.instance.calculate_projected_time_schedule(self.request.user)
+            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
 
         return super().form_valid(form)
 

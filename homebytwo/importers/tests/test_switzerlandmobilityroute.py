@@ -3,7 +3,7 @@ from os.path import dirname, realpath
 from re import compile as re_compile
 
 from django.conf import settings
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import LineString, Point
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -33,7 +33,7 @@ CURRENT_DIR = dirname(realpath(__file__))
     SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
     SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d",
 )
-class SwitzerlandMobility(TestCase):
+class SwitzerlandMobilityTestCase(TestCase):
     """
     Test the Switzerland Mobility route importer
     """
@@ -206,7 +206,7 @@ class SwitzerlandMobility(TestCase):
         self.assertTrue(type(formatted_routes) is list)
         self.assertEqual(len(formatted_routes), 37)
         for route in formatted_routes:
-            self.assertTrue(isinstance(route, SwitzerlandMobilityRoute))
+            self.assertIsInstance(route, SwitzerlandMobilityRoute)
             self.assertEqual(route.description, "")
 
     def test_format_raw_remote_routes_empty(self):
@@ -318,7 +318,8 @@ class SwitzerlandMobility(TestCase):
         httpretty.disable()
 
         self.assertEqual("Haute Cime", route.name)
-        self.assertEqual(28517.8, route.length)
+        self.assertIsInstance(route.geom, LineString)
+        self.assertEqual(len(route.data.columns), 2)
 
     def test_get_raw_route_details_error(self):
         route_id = 999999999

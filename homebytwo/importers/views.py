@@ -69,6 +69,7 @@ def import_route(request, data_source, source_id):
 
     # fetch route details from Remote API
     route.get_route_details()
+    route.update_route_details_from_data()
 
     if request.method == "POST":
         # populate checkpoints_formset with POST data
@@ -79,6 +80,10 @@ def import_route(request, data_source, source_id):
 
         # Success! redirect to the page of the newly imported route
         if new_route:
+
+            # udpate route details calculate route schedule for route owner
+            route.calculate_projected_time_schedule(route.athlete.user)
+
             message = "Route imported successfully from {}".format(
                 route_class.DATA_SOURCE_NAME
             )

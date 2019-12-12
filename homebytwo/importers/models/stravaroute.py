@@ -1,7 +1,6 @@
 from django.contrib.gis.geos import LineString
 
 from pandas import DataFrame
-from polyline import decode
 from social_django.models import UserSocialAuth
 from stravalib import unithelper
 
@@ -86,89 +85,43 @@ class StravaRoute(Route):
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
+
+        # Retrieve route details from Strava API
         strava_client = self.athlete.strava_client
-
-        # Retrieve route detail and streams
         strava_route = strava_client.get_route(self.source_id)
-        raw_streams = strava_client.get_route_streams(self.source_id)
 
+        # set route name
         self.name = strava_route.name
-        self.description = strava_route.description
-        self.totalup = unithelper.meters(strava_route.elevation_gain).num
-        self.length = unithelper.meters(strava_route.distance).num
-        self.geom = self._polyline_to_linestring(strava_route.map.polyline)
-        self.data = self._data_from_streams(raw_streams)
 
         # Strava only knows two activity types for routes: '1' for ride, '2' for run
         if strava_route.type == "1":
-            self.activity_type = ActivityType.objects.filter(name="Bike").get()
+            self.activity_type = ActivityType.objects.get(name=ActivityType.RIDE)
         if strava_route.type == "2":
-            self.activity_type = ActivityType.objects.filter(name="Run").get()
+            self.activity_type = ActivityType.objects.get(name=ActivityType.RUN)
 
-        # transform geom coords to CH1903 / LV03
-        self._transform_coords(self.geom)
+        # create route data from Strava API streams
+        self.data = self.get_route_data_streams(strava_client)
 
-        # compute elevation
-        self.calculate_cummulative_elevation_differences()
+        # save route geom from latlng stream and drop redundant column in data
+        self.geom = LineString(*self.data["latlng"], srid=4326)
+        self.data.drop(columns=["latlng"], inplace=True)
 
-        # calculate schedule for route owner
-        self.calculate_projected_time_schedule(self.athlete.user)
-
-        # retrieve totaldown from computed data
-        self.totaldown = abs(
-            self.get_data(1, "totaldown",)  # line location of the last datapoint
-        )
-
-    def _polyline_to_linestring(self, polyline):
-        """
-        by default, Strava returns a geometry encoded as a polyline.
-        convert the polyline into a linestring for import into postgis
-        with the correct srid.
-        """
-
-        # decode the polyline.
-        coords = decode(polyline)
-
-        # Inverse tupple because Google Maps works in lat, lng
-        coords = [(lng, lat) for lat, lng in coords]
-
-        # Create line string and specify SRID
-        linestring = LineString(coords)
-        linestring.srid = 4326
-
-        # return the linestring with the correct SRID
-        return linestring
-
-    def _data_from_streams(self, streams):
+    def get_route_data_streams(self, strava_client):
         """
         convert route raw streams into a pandas DataFrame.
         the stravalib client creates a list of dicts:
         `[stream_type: <Stream object>, stream_type: <Stream object>, ...]`
         """
+        # retrieve route streams from Strava API
+        route_streams = strava_client.get_route_streams(self.source_id)
 
         data = DataFrame()
 
-        for key, stream in streams.items():
-            # split latlng in two columns
-            if key == "latlng":
-                data["lat"], data["lng"] = zip(
-                    *[(coords[0], coords[1]) for coords in stream.data]
-                )
-
+        for key, stream in route_streams.items():
             # rename distance to length
-            elif key == "distance":
+            if key == "distance":
                 data["length"] = stream.data
-
             else:
                 data[key] = stream.data
 
         return data
-
-    def _transform_coords(self, geom, target_srid=21781):
-        """
-        transform coordinates from one system to the other.
-        defaults: from WGS 84 to CH1903 / LV03
-        """
-
-        # transform geometry to target srid
-        geom.transform(target_srid)
