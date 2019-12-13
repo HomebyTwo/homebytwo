@@ -426,6 +426,36 @@ class SwitzerlandMobilityTestCase(TestCase):
             self.assertContains(response, start_place_form_element)
         self.assertContains(response, map_data, html=True)
 
+    def test_switzerland_mobility_route_with_no_switzerland_mobility_account_success(self):
+        session = self.client.session
+        del session["switzerland_mobility_cookies"]
+        session.save()
+
+        route_id = 2823968
+        url = reverse(
+            "import_route",
+            kwargs={"data_source": "switzerland_mobility", "source_id": route_id},
+        )
+
+        # intercept call to Switzerland Mobility with httpretty
+        httpretty.enable(allow_net_connect=False)
+        details_json_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+        json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            details_json_url,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+        response = self.client.get(url)
+        httpretty.disable()
+
+        title = "<title>Home by Two - Import Haute Cime</title>"
+        self.assertContains(response, title, html=True)
+
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         SwitzerlandMobilityRouteFactory(
@@ -543,16 +573,13 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         # checkpoints
         checkpoints_data = []
-        number_of_route_coordinates = len(route.geom.coords)
         number_of_checkpoints = 5
 
         for index in range(1, number_of_checkpoints + 1):
             line_location = index / (number_of_checkpoints + 1)
             place = PlaceFactory(
                 geom=Point(
-                    *route.geom.coords[
-                        int(number_of_route_coordinates * line_location)
-                    ],
+                    *route.geom.coords[int(route.geom.num_coords * line_location)],
                     srid=21781
                 )
             )

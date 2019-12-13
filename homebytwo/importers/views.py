@@ -24,7 +24,7 @@ def import_routes(request, data_source):
     template = "importers/routes.html"
 
     # retrieve route class from data source in url
-    route_class = get_route_class_from_data_source(request, data_source)
+    route_class = get_route_class_from_data_source(data_source)
 
     # retrieve remote routes list
     remote_routes = route_class.objects.get_remote_routes_list(
@@ -62,7 +62,7 @@ def import_route(request, data_source, source_id):
     template = "routes/route_form.html"
 
     # retrieve route class from data source in url
-    route_class = get_route_class_from_data_source(request, data_source)
+    route_class = get_route_class_from_data_source(data_source)
 
     # instantiate route stub with athlte ans source_id from url
     route = route_class(athlete=request.user.athlete, source_id=source_id)

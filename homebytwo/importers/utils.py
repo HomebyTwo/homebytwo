@@ -4,9 +4,10 @@ from django.http import Http404
 
 from requests import Session, codes
 from requests.exceptions import ConnectionError
+from social_django.models import UserSocialAuth
 
 from ..routes.models import Route
-from .exceptions import SwitzerlandMobilityError
+from .exceptions import StravaMissingCredentials, SwitzerlandMobilityError
 
 
 def request_json(url, cookies=None):
@@ -88,7 +89,7 @@ def split_routes(remote_routes, local_routes):
     return new_routes, existing_routes, deleted_routes
 
 
-def get_route_class_from_data_source(request, data_source):
+def get_route_class_from_data_source(data_source):
     """
     retrieve route class from "data source" value in the url or raise 404
     """
@@ -97,6 +98,18 @@ def get_route_class_from_data_source(request, data_source):
     except KeyError:
         raise Http404("Data Source does not exist")
     else:
-        # check if user has access credentials for the remote service
-        route_class.objects.check_user_credentials(request)
         return route_class
+
+
+def check_strava_credentials(user):
+    """
+    view function provided to check whether a user
+    has access to Strava.
+    """
+    # check if the user has an associated Strava account
+    try:
+        user.social_auth.get(provider="strava")
+
+    # redirect to login with strava page
+    except UserSocialAuth.DoesNotExist:
+        raise StravaMissingCredentials

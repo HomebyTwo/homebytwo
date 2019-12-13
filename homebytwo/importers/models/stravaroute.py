@@ -6,7 +6,7 @@ from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
 from ...routes.utils import Link
-from ..exceptions import StravaMissingCredentials
+from ..utils import check_strava_credentials
 
 
 class StravaRouteManager(RouteManager):
@@ -26,6 +26,9 @@ class StravaRouteManager(RouteManager):
         as a list of StravaRoute stubs.
         """
 
+        # ensure athlete has a Strava account
+        check_strava_credentials(athlete.user)
+
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
 
@@ -40,19 +43,6 @@ class StravaRouteManager(RouteManager):
             )
             for strava_route in strava_routes
         ]
-
-    def check_user_credentials(self, request):
-        """
-        view function provided to check whether a user
-        has access to Strava.
-        """
-        # check if the user has an associated Strava account
-        try:
-            request.user.social_auth.get(provider="strava")
-
-        # redirect to login with strava page
-        except UserSocialAuth.DoesNotExist:
-            raise StravaMissingCredentials
 
 
 class StravaRoute(Route):
@@ -86,8 +76,11 @@ class StravaRoute(Route):
         the source_id of the model instance must be set.
         """
 
-        # Retrieve route details from Strava API
+        # ensure athlete is connected to Strava
+        check_strava_credentials(self.athlete.user)
         strava_client = self.athlete.strava_client
+
+        # Retrieve route details from Strava API
         strava_route = strava_client.get_route(self.source_id)
 
         # set route name
