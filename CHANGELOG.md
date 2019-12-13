@@ -1,4 +1,8 @@
 # Change Log
+## [0.8.0] - 2019-12-13 gpx download
+- Routes can be downloaded as GPX files
+- Routes can be uploaded to the Garmin Connect Homebytwo account as activities
+
 ## [0.7.2] - 2019-12-06 make better use of admin
 - Routes can be browsed in Django admin
 - Improved landing page
