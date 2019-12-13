@@ -18,7 +18,7 @@ polyline
 psycopg2-binary
 rcssmin
 requests
-sentry-sdk==0.13.4
+sentry-sdk==0.13.5
 social-auth-app-django
 stravalib
 tables
