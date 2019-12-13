@@ -8,6 +8,7 @@ django-geojson
 django-leaflet
 django-widget-tweaks
 easy_thumbnails
+flower
 gpxpy
 gunicorn
 lxml
