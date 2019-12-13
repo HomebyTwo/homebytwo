@@ -105,12 +105,6 @@ class RouteTestCase(TestCase):
         end_altitude = route.get_end_altitude()
         self.assertEqual(end_altitude, None)
 
-    def test_get_start_point(self):
-        route = RouteFactory.build()
-        start_point = route.get_start_point()
-
-        self.assertIsInstance(start_point, Point)
-
     def test_get_distance_data(self):
         data = DataFrame(
             [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],

@@ -1,4 +1,3 @@
-import json
 from ast import literal_eval
 
 from django.conf import settings

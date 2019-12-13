@@ -44,7 +44,7 @@ def route(request, pk):
         route.calculate_projected_time_schedule(request.user)
 
         # adding schedule to old routes one-by-one, instead of migrating
-        if request.user == route.athlete.user:
+        if route.athlete.user == request.user:
             route.save()
 
     # retrieve checkpoints along the way and enrich them with schedule data
@@ -90,12 +90,10 @@ def download_route_gpx(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
     # calculate personalized schedule if necessary
-    if not request.user == route.athlete.user or "schedule" not in route.data.columns:
-        route.calculate_projected_time_schedule(request.user)
-
+    if "schedule" not in route.data.columns:
         # updating old routes one-by-one, migrating was difficult
-        if request.user == route.athlete.user:
-            route.save(update_fields="data")
+        route.calculate_projected_time_schedule(request.user)
+        route.save(update_fields=["data"])
 
     return FileResponse(
         BytesIO(bytes(route.get_gpx(), encoding="utf-8")),
@@ -109,20 +107,20 @@ def download_route_gpx(request, pk):
 def upload_route_to_garmin(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    # restrict to route owner for now
-    if not route.athlete.user == request.user:
-        message = "Error: cannot upload route to Garmin connect. You are not the route onwer."
-        messages.error(request, message.format(route=str(route)))
+    # calculate personalized schedule if necessary
+    if "schedule" not in route.data.columns:
+        # updating old routes one-by-one, migrating was difficult
+        route.calculate_projected_time_schedule(request.user)
+        route.save(update_fields=["data"])
+
+    # set garmin_id to 1 == upload requested
+    route.garmin_id = 1
+    route.save(update_fields=["garmin_id"])
 
     # upload route to Garmin with a Celery task
-    else:
-        # set garmin_id to 1 == upload requested
-        route.garmin_id = 1
-        route.save(update_fields=["garmin_id"])
-
-        upload_route_to_garmin_task.delay(route.id, route.athlete.id)
-        message = "Your route is uploading to Garmin. Check back soon to access it."
-        messages.success(request, message)
+    upload_route_to_garmin_task.delay(route.id, route.athlete.id)
+    message = "Your route is uploading to Garmin. Check back soon to access it."
+    messages.success(request, message)
 
     return redirect(route)
 
@@ -226,8 +224,6 @@ class RouteUpdate(RouteEdit):
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
             return route.update_from_remote()
-        else:
-            return super().get_object(queryset)
 
 
 @method_decorator(login_required, name="dispatch")

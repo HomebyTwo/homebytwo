@@ -13,7 +13,7 @@ from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import Activity, Gear, WebhookTransaction
-from ..tasks import ProcessStravaEvents
+from ..tasks import ProcessStravaEvents, import_strava_activities_task
 from .factories import ActivityFactory, GearFactory, WebhookTransactionFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -273,7 +273,7 @@ class ActivityTestCase(TestCase):
 
         self.assertEqual(activity.description, "")
 
-    def test_import_all_user_activities_from_strava(self):
+    def test_import_strava_activities_task(self):
 
         httpretty.enable(allow_net_connect=False)
         activities_url = self.STRAVA_BASE_URL + "/athlete/activities"
@@ -308,16 +308,16 @@ class ActivityTestCase(TestCase):
         )
 
         # update athlete activities: 2 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 2)
         # update athlete activities: 1 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 1)
         # update athlete activities: 2 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 2)
         # update activities: 0 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 0)
 
     def test_get_streams_from_strava_manual_activity(self):
@@ -600,7 +600,7 @@ class ActivityTestCase(TestCase):
         self.assertIsNone(transactions.filter(status=self.ERROR).first())
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
 
-    def test_import_strava_activities_task(self):
+    def test_import_strava_activities_view(self):
         import_url = reverse("routes:import_strava")
 
         with patch(

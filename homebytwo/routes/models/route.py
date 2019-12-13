@@ -1,12 +1,10 @@
 from collections import deque
-from copy import copy
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import Point
 from django.urls import reverse
 
 import gpxpy
@@ -15,8 +13,8 @@ from garmin_uploader.api import GarminAPI, GarminAPIException
 from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
 
-from ..models import ActivityType, Checkpoint, Track
-from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
+from ..models import Checkpoint, Track
+from ..utils import GARMIN_ACTIVITY_TYPE_MAP, Link, create_segments_from_checkpoints, get_places_from_segment
 
 
 class RouteQuerySet(models.QuerySet):
@@ -374,31 +372,6 @@ class Route(Track):
         compatible Garmin devices.
         """
 
-        activity_type_map = {
-            ActivityType.ALPINESKI: "resort_skiing_snowboarding",
-            ActivityType.BACKCOUNTRYSKI: "backcountry_skiing_snowboarding",
-            ActivityType.ELLIPTICAL: "elliptical",
-            ActivityType.HANDCYCLE: "cycling",
-            ActivityType.HIKE: "hiking",
-            ActivityType.ICESKATE: "skating",
-            ActivityType.INLINESKATE: "skating",
-            ActivityType.NORDICSKI: "cross_country_skiing",
-            ActivityType.RIDE: "cycling",
-            ActivityType.ROCKCLIMBING: "rock_climbing",
-            ActivityType.ROWING: "rowing",
-            ActivityType.RUN: "running",
-            ActivityType.SNOWBOARD: "resort_skiing_snowboarding",
-            ActivityType.SNOWSHOE: "hiking",
-            ActivityType.STAIRSTEPPER: "fitness_equipment",
-            ActivityType.STANDUPPADDLING: "stand_up_paddleboarding",
-            ActivityType.SWIM: "swimming",
-            ActivityType.VIRTUALRIDE: "cycling",
-            ActivityType.VIRTUALRUN: "running",
-            ActivityType.WALK: "walk",
-            ActivityType.WEIGHTTRAINING: "fitness_equipment",
-            ActivityType.WORKOUT: "strength_training",
-        }
-
         # retrieve athlete to calculate an alternative schedule
         athlete = athlete or self.athlete
 
@@ -407,18 +380,16 @@ class Route(Track):
             self.calculate_projected_time_schedule(athlete.user)
 
             # adding schedule to old routes one-by-one, instead of migrating
-            if athlete == self.athlete.user:
+            if athlete == self.athlete:
                 self.save()
 
         # instantiate API from garmin_uploader and authenticate
         garmin_api = GarminAPI()
-        session = garmin_api.authenticate(
-            settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
-        )
+        session = self.authenticate_on_garmin(garmin_api)
 
         # delete existing activity on Garmmin
         if self.garmin_id > 1:
-            self.delete_on_garmin(session)
+            self.delete_garmin_activity(session)
 
         # write GPX content to temporary file
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
@@ -428,7 +399,7 @@ class Route(Track):
             activity = GarminActivity(
                 path=file.name,
                 name="Homebytwo {}".format(str(self)),
-                type=activity_type_map.get(self.activity_type.name, "other"),
+                type=GARMIN_ACTIVITY_TYPE_MAP.get(self.activity_type.name, "other"),
             )
 
             # upload to Garmin
@@ -443,6 +414,15 @@ class Route(Track):
             garmin_api.set_activity_type(session, activity)
 
         return self.garmin_activity_url, uploaded
+
+    def authenticate_on_garmin(self, garmin_api):
+        # sign-in to Homebytwo account
+        try:
+            return garmin_api.authenticate(
+                settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
+            )
+        except Exception as e:
+            raise GarminAPIException("Unable to sign-in: {}".format(e))
 
     def delete_garmin_activity(self, session):
         """

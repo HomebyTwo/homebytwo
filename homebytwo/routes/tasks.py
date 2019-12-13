@@ -57,7 +57,7 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         return 'Garmin API failure: {}'.format(e)
 
     if uploaded:
-        return "Route '{route}' successfully updated to Garmin connect at {url}".format(
+        return "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
             route=str(route), url=garmin_activity_url
         )
 

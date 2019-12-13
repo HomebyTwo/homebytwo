@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -156,8 +155,12 @@ class Track(TimeStampedModel):
 
         data = self.data
 
+        # make sure we have cummulative elevation differences
+        if not all(column in ["totalup", "totaldown"] for column in data.columns):
+            self.calculate_cummulative_elevation_differences()
+
         # make sure we have elevation gain and distance data
-        if not all(column in ["gain", "distance"] for column in list(data)):
+        if not all(column in ["gain", "distance"] for column in data.columns):
             self.calculate_elevation_gain_and_distance()
 
         # get performance data for athlete and activity
@@ -189,9 +192,6 @@ class Track(TimeStampedModel):
         interpolate the value of a given column in the DataFrame
         based on the line_location and the distance column.
         """
-        # return none if data field is empty
-        if self.data is None:
-            return None
 
         # calculate the distance value to interpolate with
         # based on line location and the total length of the track.
@@ -212,8 +212,6 @@ class Track(TimeStampedModel):
         if distance_data is not None:
             return D(m=distance_data)
 
-        return
-
     def get_time_data(self, line_location, data_column):
         """
         wrap around the get_data method
@@ -231,12 +229,6 @@ class Track(TimeStampedModel):
     def get_end_altitude(self):
         end_altitude = self.get_distance_data(1, "altitude")
         return end_altitude
-
-    def get_start_point(self):
-        return Point(self.geom[0], srid=21781)
-
-    def get_end_point(self):
-        return Point(self.geom[-1], srid=21781)
 
     def get_length(self):
         """
