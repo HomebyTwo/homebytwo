@@ -95,7 +95,8 @@ class StravaRoute(Route):
         self.data = self.get_route_data_streams(strava_client)
 
         # save route geom from latlng stream and drop redundant column in data
-        self.geom = LineString(*self.data["latlng"], srid=4326)
+        coords = [(lng, lat) for lat, lng in self.data.latlng]
+        self.geom = LineString(coords, srid=4326).transform(21781, clone=True)
         self.data.drop(columns=["latlng"], inplace=True)
 
     def get_route_data_streams(self, strava_client):
