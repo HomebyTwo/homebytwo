@@ -1,7 +1,6 @@
 from django.contrib.gis.geos import LineString
 
 from pandas import DataFrame
-from social_django.models import UserSocialAuth
 from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager

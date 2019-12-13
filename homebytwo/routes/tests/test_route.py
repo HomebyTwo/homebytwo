@@ -7,7 +7,7 @@ from unittest import skip
 from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -77,39 +77,20 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(totaldown.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [1000, 0, 1234, 1000]],
-            columns=["lat", "lng", "altitude", "length"],
+        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "length"],)
+        route = RouteFactory.build(
+            data=data,
+            length=1000,
+            geom=LineString(((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781),
         )
-        route = RouteFactory.build(data=data)
         start_altitude = route.get_start_altitude()
+        end_altitude = route.get_end_altitude()
 
         self.assertAlmostEqual(start_altitude.m, 0)
-
-        route.data = None
-        end_altitude = route.get_end_altitude()
-        self.assertEqual(end_altitude, None)
-
-    def test_get_end_altitude(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [600000, 0, 1234, 600000]],
-            columns=["lat", "lng", "altitude", "length"],
-        )
-        route = RouteFactory.build(data=data, length=600000)
-
-        end_altitude = route.get_end_altitude()
-
         self.assertAlmostEqual(end_altitude.m, 1234)
 
-        route.data = None
-        end_altitude = route.get_end_altitude()
-        self.assertEqual(end_altitude, None)
-
     def test_get_distance_data(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],
-            columns=["lat", "lng", "altitude", "length"],
-        )
+        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "length"],)
         route = RouteFactory.build(data=data, length=1000)
 
         # make the call
