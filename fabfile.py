@@ -147,9 +147,9 @@ def collect_static():
         run_python("manage.py collectstatic --noinput")
 
 
-def restart_process():
+def restart_processes():
     """
-    Restart the WSGI process
+    Restart processes on the remote server
     """
     for service in env.services_to_restart:
         sudo("systemctl restart {}".format(service))
@@ -258,7 +258,7 @@ def bootstrap():
     execute(collect_static)
     execute(migrate_database)
 
-    execute(restart_process)
+    execute(restart_processes)
 
 
 @task
@@ -286,7 +286,7 @@ def deploy(tag):
     execute(collect_static)
     execute(migrate_database)
 
-    execute(restart_process)
+    execute(restart_processes)
     execute(clean_old_database_backups, nb_backups_to_keep=10)
 
 
