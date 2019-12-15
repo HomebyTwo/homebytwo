@@ -8,6 +8,7 @@
 /.tox
 /.vagrant/
 /envdir/*
+!/envdir/.gitkeep
 /homebytwo/media
 /homebytwo/static/javascripts/*
 /homebytwo/static/scss/*
