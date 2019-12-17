@@ -91,13 +91,8 @@ class StravaRoute(Route):
         if strava_route.type == "2":
             self.activity_type = ActivityType.objects.get(name=ActivityType.RUN)
 
-        # create route data from Strava API streams
-        self.data = self.get_route_data_streams(strava_client)
-
-        # save route geom from latlng stream and drop redundant column in data
-        coords = [(lng, lat) for lat, lng in self.data.latlng]
-        self.geom = LineString(coords, srid=4326).transform(21781, clone=True)
-        self.data.drop(columns=["latlng"], inplace=True)
+        # create route data and geo from Strava API streams
+        self.get_route_data_streams(strava_client)
 
     def get_route_data_streams(self, strava_client):
         """
@@ -111,10 +106,17 @@ class StravaRoute(Route):
         data = DataFrame()
 
         for key, stream in route_streams.items():
+            # create route geom from latlng stream
+            if key == "latlng":
+                coords = [(lng, lat) for lat, lng in data["latlng"]]
+                self.geom = LineString(coords, srid=4326).transform(21781, clone=True)
+
             # rename distance to length
-            if key == "distance":
+            elif key == "distance":
                 data["length"] = stream.data
+
+            # import other streams
             else:
                 data[key] = stream.data
 
-        return data
+        self.data = data

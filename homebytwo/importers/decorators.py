@@ -8,11 +8,7 @@ from requests.exceptions import ConnectionError
 from social_django.models import UserSocialAuth
 from stravalib.exc import AccessUnauthorized as StravaAccessUnauthorized
 
-from .exceptions import (
-  StravaMissingCredentials,
-  SwitzerlandMobilityError,
-  SwitzerlandMobilityMissingCredentials,
-)
+from .exceptions import StravaMissingCredentials, SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 
 
 def strava_required(view_func):
@@ -28,7 +24,7 @@ def strava_required(view_func):
         try:
             request.user.social_auth.get(provider="strava")
 
-        # redirect to login with strava page
+        # logged-in users with no Strava account linked should blow-up
         except UserSocialAuth.DoesNotExist:
             raise StravaMissingCredentials
 
