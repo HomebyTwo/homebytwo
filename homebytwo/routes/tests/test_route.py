@@ -7,7 +7,7 @@ from unittest import skip
 from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -44,7 +44,12 @@ class RouteTestCase(TestCase):
 
     def test_str(self):
         route = RouteFactory()
-        self.assertEqual(str(route), "Route: {}".format(route.name))
+        self.assertEqual(
+            str(route),
+            "{activity_type}: {name}".format(
+                activity_type=str(route.activity_type), name=route.name
+            ),
+        )
 
     def test_display_url(self):
         route = RouteFactory()
@@ -72,45 +77,20 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(totaldown.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [1000, 0, 1234, 1000]],
-            columns=["lat", "lng", "altitude", "length"],
+        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "length"],)
+        route = RouteFactory.build(
+            data=data,
+            length=1000,
+            geom=LineString(((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781),
         )
-        route = RouteFactory.build(data=data)
         start_altitude = route.get_start_altitude()
+        end_altitude = route.get_end_altitude()
 
         self.assertAlmostEqual(start_altitude.m, 0)
-
-        route.data = None
-        end_altitude = route.get_end_altitude()
-        self.assertEqual(end_altitude, None)
-
-    def test_get_end_altitude(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [600000, 0, 1234, 600000]],
-            columns=["lat", "lng", "altitude", "length"],
-        )
-        route = RouteFactory.build(data=data, length=600000)
-
-        end_altitude = route.get_end_altitude()
-
         self.assertAlmostEqual(end_altitude.m, 1234)
 
-        route.data = None
-        end_altitude = route.get_end_altitude()
-        self.assertEqual(end_altitude, None)
-
-    def test_get_start_point(self):
-        route = RouteFactory.build()
-        start_point = route.get_start_point()
-
-        self.assertIsInstance(start_point, Point)
-
     def test_get_distance_data(self):
-        data = DataFrame(
-            [[0, 0, 0, 0], [707.106781187, 707.106781187, 1000, 1000]],
-            columns=["lat", "lng", "altitude", "length"],
-        )
+        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "length"],)
         route = RouteFactory.build(data=data, length=1000)
 
         # make the call
@@ -310,7 +290,9 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a href="%s">Edit Route</a>' % edit_url
+        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+            edit_url
+        )
 
         response = self.client.get(url)
 
@@ -480,15 +462,14 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=self.athlete)
 
         # checkpoints
-        number_of_route_coordinates = len(route.geom.coords)
         number_of_checkpoints = 20
         checkpoints_data = []
 
         for index in range(1, number_of_checkpoints + 1):
             line_location = index / (number_of_checkpoints + 1)
             place = PlaceFactory(
-                geom="POINT ({} {})".format(
-                    *route.geom.coords[int(number_of_route_coordinates * line_location)]
+                geom=Point(
+                    *route.geom.coords[int(route.geom.num_coords * line_location)]
                 )
             )
             route.places.add(place, through_defaults={"line_location": line_location})
@@ -583,15 +564,12 @@ class RouteTestCase(TestCase):
 
         # checkpoints
         number_of_checkpoints = 5
-        number_of_route_coordinates = len(route.geom.coords)
 
         for index in range(1, number_of_checkpoints + 1):
             line_location = index / (number_of_checkpoints + 1)
             PlaceFactory(
                 geom=Point(
-                    *route.geom.coords[
-                        int(number_of_route_coordinates * line_location)
-                    ],
+                    *route.geom.coords[int(route.geom.num_coords * line_location)],
                     srid=21781
                 )
             )

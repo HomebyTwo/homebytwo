@@ -5,24 +5,76 @@ from django.template.defaultfilters import pluralize
 from celery import shared_task
 from celery.schedules import crontab
 from celery.task import PeriodicTask
+from garmin_uploader.api import GarminAPIException
 
-from .models import Activity, Athlete, WebhookTransaction
+from .models import Activity, Athlete, Route, WebhookTransaction
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def import_athlete_strava_activities(athlete_id):
+def import_strava_activities_task(athlete_id):
     """
     import or update all Strava activities for an athlete.
 
     This task generates one query to the Strava API for 200 activities.
     """
+    # log task request
+    logger.info("import Strava activities for {user_id}".format(user_id=athlete_id))
+
     athlete = Athlete.objects.get(pk=athlete_id)
     activities = Activity.objects.update_user_activities_from_strava(athlete)
+
     return "The athlete now has {0} activit{1} saved in the database.".format(
         len(activities), pluralize(len(activities), "y,ies")
     )
+
+
+@shared_task
+def upload_route_to_garmin_task(route_id, athlete_id=None):
+    """
+    uploads a route schedule as activity to the Homebytwo account on
+    Garmin Connect.
+
+    This allows athletes to use the race against activity feature on
+    compatible Garmin devices.
+    """
+
+    # log message
+    log_message = "Upload route {route_id} to garmin for user {user_id}"
+
+    # retrieve route
+    route = Route.objects.select_related("athlete").get(pk=route_id)
+
+    # retrieve athlete from DB if different from route athlete
+    if athlete_id and athlete_id != route.athlete.id:
+        # retrieve athlete from DB
+        athlete = Athlete.objects.get(pk=athlete_id)
+        # log task
+        logger.info(log_message.format(route_id=route_id, user_id=athlete.user.id))
+
+    else:
+        # defaults to `route.athlete` in `route.upload_to_garmin` method
+        athlete = None
+        # log task
+        logger.info(log_message.format(route_id=route_id, user_id=route.athlete.user.id))
+
+    try:
+        # upload to Garmin Connect
+        garmin_activity_url, uploaded = route.upload_to_garmin(athlete)
+
+    except GarminAPIException as e:
+        # remove Garmin ID if status was uploading
+        if route.garmin_id == 1:
+            route.garmin_id = None
+            route.save(update_fields=["garmin_id"])
+
+        return 'Garmin API failure: {}'.format(e)
+
+    if uploaded:
+        return "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
+            route=str(route), url=garmin_activity_url
+        )
 
 
 class ProcessStravaEvents(PeriodicTask):
@@ -33,6 +85,7 @@ class ProcessStravaEvents(PeriodicTask):
     is processed for each object.
 
     """
+
     run_every = crontab(minute="*/15")  # this will run every 15 minutes
 
     def run(self):
@@ -65,6 +118,7 @@ class ProcessStravaEvents(PeriodicTask):
 
             # mark duplicate entries for an object as SKIPPED
             else:
+                logger.info("webhook transaction {} skipped".format(transaction.id))
                 transaction.status = WebhookTransaction.SKIPPED
                 transaction.save()
 

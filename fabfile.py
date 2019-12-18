@@ -5,20 +5,7 @@ from io import StringIO
 
 import dj_database_url
 from config import get_project_root_path
-from fabric.api import (
-    cd,
-    env,
-    execute,
-    get,
-    local,
-    put,
-    require,
-    run,
-    settings,
-    shell_env,
-    sudo,
-    task,
-)
+from fabric.api import cd, env, execute, get, local, put, require, run, settings, shell_env, sudo, task
 from fabric.context_managers import quiet
 from fabric.operations import prompt
 from gitric import api as gitric
@@ -28,43 +15,31 @@ from gitric import api as gitric
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
     "prod": {
-        "root": "/var/www/html/production_homebytwo/",
-        "hosts": ["root@homebytwo.ch"],
-        "gunicorn_service_name": "gunicorn",
+        "root": "/var/www/homebytwo.ch/",
+        "hosts": ["homebytwo@homebytwo.ch"],
+        "services_to_restart": ["celeryd", "celerybeat", "gunicorn"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         "settings": {
-            "ALLOWED_HOSTS": "www.homebytwo.ch",
             "CELERY_BROKER_URL": "amqp://localhost",
-            "MEDIA_ROOT": "/var/www/html/production_homebytwo/media",
+            "MEDIA_ROOT": "/var/www/homebytwo.ch/media",
             "MEDIA_URL": "/media/",
-            "STATIC_ROOT": "/var/www/html/production_homebytwo/static",
+            "STATIC_ROOT": "/var/www/homebytwo.ch/static",
             "STATIC_URL": "/static/",
-            "STRAVA_ROUTE_URL": "https://www.strava.com/routes/%d",
-            "SWITZERLAND_MOBILITY_LIST_URL": "https://map.wanderland.ch/api/4/tracks_list",
-            "SWITZERLAND_MOBILITY_LOGIN_URL": "https://map.wanderland.ch/api/4/login",
-            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL": "https://map.wanderland.ch/api/4/tracks/%d",
-            "SWITZERLAND_MOBILITY_ROUTE_URL": "https://map.wanderland.ch/?trackId=%d",
         },
     },
     "staging": {
-        "root": "/var/www/html/staging_homebytwo/",
-        "hosts": ["root@staging.homebytwo.ch"],
-        "gunicorn_service_name": "staging_gunicorn",
+        "root": "/var/www/staging.homebytwo.ch/",
+        "hosts": ["homebytwo@staging.homebytwo.ch"],
+        "services_to_restart": ["celeryd", "celerybeat", "gunicorn"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         "settings": {
-            "ALLOWED_HOSTS": "staging.homebytwo.ch",
             "CELERY_BROKER_URL": "amqp://localhost",
-            "MEDIA_ROOT": "/var/www/html/staging_homebytwo/media",
+            "MEDIA_ROOT": "/var/www/staging.homebytwo.ch/media",
             "MEDIA_URL": "/media/",
-            "STATIC_ROOT": "/var/www/html/staging_homebytwo/static",
+            "STATIC_ROOT": "/var/www/staging.homebytwo.ch/static",
             "STATIC_URL": "/static/",
-            "STRAVA_ROUTE_URL": "https://www.strava.com/routes/%d",
-            "SWITZERLAND_MOBILITY_LIST_URL": "https://map.wanderland.ch/api/4/tracks_list",
-            "SWITZERLAND_MOBILITY_LOGIN_URL": "https://map.wanderland.ch/api/4/login",
-            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL": "https://map.wanderland.ch/api/4/tracks/%d",
-            "SWITZERLAND_MOBILITY_ROUTE_URL": "https://map.wanderland.ch/?trackId=%d",
         },
     },
 }
@@ -157,11 +132,12 @@ def collect_static():
         run_python("manage.py collectstatic --noinput")
 
 
-def restart_process():
+def restart_processes():
     """
-    Restart the WSGI process
+    Restart processes on the remote server
     """
-    sudo("systemctl restart {}".format(env.gunicorn_service_name))
+    for service in env.services_to_restart:
+        sudo("/bin/systemctl restart {}.service".format(service), shell=False)
 
 
 def generate_secret_key():
@@ -227,24 +203,11 @@ def bootstrap():
 
     required_settings = set(
         [
-            "ALLOWED_HOSTS",
             "CELERY_BROKER_URL",
-            "DATABASE_URL",
-            "MAILCHIMP_API_KEY",
-            "MAILCHIMP_LIST_ID",
-            "MAPBOX_ACCESS_TOKEN",
             "MEDIA_ROOT",
             "MEDIA_URL",
             "STATIC_ROOT",
             "STATIC_URL",
-            "STRAVA_CLIENT_ID",
-            "STRAVA_CLIENT_SECRET",
-            "STRAVA_ROUTE_URL",
-            "STRAVA_VERIFY_TOKEN",
-            "SWITZERLAND_MOBILITY_LIST_URL",
-            "SWITZERLAND_MOBILITY_LOGIN_URL",
-            "SWITZERLAND_MOBILITY_ROUTE_DATA_URL",
-            "SWITZERLAND_MOBILITY_ROUTE_URL",
         ]
     )
 
@@ -257,14 +220,14 @@ def bootstrap():
     for setting in required_settings - set(env_settings.keys()):
         set_setting(setting)
 
-    set_setting("DJANGO_SETTINGS_MODULE", value="%s.settings.base" % env.project_name)
+    set_setting("DJANGO_SETTINGS_MODULE", value="config.settings.prod")
     set_setting("SECRET_KEY", value=generate_secret_key())
 
     execute(install_requirements)
     execute(collect_static)
     execute(migrate_database)
 
-    execute(restart_process)
+    execute(restart_processes)
 
 
 @task
@@ -292,7 +255,7 @@ def deploy(tag):
     execute(collect_static)
     execute(migrate_database)
 
-    execute(restart_process)
+    execute(restart_processes)
     execute(clean_old_database_backups, nb_backups_to_keep=10)
 
 

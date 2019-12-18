@@ -1,5 +1,9 @@
+from datetime import datetime
+
 from django.contrib.gis.db import models
 from django.core.serializers import serialize
+
+from gpxpy.gpx import GPXWaypoint
 
 from ...core.models import TimeStampedModel
 
@@ -160,8 +164,32 @@ class Place(TimeStampedModel):
             self.source_id = str(self.id)
             self.save()
 
+    def get_coords(self, srid=4326):
+        """
+        returns a tupple with the place coords transformed to the requested srid
+        """
+        return self.geom.transform(4326, clone=True).coords
+
     def get_geojson(self, fields=["name", "place_type"]):
         return serialize("geojson", [self], geometry_field="geom", fields=fields)
+
+    def get_gpx_waypoint(self, route, line_location, start_time):
+        """
+        return the GPXWaypoint object of the place
+        """
+
+        lng, lat = self.get_coords()
+        time = start_time + route.get_time_data(line_location, "schedule")
+        altitude_on_route = route.get_distance_data(line_location, "altitude")
+
+        return GPXWaypoint(
+            name=self.name,
+            longitude=lng,
+            latitude=lat,
+            elevation=altitude_on_route,
+            type=self.get_place_type_display(),
+            time=time,
+        )
 
 
 class Checkpoint(models.Model):
@@ -182,6 +210,9 @@ class Checkpoint(models.Model):
 
     @property
     def field_value(self):
+        """
+        value used in the ModelForm to serialize checkpoints
+        """
         return "{}_{}".format(self.place.id, self.line_location)
 
     class Meta:
@@ -193,4 +224,14 @@ class Checkpoint(models.Model):
             self.distance_from_start.km,
             self.place.name,
             self.place.get_place_type_display(),
+        )
+
+    def get_gpx_waypoint(self, route=None, start_time=datetime.utcnow()):
+        """
+        return the GPXWaypoint object for exporting routes to GPX
+        """
+        route = route or self.route
+
+        return self.place.get_gpx_waypoint(
+            route=route, line_location=self.line_location, start_time=start_time,
         )

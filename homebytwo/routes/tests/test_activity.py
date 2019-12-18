@@ -9,10 +9,11 @@ from django.urls import reverse
 import httpretty
 from mock import patch
 
+from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import Activity, Gear, WebhookTransaction
-from ..tasks import ProcessStravaEvents
+from ..tasks import ProcessStravaEvents, import_strava_activities_task
 from .factories import ActivityFactory, GearFactory, WebhookTransactionFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
@@ -58,19 +59,17 @@ class ActivityTestCase(TestCase):
         return strava_activity
 
     def test_no_strava_token(self):
+        """
+        Logged-in user with no Strava auth connected, i.e. from createsuperuser
+        """
 
         non_strava_user = UserFactory(password="testpassword")
         self.client.login(username=non_strava_user.username, password="testpassword")
 
         url = reverse("routes:import_strava")
-        response = self.client.get(url)
-        redirected_response = self.client.get(url, follow=True)
 
-        login_url = "{url}?next={next}".format(url=reverse("login"), next=url)
-        error = "You are not connected to Strava."
-
-        self.assertRedirects(response, login_url)
-        self.assertContains(redirected_response, error)
+        with self.assertRaises(StravaMissingCredentials):
+            self.client.get(url)
 
     def test_not_logged_in(self):
         self.client.logout()
@@ -274,7 +273,7 @@ class ActivityTestCase(TestCase):
 
         self.assertEqual(activity.description, "")
 
-    def test_import_all_user_activities_from_strava(self):
+    def test_import_strava_activities_task(self):
 
         httpretty.enable(allow_net_connect=False)
         activities_url = self.STRAVA_BASE_URL + "/athlete/activities"
@@ -309,16 +308,16 @@ class ActivityTestCase(TestCase):
         )
 
         # update athlete activities: 2 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 2)
         # update athlete activities: 1 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 1)
         # update athlete activities: 2 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 2)
         # update activities: 0 received
-        Activity.objects.update_user_activities_from_strava(self.athlete)
+        import_strava_activities_task(self.athlete.id)
         self.assertEqual(Activity.objects.count(), 0)
 
     def test_get_streams_from_strava_manual_activity(self):
@@ -601,11 +600,11 @@ class ActivityTestCase(TestCase):
         self.assertIsNone(transactions.filter(status=self.ERROR).first())
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
 
-    def test_import_all_activities_from_strava(self):
+    def test_import_strava_activities_view(self):
         import_url = reverse("routes:import_strava")
 
         with patch(
-            "homebytwo.routes.tasks.import_athlete_strava_activities.delay"
+            "homebytwo.routes.tasks.import_strava_activities_task.delay"
         ) as mock_task:
             response = self.client.get(import_url)
             self.assertRedirects(response, reverse("routes:activities"))

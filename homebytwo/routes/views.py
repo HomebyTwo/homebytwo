@@ -1,10 +1,11 @@
 import json
 from datetime import datetime
+from io import BytesIO
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -18,7 +19,7 @@ from pytz import utc
 from ..importers.decorators import remote_connection, strava_required
 from .forms import RouteForm
 from .models import Activity, Route, WebhookTransaction
-from .tasks import import_athlete_strava_activities
+from .tasks import import_strava_activities_task, upload_route_to_garmin_task
 
 
 @login_required
@@ -31,20 +32,26 @@ def routes(request):
     return render(request, "routes/routes.html", context)
 
 
-@require_safe
 def route(request, pk):
+    """
+    display route with schedule based on user performance.
+    """
     # load route from Database
-    route = get_object_or_404(Route, id=pk)
+    route = get_object_or_404(Route.objects.select_related(), id=pk)
 
-    # calculate the schedule based on user data
-    route.calculate_projected_time_schedule(request.user)
+    # calculate personalized schedule if absent or different from ownwer
+    if not route.athlete.user == request.user or "schedule" not in route.data.columns:
+        route.calculate_projected_time_schedule(request.user)
+
+        # adding schedule to old routes one-by-one, instead of migrating
+        if route.athlete.user == request.user:
+            route.save()
 
     # retrieve checkpoints along the way and enrich them with schedule data
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # doesn't work as a calculated property, because the route schedule
-    # is missing at instantiation
+    # not a calculated property on Checkpoint, because the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
@@ -79,14 +86,54 @@ def route_checkpoints_list(request, pk):
 
 
 @login_required
-@strava_required
+def download_route_gpx(request, pk):
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+
+    # calculate personalized schedule if necessary
+    if "schedule" not in route.data.columns:
+        # updating old routes one-by-one, migrating was difficult
+        route.calculate_projected_time_schedule(request.user)
+        route.save(update_fields=["data"])
+
+    return FileResponse(
+        BytesIO(bytes(route.get_gpx(), encoding="utf-8")),
+        as_attachment=True,
+        filename=route.gpx_filename,
+        content_type="application/gpx+xml; charset=utf-8",
+    )
+
+
+@login_required
+def upload_route_to_garmin(request, pk):
+    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+
+    # calculate personalized schedule if necessary
+    if "schedule" not in route.data.columns:
+        # updating old routes one-by-one, migrating was difficult
+        route.calculate_projected_time_schedule(request.user)
+        route.save(update_fields=["data"])
+
+    # set garmin_id to 1 == upload requested
+    route.garmin_id = 1
+    route.save(update_fields=["garmin_id"])
+
+    # upload route to Garmin with a Celery task
+    upload_route_to_garmin_task.delay(route.id, route.athlete.id)
+    message = "Your route is uploading to Garmin. Check back soon to access it."
+    messages.success(request, message)
+
+    return redirect(route)
+
+
+@login_required
+@strava_required  # the superuser account should be the only one logged-in without Strava
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.
     still work in progress
     """
     if request.method == "GET":
-        import_athlete_strava_activities.delay(request.user.athlete.id)
+        import_strava_activities_task.delay(request.user.athlete.id)
         messages.success(request, "We are importing your Strava activities!")
         return redirect("routes:activities")
 
@@ -164,7 +211,7 @@ class RouteEdit(UpdateView):
         # This method is called when valid form data has been POSTed.
         # if the activity_type has changed recalculate the route schedule
         if "activity_type" in form.changed_data:
-            form.instance.calculate_projected_time_schedule(self.request.user)
+            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
 
         return super().form_valid(form)
 
@@ -172,14 +219,11 @@ class RouteEdit(UpdateView):
 @method_decorator(login_required, name="dispatch")
 @method_decorator(remote_connection, name="dispatch")
 class RouteUpdate(RouteEdit):
-
     def get_object(self, queryset=None):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
             return route.update_from_remote()
-        else:
-            return super().get_object(queryset)
 
 
 @method_decorator(login_required, name="dispatch")

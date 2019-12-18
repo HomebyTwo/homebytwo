@@ -1,12 +1,20 @@
 from collections import deque
+from datetime import datetime, timedelta
+from tempfile import NamedTemporaryFile
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.urls import reverse
 
+import gpxpy
+import gpxpy.gpx
+from garmin_uploader.api import GarminAPI, GarminAPIException
+from garmin_uploader.workflow import Activity as GarminActivity
+from requests.exceptions import HTTPError
+
 from ..models import Checkpoint, Track
-from ..utils import Link, create_segments_from_checkpoints, get_places_from_segment
+from ..utils import GARMIN_ACTIVITY_TYPE_MAP, Link, create_segments_from_checkpoints, get_places_from_segment
 
 
 class RouteQuerySet(models.QuerySet):
@@ -46,7 +54,11 @@ class Route(Track):
         "Where the route came from", default="homebytwo", max_length=50
     )
 
+    # many-2-many relationship to Place over the Checkpoint relationship table
     places = models.ManyToManyField("Place", through="Checkpoint", blank=True)
+
+    # Activity id on Garmin
+    garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
         unique_together = ("athlete", "data_source", "source_id")
@@ -54,7 +66,9 @@ class Route(Track):
     objects = RouteManager()
 
     def __str__(self):
-        return "Route: {}".format(self.name)
+        return "{activity_type}: {name}".format(
+            activity_type=str(self.activity_type), name=self.name
+        )
 
     def get_absolute_url(self, action="display"):
         """
@@ -69,6 +83,8 @@ class Route(Track):
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
+            "gpx": ("routes:gpx", route_kwargs),
+            "garmin_upload": ("routes:garmin_upload", route_kwargs),
             "import": ("import_route", import_kwargs),
         }
         if action_reverse.get(action):
@@ -91,6 +107,14 @@ class Route(Track):
         return self.get_absolute_url("delete")
 
     @property
+    def gpx_url(self):
+        return self.get_absolute_url("gpx")
+
+    @property
+    def garmin_upload_url(self):
+        return self.get_absolute_url("garmin_upload")
+
+    @property
     def import_url(self):
         return self.get_absolute_url("import")
 
@@ -107,15 +131,19 @@ class Route(Track):
         if self.data_source == "switzerland_mobility":
             return Link(
                 url=settings.SWITZERLAND_MOBILITY_ROUTE_URL % int(self.source_id),
-                text="Switzerland Mobility Plus"
+                text="Switzerland Mobility Plus",
             )
 
         # Strava Route
         elif self.data_source == "strava":
             return Link(
-                url=settings.STRAVA_ROUTE_URL % int(self.source_id),
-                text="Strava"
+                url=settings.STRAVA_ROUTE_URL % int(self.source_id), text="Strava"
             )
+
+    @property
+    def garmin_activity_url(self):
+        if self.garmin_id and self.garmin_id > 1:
+            return settings.GARMIN_ACTIVITY_URL.format(self.garmin_id)
 
     @property
     def svg(self):
@@ -156,6 +184,10 @@ class Route(Track):
                 source_id=self.source_id,
                 athlete=self.athlete,
             ).exists()
+
+    @property
+    def gpx_filename(self):
+        return "homebytwo_{}.gpx".format(self.pk)
 
     def update_from_remote(self):
         """
@@ -240,3 +272,178 @@ class Route(Track):
         checkpoints = sorted(checkpoints, key=lambda o: o.line_location)
 
         return checkpoints
+
+    def get_gpx(self):
+        """
+        returns the route as a GPX with track schedule and waypoints
+        https://www.topografix.com/gpx.asp
+        """
+        # instantiate GPX object
+        gpx = gpxpy.gpx.GPX()
+        gpx.creator = "Homebytwo -- homebytwo.ch"
+
+        # GPX requires datetime objects, route.data["schedule"] id in timedelta
+        start_time = datetime.utcnow()
+
+        # add route waypoints
+        gpx.waypoints.extend(self.get_gpx_waypoints(start_time))
+        gpx.tracks.append(self.get_gpx_track(start_time))
+
+        return gpx.to_xml()
+
+    def get_gpx_waypoints(self, start_time=datetime.utcnow()):
+        """
+        return the set of all waypoints including start and end place
+        as GPXWaypoint objects.
+        """
+
+        # get GPX from checkpoints
+        gpx_checkpoints = [
+            checkpoint.get_gpx_waypoint(route=self, start_time=start_time)
+            for checkpoint in self.checkpoint_set.all()
+        ]
+        gpx_waypoints = deque(gpx_checkpoints)
+
+        # retrieve start_place GPX
+        if self.start_place:
+            gpx_start_place = self.start_place.get_gpx_waypoint(
+                route=self, line_location=0, start_time=start_time
+            )
+            gpx_waypoints.appendleft(gpx_start_place)
+
+        # retrieve end_place GPX
+        if self.end_place:
+            gpx_end_place = self.end_place.get_gpx_waypoint(
+                route=self, line_location=0, start_time=start_time
+            )
+            gpx_waypoints.append(gpx_end_place)
+
+        return gpx_waypoints
+
+    def get_gpx_track(self, start_time=datetime.utcnow()):
+        """
+        return the GPXTrack object corresponding to the route
+
+        According to GPX specificatioins, GPS tracks can contain one or segments of
+        continuous GPS tracking. For our scchedule, we create a single segement.
+        """
+        # Instantiate GPX Track
+        gpx_track = gpxpy.gpx.GPXTrack(name=self.name)
+
+        # GPX Segment in Track
+        gpx_segment = gpxpy.gpx.GPXTrackSegment()
+        gpx_track.segments.append(gpx_segment)
+
+        # create a clone of the route geom in SRID 4326
+        geom = self.geom.transform(4326, clone=True)
+
+        # we cannot start from the route geometry
+        # because it can have a different number of coords than the number of rows
+        # in the route data. We start from the length column in the route data and
+        # save the corresponding Point in the Linestring geometry to lat, lng columns.
+        self.data["lng"], self.data["lat"] = zip(  # unpack list of coords tupples
+            *(self.data["length"] / self.data["length"].max())  # line location
+            .apply(lambda x: geom.interpolate_normalized(x).coords)  # get Point
+            .to_list()  # dump list of coords tupples
+        )
+
+        # create the GPXTrackPoints from the route data and append them to the segment
+        for lng, lat, altitude, schedule in zip(
+            self.data.lng, self.data.lat, self.data.altitude, self.data.schedule,
+        ):
+            gpx_track_point = gpxpy.gpx.GPXTrackPoint(
+                latitude=lat,
+                longitude=lng,
+                elevation=altitude,
+                time=start_time + timedelta(seconds=schedule),
+            )
+
+            gpx_segment.points.append(gpx_track_point)
+
+        return gpx_track
+
+    def upload_to_garmin(self, athlete=None):
+        """
+        uploads a route schedule as activity to the Homebytwo account on
+        Garmin Connect using the garmin_uploader library:
+        https://github.com/JohanWieslander/garmin-uploader
+
+        Athletes can then use the "race against activity" feature on
+        compatible Garmin devices.
+        """
+
+        # retrieve athlete to calculate an alternative schedule
+        athlete = athlete or self.athlete
+
+        # calculate schedule if needed
+        if not athlete == self.athlete or "schedule" not in self.data.columns:
+            self.calculate_projected_time_schedule(athlete.user)
+
+            # adding schedule to old routes one-by-one, instead of migrating
+            if athlete == self.athlete:
+                self.save()
+
+        # instantiate API from garmin_uploader and authenticate
+        garmin_api = GarminAPI()
+        session = self.authenticate_on_garmin(garmin_api)
+
+        # delete existing activity on Garmmin
+        if self.garmin_id > 1:
+            self.delete_garmin_activity(session)
+
+        # write GPX content to temporary file
+        with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
+            file.write(bytes(self.get_gpx(), encoding="utf-8"))
+
+            # instantiate activity object from garmin_uploade
+            activity = GarminActivity(
+                path=file.name,
+                name="Homebytwo {}".format(str(self)),
+                type=GARMIN_ACTIVITY_TYPE_MAP.get(self.activity_type.name, "other"),
+            )
+
+            # upload to Garmin
+            activity.id, uploaded = garmin_api.upload_activity(session, activity)
+
+        if uploaded:
+            self.garmin_id = activity.id
+            self.save(update_fields=["garmin_id"])
+
+            # adapt type and name on Garmin connect
+            garmin_api.set_activity_name(session, activity)
+            garmin_api.set_activity_type(session, activity)
+
+        return self.garmin_activity_url, uploaded
+
+    def authenticate_on_garmin(self, garmin_api):
+        # sign-in to Homebytwo account
+        try:
+            return garmin_api.authenticate(
+                settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
+            )
+        except Exception as e:
+            raise GarminAPIException("Unable to sign-in: {}".format(e))
+
+    def delete_garmin_activity(self, session):
+        """
+        delete an existing activity on Garmin based on the route garmin_id
+
+        If it fails
+        """
+        delete_url = (
+            "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
+        )
+
+        garmin_response = session.delete(delete_url.format(self.garmin_id))
+        try:
+            # 404 is ok, job was already done
+            if not garmin_response.status_code == 404:
+                garmin_response.raise_for_status()
+
+        except HTTPError as error:
+            raise GarminAPIException(
+                "Failed to delete activity {}: {}".format(self.garmin_id, error)
+            )
+        else:
+            self.garmin_id = None
+            self.save(update_fields=["garmin_id"])

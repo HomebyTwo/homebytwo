@@ -6,10 +6,35 @@ from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
 
 from .fields import LineSubstring
-from .models import Place
+from .models import ActivityType, Place
 
 # named tupple to handle Urls
 Link = namedtuple("Link", ["url", "text"])
+
+GARMIN_ACTIVITY_TYPE_MAP = {
+    ActivityType.ALPINESKI: "resort_skiing_snowboarding",
+    ActivityType.BACKCOUNTRYSKI: "backcountry_skiing_snowboarding",
+    ActivityType.ELLIPTICAL: "elliptical",
+    ActivityType.HANDCYCLE: "cycling",
+    ActivityType.HIKE: "hiking",
+    ActivityType.ICESKATE: "skating",
+    ActivityType.INLINESKATE: "skating",
+    ActivityType.NORDICSKI: "cross_country_skiing",
+    ActivityType.RIDE: "cycling",
+    ActivityType.ROCKCLIMBING: "rock_climbing",
+    ActivityType.ROWING: "rowing",
+    ActivityType.RUN: "running",
+    ActivityType.SNOWBOARD: "resort_skiing_snowboarding",
+    ActivityType.SNOWSHOE: "hiking",
+    ActivityType.STAIRSTEPPER: "fitness_equipment",
+    ActivityType.STANDUPPADDLING: "stand_up_paddleboarding",
+    ActivityType.SWIM: "swimming",
+    ActivityType.VIRTUALRIDE: "cycling",
+    ActivityType.VIRTUALRUN: "running",
+    ActivityType.WALK: "walk",
+    ActivityType.WEIGHTTRAINING: "fitness_equipment",
+    ActivityType.WORKOUT: "strength_training",
+}
 
 
 def get_image_path(instance, filename):

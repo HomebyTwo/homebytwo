@@ -1,4 +1,5 @@
 -e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
+-e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
 
 celery
 dj-database-url
@@ -7,14 +8,17 @@ django-geojson
 django-leaflet
 django-widget-tweaks
 easy_thumbnails
+flower
+gpxpy
 gunicorn
+lxml
 pandas
 pillow
 polyline
 psycopg2-binary
 rcssmin
 requests
-sentry-sdk==0.13.4
+sentry-sdk==0.13.5
 social-auth-app-django
 stravalib
 tables

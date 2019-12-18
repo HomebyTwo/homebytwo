@@ -1,5 +1,6 @@
 from os.path import dirname, realpath
 
+from django.contrib.gis.geos import LineString
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import escape
@@ -141,16 +142,17 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        streams = self.athlete.strava_client.get_route_streams(source_id)
-
+        strava_client = self.athlete.strava_client
         strava_route = StravaRouteFactory()
-        data = strava_route._data_from_streams(streams)
-        nb_rows, nb_columns = data.shape
+        strava_route.get_route_data_streams(strava_client)
+        nb_rows, nb_columns = strava_route.data.shape
 
         httpretty.disable()
 
-        self.assertIsInstance(data, DataFrame)
-        self.assertEqual(nb_columns, 4)
+        self.assertIsInstance(strava_route.data, DataFrame)
+        self.assertEqual(nb_columns, 2)
+        self.assertIsInstance(strava_route.geom, LineString)
+        self.assertEqual(strava_route.geom.num_coords, nb_rows)
 
     def test_set_activity_type(self):
         route = StravaRoute(source_id=2325453, athlete=self.athlete)

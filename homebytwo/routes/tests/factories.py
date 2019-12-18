@@ -96,6 +96,7 @@ class RouteFactory(DjangoModelFactory):
     data_source = "homebytwo"
     description = Faker("bs")
     athlete = SubFactory(AthleteFactory)
+    garmin_id = None
     totalup = Faker("random_int", min=0, max=5000)
     totaldown = Faker("random_int", min=0, max=5000)
     length = Faker("random_int", min=1, max=5000)

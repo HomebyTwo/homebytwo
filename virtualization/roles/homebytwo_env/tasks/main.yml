@@ -9,3 +9,5 @@
   copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_ROUTE_DATA_URL content=https://map.wanderland.ch/api/4/track/%d/show"
 - name: fill-in Switzerland Mobility Route URL ENVDIR settings
   copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_ROUTE_URL content=https://map.wanderland.ch/?trackId=%d"
+- name: fill-in Garmin activity URL ENVDIR settings
+  copy: "dest={{ django_root }}/envdir/GARMIN_ACTIVITY_URL content=https://connect.garmin.com/modern/activity/{}"

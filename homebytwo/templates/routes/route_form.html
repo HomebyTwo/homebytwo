@@ -11,12 +11,13 @@
 
 {% block content %}
 <h2 class="text-center mrgb0">{{ object.name }}</h2>
-<h3 class="text-center mrgt0">{{ object.get_length.km|floatformat:1|intcomma }}km - {{ object.get_totalup.m|floatformat:0|intcomma }}m+ - {{ object.get_totaldown.m|floatformat:0|intcomma }}m-</h3>
+<div class="h3 text-center mrgt0">{{ object.get_length.km|floatformat:1|intcomma }}km - {{ object.get_totalup.m|floatformat:0|intcomma }}m+ - {{ object.get_totaldown.m|floatformat:0|intcomma }}m-</div>
 
 {# map #}
-{% include "routes/_route_map.html" with form=form %}
+{% include "routes/_route_edit_map.html" %}
 
-<form method="post" enctype="multipart/form-data">{% csrf_token %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
 
   {# form fields #}
   {% include "_kanbasu_form.html" with form=form %}

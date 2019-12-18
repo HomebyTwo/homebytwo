@@ -6,7 +6,9 @@
       <h1 class="text-primary">Homebytwo</h1>
       <h2 class="mrgt0">Schedule your outdoor activities</h2>
       <p>Import routes from your favorite mapping service and plan your adventure based on your performance on Strava.</p>
-      <p class="mrgv+">{% include "_strava_connect_button.html" %}</p>
+      {% if not user.is_authenticated %}
+        <p class="mrgv+">{% include "_strava_connect_button.html" %}</p>
+      {% endif %}
     </div>
   </div>
 </section>

@@ -1,8 +1,7 @@
-import json
 from ast import literal_eval
 
 from django.conf import settings
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import LineString
 
 from pandas import DataFrame
 
@@ -106,7 +105,7 @@ class SwitzerlandMobilityRoute(Route):
 
     def get_route_details(self):
         """
-        Fetches route details from map.wanderland.ch.
+        fetch route details from map.wanderland.ch.
         """
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % self.source_id
 
@@ -115,31 +114,24 @@ class SwitzerlandMobilityRoute(Route):
 
         # if response is a success, format the route info
         if raw_route_json:
-            self.format_raw_route_details(raw_route_json)
 
-    def format_raw_route_details(self, raw_route_json):
-        """
-        Converts the json returned by Switzerland mobility
-        into an instance of the SwitzerlandMobilityRoute model.
-        """
-        self.name = raw_route_json["properties"]["name"]
-        self.length = raw_route_json["properties"]["meta"]["length"]
-        self.totalup = raw_route_json["properties"]["meta"]["totalup"]
-        self.totaldown = raw_route_json["properties"]["meta"]["totaldown"]
+            # set route name
+            self.name = raw_route_json["properties"]["name"]
 
-        # Add Swiss Coordinate System Information to the JSON
-        crs = {"type": "name", "properties": {"name": "epsg:21781"}}
+            # use Switzerland Mobility values until we calculate them from data
+            self.length = raw_route_json["properties"]["meta"]["length"]
+            self.totalup = raw_route_json["properties"]["meta"]["totalup"]
+            self.totaldown = raw_route_json["properties"]["meta"]["totaldown"]
 
-        raw_route_json["geometry"]["crs"] = crs
+            # save route profile to route DataFrame
+            self.data = DataFrame(
+                literal_eval(raw_route_json["properties"]["profile"]),
+                columns=["lat", "lng", "altitude", "length"],
+            )
 
-        # create geom from GeoJSON
-        self.geom = GEOSGeometry(json.dumps(raw_route_json["geometry"]), srid=21781)
+            # create geom from lat, lng data columns
+            coords = [(lat, lng) for lat, lng in zip(self.data["lat"], self.data["lng"])]
+            self.geom = LineString(coords, srid=21781)
 
-        # save profile data to pandas DataFrame
-        self.data = DataFrame(
-            literal_eval(raw_route_json["properties"]["profile"]),
-            columns=["lat", "lng", "altitude", "length"],
-        )
-
-        # compute elevation data
-        self.calculate_cummulative_elevation_differences()
+            # remove redundant lat, lng columns in data
+            self.data.drop(columns=["lat", "lng"], inplace=True)
