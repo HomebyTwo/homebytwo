@@ -82,8 +82,13 @@ class StravaRoute(Route):
         # Retrieve route details from Strava API
         strava_route = strava_client.get_route(self.source_id)
 
-        # set route name
+        # set route name and description
         self.name = strava_route.name
+        self.description = strava_route.description
+
+        # use Strava route length and totalup until we calculate them from data
+        self.totalup = unithelper.meters(strava_route.elevation_gain).num
+        self.length = unithelper.meters(strava_route.distance).num
 
         # Strava only knows two activity types for routes: '1' for ride, '2' for run
         if strava_route.type == "1":
@@ -96,7 +101,7 @@ class StravaRoute(Route):
 
     def get_route_data_streams(self, strava_client):
         """
-        convert route raw streams into a pandas DataFrame.
+        convert route raw streams into a pandas DataFrame and create the geom
         the stravalib client creates a list of dicts:
         `[stream_type: <Stream object>, stream_type: <Stream object>, ...]`
         """

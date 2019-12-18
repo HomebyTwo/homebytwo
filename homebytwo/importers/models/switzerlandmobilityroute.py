@@ -118,6 +118,11 @@ class SwitzerlandMobilityRoute(Route):
             # set route name
             self.name = raw_route_json["properties"]["name"]
 
+            # use Switzerland Mobility values until we calculate them from data
+            self.length = raw_route_json["properties"]["meta"]["length"]
+            self.totalup = raw_route_json["properties"]["meta"]["totalup"]
+            self.totaldown = raw_route_json["properties"]["meta"]["totaldown"]
+
             # save route profile to route DataFrame
             self.data = DataFrame(
                 literal_eval(raw_route_json["properties"]["profile"]),
