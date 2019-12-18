@@ -15,16 +15,16 @@ from gitric import api as gitric
 # particular environment will be made available in the `env` variable.
 ENVIRONMENTS = {
     "prod": {
-        "root": "/var/www/html/production_homebytwo/",
-        "hosts": ["root@homebytwo.ch"],
+        "root": "/var/www/homebytwo.ch/",
+        "hosts": ["homebytwo@homebytwo.ch"],
         "services_to_restart": ["celeryd", "celerybeat", "gunicorn"],
         # You can set settings that will be automatically deployed when running
         # the `bootstrap` command
         "settings": {
             "CELERY_BROKER_URL": "amqp://localhost",
-            "MEDIA_ROOT": "/var/www/www.homebytwo.ch/media",
+            "MEDIA_ROOT": "/var/www/homebytwo.ch/media",
             "MEDIA_URL": "/media/",
-            "STATIC_ROOT": "/var/www/www.homebytwo.ch/static",
+            "STATIC_ROOT": "/var/www/homebytwo.ch/static",
             "STATIC_URL": "/static/",
         },
     },
