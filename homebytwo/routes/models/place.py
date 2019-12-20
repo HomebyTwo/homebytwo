@@ -139,10 +139,11 @@ class Place(TimeStampedModel):
 
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.
-        unique_together = (
-            "data_source",
-            "source_id",
-        )
+        constraints = [
+            models.UniqueConstraint(
+                name="unique place for source", fields=["data_source", "source_id"],
+            ),
+        ]
 
     def __str__(self):
         return "{0} - {1}".format(self.name, self.get_place_type_display(),)
@@ -217,7 +218,14 @@ class Checkpoint(models.Model):
 
     class Meta:
         ordering = ("line_location",)
-        unique_together = ("route", "place", "line_location")
+
+        # The pair 'data_source' and 'source_id' should be unique together.
+        constraints = [
+            models.UniqueConstraint(
+                name="unique checkpoint on route",
+                fields=["route", "place", "line_location"],
+            ),
+        ]
 
     def __str__(self):
         return "{0:.1f}km: {1} - {2}".format(

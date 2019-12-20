@@ -61,7 +61,12 @@ class Route(Track):
     garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
-        unique_together = ("athlete", "data_source", "source_id")
+        constraints = [
+            models.UniqueConstraint(
+                name="unique route for athlete",
+                fields=["athlete", "data_source", "source_id"],
+            ),
+        ]
 
     objects = RouteManager()
 
