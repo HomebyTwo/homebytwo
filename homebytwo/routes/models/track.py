@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import uuid4
 
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
@@ -51,8 +52,11 @@ class Track(TimeStampedModel):
         Place, null=True, related_name="ends_%(class)s", on_delete=models.SET_NULL
     )
 
+    # uuid field to generate unique file names
+    uuid = models.UUIDField(default=uuid4, editable=False)
+
     # track data as a pandas DataFrame
-    data = DataFrameField(null=True, max_length=100, save_to="data")
+    data = DataFrameField(null=True, upload_to="data", unique_fields=["uuid"],)
 
     def update_route_details_from_data(self):
         """

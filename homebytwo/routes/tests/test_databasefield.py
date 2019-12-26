@@ -1,106 +1,116 @@
-from os.path import exists, join
+import os
 
-from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import SuspiciousFileOperation, ValidationError
+from django.db import connection
 from django.test import TestCase
 
-import numpy as np
-from pandas import DataFrame
-
-from ..fields import DataFrameField, DataFrameFormField
+from ...utils.factories import AthleteFactory
+from ..fields import DataFrameField
 from .factories import RouteFactory
 
 
 class DataFrameFieldTestCase(TestCase):
-    def test_model_field_get_prep_value(self):
-        data = DataFrame(np.random.randn(10, 2))
-        field = DataFrameField(max_length=100, save_to="test")
-        filename = field.get_prep_value(data)
-        fullpath = join(
-            settings.BASE_DIR, settings.MEDIA_ROOT, field.save_to, filename,
+    def test_dataframe_field_deconstruct_reconstruct(self):
+        field_instance = DataFrameField(upload_to="foo", storage="bar", max_length=80)
+        name, path, args, kwargs = field_instance.deconstruct()
+        new_instance = DataFrameField(*args, **kwargs)
+        self.assertEqual(field_instance.upload_to, new_instance.upload_to)
+        self.assertEqual(field_instance.storage, new_instance.storage)
+        self.assertEqual(field_instance.max_length, new_instance.max_length)
+
+    def test_dataframe_field_init(self):
+        field_instance = DataFrameField(
+            upload_to="foo", storage="bar", max_length=100, unique_fields=["fooba"]
         )
 
-        self.assertEqual(len(filename), 35)  # = 32 + '.h5'
-        self.assertTrue(exists(fullpath))
-        self.assertTrue((data == field.to_python(filename)).all().all())
+        assert field_instance.upload_to == "foo"
+        assert field_instance.storage == "bar"
+        assert field_instance.max_length == 100
 
-        test_str = "coucou!"
-        field = DataFrameField(max_length=100, save_to="test")
-        with self.assertRaises(ValidationError):
-            field.get_prep_value(test_str)
+    def test_dataframe_from_db_value_None(self):
+        route = RouteFactory(data=None)
+        assert route.data is None
 
-    def test_model_field_to_python(self):
-        field = DataFrameField(max_length=100, save_to="test")
-
-        random_data = DataFrame(np.random.randn(10, 2))
-        filename = field.get_prep_value(random_data)
-
-        data = field.to_python(filename)
-        self.assertTrue((random_data == data).all().all())
-        self.assertTrue(hasattr(data, "filename"))
-
-        data = field.to_python(random_data)
-        self.assertTrue((random_data == data).all().all())
-
-        data = field.to_python(None)
-        self.assertEqual(data, None)
-
-        data = field.to_python("")
-        self.assertEqual(data, None)
-
-    def test_form_field_prepare_value(self):
-        form_field = DataFrameFormField()
-        value = DataFrame([["a", "b"], ["c", "d"]], columns=["col 1", "col 2"])
-
-        json = form_field.prepare_value(value)
-        self.assertTrue((value == form_field.to_python(json)).all().all())
-        self.assertTrue(isinstance(json, str))
-
-        value = None
-        json = form_field.prepare_value(None)
-        self.assertEqual(value, form_field.to_python(json))
-        self.assertTrue(isinstance(json, str))
-        self.assertEqual(json, "")
-
-        value = DataFrame()
-        json = form_field.prepare_value(value)
-        self.assertTrue((value == form_field.to_python(json)).all().all())
-
-    def test_form_field_has_changed(self):
-        form_field = DataFrameFormField()
-
-        initial = DataFrame([["a", "b"], ["c", "d"]], columns=["col 1", "col 2"])
-
-        empty_data = None
-        self.assertTrue(form_field.has_changed(initial, empty_data))
-        self.assertFalse(form_field.has_changed(empty_data, empty_data))
-
-        same_data = initial
-        self.assertFalse(form_field.has_changed(initial, same_data))
-
-        partly_changed_data = DataFrame(
-            [["a", "b"], ["c", "f"]], columns=["col 1", "col 2"]
-        )
-        self.assertTrue(form_field.has_changed(initial, partly_changed_data))
-
-        different_shape_data = partly_changed_data = DataFrame(
-            [["a", "b", "c"], ["c", "f", "g"], ["c", "f", "h"]],
-            columns=["col 1", "col 2", "col 3"],
-        )
-        self.assertTrue(form_field.has_changed(initial, different_shape_data))
-
-        changed_data = DataFrame([["e", "f"], ["g", "h"]], columns=["col 1", "col 2"])
-        self.assertTrue(form_field.has_changed(initial, changed_data))
-
-    def test_form_field_to_python(self):
-        form_field = DataFrameFormField()
-
+    def test_dataframe_from_db_value_no_dirname(self):
         route = RouteFactory()
-        route_value = route.data.to_json(orient="records")
-        self.assertFalse(form_field.to_python(route_value).empty)
-        self.assertTrue(isinstance(form_field.to_python(route_value), DataFrame))
+        complete_filepath = route.data.filepath
 
-        empty_df = DataFrame().to_json(orient="records")
-        self.assertTrue(form_field.to_python(empty_df).empty)
+        # save DB entry without dirname
+        dirname, filename = os.path.split(route.data.filepath)
+        query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
+            filename, route.id
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(query)
 
-        self.assertEqual(form_field.to_python(""), None)
+        route.refresh_from_db()
+        assert route.data.filepath == complete_filepath
+
+    def test_dataframe_from_db_value_missing_file(self):
+        route = RouteFactory()
+
+        query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
+            "inexistant.h5", route.id
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+
+        with self.assertRaises(IOError):
+            route.refresh_from_db()
+
+    def test_dataframe_from_db_value_leading_slash(self):
+        route = RouteFactory()
+
+        # save DB entry with a leading slash
+        dirname, filename = os.path.split(route.data.filepath)
+        query = "UPDATE routes_route SET data='/{}' WHERE id={}".format(
+            filename, route.id
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+
+        with self.assertRaises(SuspiciousFileOperation):
+            route.refresh_from_db()
+
+    def test_dataframe_from_db_value_not_hdf5(self):
+        route = RouteFactory()
+        field = DataFrameField()
+        fullpath = field.storage.path(route.data.filepath)
+
+        os.remove(fullpath)
+
+        with open(fullpath, "w+") as file:
+            file.write("I will not buy this record, it is scratched!")
+
+        with self.assertRaises(OSError):
+            route.refresh_from_db()
+
+    def test_dataframe_pre_save_not_a_dataframe(self):
+        route = RouteFactory()
+        route.data = "The plumage doesn't enter into it, it's not a dataframe!"
+        with self.assertRaises(ValidationError):
+            route.save()
+
+    def test_dataframe_save_dataframe_to_file_lost_filepath(self):
+        route = RouteFactory()
+        filepath = route.data.filepath
+        del route.data.filepath
+        route.save()
+
+        self.assertEqual(route.data.filepath, filepath)
+
+    def test_dataframe_save_dataframe_to_file_new_object(self):
+        athlete = AthleteFactory()
+        uuid = 0x12345678123412341234123456789ABC
+
+        route = RouteFactory(
+            start_place=None, end_place=None, athlete=athlete, uuid=uuid
+        )
+
+        filepath = "{}/{}_{}_{}.h5".format(
+            "data", route.__class__.__name__.lower(), "data", uuid
+        )
+
+        route.save()
+
+        self.assertEqual(route.data.filepath, filepath)

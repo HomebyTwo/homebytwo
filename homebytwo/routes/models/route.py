@@ -1,6 +1,7 @@
 from collections import deque
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 from django.apps import apps
 from django.conf import settings
@@ -47,6 +48,9 @@ class Route(Track):
         "strava": "importers.StravaRoute",
         "switzerland_mobility": "importers.SwitzerlandMobilityRoute",
     }
+
+    # uuid field to generate unique file names
+    uuid = models.UUIDField(default=uuid4, editable=False)
 
     # source and unique id (at the source) that the route came from
     source_id = models.BigIntegerField()
