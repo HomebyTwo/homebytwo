@@ -398,7 +398,7 @@ class Route(Track):
             # instantiate activity object from garmin_uploade
             activity = GarminActivity(
                 path=file.name,
-                name="Homebytwo {}".format(str(self)),
+                name="HB2 {}".format(self.name),
                 type=GARMIN_ACTIVITY_TYPE_MAP.get(self.activity_type.name, "other"),
             )
 
