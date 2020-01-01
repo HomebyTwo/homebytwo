@@ -1,11 +1,16 @@
 import os
+import shutil
+import stat
+from tempfile import TemporaryDirectory
 
+from django.core.checks import Error
 from django.core.exceptions import SuspiciousFileOperation, ValidationError
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from ...utils.factories import AthleteFactory
 from ..fields import DataFrameField
+from ..models import Route
 from .factories import RouteFactory
 
 
@@ -27,8 +32,55 @@ class DataFrameFieldTestCase(TestCase):
         assert field_instance.storage == "bar"
         assert field_instance.max_length == 100
 
+    def test_dataframe_field_check_no_unique_fields(self):
+        field = DataFrameField(
+            upload_to="foo", storage="bar", max_length=80, unique_fields=[],
+        )
+        field.name = "data"
+        field.model = Route
+
+        errors = field.check()
+        expected_errors = [
+            Error(
+                "you must provide a list of unique fields.",
+                obj=field,
+                id="homebytwo.E001",
+            )
+        ]
+        assert errors == expected_errors
+
+    def test_dataframe_field_check_inexistant_unique_field(self):
+        field = DataFrameField(
+            upload_to="foo", storage="bar", max_length=80, unique_fields=["foo"],
+        )
+        field.name = "data"
+        field.model = Route
+
+        errors = field.check()
+        error = "Route has no field named 'foo'"
+        expected_errors = [
+            Error(
+                "unique_fields is badly set: {}".format(error),
+                obj=field,
+                id="homebytwo.E002",
+            )
+        ]
+        assert errors == expected_errors
+
+    def test_dataframe_field_check_ok(self):
+        field = DataFrameField(
+            upload_to="foo", storage="bar", max_length=80, unique_fields=["data"],
+        )
+        field.name = "data"
+        field.model = Route
+        errors = field.check()
+        expected_errors = []
+
+        assert errors == expected_errors
+
     def test_dataframe_from_db_value_None(self):
         route = RouteFactory(data=None)
+        route.refresh_from_db()
         assert route.data is None
 
     def test_dataframe_from_db_value_no_dirname(self):
@@ -90,6 +142,29 @@ class DataFrameFieldTestCase(TestCase):
         route.data = "The plumage doesn't enter into it, it's not a dataframe!"
         with self.assertRaises(ValidationError):
             route.save()
+
+    @override_settings(
+        MEDIA_ROOT=TemporaryDirectory().name, FILE_UPLOAD_DIRECTORY_PERMISSIONS=0o751
+    )
+    def test_dataframe_save_dataframe_to_file_directory_permissions(self):
+
+        route = RouteFactory()
+        field = route._meta.get_field("data")
+        dirname, filename = os.path.split(field.get_absolute_path(route.data.filepath))
+        mode = os.stat(dirname).st_mode
+        assert stat.filemode(mode) == "drwxr-x--x"
+
+    def test_dataframe_save_dataframe_to_file_exists_not_a_directory(self):
+        route = RouteFactory()
+        field = route._meta.get_field("data")
+        filepath = field.get_absolute_path(route.data.filepath)
+        dirname, filename = os.path.split(filepath)
+        shutil.rmtree(dirname)
+        with open(dirname, "w+") as file:
+            file.write("I cannot wait until lunchtime!")
+        with self.assertRaises(IOError):
+            route.save(update_fields=["data"])
+        os.remove(dirname)
 
     def test_dataframe_save_dataframe_to_file_lost_filepath(self):
         route = RouteFactory()

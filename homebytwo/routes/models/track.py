@@ -56,7 +56,7 @@ class Track(TimeStampedModel):
     uuid = models.UUIDField(default=uuid4, editable=False)
 
     # track data as a pandas DataFrame
-    data = DataFrameField(null=True, upload_to="data", unique_fields=["uuid"],)
+    data = DataFrameField(null=True, upload_to="data", unique_fields=["uuid"])
 
     def update_route_details_from_data(self):
         """

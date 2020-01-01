@@ -78,9 +78,13 @@ class DataFrameField(models.CharField):
         ]
 
     def _check_unique_fields(self, **kwargs):
-        if "unique_fields" == []:
+        if not isinstance(self.unique_fields, list) or self.unique_fields == []:
             return [
-                checks.Errror("you must provide a unique field parameter.", obj=self)
+                checks.Error(
+                    "you must provide a list of unique fields.",
+                    obj=self,
+                    id="homebytwo.E001",
+                )
             ]
 
         for field in getattr(self, "unique_fields"):
@@ -89,7 +93,9 @@ class DataFrameField(models.CharField):
             except FieldDoesNotExist as error:
                 return [
                     checks.Error(
-                        "unique_fields is badly set: {}".format(error), obj=self,
+                        "unique_fields is badly set: {}".format(error),
+                        obj=self,
+                        id="homebytwo.E002",
                     )
                 ]
         return []
@@ -229,7 +235,9 @@ class DataFrameField(models.CharField):
             unique_field_value = getattr(instance, field)
 
             # get field value or id if the field value is a related model instance
-            unique_id_values.append(str(getattr(unique_field_value, "id", unique_field_value)))
+            unique_id_values.append(
+                str(getattr(unique_field_value, "id", unique_field_value))
+            )
 
         # filename, for example: route_data_<uuid>.h5
         filename = "{class_name}_{field_name}_{unique_id}.h5".format(
