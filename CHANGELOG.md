@@ -1,4 +1,7 @@
 # Change Log
+## [0.9.0] - 2019-01-01 DataFrame fields for all
+- DataFrame fields can be used in any Model
+
 ## [0.8.0] - 2019-12-13 gpx download
 - Routes can be downloaded as GPX files
 - Routes can be uploaded to the Garmin Connect Homebytwo account as activities
