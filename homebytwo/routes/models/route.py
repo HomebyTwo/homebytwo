@@ -1,6 +1,7 @@
 from collections import deque
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 from django.apps import apps
 from django.conf import settings
@@ -48,6 +49,9 @@ class Route(Track):
         "switzerland_mobility": "importers.SwitzerlandMobilityRoute",
     }
 
+    # uuid field to generate unique file names
+    uuid = models.UUIDField(default=uuid4, editable=False)
+
     # source and unique id (at the source) that the route came from
     source_id = models.BigIntegerField()
     data_source = models.CharField(
@@ -61,7 +65,12 @@ class Route(Track):
     garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
-        unique_together = ("athlete", "data_source", "source_id")
+        constraints = [
+            models.UniqueConstraint(
+                name="unique route for athlete",
+                fields=["athlete", "data_source", "source_id"],
+            ),
+        ]
 
     objects = RouteManager()
 

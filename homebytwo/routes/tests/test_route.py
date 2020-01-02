@@ -585,25 +585,25 @@ class RouteTestCase(TestCase):
     #######################
 
     @override_settings(MEDIA_ROOT=mkdtemp())
-    def test_cleanup_route_data_no_data(self):
+    def test_cleanup_hdf5_files_no_data(self):
         # No files in data directory
         out = StringIO()
-        call_command("cleanup_route_data", stdout=out)
+        call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
         rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     @override_settings(MEDIA_ROOT=mkdtemp())
-    def test_cleanup_route_data_routes(self):
+    def test_cleanup_hdf5_files_routes(self):
         # five routes no extra files
         out = StringIO()
         RouteFactory.create_batch(5)
 
-        call_command("cleanup_route_data", stdout=out)
+        call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
         rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     @override_settings(MEDIA_ROOT=mkdtemp())
-    def test_cleanup_route_data_delete_trash(self):
+    def test_cleanup_hdf5_files_delete_trash(self):
         # five random files not in DB
         data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
 
@@ -617,12 +617,12 @@ class RouteTestCase(TestCase):
             with open(fullpath, "wb") as file_:
                 file_.write(urandom(64))
 
-        call_command("cleanup_route_data", stdout=out)
+        call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 5 files.", out.getvalue())
         rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     @override_settings(MEDIA_ROOT=mkdtemp())
-    def test_cleanup_route_data_missing_route_file(self):
+    def test_cleanup_hdf5_files_missing_route_file(self):
         # One deleted route data file one random file
         data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
         out = StringIO()
@@ -634,6 +634,6 @@ class RouteTestCase(TestCase):
         with open(fullpath, "wb") as file_:
             file_.write(urandom(64))
 
-        call_command("cleanup_route_data", stdout=out)
+        call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
         rmtree(settings.MEDIA_ROOT, ignore_errors=True)

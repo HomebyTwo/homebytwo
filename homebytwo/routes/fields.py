@@ -1,19 +1,20 @@
 import os
-from uuid import uuid4
+from inspect import getmro
 
-from django import forms
-from django.conf import settings
+from django.apps import apps
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
-from django.core.exceptions import ValidationError
+from django.core import checks
+from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.core.files.storage import default_storage
 from django.db import connection
 from django.forms import MultipleChoiceField
 from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
 
-from pandas import DataFrame, read_hdf, read_json
+from pandas import DataFrame, read_hdf
 
-from ..routes.models import Checkpoint
+from .models import Checkpoint
 
 
 def LineSubstring(line, start_location, end_location):
@@ -42,257 +43,213 @@ def LineSubstring(line, start_location, end_location):
 
 class DataFrameField(models.CharField):
     """
-    Custom Filefield to save Pandas DataFrame to the hdf5 file format
+    custom field to save Pandas DataFrame to the hdf5 file format
     as advised in the official pandas documentation:
     http://pandas.pydata.org/pandas-docs/stable/io.html#io-perf
     """
 
+    attr_class = DataFrame
+
     default_error_messages = {
         "invalid": _("Please provide a DataFrame object"),
-        "io_error": _("Could not write to file"),
     }
 
-    def __init__(self, max_length, save_to="data", *args, **kwargs):
-        self.save_to = save_to
-        self.max_length = max_length
-        super(DataFrameField, self).__init__(max_length=max_length, *args, **kwargs)
+    def __init__(
+        self,
+        verbose_name=None,
+        name=None,
+        upload_to="data",
+        storage=None,
+        unique_fields=[],
+        **kwargs
+    ):
 
-    def _generate_unique_filename(self):
-        """
-        generate a unique filename for the saved file.
-        """
-        filename = uuid4().hex + ".h5"
+        self.storage = storage or default_storage
+        self.upload_to = upload_to
+        self.unique_fields = unique_fields
 
-        return filename
+        kwargs.setdefault("max_length", 100)
+        super().__init__(verbose_name, name, **kwargs)
 
-    def _write_hdf5(self, data, filename):
-        """
-        write the file to the media directory. This should be improved
-        to use the storage instead of using os methods.
-        I just could not figure out how to do it with pandas' to_hdf method.
-        """
-        dirname = os.path.join(settings.BASE_DIR, settings.MEDIA_ROOT, self.save_to)
+    def check(self, **kwargs):
+        return [
+            *super().check(**kwargs),
+            *self._check_unique_fields(**kwargs),
+        ]
 
-        fullpath = os.path.join(dirname, filename)
+    def _check_unique_fields(self, **kwargs):
+        if not isinstance(self.unique_fields, list) or self.unique_fields == []:
+            return [
+                checks.Error(
+                    "you must provide a list of unique fields.",
+                    obj=self,
+                    id="homebytwo.E001",
+                )
+            ]
 
-        if not isinstance(data, DataFrame):
-            raise ValidationError(
-                self.error_messages["invalid"], code="invalid",
-            )
+        for field in getattr(self, "unique_fields"):
+            try:
+                self.model._meta.get_field(field)
+            except FieldDoesNotExist as error:
+                return [
+                    checks.Error(
+                        "unique_fields is badly set: {}".format(error),
+                        obj=self,
+                        id="homebytwo.E002",
+                    )
+                ]
+        return []
 
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-        try:
-            data.to_hdf(fullpath, "df", mode="w", format="fixed")
-        except Exception as exc:
-            raise IOError(self.error_messages["io_error"]) from exc
-
-        return fullpath
-
-    def _parse_filename(self, filename):
-        dirname = os.path.join(settings.BASE_DIR, settings.MEDIA_ROOT, self.save_to)
-
-        fullpath = os.path.join(dirname, filename)
-
-        # try to load the pandas DataFrame into memory
-        try:
-            data = read_hdf(fullpath)
-
-        except Exception:
-            raise
-
-        # set attribute on for saving later
-        data.filename = filename
-
-        return data
-
-    def get_prep_value(self, value):
-        """
-        save the DataFrame as a file in the MEDIA_ROOT folder
-        and put the filename in the database.
-        """
-        if value is None:
-            return value
-
-        if not isinstance(value, DataFrame):
-            raise ValidationError(
-                self.error_messages["invalid"], code="invalid",
-            )
-
-        # if the valueframe was loaded from the database before,
-        # it will has a filename attribute.
-        if hasattr(value, "filename"):
-            filename = value.filename
-
-        else:
-            # create a new filename
-            filename = self._generate_unique_filename()
-
-        self._write_hdf5(value, filename)
-
-        return filename
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        if kwargs.get("max_length") == 100:
+            del kwargs["max_length"]
+        if self.upload_to != "data":
+            kwargs["upload_to"] = self.upload_to
+        if self.storage is not default_storage:
+            kwargs["storage"] = self.storage
+        kwargs["unique_fields"] = self.unique_fields
+        return name, path, args, kwargs
 
     def from_db_value(self, value, expression, connection):
         """
-        use the filename from the database to load the DataFrame from file.
-        """
-        if value in self.empty_values:
-            return None
-
-        # try to load the pandas DataFrame into memory
-        return self._parse_filename(value)
-
-    def to_python(self, value):
-        """
-        if the value is a Dataframe object, return it.
-        otherwise, get the file location from the database
-        and load the DataFrame from the file.
+        return a DataFrame object from the filepath saved in DB
         """
         if value is None:
             return value
 
-        if isinstance(value, DataFrame):
-            return value
+        return self.retrieve_dataframe(value)
 
-        if isinstance(value, str):
-            if value in self.empty_values:
-                return None
-            return self._parse_filename(value)
+    def get_relative_path(self, value):
+        """
+        return file path based on the value saved in the Database.
+        prepend filepath to older objects that were saved without it.
+        """
+        dirname, filename = os.path.split(value)
+        dirname = dirname or self.upload_to
+        return os.path.join(dirname, filename)
 
-    def validate(self, value, model_instance):
-        if not isinstance(value, DataFrame):
+    def get_absolute_path(self, value):
+        """
+        return absolute path based on the value saved in the Database.
+        """
+        filepath = self.get_relative_path(value)
+
+        # return absolute path
+        return self.storage.path(filepath)
+
+    def retrieve_dataframe(self, value):
+        """
+        return the pandas DataFrame and add filepath as property to Dataframe
+        """
+
+        # read dataframe from storage
+        absolute_filepath = self.get_absolute_path(value)
+        dataframe = read_hdf(absolute_filepath)
+
+        # add relative filepath as instance property for later use
+        dataframe.filepath = self.get_relative_path(value)
+
+        return dataframe
+
+    def pre_save(self, model_instance, add):
+        """
+        save the dataframe field to an hdf5 field before saving the model
+        """
+        dataframe = super().pre_save(model_instance, add)
+
+        if dataframe is None:
+            return dataframe
+
+        if not isinstance(dataframe, DataFrame):
             raise ValidationError(
                 self.error_messages["invalid"], code="invalid",
             )
 
-    def run_validators(self, value):
+        self.save_dataframe_to_file(dataframe, model_instance)
+
+        return dataframe
+
+    def get_prep_value(self, value):
         """
-        Because of comparisons of DataFrame,
-        the native methode must be overridden.
-        """
-        if value is None:
-            return
-
-        errors = []
-        for v in self.validators:
-            try:
-                v(value)
-            except ValidationError as e:
-                if hasattr(e, "code") and e.code in self.error_messages:
-                    e.message = self.error_messages[e.code]
-                    errors.extend(e.error_list)
-        if errors:
-            raise ValidationError(errors)
-
-    def formfield(self, **kwargs):
-        defaults = {"form_class": DataFrameFormField}
-        defaults.update(kwargs)
-        return super(DataFrameField, self).formfield(**defaults)
-
-
-class DataFrameFormField(forms.CharField):
-
-    widget = forms.widgets.HiddenInput
-
-    def prepare_value(self, value):
-        """
-        serialize DataFrame objects to json using pandas native function.
-        for inclusion in forms.
-        """
-        if isinstance(value, DataFrame):
-            try:
-                return value.to_json(orient="records") if value is not None else ""
-            except ValueError:
-                raise ValidationError(
-                    _("Could serialize '%(value)s' to json."),
-                    code="invalid",
-                    params={"value": value},
-                )
-
-        return value if value not in self.empty_values else ""
-
-    def to_python(self, value):
-        """
-        convert json values to DataFrame using pandas native function.
+        save the value of the dataframe.filepath set in pre_save
         """
         if value is None:
-            return None
-
-        if isinstance(value, DataFrame):
             return value
 
-        if isinstance(value, str):
-            if value in self.empty_values:
-                return None
+        # save only the filepath to the database
+        if value.filepath:
+            return value.filepath
+
+    def save_dataframe_to_file(self, dataframe, model_instance):
+        """
+        write the Dataframe into an hdf5 file in storage at filepath
+        """
+        # try to retrieve the filepath set when loading from the database
+        if not dataframe.get("filepath"):
+            dataframe.filepath = self.generate_filepath(model_instance)
+
+        full_filepath = self.storage.path(dataframe.filepath)
+
+        # Create any intermediate directories that do not exist.
+        # shamelessly copied from Django's original Storage class
+        directory = os.path.dirname(full_filepath)
+        if not os.path.exists(directory):
             try:
-                return read_json(value, orient="records")
-            except ValueError:
-                raise ValidationError(
-                    _("Could not read json: '%(value)s' into a DataFrame."),
-                    code="invalid",
-                    params={"value": value},
-                )
+                if self.storage.directory_permissions_mode is not None:
+                    # os.makedirs applies the global umask, so we reset it,
+                    # for consistency with file_permissions_mode behavior.
+                    old_umask = os.umask(0)
+                    try:
+                        os.makedirs(directory, self.storage.directory_permissions_mode)
+                    finally:
+                        os.umask(old_umask)
+                else:
+                    os.makedirs(directory)
+            except FileExistsError:
+                # There's a race between os.path.exists() and os.makedirs().
+                # If os.makedirs() fails with FileExistsError, the directory
+                # was created concurrently.
+                pass
+        if not os.path.isdir(directory):
+            raise IOError("%s exists and is not a directory." % directory)
 
-        return None
+        # save to storage
+        dataframe.to_hdf(full_filepath, "df", mode="w", format="fixed")
 
-    def validate(self, value):
+    def generate_filepath(self, instance):
         """
-        override validation because DataFrame objects
-        suck at being compared. See:
-        http://pandas.pydata.org/pandas-docs/stable/gotchas.html#gotchas-truth
+        return a filepath based on the model's class name, dataframe_field and unique fields
         """
-        if value is None:
-            return
 
-        if not isinstance(value, DataFrame):
-            raise ValidationError(
-                _("'%(value)s' does not seem to be a DataFrame."),
-                code="invalid",
-                params={"value": value},
+        # create filename based on instance and field name
+        # we do not want to end up with StravaRoute or SwitzerlandMobilityRoute
+        if apps.get_model("routes", "Route") in getmro(instance.__class__):
+            class_name = "Route"
+        else:
+            class_name = instance.__class__.__name__
+
+        # generate unique id from unique fields:
+        unique_id_values = []
+        for field in self.unique_fields:
+            unique_field_value = getattr(instance, field)
+
+            # get field value or id if the field value is a related model instance
+            unique_id_values.append(
+                str(getattr(unique_field_value, "id", unique_field_value))
             )
 
-    def run_validators(self, value):
-        """
-        again, because of comparisons, the native methode must be overridden.
-        """
-        if value is None:
-            return
+        # filename, for example: route_data_<uuid>.h5
+        filename = "{class_name}_{field_name}_{unique_id}.h5".format(
+            class_name=class_name.lower(),
+            field_name=self.name,
+            unique_id="".join(unique_id_values),
+        )
 
-        errors = []
-        for v in self.validators:
-            try:
-                v(value)
-            except ValidationError as e:
-                if hasattr(e, "code") and e.code in self.error_messages:
-                    e.message = self.error_messages[e.code]
-                    errors.extend(e.error_list)
-        if errors:
-            raise ValidationError(errors)
-
-    def has_changed(self, initial, data):
-        if self.disabled:
-            return False
-        try:
-            data = self.to_python(data)
-        except ValidationError:
-            return True
-
-        initial_value = initial if initial is not None else ""
-        data_value = data if data is not None else ""
-
-        if isinstance(initial_value, DataFrame) and isinstance(data_value, DataFrame):
-            try:
-                return (initial_value != data_value).any().any()
-            except ValueError:
-                return True
-
-        if not isinstance(initial_value, DataFrame) and not isinstance(
-            data_value, DataFrame
-        ):
-            return initial_value != data_value
-
-        return True
+        # generate filepath
+        dirname = self.upload_to
+        filepath = os.path.join(dirname, filename)
+        return self.storage.generate_filename(filepath)
 
 
 class CheckpointsSelectMultiple(CheckboxSelectMultiple):

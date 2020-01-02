@@ -1,4 +1,7 @@
 # Change Log
+## [0.9.0] - 2019-01-01 DataFrame fields for all
+- DataFrame fields can be used in any Model
+
 ## [0.8.1] - 2020-01-01 Shorter Garmin activity name
 - Activity name on Garmin is shorter for better display on devices
 

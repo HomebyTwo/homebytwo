@@ -1,0 +1,8 @@
+[run]
+source = homebytwo
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    */tests.py
+    /config/*

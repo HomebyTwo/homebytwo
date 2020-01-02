@@ -71,15 +71,18 @@ def route(request, pk):
 def route_checkpoints_list(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    checkpoints = route.find_possible_checkpoints()
+    possible_checkpoints = route.find_possible_checkpoints()
+    existing_checkpoints = route.checkpoint_set.all()
+
     checkpoints_dicts = [
         {
             "name": checkpoint.place.name,
-            "line_location": checkpoint.line_location,
+            "field_value": checkpoint.field_value,
             "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
             "place_type": checkpoint.place.get_place_type_display(),
+            "checked": checkpoint in existing_checkpoints,
         }
-        for checkpoint in checkpoints
+        for checkpoint in possible_checkpoints
     ]
 
     return JsonResponse({"checkpoints": checkpoints_dicts})
