@@ -14,8 +14,6 @@ from django.utils.translation import gettext_lazy as _
 
 from pandas import DataFrame, read_hdf
 
-from .models import Checkpoint
-
 
 def LineSubstring(line, start_location, end_location):
     """
@@ -264,6 +262,7 @@ class CheckpointsSelectMultiple(CheckboxSelectMultiple):
         self, name, value, label, selected, index, subindex=None, attrs=None
     ):
         # make sure it's a checkpoint
+        Checkpoint = apps.get_model("routes", "checkpoint")
         if isinstance(value, Checkpoint):
 
             # add checkpoint place geojson as data-attribute to display on the map.

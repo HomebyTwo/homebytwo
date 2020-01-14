@@ -1,10 +1,13 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 
+from pandas import DataFrame
+from sklearn.linear_model import LinearRegression
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
 from ...core.models import TimeStampedModel
+from ..fields import DataFrameField
 
 
 class ActivityQuerySet(models.QuerySet):
@@ -17,7 +20,6 @@ class ActivityQuerySet(models.QuerySet):
 
 
 class ActivityManager(models.Manager):
-
     def get_queryset(self):
         return ActivityQuerySet(self.model, using=self._db)
 
@@ -61,7 +63,9 @@ class ActivityManager(models.Manager):
 
         # delete activities not in the Strava result
         existing_activities = Activity.objects.filter(athlete=athlete)
-        existing_activities.exclude(id__in=[activity.id for activity in activities]).delete()
+        existing_activities.exclude(
+            id__in=[activity.id for activity in activities]
+        ).delete()
 
         return activities
 
@@ -69,7 +73,8 @@ class ActivityManager(models.Manager):
 class Activity(TimeStampedModel):
     """
     All activities published by the athletes on Strava.
-    User activities used to calculate performance by activity type.
+    User activities are used to calculate the athlete's
+    performance for each available activity type.
     """
 
     NONE = None
@@ -131,6 +136,11 @@ class Activity(TimeStampedModel):
     # time in movement during the activity
     moving_time = models.DurationField(
         "Movement time as timedelta", blank=True, null=True
+    )
+
+    # streams retrieved from the Strava API
+    streams = DataFrameField(
+        null=True, upload_to="streams", unique_fields=["strava_id"]
     )
 
     # Workout Type as defined in Strava
@@ -226,6 +236,21 @@ class Activity(TimeStampedModel):
 
         self.save()
 
+    def save_streams_from_strava(self):
+        """
+        save streams retrieved from Strava to the DataBase using the custom
+        Model field DataFrameField.
+        """
+        self.streams = DataFrame()
+
+        raw_streams = self.get_streams_from_strava()
+        if raw_streams:
+            for key, stream in raw_streams.items():
+                self.streams[key] = stream.data
+
+            self.save(update_fields=["streams"])
+            return True
+
     def get_streams_from_strava(self, resolution="low"):
         """
         Return activity streams from Strava: Time, Altitude and Distance.
@@ -246,7 +271,13 @@ class Activity(TimeStampedModel):
                 self.strava_id, types=STREAM_TYPES, resolution=resolution
             )
 
-            if all(stream_type in raw_streams for stream_type in STREAM_TYPES):
+            # ensure that we have all stream types and that they all contain values
+            if all(stream_type in raw_streams for stream_type in STREAM_TYPES) and all(
+                [
+                    raw_stream.original_size > 0
+                    for key, raw_stream in raw_streams.items()
+                ]
+            ):
                 return raw_streams
 
 
@@ -393,6 +424,74 @@ class ActivityPerformance(models.Model):
 
     def __str__(self):
         return "{0} - {1}".format(self.athlete.user.username, self.activity_type.name)
+
+    def get_activities(self, gear=[], workout_type=[], limit=0, r_squared_treshold=0.8):
+        """
+        return all activities of the activity_type for the current athlete
+        """
+
+        # start with all activities
+        activities = Activity.objects.filter(
+            athlete=self.athlete, activity_type=self.activity_type
+        )
+
+        # filter by gear if needed
+        if gear:
+            activities = activities.filter(gear__in=gear)
+        # filter by workout type if needed
+        if workout_type:
+            activities = activities.filter(gear__in=workout_type)
+        # limit if required
+        if limit:
+            try:
+                activities = activities[: limit + 1]
+            except IndexError:
+                pass
+
+        return activities
+
+    def calculate_perfomance(self, activities):
+        """
+        calculate performance prediction with pandas and sklearn
+        """
+        data = DataFrame()
+
+        for activity in activities:
+            if activity.streams is not None:
+                streams = activity.streams
+                data["gradient"] = (
+                    streams["altitude"].diff() / streams["distance"].diff()
+                )
+                data["pace"] = streams["time"].diff() / streams["distance"].diff()
+
+                # calculate totalup in kilometers
+                data["totalup"] = (
+                    streams["altitude"].diff()[streams["altitude"].diff() >= 0].cumsum()
+                )
+                data["totalup"] = data["totalup"].fillna(method="ffill").fillna(value=0)
+                data["totalup"] = data["totalup"] / 1000
+
+                #  cleanup and sort by gradient
+                data = data[data.gradient.notnull()]
+                data = data.sort_values(["gradient"])
+                data = data.reset_index(drop=True)
+
+    def fit_regression(self, data):
+        features = data[["gradient_squared", "gradient", "totalup"]]
+        target = data["pace"]
+
+        # LinearRegression
+        model = LinearRegression()
+        model.fit(features, target)
+        score = model.score(features, target)
+
+        (
+            self.slope_squared_param,
+            self.slope_param,
+            self.total_elevation_gain_param,
+        ) = model.coef_
+
+        self.flat_param = model.intercept_
 
 
 class Gear(models.Model):

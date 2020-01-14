@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 def import_strava_activities_task(athlete_id):
     """
     import or update all Strava activities for an athlete.
-
-    This task generates one query to the Strava API for 200 activities.
+    This task generates one query to the Strava API for every 200 activities.
     """
     # log task request
     logger.info("import Strava activities for {user_id}".format(user_id=athlete_id))
@@ -25,9 +24,35 @@ def import_strava_activities_task(athlete_id):
     athlete = Athlete.objects.get(pk=athlete_id)
     activities = Activity.objects.update_user_activities_from_strava(athlete)
 
+    for activity in activities:
+        if activity.streams is None:
+            import_strava_activity_streams_task.delay(activity.strava_id)
+
     return "The athlete now has {0} activit{1} saved in the database.".format(
         len(activities), pluralize(len(activities), "y,ies")
     )
+
+
+@shared_task
+def import_strava_activity_streams_task(strava_id):
+    """
+    fetch time, altitude and distance streams for an activty from the Strava API-
+    This task generates one API call for every activity.
+    """
+    # log task request
+    logger.info("import Strava activity streams for activity {}".format(strava_id))
+
+    try:
+        activity = Activity.objects.get(strava_id=strava_id)
+    except Activity.DoesNotExist:
+        return "Activity has been deleted from the Database".format(strava_id)
+
+    imported = activity.save_streams_from_strava()
+
+    if imported:
+        return "Streams successfully imported for activity {}".format(strava_id)
+    else:
+        return "Streams not imported for activity {}".format(strava_id)
 
 
 @shared_task
@@ -152,6 +177,9 @@ class ProcessStravaEvents(PeriodicTask):
             # create or update activity from the Strava server
             if aspect_type in ["create", "update"]:
                 activity.update_from_strava()
+
+                # import and save streams for the activity
+                import_strava_activity_streams_task.delay(strava_id=object_id)
 
             # delete activity, if it exists
             if aspect_type == "delete" and activity.id:
