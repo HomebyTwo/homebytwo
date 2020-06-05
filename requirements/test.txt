@@ -12,75 +12,67 @@ arrow==0.15.4             # via stravalib
 attrs==19.3.0             # via pytest
 babel==2.7.0              # via flower
 billiard==3.6.1.0         # via celery
-celery==4.3.0
+celery==4.3.0             # via -r base.in, flower
 certifi==2019.11.28       # via requests, sentry-sdk
 chardet==3.0.4            # via requests
-coverage==4.5.4
-coveralls==1.9.2
-defusedxml==0.6.0         # via python3-openid
-dj-database-url==0.5.0
-django-geojson==2.12.0
-django-leaflet==0.26.0
-django-widget-tweaks==1.4.5
-django==2.2.8
+coverage==4.5.4           # via -r test.in, coveralls, pytest-cov
+coveralls==1.9.2          # via -r test.in
+dj-database-url==0.5.0    # via -r base.in
+django-geojson==2.12.0    # via -r base.in
+django-leaflet==0.26.0    # via -r base.in
+django-widget-tweaks==1.4.5  # via -r base.in
+django==2.2.13            # via -r base.in, django-geojson, django-leaflet, easy-thumbnails
 docopt==0.6.2             # via coveralls
-easy-thumbnails==2.6
+easy-thumbnails==2.6      # via -r base.in
 entrypoints==0.3          # via flake8
 execnet==1.7.1            # via pytest-xdist
-factory-boy==2.12.0
+factory-boy==2.12.0       # via -r test.in
 faker==3.0.0              # via factory-boy
-flake8==3.7.9
-flower==0.9.3
-gpxpy==1.3.5
-gunicorn==20.0.4
-httpretty==0.9.7
+flake8==3.7.9             # via -r test.in
+flower==0.9.3             # via -r base.in
+gpxpy==1.3.5              # via -r base.in
+gunicorn==20.0.4          # via -r base.in
+httpretty==0.9.7          # via -r test.in
 idna==2.8                 # via requests
-importlib-metadata==1.3.0  # via kombu, pluggy, pytest
-isort==4.3.21
+isort==4.3.21             # via -r test.in
 kombu==4.6.7              # via celery
-lxml==4.4.2
+lxml==4.4.2               # via -r base.in
 mccabe==0.6.1             # via flake8
-mock==3.0.5
-more-itertools==8.0.2     # via pytest, zipp
+mock==3.0.5               # via -r test.in
+more-itertools==8.0.2     # via pytest
 numexpr==2.7.0            # via tables
 numpy==1.17.4             # via numexpr, pandas, tables
-oauthlib==3.1.0           # via requests-oauthlib
 packaging==19.2           # via pytest
-pandas==0.25.3
-pillow==6.2.1
+pandas==0.25.3            # via -r base.in
+pillow==6.2.1             # via -r base.in, easy-thumbnails
 pluggy==0.13.1            # via pytest
-polyline==1.4.0
-psycopg2-binary==2.8.4
+polyline==1.4.0           # via -r base.in
+psycopg2-binary==2.8.4    # via -r base.in
 py==1.8.0                 # via pytest
 pycodestyle==2.5.0        # via flake8
 pyflakes==2.1.1           # via flake8
-pyjwt==1.7.1
 pyparsing==2.4.5          # via packaging
-pytest-cov==2.8.1
-pytest-django==3.7.0
+pytest-cov==2.8.1         # via -r test.in
+pytest-django==3.7.0      # via -r test.in
 pytest-forked==1.1.3      # via pytest-xdist
-pytest-xdist==1.30.0
-pytest==5.3.1
+pytest-xdist==1.30.0      # via -r test.in
+pytest==5.3.1             # via -r test.in, pytest-cov, pytest-django, pytest-forked, pytest-xdist
 python-dateutil==2.8.1    # via arrow, faker, pandas
-python3-openid==3.1.0
 pytz==2019.3              # via babel, celery, django, flower, pandas, stravalib
-rcssmin==1.0.6
-requests-oauthlib==1.3.0
-requests==2.22.0
-sentry-sdk==0.13.5
-six==1.13.0               # via django-geojson, faker, httpretty, mock, packaging, polyline, pytest-xdist, python-dateutil, social-auth-app-django, stravalib
-social-auth-app-django==3.1.0
+rcssmin==1.0.6            # via -r base.in
+requests==2.22.0          # via -r base.in, coveralls, garmin-uploader, stravalib
+sentry-sdk==0.13.5        # via -r base.in
+six==1.13.0               # via django-geojson, faker, garmin-uploader, httpretty, mock, packaging, polyline, pytest-xdist, python-dateutil, social-auth-app-django, stravalib
+social-auth-app-django==3.1.0  # via -r base.in
 sqlparse==0.3.0           # via django
-stravalib==0.10.2
-tables==3.6.1
+stravalib==0.10.2         # via -r base.in
+tables==3.6.1             # via -r base.in
 text-unidecode==1.3       # via faker
 tornado==5.1.1            # via flower
-unidecode==1.1.1
 units==0.7                # via stravalib
 urllib3==1.25.7           # via requests, sentry-sdk
 vine==1.3.0               # via amqp, celery
 wcwidth==0.1.7            # via pytest
-zipp==0.6.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
