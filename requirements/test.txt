@@ -4,78 +4,80 @@
 #
 #    pip-compile requirements/test.in
 #
--e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
--e git+git://github.com/drixselecta/social-core.git@feature/adapt-strava#egg=social-auth-core
+-e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader  # via -r requirements/base.in
 amqp==2.6.0               # via kombu
 apipkg==1.5               # via execnet
 arrow==0.15.6             # via stravalib
 attrs==19.3.0             # via pytest
 billiard==3.6.3.0         # via celery
-celery==4.4.5
+celery==4.4.5             # via -r requirements/base.in, flower
 certifi==2020.4.5.2       # via requests, sentry-sdk
+cffi==1.14.0              # via cryptography
 chardet==3.0.4            # via requests
-coverage==5.1
-coveralls==2.0.0
-defusedxml==0.7.0rc1      # via python3-openid
-dj-database-url==0.5.0
-django-geojson==3.0.0
-django-leaflet==0.26.0
-django-widget-tweaks==1.4.8
-django==2.2.13
+coverage==5.1             # via -r requirements/test.in, coveralls, pytest-cov
+coveralls==2.0.0          # via -r requirements/test.in
+cryptography==2.9.2       # via social-auth-core
+defusedxml==0.7.0rc1      # via python3-openid, social-auth-core
+dj-database-url==0.5.0    # via -r requirements/base.in
+django-geojson==3.0.0     # via -r requirements/base.in
+django-leaflet==0.26.0    # via -r requirements/base.in
+django-widget-tweaks==1.4.8  # via -r requirements/base.in
+django==2.2.13            # via -r requirements/base.in, django-geojson, django-leaflet, easy-thumbnails
 docopt==0.6.2             # via coveralls
-easy-thumbnails==2.7
+easy-thumbnails==2.7      # via -r requirements/base.in
 execnet==1.7.1            # via pytest-xdist
-factory-boy==2.12.0
+factory-boy==2.12.0       # via -r requirements/test.in
 faker==4.1.1              # via factory-boy
-flake8==3.8.3
-flower==0.9.4
+flake8==3.8.3             # via -r requirements/test.in
+flower==0.9.4             # via -r requirements/base.in
 future==0.18.2            # via celery
-gpxpy==1.4.1
-gunicorn==20.0.4
-httpretty==1.0.2
+gpxpy==1.4.1              # via -r requirements/base.in
+gunicorn==20.0.4          # via -r requirements/base.in
+httpretty==1.0.2          # via -r requirements/test.in
 humanize==0.5.1           # via flower
 idna==2.9                 # via requests
 importlib-metadata==1.6.1  # via flake8, kombu, pluggy, pytest
-isort==4.3.21
+isort==4.3.21             # via -r requirements/test.in
 kombu==4.6.10             # via celery
-lxml==4.5.1
+lxml==4.5.1               # via -r requirements/base.in
 mccabe==0.6.1             # via flake8
-mock==4.0.2
+mock==4.0.2               # via -r requirements/test.in
 more-itertools==8.4.0     # via pytest
 numexpr==2.7.1            # via tables
 numpy==1.18.5             # via numexpr, pandas, tables
-oauthlib==3.1.0           # via requests-oauthlib
+oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 packaging==20.4           # via pytest
-pandas==1.0.5
-pillow==7.1.2
+pandas==1.0.5             # via -r requirements/base.in
+pillow==7.1.2             # via -r requirements/base.in, easy-thumbnails
 pluggy==0.13.1            # via pytest
-polyline==1.4.0
-psycopg2-binary==2.8.5
+polyline==1.4.0           # via -r requirements/base.in
+psycopg2-binary==2.8.5    # via -r requirements/base.in
 py==1.8.2                 # via pytest
 pycodestyle==2.6.0        # via flake8
+pycparser==2.20           # via cffi
 pyflakes==2.2.0           # via flake8
-pyjwt==1.7.1
+pyjwt==1.7.1              # via social-auth-core
 pyparsing==2.4.7          # via packaging
-pytest-cov==2.10.0
-pytest-django==3.9.0
+pytest-cov==2.10.0        # via -r requirements/test.in
+pytest-django==3.9.0      # via -r requirements/test.in
 pytest-forked==1.1.3      # via pytest-xdist
-pytest-xdist==1.32.0
-pytest==5.4.3
+pytest-xdist==1.32.0      # via -r requirements/test.in
+pytest==5.4.3             # via -r requirements/test.in, pytest-cov, pytest-django, pytest-forked, pytest-xdist
 python-dateutil==2.8.1    # via arrow, faker, pandas
-python3-openid==3.1.0
+python3-openid==3.1.0     # via social-auth-core
 pytz==2020.1              # via celery, django, flower, pandas, stravalib
-rcssmin==1.0.6
-requests-oauthlib==1.3.0
-requests==2.24.0
-sentry-sdk==0.13.5
-six==1.15.0               # via django-geojson, packaging, polyline, pytest-xdist, python-dateutil, social-auth-app-django, stravalib
-social-auth-app-django==3.4.0
+rcssmin==1.0.6            # via -r requirements/base.in
+requests-oauthlib==1.3.0  # via social-auth-core
+requests==2.24.0          # via -r requirements/base.in, coveralls, garmin-uploader, requests-oauthlib, social-auth-core, stravalib
+sentry-sdk==0.13.5        # via -r requirements/base.in
+six==1.15.0               # via cryptography, django-geojson, garmin-uploader, packaging, polyline, pytest-xdist, python-dateutil, social-auth-app-django, social-auth-core, stravalib
+social-auth-app-django==3.4.0  # via -r requirements/base.in
+social-auth-core==3.3.3   # via -r requirements/base.in, social-auth-app-django
 sqlparse==0.3.1           # via django
-stravalib==0.10.2
-tables==3.6.1
+stravalib==0.10.2         # via -r requirements/base.in
+tables==3.6.1             # via -r requirements/base.in
 text-unidecode==1.3       # via faker
 tornado==6.0.4            # via flower
-unidecode==1.1.1
 units==0.7                # via stravalib
 urllib3==1.25.9           # via requests, sentry-sdk
 vine==1.3.0               # via amqp, celery
