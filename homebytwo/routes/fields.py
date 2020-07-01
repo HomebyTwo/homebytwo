@@ -4,6 +4,7 @@ from inspect import getmro
 from django.apps import apps
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.postgres.fields import ArrayField
 from django.core import checks
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
@@ -12,6 +13,7 @@ from django.forms import MultipleChoiceField
 from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
 
+from numpy import array
 from pandas import DataFrame, read_hdf
 
 
@@ -248,6 +250,21 @@ class DataFrameField(models.CharField):
         dirname = self.upload_to
         filepath = os.path.join(dirname, filename)
         return self.storage.generate_filename(filepath)
+
+
+class NumpyArrayField(ArrayField):
+    """
+    Save NumPy arrays to PostgreSQl ArrayFields
+    """
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        return super().get_db_prep_value(list(value), connection, prepared)
+
+    def to_python(self, value):
+        return super().to_python(array(value))
+
+    def value_to_string(self, obj):
+        return super().value_to_string(list(obj))
 
 
 class CheckpointsSelectMultiple(CheckboxSelectMultiple):

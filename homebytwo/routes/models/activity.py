@@ -1,20 +1,25 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
+from django.contrib.postgres.fields import ArrayField
 
 from pandas import DataFrame
-from sklearn.linear_model import LinearRegression
+from sklearn.compose import make_column_transformer
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
 from ...core.models import TimeStampedModel
-from ..fields import DataFrameField
+from ..fields import DataFrameField, NumpyArrayField
 
 
 class ActivityQuerySet(models.QuerySet):
     def for_user(self, user):
         """
         return all routes of a given user.
-        this is convinient with the 'request.user' object in views.
+        this is convenient with the 'request.user' object in views.
         """
         return self.filter(athlete=user.athlete)
 
@@ -31,10 +36,10 @@ class ActivityManager(models.Manager):
     ):
         """
         fetches an athlete's activities from Strava and saves them to the Database.
-        It erases the ones that are no more available becaause they have been deleted
+        It erases the ones that are no more available because they have been deleted
         or set to private. It returns all of the athlete's current activities.
 
-        Parameters:s
+        Parameters:
         'after': start date is after specified value (UTC). datetime.datetime, str or None.
         'before': start date is before specified value (UTC). datetime.datetime or str or None
         'limit': maximum activites retrieved. Integer
@@ -51,7 +56,8 @@ class ActivityManager(models.Manager):
         # create or update retrieved activities
         activities = []
         for strava_activity in strava_activities:
-
+            if strava_activity.type not in ActivityType.SUPPORTED_ACTIVITY_TYPES:
+                continue
             try:
                 activity = Activity.objects.get(strava_id=strava_activity.id)
 
@@ -73,8 +79,7 @@ class ActivityManager(models.Manager):
 class Activity(TimeStampedModel):
     """
     All activities published by the athletes on Strava.
-    User activities are used to calculate the athlete's
-    performance for each available activity type.
+    User activities used to calculate performance by activity type.
     """
 
     NONE = None
@@ -126,7 +131,9 @@ class Activity(TimeStampedModel):
     distance = models.FloatField("Activity distance in m", blank=True, null=True)
 
     # elevation gain in m
-    totalup = models.FloatField("Total elevation gain in m", blank=True, null=True)
+    total_elevation_gain = models.FloatField(
+        "Total elevation gain in m", blank=True, null=True
+    )
 
     # total duration of the activity in seconds as opposed to moving time
     elapsed_time = models.DurationField(
@@ -147,6 +154,9 @@ class Activity(TimeStampedModel):
     workout_type = models.SmallIntegerField(
         choices=WORKOUT_TYPE_CHOICES, blank=True, null=True
     )
+
+    # is it a commute
+    commute = models.BooleanField(default=False)
 
     # Gear used if any
     gear = models.ForeignKey(
@@ -175,9 +185,9 @@ class Activity(TimeStampedModel):
         # return the activity distance as a Distance object
         return D(m=self.distance)
 
-    def get_totalup(self):
+    def get_total_elevation_gain(self):
         # return the activity distance as a Distance object
-        return D(m=self.totalup)
+        return D(m=self.total_elevation_gain)
 
     def update_from_strava(self):
         # retrieve activity from Strava and update it.
@@ -198,7 +208,7 @@ class Activity(TimeStampedModel):
         """
 
         # fields from the Strava API object mapped to the Activity Model
-        mapped_values = {
+        fields_map = {
             "name": strava_activity.name,
             "activity_type": strava_activity.type,
             "manual": strava_activity.manual,
@@ -208,62 +218,62 @@ class Activity(TimeStampedModel):
             "description": strava_activity.description,
             "workout_type": strava_activity.workout_type,
             "distance": unithelper.meters(strava_activity.distance),
-            "totalup": unithelper.meters(strava_activity.total_elevation_gain),
+            "total_elevation_gain": unithelper.meters(
+                strava_activity.total_elevation_gain
+            ),
             "gear": strava_activity.gear_id,
         }
 
         # find or create the activity type
-        mapped_values["activity_type"], created = ActivityType.objects.get_or_create(
+        fields_map["activity_type"], created = ActivityType.objects.get_or_create(
             name=strava_activity.type
         )
 
         # resolve foreign key relationship for gear if any
-        if strava_activity.gear_id is not None:
-            mapped_values["gear"], created = Gear.objects.get_or_create(
+        if strava_activity.gear_id:
+            fields_map["gear"], created = Gear.objects.get_or_create(
                 strava_id=strava_activity.gear_id, athlete=self.athlete
             )
             # Retrieve the gear information from Strava if gear is new.
             if created:
-                mapped_values["gear"].update_from_strava()
+                fields_map["gear"].update_from_strava()
 
         # transform text field to empty if None
         if strava_activity.description is None:
-            mapped_values["description"] = ""
+            fields_map["description"] = ""
 
         # update the activity in the Database
-        for key, value in mapped_values.items():
+        for key, value in fields_map.items():
             setattr(self, key, value)
 
         self.save()
 
     def save_streams_from_strava(self):
         """
-        save streams retrieved from Strava to the DataBase using the custom
+        save streams from Strava to a pandas DataFrame using the custom
         Model field DataFrameField.
         """
-        self.streams = DataFrame()
 
         raw_streams = self.get_streams_from_strava()
         if raw_streams:
-            for key, stream in raw_streams.items():
-                self.streams[key] = stream.data
-
+            self.streams = DataFrame(
+                {key: stream for key, stream in raw_streams.items()}
+            )
             self.save(update_fields=["streams"])
             return True
 
     def get_streams_from_strava(self, resolution="low"):
         """
-        Return activity streams from Strava: Time, Altitude and Distance.
-        This is the data that will be used for calculating performance values.
+        Return activity streams from Strava: Time, Altitude, Distance and Moving.
 
-        Only activities with all three required types of stream present will be used.
+        Only activities with all four required types of stream present will be returned.
         Setting a 'low' resolution provides free downsampling of the data
         for better accuracy in the prediction.
         """
+
+        STREAM_TYPES = ["time", "altitude", "distance", "moving"]
+
         # exclude manually created activities because they have no streams
-
-        STREAM_TYPES = ["time", "altitude", "distance"]
-
         if not self.manual:
             strava_client = self.athlete.strava_client
 
@@ -279,6 +289,54 @@ class Activity(TimeStampedModel):
                 ]
             ):
                 return raw_streams
+
+    def get_training_data(self):
+        """
+        return actvity data for training the linear regression model.
+        """
+
+        # load activity streams as a DataFrame
+        activity_data = self.streams
+
+        # calculate gradient in percents, pace in minutes/kilometer and cumulative elevation gain
+        activity_data["step_distance"] = activity_data.distance.diff()
+        activity_data["gradient"] = (
+            activity_data.altitude.diff() / activity_data.step_distance * 100
+        )
+        activity_data["pace"] = (
+            activity_data.time.diff() / activity_data.distance.diff() * 1000 / 60
+        )
+        activity_data["cumulative_elevation_gain"] = activity_data.altitude.diff()[
+            activity_data.altitude.diff() >= 0
+        ].cumsum()
+        activity_data[
+            "cumulative_elevation_gain"
+        ] = activity_data.cumulative_elevation_gain.fillna(method="ffill").fillna(
+            value=0
+        )
+
+        # remove rows with empty gradient or empty pace
+        columns = ["gradient", "pace"]
+        activity_data = activity_data[activity_data[columns].notnull().all(1)].copy()
+
+        # add activity information to every row
+        activity_properties = {
+            "strava_id": self.strava_id,
+            "start_date": self.start_date,
+            "total_elevation_gain": self.total_elevation_gain,
+            "total_distance": self.distance,
+            "gear_id": self.gear_id,
+            "gear_name": self.gear.name if self.gear_id else "None",
+            "workout_type_id": self.workout_type,
+            "workout_type_name": self.get_workout_type_display()
+            if self.workout_type
+            else "None",
+            "commute": self.commute,
+        }
+
+        return activity_data.assign(
+            **{key: value for key, value in activity_properties.items()}
+        )
 
 
 class ActivityType(models.Model):
@@ -367,24 +425,60 @@ class ActivityType(models.Model):
         (YOGA, "Yoga"),
     ]
 
+    SUPPORTED_ACTIVITY_TYPES = {
+        BACKCOUNTRYSKI,
+        EBIKERIDE,
+        HANDCYCLE,
+        HIKE,
+        INLINESKATE,
+        NORDICSKI,
+        RIDE,
+        ROCKCLIMBING,
+        ROLLERSKI,
+        RUN,
+        SNOWSHOE,
+        VELOMOBILE,
+        VIRTUALRIDE,
+        VIRTUALRUN,
+        WALK,
+        WHEELCHAIR,
+    }
+
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES, unique=True)
 
     # Default values for ActivityPerformance
+    # List of regression coeficients as trained by the regression model
+    regression_coeficients = NumpyArrayField(models.FloatField())
 
-    # Slope squared parameter of the regression model
-    slope_squared_param = models.FloatField(default=7.0)
+    # Flat parameter. This is the default pace in minutes per kilometer
+    flat_parameter = models.FloatField(default=6.0)  # 10km/h
 
-    # Slope parameter of the regression model
-    slope_param = models.FloatField(default=1.0)
-
-    # Flat parameter. This is the default pace in s per meter on flat terrain
-    flat_param = models.FloatField(default=0.36)  # 6:00/km
-
-    # Total elevation gain parameter of the regression model
-    total_elevation_gain_param = models.FloatField(default=0.1)
+    # min and max plausible gradient and speed to filter outliers in activity data.
+    min_pace = models.FloatField(default=2.0)  # 30km/h
+    max_pace = models.FloatField(default=40.0)  # 1.5 km/h
+    min_gradient = models.FloatField(default=-100.0)  # 100% or -45°
+    max_gradient = models.FloatField(default=100.0)  # 100% or 45°
 
     def __str__(self):
         return self.name
+
+
+class PredictionModel:
+    """
+    the sklearn pipeline for preprocessing data and
+    applying a linear regression model to predict the athlete's pace.
+    """
+
+    numerical_columns = ["gradient", "total_elevation_gain", "total_distance"]
+    categorical_columns = ["gear_name", "workout_type_name"]
+
+    preprocessor = make_column_transformer(
+        (OneHotEncoder(handle_unknown="ignore"), categorical_columns),
+        (PolynomialFeatures(2), ["gradient"]),
+        remainder="passthrough",
+    )
+
+    pipeline = make_pipeline(preprocessor, Ridge(),)
 
 
 class ActivityPerformance(models.Model):
@@ -395,103 +489,127 @@ class ActivityPerformance(models.Model):
     The base assumption is that the pace of the athlete depends
     on the *slope* of the travelled distance.
 
-    Based on the athlete's performance on strava,
-    we estimate an equation for the pace for each activity.
-
-        flat_pace = slope_squared_param * slope**2 +
-                    slope_param * slope +
-                    flat_param +
-                    total_elevation_gain_param * total_elevation_gain
-
-    Params are fitted using a robust linear model.
-
+    Based on the athlete's history on strava, we train a linear regression model
+    to predict the athlete's pace on a route.
     """
 
     athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
     activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
-    # Slope squared parameter of the regression model
-    slope_squared_param = models.FloatField(default=7.0)
+    # list of numpy arrays of one-hot encoder categories discovered in preprocessing
+    onehot_encoder_categories = ArrayField(ArrayField(models.CharField(max_length=50)))
 
-    # Slope parameter of the regression model
-    slope_param = models.FloatField(default=1.0)
+    # numpy array of regression coeficients as trained by the regression model
+    regression_coeficients = NumpyArrayField(models.FloatField())
 
-    # Flat parameter. This is the default pace in s per meter on flat terrain
-    flat_param = models.FloatField(default=0.36)  # 6:00/km
+    # intercept of the linear regression, which corresponds to pace in minutes per kilometer on flat terrain.
+    flat_parameter = models.FloatField(default=6.00)  # 10km/h
 
-    # Total elevation gain parameter of the regression model
-    total_elevation_gain_param = models.FloatField(default=0.1)
+    # reliability and cross_validation scores of the prediction model between 0.0 and 1.0
+    model_score = models.FloatField()
+    cv_scores = NumpyArrayField(models.FloatField())
 
     def __str__(self):
         return "{0} - {1}".format(self.athlete.user.username, self.activity_type.name)
 
-    def get_activities(self, gear=[], workout_type=[], limit=0, r_squared_treshold=0.8):
+    def get_training_data(self, start_year=None):
         """
-        return all activities of the activity_type for the current athlete
+        retrieve streams and information from selected activities to train the linear regression model.
         """
 
-        # start with all activities
-        activities = Activity.objects.filter(
-            athlete=self.athlete, activity_type=self.activity_type
+        target_activities = Activity.objects.filter(
+            athlete=self.athlete,
+            activity_type=self.activity_type,
+            streams__isnull=False,
         )
 
-        # filter by gear if needed
-        if gear:
-            activities = activities.filter(gear__in=gear)
-        # filter by workout type if needed
-        if workout_type:
-            activities = activities.filter(gear__in=workout_type)
-        # limit if required
-        if limit:
-            try:
-                activities = activities[: limit + 1]
-            except IndexError:
-                pass
+        if start_year:
+            target_activities = target_activities.filter(
+                start_date__year__gte=start_year
+            )
 
-        return activities
+        # collect activity_data into a pandas DataFrame
+        observations = DataFrame()
+        for activity in target_activities:
+            observations = observations.append(
+                activity.get_training_data(), sort=True, ignore_index=True
+            )
 
-    def calculate_perfomance(self, activities):
+        return observations
+
+    def remove_outliers(self, observations):
         """
-        calculate performance prediction with pandas and sklearn
+        filter speed or gradient outliers from observation.
         """
-        data = DataFrame()
 
-        for activity in activities:
-            if activity.streams is not None:
-                streams = activity.streams
-                data["gradient"] = (
-                    streams["altitude"].diff() / streams["distance"].diff()
-                )
-                data["pace"] = streams["time"].diff() / streams["distance"].diff()
+        return observations[
+            (observations.pace > self.activity_type.min_pace)
+            & (observations.pace < self.activity_type.max_pace)
+            & (observations.gradient > self.activity_type.min_gradient)
+            & (observations.gradient < self.activity_type.max_gradient)
+        ]
 
-                # calculate totalup in kilometers
-                data["totalup"] = (
-                    streams["altitude"].diff()[streams["altitude"].diff() >= 0].cumsum()
-                )
-                data["totalup"] = data["totalup"].fillna(method="ffill").fillna(value=0)
-                data["totalup"] = data["totalup"] / 1000
+    def train_model(self, start_year=2017):
+        """
+        train prediction model with athlete data for the target activity.
+        exclude activities older than the `start_year` parameter.
 
-                #  cleanup and sort by gradient
-                data = data[data.gradient.notnull()]
-                data = data.sort_values(["gradient"])
-                data = data.reset_index(drop=True)
+        """
 
-    def fit_regression(self, data):
-        features = data[["gradient_squared", "gradient", "totalup"]]
-        target = data["pace"]
+        # get activity data from hdf5 files
+        observations = self.get_training_data(start_year=start_year)
+        if observations.empty:
+            raise
 
-        # LinearRegression
-        model = LinearRegression()
-        model.fit(features, target)
-        score = model.score(features, target)
+        # remove outliers
+        data = self.remove_outliers(observations)
 
-        (
-            self.slope_squared_param,
-            self.slope_param,
-            self.total_elevation_gain_param,
-        ) = model.coef_
+        # load prediction pipeline
+        pipeline = PredictionModel.pipeline
 
-        self.flat_param = model.intercept_
+        # define target variable and features
+        y = data["pace"]
+        X = data[
+            PredictionModel.numerical_columns + PredictionModel.categorical_columns
+        ].fillna(value="None")
+
+        # split data into training and testing data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+        # fit model with training data
+        pipeline.fit(X_train, y_train)
+
+        # evaluate model with test data
+        self.model_score = pipeline.score(X_test, y_test)
+        self.cv_scores = cross_val_score(pipeline, X_test, y_test, cv=5)
+
+        # save model coeficients and intercept for future predictions
+        regression = pipeline.named_steps["ridge"]
+        self.regression_coeficients = regression.coef_
+        self.flat_parameter = regression.intercept_
+
+        # save one-hot encoder categories as rectangular arrays
+        onehot_encoder = pipeline.named_steps["columntransformer"].named_transformers_[
+            "onehotencoder"
+        ]
+
+        # transform list of arrays into list of lists
+        onehot_encoder_categories = [
+            category_array.tolist() for category_array in onehot_encoder.categories_
+        ]
+
+        # find longest list
+        target_list_length = max(
+            len(category_list) for category_list in onehot_encoder_categories
+        )
+
+        # pad shorter lists with None values to make the array rectangular
+        self.onehot_encoder_categories = [
+            category_list + [None] * (target_list_length - len(category_list))
+            for category_list in onehot_encoder_categories
+        ]
+
+        self.save()
 
 
 class Gear(models.Model):
