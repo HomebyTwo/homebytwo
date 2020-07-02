@@ -1,5 +1,4 @@
-import os
-from glob import glob
+from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
@@ -60,18 +59,18 @@ class Command(BaseCommand):
                     db_files = [column[0] for column in cursor.fetchall()]
                     cursor.close()
 
-                db_file_list.extend([field.get_absolute_path(file) for file in db_files])
+                db_file_list.extend(
+                    [field.get_absolute_path(file) for file in db_files]
+                )
 
-        # remove duplicates
         return set(db_file_list)
 
     def list_os_files(self):
         """
         list all .h5 files in media folders
         """
-        media_folder = settings.MEDIA_ROOT
-        os_file_list = glob(media_folder + '/**/*.h5', recursive=True)
-        return set(os_file_list)
+        media_folder = Path(settings.MEDIA_ROOT)
+        return {path.as_posix() for path in media_folder.glob("**/*.h5")}
 
     def delete_files(self, files_to_delete):
         """
@@ -79,7 +78,7 @@ class Command(BaseCommand):
         """
         for file in files_to_delete:
             try:
-                os.remove(file)
+                Path(file).unlink()
             except OSError as error:
                 raise CommandError("{} could not be deleted: {}".format(file, error))
 

@@ -1,5 +1,5 @@
-import os
 from inspect import getmro
+from pathlib import Path
 
 from django.apps import apps
 from django.contrib.gis.db import models
@@ -61,7 +61,7 @@ class DataFrameField(models.CharField):
         upload_to="data",
         storage=None,
         unique_fields=[],
-        **kwargs
+        **kwargs,
     ):
 
         self.storage = storage or default_storage
@@ -125,9 +125,9 @@ class DataFrameField(models.CharField):
         return file path based on the value saved in the Database.
         prepend filepath to older objects that were saved without it.
         """
-        dirname, filename = os.path.split(value)
-        dirname = dirname or self.upload_to
-        return os.path.join(dirname, filename)
+        *dirs, filename = Path(value).parts
+        dirs = dirs or [self.upload_to]
+        return Path(*dirs, filename)
 
     def get_absolute_path(self, value):
         """
@@ -192,27 +192,20 @@ class DataFrameField(models.CharField):
         full_filepath = self.storage.path(dataframe.filepath)
 
         # Create any intermediate directories that do not exist.
-        # shamelessly copied from Django's original Storage class
-        directory = os.path.dirname(full_filepath)
-        if not os.path.exists(directory):
-            try:
-                if self.storage.directory_permissions_mode is not None:
-                    # os.makedirs applies the global umask, so we reset it,
-                    # for consistency with file_permissions_mode behavior.
-                    old_umask = os.umask(0)
-                    try:
-                        os.makedirs(directory, self.storage.directory_permissions_mode)
-                    finally:
-                        os.umask(old_umask)
-                else:
-                    os.makedirs(directory)
-            except FileExistsError:
-                # There's a race between os.path.exists() and os.makedirs().
-                # If os.makedirs() fails with FileExistsError, the directory
-                # was created concurrently.
-                pass
-        if not os.path.isdir(directory):
-            raise IOError("%s exists and is not a directory." % directory)
+        directory = Path(full_filepath).parent
+
+        if directory.exists() and not directory.is_dir():
+            raise IOError(f"{directory} exists and is not a directory.")
+
+        if not directory.is_dir():
+            if self.storage.directory_permissions_mode is not None:
+                directory.mkdir(
+                    mode=self.storage.directory_permissions_mode,
+                    parents=True,
+                    exist_ok=True,
+                )
+            else:
+                directory.mkdir(parents=True, exist_ok=True)
 
         # save to storage
         dataframe.to_hdf(full_filepath, "df", mode="w", format="fixed")
@@ -248,7 +241,7 @@ class DataFrameField(models.CharField):
 
         # generate filepath
         dirname = self.upload_to
-        filepath = os.path.join(dirname, filename)
+        filepath = Path(dirname, filename)
         return self.storage.generate_filename(filepath)
 
 

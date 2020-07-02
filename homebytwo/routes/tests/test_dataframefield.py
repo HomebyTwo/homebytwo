@@ -1,6 +1,6 @@
-import os
 import shutil
 import stat
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.core.checks import Error
@@ -88,7 +88,7 @@ class DataFrameFieldTestCase(TestCase):
         complete_filepath = route.data.filepath
 
         # save DB entry without dirname
-        dirname, filename = os.path.split(route.data.filepath)
+        filename = Path(route.data.filepath).name
         query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
             filename, route.id
         )
@@ -96,7 +96,7 @@ class DataFrameFieldTestCase(TestCase):
             cursor.execute(query)
 
         route.refresh_from_db()
-        assert route.data.filepath == complete_filepath
+        assert str(route.data.filepath) == complete_filepath
 
     def test_dataframe_from_db_value_missing_file(self):
         route = RouteFactory()
@@ -114,7 +114,7 @@ class DataFrameFieldTestCase(TestCase):
         route = RouteFactory()
 
         # save DB entry with a leading slash
-        dirname, filename = os.path.split(route.data.filepath)
+        filename = Path(route.data.filepath).name
         query = "UPDATE routes_route SET data='/{}' WHERE id={}".format(
             filename, route.id
         )
@@ -129,7 +129,7 @@ class DataFrameFieldTestCase(TestCase):
         field = DataFrameField()
         fullpath = field.storage.path(route.data.filepath)
 
-        os.remove(fullpath)
+        Path(fullpath).unlink()
 
         with open(fullpath, "w+") as file:
             file.write("I will not buy this record, it is scratched!")
@@ -150,21 +150,22 @@ class DataFrameFieldTestCase(TestCase):
 
         route = RouteFactory()
         field = route._meta.get_field("data")
-        dirname, filename = os.path.split(field.get_absolute_path(route.data.filepath))
-        mode = os.stat(dirname).st_mode
+        dirname = Path(field.get_absolute_path(route.data.filepath)).parent
+        mode = dirname.stat().st_mode
         assert stat.filemode(mode) == "drwxr-x--x"
 
     def test_dataframe_save_dataframe_to_file_exists_not_a_directory(self):
         route = RouteFactory()
         field = route._meta.get_field("data")
         filepath = field.get_absolute_path(route.data.filepath)
-        dirname, filename = os.path.split(filepath)
+        dirname = Path(filepath).parent
         shutil.rmtree(dirname)
         with open(dirname, "w+") as file:
             file.write("I cannot wait until lunchtime!")
         with self.assertRaises(IOError):
             route.save(update_fields=["data"])
-        os.remove(dirname)
+        if dirname.is_dir():
+            dirname.rmdir()
 
     def test_dataframe_save_dataframe_to_file_lost_filepath(self):
         route = RouteFactory()

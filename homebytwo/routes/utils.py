@@ -1,6 +1,6 @@
 from collections import namedtuple
 from itertools import chain, islice, tee
-from os import path
+from pathlib import Path
 
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
@@ -43,9 +43,7 @@ def get_image_path(instance, filename):
     to the type of object: segment, route, etc.. as well as
     the id of the object.
     """
-    return path.join(
-        "images", instance.__class__.__name__, str(instance.id), filename
-    )
+    return Path("images", instance.__class__.__name__, str(instance.id), filename)
 
 
 def current_and_next(some_iterable):

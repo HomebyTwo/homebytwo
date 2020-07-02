@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 from datetime import timedelta
-from os.path import dirname, realpath
+from pathlib import Path
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -16,7 +16,7 @@ from ..models import Activity, Gear, WebhookTransaction
 from ..tasks import ProcessStravaEvents, import_strava_activities_task
 from .factories import ActivityFactory, GearFactory, WebhookTransactionFactory
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 class ActivityTestCase(TestCase):

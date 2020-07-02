@@ -1,8 +1,6 @@
 from datetime import timedelta
-from os import listdir, makedirs, remove, urandom
-from os.path import dirname, exists, join, realpath
-from shutil import rmtree
-from tempfile import mkdtemp
+from os import urandom
+from pathlib import Path
 from unittest import skip
 from uuid import uuid4
 
@@ -26,7 +24,7 @@ from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 @override_settings(
@@ -584,56 +582,51 @@ class RouteTestCase(TestCase):
     # Management Commands #
     #######################
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_no_data(self):
         # No files in data directory
         out = StringIO()
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_routes(self):
-        # five routes no extra files
         out = StringIO()
+
+        # five routes no extra files
         RouteFactory.create_batch(5)
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_delete_trash(self):
-        # five random files not in DB
-        data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
-
-        if not exists(data_dir):
-            makedirs(data_dir)
-
         out = StringIO()
+        data_dir = Path(settings.MEDIA_ROOT, "data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+
         for i in range(5):
             filename = uuid4().hex + ".h5"
-            fullpath = join(data_dir, filename)
-            with open(fullpath, "wb") as file_:
+            fullpath = data_dir / filename
+            with fullpath.open(mode="wb") as file_:
                 file_.write(urandom(64))
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 5 files.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_missing_route_file(self):
-        # One deleted route data file one random file
-        data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
         out = StringIO()
-        [RouteFactory() for i in range(5)]
-        file_to_delete = listdir(data_dir)[0]
-        remove(join(data_dir, file_to_delete))
+        data_dir = Path(settings.MEDIA_ROOT, "data")
+
+        # 5 routes
+        RouteFactory.create_batch(5)
+
+        # delete one route file
+        file_to_delete = list(data_dir.glob("*"))[0]
+        (data_dir / file_to_delete).unlink()
+
+        # add one random file
         filename = uuid4().hex + ".h5"
-        fullpath = join(data_dir, filename)
-        with open(fullpath, "wb") as file_:
+        fullpath = data_dir / filename
+        with fullpath.open(mode="wb") as file_:
             file_.write(urandom(64))
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)

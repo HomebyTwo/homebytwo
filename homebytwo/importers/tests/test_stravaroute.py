@@ -1,4 +1,4 @@
-from os.path import dirname, realpath
+from pathlib import Path
 
 from django.contrib.gis.geos import LineString
 from django.test import TestCase
@@ -15,7 +15,7 @@ from ...utils.tests import raise_connection_error, read_data
 from ..models import StravaRoute
 from .factories import StravaRouteFactory
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 class StravaTestCase(TestCase):

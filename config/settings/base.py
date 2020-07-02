@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import dj_database_url
 
@@ -64,7 +64,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "homebytwo", "templates")],
+        "DIRS": [Path(BASE_DIR, "homebytwo", "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -84,17 +84,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-
 DATABASES = {"default": dj_database_url.parse(get_env_variable("DATABASE_URL"))}
-
-# Custom Test Runner to write test media files to tmp
-TEST_RUNNER = "homebytwo.utils.tests.CustomTestSuiteRunner"
 
 # Password validation
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
     },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
@@ -128,7 +124,7 @@ STATIC_URL = get_env_variable("STATIC_URL", "/static/")
 STATIC_ROOT = get_env_variable("STATIC_ROOT", "/tmp/static")
 
 
-STATICFILES_DIRS = (os.path.join(BASE_DIR, get_project_root_path("homebytwo/static")),)
+STATICFILES_DIRS = (Path(BASE_DIR, get_project_root_path("homebytwo/static")),)
 
 # Absolute path to the directory where media files should be collected to.
 
@@ -147,9 +143,9 @@ THUMBNAIL_ALIASES = {
 ##############
 
 CELERY_BROKER_URL = get_env_variable("CELERY_BROKER_URL", "amqp://localhost")
-CELERY_ACCEPT_CONTENT = ['application/json']
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_SERIALIZER = "json"
 
 #############
 # Mailchimp #

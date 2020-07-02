@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
@@ -8,7 +8,14 @@ from faker.providers import BaseProvider
 from pandas import read_json
 from pytz import utc
 
-from ...routes.models import Activity, ActivityType, Gear, Place, Route, WebhookTransaction
+from ...routes.models import (
+    Activity,
+    ActivityType,
+    Gear,
+    Place,
+    Route,
+    WebhookTransaction,
+)
 from ...utils.factories import AthleteFactory, get_field_choices
 
 
@@ -35,10 +42,8 @@ Faker.add_provider(DjangoGeoLocationProvider)
 
 
 def load_data(file):
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    data_dir = "data"
-
-    json_path = os.path.join(dir_path, data_dir, file,)
+    dir_path = Path(__file__).resolve().parent
+    json_path = dir_path / "data" / file
 
     return open(json_path).read()
 
