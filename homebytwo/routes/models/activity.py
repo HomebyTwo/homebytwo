@@ -2,17 +2,29 @@ from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 from django.contrib.postgres.fields import ArrayField
 
+from numpy import array
 from pandas import DataFrame
-from sklearn.compose import make_column_transformer
-from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField, NumpyArrayField
+from ..prediction_model import PredictionModel
+
+
+def get_default_array():
+    """
+    define default array (mutable) for the `regression_coefficients` NumpyArrayField.
+    """
+    return array([0.0, 0.0, 0.0, 0.075, 0.0004, 0.0001, 0.0001]).copy()
+
+
+def get_default_onehot_categories():
+    """
+    define default lists (mutable) for the `onehot_encoder_categories` ArrayField.
+    """
+    return [["None"], ["None"]].copy()
 
 
 class ActivityQuerySet(models.QuerySet):
@@ -193,11 +205,14 @@ class Activity(TimeStampedModel):
         # retrieve activity from Strava and update it.
         try:
             strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
-            self.save_from_strava(strava_activity)
 
         # Object not found on Strava: e.g. changed privacy setting
         except ObjectNotFound:
             self.delete()
+
+        # strava activity was found in Strava
+        else:
+            self.save_from_strava(strava_activity)
 
     def save_from_strava(self, strava_activity):
         """
@@ -222,6 +237,7 @@ class Activity(TimeStampedModel):
                 strava_activity.total_elevation_gain
             ),
             "gear": strava_activity.gear_id,
+            "commute": strava_activity.commute,
         }
 
         # find or create the activity type
@@ -303,9 +319,7 @@ class Activity(TimeStampedModel):
         activity_data["gradient"] = (
             activity_data.altitude.diff() / activity_data.step_distance * 100
         )
-        activity_data["pace"] = (
-            activity_data.time.diff() / activity_data.distance.diff() * 1000 / 60
-        )
+        activity_data["pace"] = activity_data.time.diff() / activity_data.step_distance
         activity_data["cumulative_elevation_gain"] = activity_data.altitude.diff()[
             activity_data.altitude.diff() >= 0
         ].cumsum()
@@ -325,9 +339,9 @@ class Activity(TimeStampedModel):
             "start_date": self.start_date,
             "total_elevation_gain": self.total_elevation_gain,
             "total_distance": self.distance,
-            "gear_id": self.gear_id,
-            "gear_name": self.gear.name if self.gear_id else "None",
-            "workout_type_id": self.workout_type,
+            "gear": self.gear.strava_id,
+            "gear_name": self.gear.name if self.gear else "None",
+            "workout_type": str(self.workout_type),
             "workout_type_name": self.get_workout_type_display()
             if self.workout_type
             else "None",
@@ -446,39 +460,29 @@ class ActivityType(models.Model):
 
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES, unique=True)
 
-    # Default values for ActivityPerformance
-    # List of regression coeficients as trained by the regression model
-    regression_coeficients = NumpyArrayField(models.FloatField())
+    # fallback performance values when the athlete has no model trained for the activity type
+    # list of regression coefficients as trained by the regression model
+    regression_coefficients = NumpyArrayField(
+        models.FloatField(), default=get_default_array
+    )
 
-    # Flat parameter. This is the default pace in minutes per kilometer
-    flat_parameter = models.FloatField(default=6.0)  # 10km/h
+    # flat pace in seconds per meter, aka the intercept of the regression.
+    flat_parameter = models.FloatField(default=0.36)  # 6:00/km or 10km/h
+
+    # default categories for the one-hot encoder: gear and workout type.
+    onehot_encoder_categories = ArrayField(
+        ArrayField(models.CharField(max_length=50)),
+        default=get_default_onehot_categories,
+    )
 
     # min and max plausible gradient and speed to filter outliers in activity data.
-    min_pace = models.FloatField(default=2.0)  # 30km/h
-    max_pace = models.FloatField(default=40.0)  # 1.5 km/h
+    min_pace = models.FloatField(default=0.12)  # 2:00/km or 30km/h
+    max_pace = models.FloatField(default=2.4)  # 40:00/km or 1.5 km/h
     min_gradient = models.FloatField(default=-100.0)  # 100% or -45°
     max_gradient = models.FloatField(default=100.0)  # 100% or 45°
 
     def __str__(self):
         return self.name
-
-
-class PredictionModel:
-    """
-    the sklearn pipeline for preprocessing data and
-    applying a linear regression model to predict the athlete's pace.
-    """
-
-    numerical_columns = ["gradient", "total_elevation_gain", "total_distance"]
-    categorical_columns = ["gear_name", "workout_type_name"]
-
-    preprocessor = make_column_transformer(
-        (OneHotEncoder(handle_unknown="ignore"), categorical_columns),
-        (PolynomialFeatures(2), ["gradient"]),
-        remainder="passthrough",
-    )
-
-    pipeline = make_pipeline(preprocessor, Ridge(),)
 
 
 class ActivityPerformance(models.Model):
@@ -496,18 +500,22 @@ class ActivityPerformance(models.Model):
     athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
     activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
-    # list of numpy arrays of one-hot encoder categories discovered in preprocessing
-    onehot_encoder_categories = ArrayField(ArrayField(models.CharField(max_length=50)))
+    # default categories for the one-hot encoder: gear and workout type.
+    onehot_encoder_categories = ArrayField(
+        ArrayField(models.CharField(max_length=50)),
+        default=get_default_onehot_categories,
+    )
+    # numpy array of regression coefficients as trained by the regression model
+    regression_coefficients = NumpyArrayField(
+        models.FloatField(), default=get_default_array
+    )
 
-    # numpy array of regression coeficients as trained by the regression model
-    regression_coeficients = NumpyArrayField(models.FloatField())
-
-    # intercept of the linear regression, which corresponds to pace in minutes per kilometer on flat terrain.
-    flat_parameter = models.FloatField(default=6.00)  # 10km/h
+    # intercept of the linear regression, which corresponds to pace in seconds per meter on flat terrain.
+    flat_parameter = models.FloatField(default=0.36)  # 10km/h
 
     # reliability and cross_validation scores of the prediction model between 0.0 and 1.0
-    model_score = models.FloatField()
-    cv_scores = NumpyArrayField(models.FloatField())
+    model_score = models.FloatField(default=0.0)
+    cv_scores = NumpyArrayField(models.FloatField(), default=get_default_array)
 
     def __str__(self):
         return "{0} - {1}".format(self.athlete.user.username, self.activity_type.name)
@@ -565,13 +573,15 @@ class ActivityPerformance(models.Model):
         data = self.remove_outliers(observations)
 
         # load prediction pipeline
-        pipeline = PredictionModel.pipeline
+        prediction_model = PredictionModel()
+        pipeline = prediction_model.pipeline
+        feature_columns = (
+            prediction_model.numerical_columns + prediction_model.categorical_columns
+        )
 
         # define target variable and features
         y = data["pace"]
-        X = data[
-            PredictionModel.numerical_columns + PredictionModel.categorical_columns
-        ].fillna(value="None")
+        X = data[feature_columns].fillna(value="None")
 
         # split data into training and testing data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
@@ -583,9 +593,9 @@ class ActivityPerformance(models.Model):
         self.model_score = pipeline.score(X_test, y_test)
         self.cv_scores = cross_val_score(pipeline, X_test, y_test, cv=5)
 
-        # save model coeficients and intercept for future predictions
+        # save model coefficients and intercept for future predictions
         regression = pipeline.named_steps["ridge"]
-        self.regression_coeficients = regression.coef_
+        self.regression_coefficients = regression.coef_
         self.flat_parameter = regression.intercept_
 
         # save one-hot encoder categories as rectangular arrays

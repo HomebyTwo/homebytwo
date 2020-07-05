@@ -2,21 +2,21 @@
 {% load humanize %}
 
 <li>
-  <a href="{% if new %}{{ route.import_url }}{% elif existing %}{{ route.update_url }}{% else %}{{ route.delete_url }}{% endif %}">
+  <a
+    href="{% if new %}{{ route.import_url }}{% elif existing %}{{ route.update_url }}{% else %}{{ route.delete_url }}{% endif %}">
     <div class="media">
       <div class="media__left">
-          <img
-            {% if new or existing %} src="{% static route.svg %}"
-            {% else %} src="{% static route.svg_muted %}" {% endif %}
-            alt=""
-          />
+        <img {% if new or existing %} src="{% static route.svg %}" {% else %} src="{% static route.svg_muted %}"
+          {% endif %} alt="" />
       </div>
       <div class="media__body {% if deleted %} text-muted {% endif %}">
         <h4 class="mrgv0">{{ route.name }}</h4>
         <p class="mrgv0">
-          {% if route.length %}{{ route.get_length.km|floatformat:1|intcomma }}km - {% endif %}
-          {% if route.totalup %}{{ route.get_totalup.m|floatformat:"0"|intcomma }}m+ {% endif %}
-          {% if route.totaldown %}{{ route.get_totaldown.m|floatformat:"0"|intcomma }}m- {% endif %}
+          {% if route.total_distance %}{{ route.get_total_distance.km|floatformat:1|intcomma }}km - {% endif %}
+          {% if route.total_elevation_gain %}{{ route.get_total_elevation_gain.m|floatformat:"0"|intcomma }}m+
+          {% endif %}
+          {% if route.total_elevation_loss %}{{ route.get_total_elevation_loss.m|floatformat:"0"|intcomma }}m-
+          {% endif %}
         </p>
         {% if new %}
         <p class="mrgt0 pull-right">import &rsaquo;</p>

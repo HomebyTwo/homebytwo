@@ -67,10 +67,6 @@ class ActivityTypeFactory(DjangoModelFactory):
         "random_element",
         elements=list(get_field_choices(ActivityType.ACTIVITY_NAME_CHOICES)),
     )
-    slope_squared_param = Faker("pyfloat", min_value=3, max_value=10)
-    slope_param = Faker("pyfloat", min_value=0, max_value=1)
-    flat_param = Faker("pyfloat", min_value=0, max_value=1)
-    total_elevation_gain_param = Faker("pyfloat", min_value=0, max_value=1)
 
 
 class PlaceFactory(DjangoModelFactory):
@@ -102,9 +98,9 @@ class RouteFactory(DjangoModelFactory):
     description = Faker("bs")
     athlete = SubFactory(AthleteFactory)
     garmin_id = None
-    totalup = Faker("random_int", min=0, max=5000)
-    totaldown = Faker("random_int", min=0, max=5000)
-    length = Faker("random_int", min=1, max=5000)
+    total_elevation_gain = Faker("random_int", min=0, max=5000)
+    total_elevation_loss = Faker("random_int", min=0, max=5000)
+    total_distance = Faker("random_int", min=1, max=5000)
     geom = GEOSGeometry(route_geojson, srid=21781)
     start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0]))
     end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1]))
@@ -123,7 +119,7 @@ class ActivityFactory(DjangoModelFactory):
     activity_type = SubFactory(ActivityTypeFactory)
     manual = False
     distance = Faker("random_int", min=500, max=5000)
-    totalup = Faker("random_int", min=0, max=5000)
+    total_elevation_gain = Faker("random_int", min=0, max=5000)
     elapsed_time = Faker("time_delta")
     moving_time = elapsed_time
     workout_type = Faker(

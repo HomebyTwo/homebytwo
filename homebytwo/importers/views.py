@@ -35,7 +35,9 @@ def import_routes(request, data_source):
     local_routes = route_class.objects.for_user(request.user)
 
     # split routes in 3 lists
-    new_routes, existing_routes, deleted_routes = split_routes(remote_routes, local_routes)
+    new_routes, existing_routes, deleted_routes = split_routes(
+        remote_routes, local_routes
+    )
 
     context = {
         "new_routes": new_routes,
@@ -69,7 +71,7 @@ def import_route(request, data_source, source_id):
 
     # fetch route details from Remote API
     route.get_route_details()
-    route.update_route_details_from_data()
+    route.update_track_details_from_data()
 
     if request.method == "POST":
         # populate checkpoints_formset with POST data

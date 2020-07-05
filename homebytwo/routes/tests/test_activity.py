@@ -22,6 +22,7 @@ CURRENT_DIR = Path(__file__).resolve().parent
 class ActivityTestCase(TestCase):
 
     STRAVA_BASE_URL = "https://www.strava.com/api/v3"
+    STREAM_TYPES = ["time", "altitude", "distance", "moving"]
     PROCESSED = WebhookTransaction.PROCESSED
     UNPROCESSED = WebhookTransaction.UNPROCESSED
     SKIPPED = WebhookTransaction.SKIPPED
@@ -115,7 +116,9 @@ class ActivityTestCase(TestCase):
         url = "https://www.strava.com/activities/{}".format(activity.strava_id)
         self.assertEqual(url, activity.get_strava_url())
         self.assertAlmostEqual(activity.distance / 1000, activity.get_distance().km)
-        self.assertAlmostEqual(activity.totalup, activity.get_totalup().m)
+        self.assertAlmostEqual(
+            activity.total_elevation_gain, activity.get_total_elevation_gain().m
+        )
 
     def test_save_strava_activity_add_existing_gear(self):
 
@@ -131,8 +134,8 @@ class ActivityTestCase(TestCase):
         # map id back to strava_id
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         #  add existing gear to the Strava activity
@@ -158,8 +161,8 @@ class ActivityTestCase(TestCase):
         # map id back to strava_id
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         #  add new gear to the Strava activity
@@ -200,8 +203,8 @@ class ActivityTestCase(TestCase):
         # map id back to Strava
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         # remove gear
@@ -329,10 +332,9 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        STREAM_TYPES = ["time", "altitude", "distance"]
         streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
             activity.strava_id,
-            ",".join(STREAM_TYPES),
+            ",".join(self.STREAM_TYPES),
         )
 
         httpretty.register_uri(
@@ -354,10 +356,9 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        STREAM_TYPES = ["time", "altitude", "distance"]
         streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
             activity.strava_id,
-            ",".join(STREAM_TYPES),
+            ",".join(self.STREAM_TYPES),
         )
 
         httpretty.register_uri(
@@ -372,7 +373,7 @@ class ActivityTestCase(TestCase):
         raw_streams = activity.get_streams_from_strava()
         httpretty.disable()
 
-        self.assertEqual(len(raw_streams), 3)
+        self.assertEqual(len(raw_streams), 4)
 
     @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
     def test_strava_webhook_callback_url(self):
@@ -425,7 +426,7 @@ class ActivityTestCase(TestCase):
         httpretty.enable(allow_net_connect=False)
 
         activity_url = (
-            self.STRAVA_BASE_URL + "/activities/%s" % transaction.body["object_id"]
+            self.STRAVA_BASE_URL + "/activities/" + str(transaction.body["object_id"])
         )
         activity_json = read_data("manual_activity.json", dir_path=CURRENT_DIR)
 

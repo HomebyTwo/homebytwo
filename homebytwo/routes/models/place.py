@@ -207,7 +207,7 @@ class Checkpoint(models.Model):
 
     @property
     def distance_from_start(self):
-        return self.route.get_distance_data(self.line_location, "length")
+        return self.route.get_distance_data(self.line_location, "distance")
 
     @property
     def field_value(self):

@@ -119,18 +119,22 @@ class SwitzerlandMobilityRoute(Route):
             self.name = raw_route_json["properties"]["name"]
 
             # use Switzerland Mobility values until we calculate them from data
-            self.length = raw_route_json["properties"]["meta"]["length"]
-            self.totalup = raw_route_json["properties"]["meta"]["totalup"]
-            self.totaldown = raw_route_json["properties"]["meta"]["totaldown"]
+            self.total_distance = raw_route_json["properties"]["meta"]["length"]
+            self.total_elevation_gain = raw_route_json["properties"]["meta"]["totalup"]
+            self.total_elevation_loss = raw_route_json["properties"]["meta"][
+                "totaldown"
+            ]
 
             # save route profile to route DataFrame
             self.data = DataFrame(
                 literal_eval(raw_route_json["properties"]["profile"]),
-                columns=["lat", "lng", "altitude", "length"],
+                columns=["lat", "lng", "altitude", "distance"],
             )
 
             # create geom from lat, lng data columns
-            coords = [(lat, lng) for lat, lng in zip(self.data["lat"], self.data["lng"])]
+            coords = [
+                (lat, lng) for lat, lng in zip(self.data["lat"], self.data["lng"])
+            ]
             self.geom = LineString(coords, srid=21781)
 
             # remove redundant lat, lng columns in data

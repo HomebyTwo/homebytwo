@@ -15,7 +15,12 @@ from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
 
 from ..models import Checkpoint, Track
-from ..utils import GARMIN_ACTIVITY_TYPE_MAP, Link, create_segments_from_checkpoints, get_places_from_segment
+from ..utils import (
+    GARMIN_ACTIVITY_TYPE_MAP,
+    Link,
+    create_segments_from_checkpoints,
+    get_places_from_segment,
+)
 
 
 class RouteQuerySet(models.QuerySet):
@@ -348,10 +353,10 @@ class Route(Track):
 
         # we cannot start from the route geometry
         # because it can have a different number of coords than the number of rows
-        # in the route data. We start from the length column in the route data and
+        # in the route data. We start from the distance column in the route data and
         # save the corresponding Point in the Linestring geometry to lat, lng columns.
         self.data["lng"], self.data["lat"] = zip(  # unpack list of coords tupples
-            *(self.data["length"] / self.data["length"].max())  # line location
+            *(self.data["distance"] / self.data["distance"].max())  # line location
             .apply(lambda x: geom.interpolate_normalized(x).coords)  # get Point
             .to_list()  # dump list of coords tupples
         )

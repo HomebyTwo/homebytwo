@@ -53,32 +53,32 @@ class RouteTestCase(TestCase):
         route = RouteFactory()
         self.assertEqual(route.display_url, route.get_absolute_url())
 
-    def test_get_length(self):
-        route = RouteFactory.build(length=12345)
-        length = route.get_length()
+    def test_get_total_distance(self):
+        route = RouteFactory.build(total_distance=12345)
+        total_distance = route.get_total_distance()
 
-        self.assertTrue(isinstance(length, Distance))
-        self.assertEqual(length.km, 12.345)
+        self.assertTrue(isinstance(total_distance, Distance))
+        self.assertEqual(total_distance.km, 12.345)
 
-    def test_get_totalup(self):
-        route = RouteFactory.build(totalup=1234)
-        totalup = route.get_totalup()
+    def test_get_total_elevation_gain(self):
+        route = RouteFactory.build(total_elevation_gain=1234)
+        total_elevation_gain = route.get_total_elevation_gain()
 
-        self.assertTrue(isinstance(totalup, Distance))
-        self.assertAlmostEqual(totalup.ft, 4048.556430446194)
+        self.assertTrue(isinstance(total_elevation_gain, Distance))
+        self.assertAlmostEqual(total_elevation_gain.ft, 4048.556430446194)
 
-    def test_get_totaldown(self):
-        route = RouteFactory.build(totaldown=4321)
-        totaldown = route.get_totaldown()
+    def test_get_total_elevation_loss(self):
+        route = RouteFactory.build(total_elevation_loss=4321)
+        total_elevation_loss = route.get_total_elevation_loss()
 
-        self.assertTrue(isinstance(totaldown, Distance))
-        self.assertAlmostEqual(totaldown.m, 4321)
+        self.assertTrue(isinstance(total_elevation_loss, Distance))
+        self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "length"],)
+        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "distance"],)
         route = RouteFactory.build(
             data=data,
-            length=1000,
+            total_distance=1000,
             geom=LineString(((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781),
         )
         start_altitude = route.get_start_altitude()
@@ -88,8 +88,8 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "length"],)
-        route = RouteFactory.build(data=data, length=1000)
+        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "distance"],)
+        route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
         point_altitude = route.get_distance_data(0.5, "altitude")
@@ -161,25 +161,26 @@ class RouteTestCase(TestCase):
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)
 
-    def test_calculate_elevation_gain_distance(self):
+    def test_calculate_gradient_and_distance(self):
         data = DataFrame(
-            {"altitude": [0, 1, 2, 3, 2, 1, 0], "length": [0, 1, 2, 2, 3, 4, 5]}
+            {"altitude": [0, 1, 2, 3, 2, 1, 0], "distance": [0, 1, 2, 2.5, 3, 4, 5]}
         )
 
         route = RouteFactory(data=data)
 
-        route.calculate_elevation_gain_and_distance()
+        route.calculate_gradient_and_distance()
 
         self.assertListEqual(
-            list(route.data), ["altitude", "length", "distance", "gain"]
+            list(route.data), ["altitude", "distance", "step_distance", "gradient"],
         )
 
         self.assertListEqual(
-            list(route.data.distance), [0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
+            list(route.data.step_distance), [0.0, 1.0, 1.0, 0.5, 0.5, 1.0, 1.0]
         )
 
         self.assertListEqual(
-            list(route.data.gain), [0.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0]
+            list(route.data.gradient),
+            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -194,10 +195,9 @@ class RouteTestCase(TestCase):
         ActivityPerformance.objects.create(
             athlete=user.athlete,
             activity_type=activity_type,
-            slope_squared_param=activity_type.slope_squared_param / 2,
-            slope_param=activity_type.slope_param / 2,
-            flat_param=activity_type.flat_param / 2,
-            total_elevation_gain_param=activity_type.total_elevation_gain_param,
+            regression_coefficients=activity_type.regression_coefficients / 2,
+            flat_parameter=activity_type.flat_parameter / 2,
+            onehot_encoder_categories=[["None"], ["None"]],
         )
 
         route.calculate_projected_time_schedule(user)

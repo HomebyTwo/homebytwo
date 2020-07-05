@@ -2,5 +2,7 @@
 
 <div class="clearfix">
   <h1 class="mrgb0 text-center">{{ route.name }}</h1>
-  <p class="h2 mrgv0 text-center">{{ route.get_length.km|floatformat:1|intcomma }}km - {{ route.get_totalup.m|floatformat:0|intcomma }}m+ - {{ route.get_totaldown.m|floatformat:0|intcomma }}m-</p>
+  <p class="h2 mrgv0 text-center">{{ route.get_total_distance.km|floatformat:1|intcomma }}km -
+    {{ route.get_total_elevation_gain.m|floatformat:0|intcomma }}m+ -
+    {{ route.get_total_elevation_loss.m|floatformat:0|intcomma }}m-</p>
 </div>

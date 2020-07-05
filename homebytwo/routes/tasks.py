@@ -24,10 +24,6 @@ def import_strava_activities_task(athlete_id):
     athlete = Athlete.objects.get(pk=athlete_id)
     activities = Activity.objects.update_user_activities_from_strava(athlete)
 
-    for activity in activities:
-        if activity.streams is None:
-            import_strava_activity_streams_task.delay(activity.strava_id)
-
     return "The athlete now has {0} activit{1} saved in the database.".format(
         len(activities), pluralize(len(activities), "y,ies")
     )
@@ -36,7 +32,7 @@ def import_strava_activities_task(athlete_id):
 @shared_task
 def import_strava_activity_streams_task(strava_id):
     """
-    fetch time, altitude and distance streams for an activty from the Strava API-
+    fetch time, altitude, distance and moving streams for an activty from the Strava API-
     This task generates one API call for every activity.
     """
     # log task request
@@ -45,7 +41,7 @@ def import_strava_activity_streams_task(strava_id):
     try:
         activity = Activity.objects.get(strava_id=strava_id)
     except Activity.DoesNotExist:
-        return "Activity has been deleted from the Database".format(strava_id)
+        return "Activity {} has been deleted from the Database".format(strava_id)
 
     imported = activity.save_streams_from_strava()
 
@@ -82,7 +78,9 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         # defaults to `route.athlete` in `route.upload_to_garmin` method
         athlete = None
         # log task
-        logger.info(log_message.format(route_id=route_id, user_id=route.athlete.user.id))
+        logger.info(
+            log_message.format(route_id=route_id, user_id=route.athlete.user.id)
+        )
 
     try:
         # upload to Garmin Connect
@@ -94,7 +92,7 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
             route.garmin_id = None
             route.save(update_fields=["garmin_id"])
 
-        return 'Garmin API failure: {}'.format(e)
+        return "Garmin API failure: {}".format(e)
 
     if uploaded:
         return "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
@@ -177,9 +175,6 @@ class ProcessStravaEvents(PeriodicTask):
             # create or update activity from the Strava server
             if aspect_type in ["create", "update"]:
                 activity.update_from_strava()
-
-                # import and save streams for the activity
-                import_strava_activity_streams_task.delay(strava_id=object_id)
 
             # delete activity, if it exists
             if aspect_type == "delete" and activity.id:

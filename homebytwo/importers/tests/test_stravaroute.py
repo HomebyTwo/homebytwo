@@ -88,7 +88,9 @@ class StravaTestCase(TestCase):
         )
 
         strava_routes_url = reverse("import_routes", kwargs={"data_source": "strava"})
-        login_url = "{url}?next={next}".format(url=reverse("login"), next=strava_routes_url)
+        login_url = "{url}?next={next}".format(
+            url=reverse("login"), next=strava_routes_url
+        )
         error = "There was an issue connecting to Strava. Try again later!"
         response = self.client.get(strava_routes_url, follow=False)
         redirected_response = self.client.get(strava_routes_url, follow=True)
@@ -208,8 +210,8 @@ class StravaTestCase(TestCase):
 
         source_name = "Strava"
         route_name = escape("Route Name")
-        length = "12.9km"
-        totalup = "1,880m+"
+        total_distance = "12.9km"
+        total_elevation_gain = "1,880m+"
 
         # Intercept API calls with httpretty
         httpretty.enable()
@@ -235,8 +237,8 @@ class StravaTestCase(TestCase):
 
         self.assertContains(response, source_name)
         self.assertContains(response, route_name)
-        self.assertContains(response, length)
-        self.assertContains(response, totalup)
+        self.assertContains(response, total_distance)
+        self.assertContains(response, total_elevation_gain)
 
     def test_strava_route_success(self):
         source_id = 2325453

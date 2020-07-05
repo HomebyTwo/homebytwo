@@ -247,17 +247,31 @@ class DataFrameField(models.CharField):
 
 class NumpyArrayField(ArrayField):
     """
-    Save NumPy arrays to PostgreSQl ArrayFields
+    Save NumPy arrays to PostgreSQl ArrayFields.
     """
 
-    def get_db_prep_value(self, value, connection, prepared=False):
-        return super().get_db_prep_value(list(value), connection, prepared)
+    def get_prep_value(self, value):
+        """
+        convert NumPy array to a list.
+        """
+        return list(value)
 
-    def to_python(self, value):
-        return super().to_python(array(value))
+    def get_db_prep_value(self, value, connection, prepared=False):
+        value = super().get_db_prep_value(value, connection, prepared)
+        return self.get_prep_value(value)
 
     def value_to_string(self, obj):
-        return super().value_to_string(list(obj))
+        value = self.value_from_object(obj)
+        return self.get_prep_value(value)
+
+    def to_python(self, value):
+        """
+        convert the list value to a NumPy array.
+        """
+        return array(value)
+
+    def from_db_value(self, value, *args, **kwargs):
+        return self.to_python(value)
 
 
 class CheckpointsSelectMultiple(CheckboxSelectMultiple):

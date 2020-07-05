@@ -36,8 +36,8 @@ class StravaRouteManager(RouteManager):
             StravaRoute(
                 source_id=strava_route.id,
                 name=strava_route.name,
-                totalup=unithelper.meters(strava_route.elevation_gain).num,
-                length=unithelper.meters(strava_route.distance).num,
+                total_elevation_gain=unithelper.meters(strava_route.elevation_gain).num,
+                total_distance=unithelper.meters(strava_route.distance).num,
                 athlete=athlete,
             )
             for strava_route in strava_routes
@@ -86,9 +86,9 @@ class StravaRoute(Route):
         self.name = strava_route.name
         self.description = strava_route.description
 
-        # use Strava route length and totalup until we calculate them from data
-        self.totalup = unithelper.meters(strava_route.elevation_gain).num
-        self.length = unithelper.meters(strava_route.distance).num
+        # use Strava route distance and elevation_gain until we calculate them from data
+        self.total_elevation_gain = unithelper.meters(strava_route.elevation_gain).num
+        self.total_distance = unithelper.meters(strava_route.distance).num
 
         # Strava only knows two activity types for routes: '1' for ride, '2' for run
         if strava_route.type == "1":
@@ -115,10 +115,6 @@ class StravaRoute(Route):
             if key == "latlng":
                 coords = [(lng, lat) for lat, lng in stream.data]
                 self.geom = LineString(coords, srid=4326).transform(21781, clone=True)
-
-            # rename distance to length
-            elif key == "distance":
-                data["length"] = stream.data
 
             # import other streams
             else:
