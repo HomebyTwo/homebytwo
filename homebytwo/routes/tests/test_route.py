@@ -585,6 +585,10 @@ class RouteTestCase(TestCase):
     def test_cleanup_hdf5_files_no_data(self):
         # No files in data directory
         out = StringIO()
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn("No files to delete.", out.getvalue())
+
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
 
@@ -593,6 +597,9 @@ class RouteTestCase(TestCase):
 
         # five routes no extra files
         RouteFactory.create_batch(5)
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn("No files to delete.", out.getvalue())
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
@@ -607,6 +614,11 @@ class RouteTestCase(TestCase):
             fullpath = data_dir / filename
             with fullpath.open(mode="wb") as file_:
                 file_.write(urandom(64))
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn(
+            "Clean-up command would delete 5 and keep 0 files.", out.getvalue()
+        )
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 5 files.", out.getvalue())
@@ -628,5 +640,12 @@ class RouteTestCase(TestCase):
         with fullpath.open(mode="wb") as file_:
             file_.write(urandom(64))
 
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn(
+            "Clean-up command would delete 1 and keep 4 files.", out.getvalue()
+        )
+        self.assertIn("1 missing file(s):", out.getvalue())
+
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
+        self.assertIn("1 missing file(s):", out.getvalue())
