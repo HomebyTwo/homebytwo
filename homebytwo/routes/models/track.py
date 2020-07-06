@@ -5,7 +5,7 @@ from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 
 from easy_thumbnails.fields import ThumbnailerImageField
-from numpy import array, interp
+from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
@@ -143,10 +143,7 @@ class Track(TimeStampedModel):
         return PredictionModel(
             regression_coefficients=performance.regression_coefficients,
             regression_intercept=performance.flat_parameter,
-            onehot_encoder_categories=[
-                array([item for item in category_list if item])
-                for category_list in performance.onehot_encoder_categories
-            ],
+            onehot_encoder_categories=performance.onehot_encoder_categories,
         )
 
     def calculate_projected_time_schedule(self, user, workout_type="None", gear="None"):

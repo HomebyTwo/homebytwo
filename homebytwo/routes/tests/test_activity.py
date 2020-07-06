@@ -8,6 +8,7 @@ from django.urls import reverse
 
 import httpretty
 from mock import patch
+from pandas import DataFrame
 
 from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
@@ -332,9 +333,10 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
-            activity.strava_id,
-            ",".join(self.STREAM_TYPES),
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
         )
 
         httpretty.register_uri(
@@ -356,9 +358,10 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
-            activity.strava_id,
-            ",".join(self.STREAM_TYPES),
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
         )
 
         httpretty.register_uri(
@@ -374,6 +377,53 @@ class ActivityTestCase(TestCase):
         httpretty.disable()
 
         self.assertEqual(len(raw_streams), 4)
+
+    def test_save_streams_from_strava(self):
+        activity = ActivityFactory(athlete=self.athlete, streams=None)
+
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
+        )
+
+        httpretty.enable(allow_net_connect=False)
+        httpretty.register_uri(
+            httpretty.GET,
+            streams_url,
+            content_type="application/json",
+            body=read_data("streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
+
+        assert activity.save_streams_from_strava()
+        assert isinstance(activity.streams, DataFrame)
+        assert all(
+            stream_type in activity.streams.columns for stream_type in self.STREAM_TYPES
+        )
+
+    def test_save_streams_from_strava_missing_streams(self):
+        activity = ActivityFactory(athlete=self.athlete, streams=None)
+
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
+        )
+
+        httpretty.enable(allow_net_connect=False)
+        httpretty.register_uri(
+            httpretty.GET,
+            streams_url,
+            content_type="application/json",
+            body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
+
+        assert activity.save_streams_from_strava() is None
+        assert activity.streams is None
 
     @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
     def test_strava_webhook_callback_url(self):

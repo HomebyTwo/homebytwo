@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
@@ -5,11 +6,12 @@ from django.contrib.gis.geos import GEOSGeometry, Point
 from factory import Faker, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
-from pandas import read_json
+from pandas import DataFrame, read_json
 from pytz import utc
 
 from ...routes.models import (
     Activity,
+    ActivityPerformance,
     ActivityType,
     Gear,
     Place,
@@ -69,6 +71,14 @@ class ActivityTypeFactory(DjangoModelFactory):
     )
 
 
+class ActivityPerformanceFactory(DjangoModelFactory):
+    class Meta:
+        model = ActivityPerformance
+
+    athlete = SubFactory(AthleteFactory)
+    activity_type = SubFactory(ActivityTypeFactory)
+
+
 class PlaceFactory(DjangoModelFactory):
     class Meta:
         model = Place
@@ -110,6 +120,9 @@ class RouteFactory(DjangoModelFactory):
 class ActivityFactory(DjangoModelFactory):
     class Meta:
         model = Activity
+        exclude = ("streams_json",)
+
+    streams_json = load_data("streams.json")
 
     name = Faker("sentence")
     description = Faker("bs")
@@ -127,6 +140,9 @@ class ActivityFactory(DjangoModelFactory):
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
     gear = SubFactory(GearFactory)
+    streams = DataFrame(
+        {stream["type"]: stream["data"] for stream in json.loads(streams_json)}
+    )
 
 
 class WebhookTransactionFactory(DjangoModelFactory):

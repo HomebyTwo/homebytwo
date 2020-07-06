@@ -1,6 +1,8 @@
+from numpy import array
 from pandas import DataFrame
 from sklearn.compose import make_column_transformer
 from sklearn.linear_model import Ridge
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
 
@@ -46,15 +48,17 @@ class PredictionModel:
             self.polynomial_columns = polynomial_columns
 
         # restore categories of the one-hot encoder if provided
-        self.categories = (
-            onehot_encoder_categories
-            if onehot_encoder_categories is not None
-            else "auto"
-        )
+        if onehot_encoder_categories:
+            self.onehot_encoder_categories = onehot_encoder_categories
+        else:
+            self._onehot_encoder_categories = "auto"
 
         # use these categories for creating the preprocessor
         self.preprocessor = make_column_transformer(
-            (OneHotEncoder(categories=self.categories), self.categorical_columns),
+            (
+                OneHotEncoder(categories=self._onehot_encoder_categories),
+                self.categorical_columns,
+            ),
             (PolynomialFeatures(2), self.polynomial_columns),
             remainder="passthrough",
         )
@@ -86,3 +90,57 @@ class PredictionModel:
             regression = self.pipeline.named_steps["ridge"]
             regression.coef_ = regression_coefficients
             regression.intercept_ = regression_intercept
+
+    @property
+    def onehot_encoder_categories(self):
+        """
+        retrieve one-hot encoder as rectangular list of lists
+        for saving in ArrayField.
+        """
+        if self._onehot_encoder_categories == "auto":
+            return None
+
+        # find longest list
+        target_list_length = max(
+            len(category_list) for category_list in self._onehot_encoder_categories
+        )
+
+        # pad shorter lists with None values to make the array rectangular
+        return [
+            category_list + [None] * (target_list_length - len(category_list))
+            for category_list in self._onehot_encoder_categories
+        ]
+
+    @onehot_encoder_categories.setter
+    def onehot_encoder_categories(self, value):
+        """
+        receive one-hot encoder categories as rectangular list of lists
+        and turn them back into a list of numpy arrays for use in the model..
+        """
+        if value is None:
+            self._onehot_encoder_categories == "auto"
+
+        self._onehot_encoder_categories = [
+            array([item for item in category_list if item]) for category_list in value
+        ]
+
+    def train(self, y, X, test_size=0.3):
+        """
+        train the prediction model
+        """
+        # split data into training and testing data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+
+        # fit model with training data
+        self.pipeline.fit(X_train, y_train)
+
+        # evaluate model with test data
+        self.model_score = self.pipeline.score(X_test, y_test)
+        self.cv_scores = cross_val_score(self.pipeline, X_test, y_test, cv=5)
+
+        # save one-hot encoder categories
+        self._onehot_encoder_categories = (
+            self.pipeline.named_steps["columntransformer"]
+            .named_transformers_["onehotencoder"]
+            .categories_
+        )

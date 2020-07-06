@@ -4,7 +4,6 @@ from django.contrib.postgres.fields import ArrayField
 
 from numpy import array
 from pandas import DataFrame
-from sklearn.model_selection import cross_val_score, train_test_split
 from stravalib import unithelper
 from stravalib.exc import ObjectNotFound
 
@@ -273,7 +272,7 @@ class Activity(TimeStampedModel):
         raw_streams = self.get_streams_from_strava()
         if raw_streams:
             self.streams = DataFrame(
-                {key: stream for key, stream in raw_streams.items()}
+                {key: stream.data for key, stream in raw_streams.items()}
             )
             self.save(update_fields=["streams"])
             return True
@@ -299,10 +298,7 @@ class Activity(TimeStampedModel):
 
             # ensure that we have all stream types and that they all contain values
             if all(stream_type in raw_streams for stream_type in STREAM_TYPES) and all(
-                [
-                    raw_stream.original_size > 0
-                    for key, raw_stream in raw_streams.items()
-                ]
+                raw_stream.original_size > 0 for key, raw_stream in raw_streams.items()
             ):
                 return raw_streams
 
@@ -567,59 +563,34 @@ class ActivityPerformance(models.Model):
         # get activity data from hdf5 files
         observations = self.get_training_data(start_year=start_year)
         if observations.empty:
-            raise
+            return (
+                f"No training data found for activity type: {self.activity_type.name}"
+            )
 
         # remove outliers
         data = self.remove_outliers(observations)
 
-        # load prediction pipeline
+        # train prediction model
         prediction_model = PredictionModel()
-        pipeline = prediction_model.pipeline
         feature_columns = (
             prediction_model.numerical_columns + prediction_model.categorical_columns
         )
+        prediction_model.train(
+            y=data["pace"], X=data[feature_columns].fillna(value="None"),
+        )
+        # save model score, coefficients and intercept for future predictions
+        self.model_score = prediction_model.model_score
+        self.cv_scores = prediction_model.cv_scores
 
-        # define target variable and features
-        y = data["pace"]
-        X = data[feature_columns].fillna(value="None")
-
-        # split data into training and testing data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-
-        # fit model with training data
-        pipeline.fit(X_train, y_train)
-
-        # evaluate model with test data
-        self.model_score = pipeline.score(X_test, y_test)
-        self.cv_scores = cross_val_score(pipeline, X_test, y_test, cv=5)
-
-        # save model coefficients and intercept for future predictions
-        regression = pipeline.named_steps["ridge"]
+        regression = prediction_model.pipeline.named_steps["ridge"]
         self.regression_coefficients = regression.coef_
         self.flat_parameter = regression.intercept_
 
-        # save one-hot encoder categories as rectangular arrays
-        onehot_encoder = pipeline.named_steps["columntransformer"].named_transformers_[
-            "onehotencoder"
-        ]
-
-        # transform list of arrays into list of lists
-        onehot_encoder_categories = [
-            category_array.tolist() for category_array in onehot_encoder.categories_
-        ]
-
-        # find longest list
-        target_list_length = max(
-            len(category_list) for category_list in onehot_encoder_categories
-        )
-
-        # pad shorter lists with None values to make the array rectangular
-        self.onehot_encoder_categories = [
-            category_list + [None] * (target_list_length - len(category_list))
-            for category_list in onehot_encoder_categories
-        ]
-
         self.save()
+
+        message = f"Model successfully trained with {data.shape[0]} observations. "
+        message += f"Model score: {self.model_score}, cross-validation score: {self.cv_scores}. "
+        return message
 
 
 class Gear(models.Model):
