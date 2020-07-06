@@ -26,7 +26,7 @@ class PredictionModel:
         onehot_encoder_categories=None,
     ):
         # set column defaults
-        if not numerical_columns:
+        if numerical_columns is None:
             self.numerical_columns = [
                 "gradient",
                 "total_elevation_gain",
@@ -35,22 +35,26 @@ class PredictionModel:
         else:
             self.numerical_columns = numerical_columns
 
-        if not categorical_columns:
+        if categorical_columns is None:
             self.categorical_columns = ["gear", "workout_type"]
         else:
             self.categorical_columns = numerical_columns
 
-        if not polynomial_columns:
+        if polynomial_columns is None:
             self.polynomial_columns = ["gradient"]
         else:
             self.polynomial_columns = polynomial_columns
 
         # restore categories of the one-hot encoder if provided
-        categories = onehot_encoder_categories if onehot_encoder_categories else "auto"
+        self.categories = (
+            onehot_encoder_categories
+            if onehot_encoder_categories is not None
+            else "auto"
+        )
 
         # use these categories for creating the preprocessor
         self.preprocessor = make_column_transformer(
-            (OneHotEncoder(categories=categories), self.categorical_columns),
+            (OneHotEncoder(categories=self.categories), self.categorical_columns),
             (PolynomialFeatures(2), self.polynomial_columns),
             remainder="passthrough",
         )

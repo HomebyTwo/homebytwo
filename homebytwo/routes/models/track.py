@@ -68,42 +68,49 @@ class Track(TimeStampedModel):
             column in ["total_elevation_gain", "total_elevation_loss"]
             for column in self.data.columns
         ):
-            self.calculate_cummulative_elevation_differences()
+            self.data = self.calculate_cummulative_elevation_differences(self.data)
 
         # update total_distance, total_elevation_gain and total_elevation_loss from data
         self.total_distance = self.data.distance.max()
         self.total_elevation_loss = abs(self.data.cummulative_elevation_loss.min())
         self.total_elevation_gain = self.data.cummulative_elevation_gain.max()
 
-    def calculate_gradient_and_distance(self):
+    def calculate_gradient(self, data):
         """
         add gradient and distance between each point of the track data.
         """
+
+        # ignore rows where step_distance is shorter than 1m
+        first_row = data.head(1)
+        filtered_rows = data[data["distance"].diff() >= 1]
+        data = first_row.append(filtered_rows)
+
         # calculate distance between each point
-        self.data["step_distance"] = self.data.distance.diff().fillna(value=0)
+        data["step_distance"] = data.distance.diff().fillna(value=0)
 
         # calculate slope percentage between each point
-        self.data["gradient"] = (
-            self.data.altitude.diff() / self.data.step_distance * 100
-        ).fillna(value=0)
+        data["gradient"] = (data.altitude.diff() / data.step_distance * 100).fillna(
+            value=0
+        )
 
-    def calculate_cummulative_elevation_differences(self):
+        return data
+
+    def calculate_cummulative_elevation_differences(self, data):
         """
         Calculates two colums from the altitude data:
         - cummulative_elevation_gain: cummulative sum of positive elevation data
         - cummulative_elevation_loss: cummulative sum of negative elevation data
         """
-        data = self.data
 
         # only consider entries where altitude difference is greater than 0
-        data["cummulative_elevation_gain"] = (
-            data["altitude"].diff()[data["altitude"].diff() >= 0].cumsum()
-        )
+        data["cummulative_elevation_gain"] = data.altitude.diff()[
+            data.altitude.diff() >= 0
+        ].cumsum()
 
         # only consider entries where altitude difference is less than 0
-        data["cummulative_elevation_loss"] = (
-            data["altitude"].diff()[data["altitude"].diff() <= 0].cumsum()
-        )
+        data["cummulative_elevation_loss"] = data.altitude.diff()[
+            data.altitude.diff() <= 0
+        ].cumsum()
 
         # Fill the NaNs with the last valid value of the series
         # then, replace the remainng NaN (at the beginning) with 0
@@ -113,28 +120,34 @@ class Track(TimeStampedModel):
             .fillna(value=0)
         )
 
-        self.data = data
+        return data
 
-    def get_performance_data(self, user):
+    def get_prediction_model(self, user):
         """
-        retrieve performance parameters for activity type
+        retrieve performance parameters for user and activity type,
+        fallback on activity type if missing and return prediction model.
         """
-        activity_type = self.activity_type
-
         if user.is_authenticated:
             performance = ActivityPerformance.objects
             performance = performance.filter(athlete=user.athlete)
-            performance = performance.filter(activity_type=activity_type)
+            performance = performance.filter(activity_type=self.activity_type)
 
         if user.is_authenticated and performance.exists():
             # we have performance values for this athlete and activity
             performance = performance.get()
 
         else:
-            # no user performance: fallback on activity defaults
-            performance = activity_type
+            # no user performance: fallback on activity_type defaults
+            performance = self.activity_type
 
-        return performance
+        return PredictionModel(
+            regression_coefficients=performance.regression_coefficients,
+            regression_intercept=performance.flat_parameter,
+            onehot_encoder_categories=[
+                array([item for item in category_list if item])
+                for category_list in performance.onehot_encoder_categories
+            ],
+        )
 
     def calculate_projected_time_schedule(self, user, workout_type="None", gear="None"):
         """
@@ -149,36 +162,22 @@ class Track(TimeStampedModel):
             column in ["total_elevation_gain", "total_elevation_loss"]
             for column in data.columns
         ):
-            self.calculate_cummulative_elevation_differences()
+            data = self.calculate_cummulative_elevation_differences(data)
 
         # make sure we have elevation gain and distance data
         if not all(column in ["gradient", "step_distance"] for column in data.columns):
-            self.calculate_gradient_and_distance()
-
-        # keep the first row but ignore rows where step_distance is shorter than 1m
-        first_row = data[data["distance"].diff().isnull()]
-        data = first_row.append(data[data["step_distance"] > 1])
+            data = self.calculate_gradient(data)
 
         # add route totals to every row
-        data["total_distance"] = max(data["distance"])
-        data["total_elevation_gain"] = max(data["cummulative_elevation_gain"])
+        data["total_distance"] = max(data.distance)
+        data["total_elevation_gain"] = max(data.cummulative_elevation_gain)
 
         # add gear and workout type to every row
         data["gear"] = gear
         data["workout_type"] = workout_type
 
-        # retrieve performance data for athlete and activity_type
-        performance = self.get_performance_data(user)
-
-        # restore prediction model with performance parameters
-        prediction_model = PredictionModel(
-            regression_coefficients=performance.regression_coefficients,
-            regression_intercept=performance.flat_parameter,
-            onehot_encoder_categories=[
-                array([item for item in category_list if item])
-                for category_list in performance.onehot_encoder_categories
-            ],
-        )
+        # restore prediction model for athlete and activity_type
+        prediction_model = self.get_prediction_model(user)
 
         # keep model pipelines and columns in local variable for readability
         pipeline = prediction_model.pipeline
