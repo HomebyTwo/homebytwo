@@ -15,7 +15,12 @@ from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import Activity, Gear, WebhookTransaction
 from ..tasks import ProcessStravaEvents, import_strava_activities_task
-from .factories import ActivityFactory, GearFactory, WebhookTransactionFactory
+from .factories import (
+    ActivityFactory,
+    ActivityTypeFactory,
+    GearFactory,
+    WebhookTransactionFactory,
+)
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -663,12 +668,29 @@ class ActivityTestCase(TestCase):
 
     def test_import_strava_activity_streams(self):
         import_url = reverse("routes:import_streams")
-        ActivityFactory(athlete=self.athlete, activity_type="Run")
+        activity_type = ActivityTypeFactory.create(name="Run")
+        ActivityFactory.create_batch(
+            5, athlete=self.athlete, activity_type=activity_type, streams=None
+        )
 
         with patch(
             "homebytwo.routes.tasks.import_strava_activity_streams_task.delay"
         ) as mock_task:
             response = self.client.get(import_url)
+            self.assertRedirects(response, reverse("routes:activities"))
+            self.assertTrue(mock_task.called)
+
+    def test_train_prediction_models(self):
+        train_url = reverse("routes:train_models")
+        activity_type = ActivityTypeFactory.create(name="Run")
+        ActivityFactory.create_batch(
+            5, athlete=self.athlete, activity_type=activity_type,
+        )
+
+        with patch(
+            "homebytwo.routes.tasks.train_prediction_model_task.delay"
+        ) as mock_task:
+            response = self.client.get(train_url)
             self.assertRedirects(response, reverse("routes:activities"))
             self.assertTrue(mock_task.called)
 
