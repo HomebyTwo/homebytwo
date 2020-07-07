@@ -1,3 +1,4 @@
+import os
 import random
 from datetime import datetime
 from io import StringIO
@@ -86,28 +87,28 @@ def get_project_root():
     """
     Return the path to the root of the project on the remote server.
     """
-    return Path(env.root, env.project_name)
+    return Path(env.root, env.project_name).resolve().as_posix()
 
 
 def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return Path(env.root, "venv")
+    return Path(env.root, "venv").as_posix()
 
 
 def get_backups_root():
     """
     Return the path to the backups directory on the remote server.
     """
-    return Path(env.root, "backups")
+    return Path(env.root, "backups").as_posix()
 
 
 def run_in_virtualenv(cmd, args):
     """
     Run the given command from the remote virtualenv.
     """
-    return run("%s %s" % (Path(get_virtualenv_root(), "bin", cmd), args))
+    return run("%s %s" % (Path(get_virtualenv_root(), "bin", cmd).as_posix(), args))
 
 
 def run_pip(args):
@@ -277,7 +278,9 @@ def dump_db(destination):
             "The dump_db task doesn't support the remote database engine"
         )
 
-    outfile = Path(destination, datetime.now().strftime("%Y-%m-%d_%H%M%S.sql.gz"))
+    outfile = Path(
+        destination, datetime.now().strftime("%Y-%m-%d_%H%M%S.sql.gz")
+    ).as_posix()
 
     with shell_env(PGPASSWORD=db_credentials_dict["PASSWORD"].replace("$", "\$")):
         run(
@@ -305,7 +308,7 @@ def fetch_db(destination="."):
     get(dump_path, destination)
     run("rm %s" % dump_path)
 
-    return dump_path.name
+    return Path(dump_path).name
 
 
 @task
@@ -383,7 +386,7 @@ def fetch_media():
             user=env.user,
             host=env.host,
             port=env.port,
-            source_directory=Path(remote_media_root, ""),  # add trailing slash
+            source_directory=f"{remote_media_root}{os.sep}",  # add trailing slash
             target_directory=local_media_root,
         )
     )

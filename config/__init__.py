@@ -19,5 +19,5 @@ def get_project_root_path(*dirs):
     """
     Return the absolute path to the root of the project.
     """
-    base_dir = Path(__file__).resolve().parent / ".."
+    base_dir = Path(__file__).parent.parent.resolve()
     return Path(base_dir, *dirs)
