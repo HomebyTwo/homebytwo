@@ -32,20 +32,37 @@ def test_prediction_model_with_custom_parameters():
     assert prediction_model.numerical_columns == []
 
 
-def test_train_model_data_no_data(test_athlete):
+def test_train_prediction_model_data_no_data(test_athlete):
     activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
     activity_type = activity_performance.activity_type.name
-    result = activity_performance.train_model()
+    result = activity_performance.train_prediction_model()
     assert f"No training data found for activity type: {activity_type}" in result
 
 
-def test_train_model_data_success(test_athlete):
+def test_train_prediction_model_data_success(test_athlete):
     activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
-    ActivityFactory(
+    activity = ActivityFactory(
         athlete=test_athlete, activity_type=activity_performance.activity_type
     )
-    result = activity_performance.train_model()
+    result = activity_performance.train_prediction_model()
     assert "Model successfully trained" in result
+    assert activity_performance.onehot_encoder_categories == [
+        [activity.gear.strava_id],
+        [str(activity.workout_type)],
+    ]
+
+
+def test_train_prediction_model_data_success_no_gear_no_workout_type(test_athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+    ActivityFactory(
+        athlete=test_athlete,
+        activity_type=activity_performance.activity_type,
+        gear=None,
+        workout_type=None,
+    )
+    result = activity_performance.train_prediction_model()
+    assert "Model successfully trained" in result
+    assert activity_performance.onehot_encoder_categories == [["None"], ["None"]]
 
 
 def test_get_activity_performance_training_data(test_athlete):

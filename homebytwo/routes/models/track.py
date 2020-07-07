@@ -183,7 +183,7 @@ class Track(TimeStampedModel):
         feature_columns = numerical_columns + categorical_columns
 
         data["pace"] = pipeline.predict(data[feature_columns])
-        data["schedule"] = data.pace * data.step_distance.cumsum().fillna(value=0)
+        data["schedule"] = (data.pace * data.step_distance).cumsum().fillna(value=0)
 
         self.data = data
 

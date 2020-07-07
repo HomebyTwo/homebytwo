@@ -335,7 +335,7 @@ class Activity(TimeStampedModel):
             "start_date": self.start_date,
             "total_elevation_gain": self.total_elevation_gain,
             "total_distance": self.distance,
-            "gear": self.gear.strava_id,
+            "gear": self.gear.strava_id if self.gear else "None",
             "gear_name": self.gear.name if self.gear else "None",
             "workout_type": str(self.workout_type),
             "workout_type_name": self.get_workout_type_display()
@@ -553,7 +553,7 @@ class ActivityPerformance(models.Model):
             & (observations.gradient < self.activity_type.max_gradient)
         ]
 
-    def train_model(self, start_year=2017):
+    def train_prediction_model(self, start_year=2017):
         """
         train prediction model with athlete data for the target activity.
         exclude activities older than the `start_year` parameter.
@@ -585,6 +585,8 @@ class ActivityPerformance(models.Model):
         regression = prediction_model.pipeline.named_steps["ridge"]
         self.regression_coefficients = regression.coef_
         self.flat_parameter = regression.intercept_
+
+        self.onehot_encoder_categories = prediction_model.onehot_encoder_categories
 
         self.save()
 

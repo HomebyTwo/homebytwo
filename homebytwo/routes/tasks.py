@@ -7,7 +7,7 @@ from celery.schedules import crontab
 from celery.task import PeriodicTask
 from garmin_uploader.api import GarminAPIException
 
-from .models import Activity, Athlete, Route, WebhookTransaction
+from .models import Activity, ActivityPerformance, Athlete, Route, WebhookTransaction
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,22 @@ def import_strava_activity_streams_task(strava_id):
         return "Streams successfully imported for activity {}".format(strava_id)
     else:
         return "Streams not imported for activity {}".format(strava_id)
+
+
+@shared_task
+def train_prediction_model_task(activity_performance_id):
+    """
+    train prediction model for a given activity_performance object
+    """
+    logger.info(
+        f"Fitting prediction model for activity_performance_id: {activity_performance_id}"
+    )
+
+    activity_performance = ActivityPerformance.objects.get(id=activity_performance_id)
+    message = activity_performance.train_prediction_model()
+    message += f"Activity type: {activity_performance.activity_type}, athlete: {activity_performance.athlete}."
+
+    return message
 
 
 @shared_task

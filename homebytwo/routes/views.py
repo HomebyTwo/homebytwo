@@ -14,12 +14,24 @@ from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
+from celery import current_app
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
 from .forms import RouteForm
-from .models import Activity, Route, WebhookTransaction
-from .tasks import import_strava_activities_task, upload_route_to_garmin_task
+from .models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Route,
+    WebhookTransaction,
+)
+from .tasks import (
+    import_strava_activities_task,
+    import_strava_activity_streams_task,
+    train_prediction_model_task,
+    upload_route_to_garmin_task,
+)
 
 
 @login_required
@@ -135,16 +147,68 @@ def import_strava_activities(request):
     send a task to import the athlete's Strava activities and redirects to the activity list.
     still work in progress
     """
-    if request.method == "GET":
-        import_strava_activities_task.delay(request.user.athlete.id)
-        messages.success(request, "We are importing your Strava activities!")
-        return redirect("routes:activities")
+    import_strava_activities_task.delay(request.user.athlete.id)
+    messages.success(request, "We are importing your Strava activities!")
+    return redirect("routes:activities")
+
+
+@login_required
+@strava_required  # the superuser account should be the only one logged-in without Strava
+def import_strava_streams(request):
+    """
+    trigger a task to import streams for activities without them.
+    """
+    activities = Activity.objects.filter(athlete=request.user.athlete)
+    activities = activities.filter(streams__isnull=True)
+    activities = activities.order_by("-start_date")
+
+    for activity in activities:
+        import_strava_activity_streams_task.delay(activity.strava_id)
+    messages.success(request, "We are importing your Strava streams!")
+    return redirect("routes:activities")
+
+
+@login_required
+def train_prediction_models(request):
+    """
+    trigger a task to calculate prediction models
+    for all activity types found in the athlete's activities.
+    """
+    athlete = request.user.athlete
+    activities = Activity.objects.filter(
+        athlete=athlete, activity_type__name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES,
+    )
+    activities = activities.order_by("activity_type")
+    activities = activities.distinct("activity_type")
+
+    for activity in activities:
+        activity_performance, created = ActivityPerformance.objects.get_or_create(
+            athlete=athlete, activity_type=activity.activity_type
+        )
+        train_prediction_model_task.delay(activity_performance.id)
+
+    messages.success(request, "We are calculating your prediction models!")
+    return redirect("routes:activities")
+
+
+def task_status(request, task_id):
+    """
+    JSON endpoint for the status of tasks in the Celery task queue.
+    """
+    task = current_app.AsyncResult(task_id)
+    response_data = {"task_status": task.status, "task_id": task.id}
+
+    if task.status == "SUCCESS":
+        response_data["results"] = task.get()
+
+    return JsonResponse(response_data)
 
 
 @csrf_exempt
 def strava_webhook(request):
     """
-    handle events sent by the Strava Webhook Events API
+    handle events sent by the Strava Webhook Events API, the API to receive
+    Strava updates instead of polling.
 
     Strava validates a subscription with a GET request to the callback URL.
     Events from the subscriptions are POSTed to the callback URL. For now
@@ -197,7 +261,7 @@ class ImageFormView(UpdateView):
 @method_decorator(login_required, name="dispatch")
 class RouteDelete(DeleteView):
     """
-    Playing around with class based views.
+    Class based  views are not so bad after all.
     """
 
     model = Route

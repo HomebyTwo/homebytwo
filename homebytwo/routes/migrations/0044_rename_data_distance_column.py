@@ -6,6 +6,9 @@ from django.db import migrations
 def rename_length_column_in_distance(apps, schema_editor):
     Route = apps.get_model("routes", "Route")
     for route in Route.objects.all():
+        if "distance" in route.data.columns and "length" in route.data.columns:
+            route.data.drop(columns=["distance"], inplace=True)
+
         if "distance" not in route.data.columns:
             try:
                 route.data.rename(columns={"length": "distance"}, inplace=True)
@@ -17,6 +20,10 @@ def rename_length_column_in_distance(apps, schema_editor):
 def rename_distance_column_in_length(apps, schema_editor):
     Route = apps.get_model("routes", "Route")
     for route in Route.objects.all():
+
+        if "distance" in route.data.columns and "length" in route.data.columns:
+            route.data.drop(columns=["length"], inplace=True)
+
         if "length" not in route.data.columns:
             try:
                 route.data.rename(columns={"distance": "length"}, inplace=True)

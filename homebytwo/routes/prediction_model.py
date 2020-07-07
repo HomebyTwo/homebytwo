@@ -40,7 +40,7 @@ class PredictionModel:
         if categorical_columns is None:
             self.categorical_columns = ["gear", "workout_type"]
         else:
-            self.categorical_columns = numerical_columns
+            self.categorical_columns = categorical_columns
 
         if polynomial_columns is None:
             self.polynomial_columns = ["gradient"]
@@ -56,7 +56,9 @@ class PredictionModel:
         # use these categories for creating the preprocessor
         self.preprocessor = make_column_transformer(
             (
-                OneHotEncoder(categories=self._onehot_encoder_categories),
+                OneHotEncoder(
+                    handle_unknown="ignore", categories=self._onehot_encoder_categories
+                ),
                 self.categorical_columns,
             ),
             (PolynomialFeatures(2), self.polynomial_columns),
@@ -70,7 +72,7 @@ class PredictionModel:
             dummy_numerical_data = [1.0 for column in self.numerical_columns]
             # category must be recognised by the one-hot encoder
             dummy_categorical_data = [
-                category_list[0] for category_list in onehot_encoder_categories
+                str(category_list[0]) for category_list in onehot_encoder_categories
             ]
 
             # create a DataFrame with one row
@@ -107,7 +109,7 @@ class PredictionModel:
 
         # pad shorter lists with None values to make the array rectangular
         return [
-            category_list + [None] * (target_list_length - len(category_list))
+            category_list.tolist() + [None] * (target_list_length - len(category_list))
             for category_list in self._onehot_encoder_categories
         ]
 
