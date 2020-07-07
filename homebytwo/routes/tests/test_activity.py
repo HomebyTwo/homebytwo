@@ -68,7 +68,7 @@ class ActivityTestCase(TestCase):
         non_strava_user = UserFactory(password="testpassword")
         self.client.login(username=non_strava_user.username, password="testpassword")
 
-        url = reverse("routes:import_strava")
+        url = reverse("routes:import_activities")
 
         with self.assertRaises(StravaMissingCredentials):
             self.client.get(url)
@@ -76,7 +76,7 @@ class ActivityTestCase(TestCase):
     def test_not_logged_in(self):
         self.client.logout()
 
-        url = reverse("routes:import_strava")
+        url = reverse("routes:import_activities")
         response = self.client.get(url)
         redirected_response = self.client.get(url, follow=True)
 
@@ -652,10 +652,21 @@ class ActivityTestCase(TestCase):
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
 
     def test_import_strava_activities_view(self):
-        import_url = reverse("routes:import_strava")
+        import_url = reverse("routes:import_activities")
 
         with patch(
             "homebytwo.routes.tasks.import_strava_activities_task.delay"
+        ) as mock_task:
+            response = self.client.get(import_url)
+            self.assertRedirects(response, reverse("routes:activities"))
+            self.assertTrue(mock_task.called)
+
+    def test_import_strava_activity_streams(self):
+        import_url = reverse("routes:import_streams")
+        ActivityFactory(athlete=self.athlete, activity_type="Run")
+
+        with patch(
+            "homebytwo.routes.tasks.import_strava_activity_streams_task.delay"
         ) as mock_task:
             response = self.client.get(import_url)
             self.assertRedirects(response, reverse("routes:activities"))

@@ -481,7 +481,7 @@ class ActivityType(models.Model):
         return self.name
 
 
-class ActivityPerformance(models.Model):
+class ActivityPerformance(TimeStampedModel):
     """
     Intermediate model for athlete - activity type
     The perfomance of an athlete is calculated using his Strava history.
