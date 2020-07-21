@@ -18,7 +18,7 @@ from celery import current_app
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
-from .forms import RouteForm
+from .forms import ActivityPerformanceForm, RouteForm
 from .models import (
     Activity,
     ActivityPerformance,
@@ -46,28 +46,81 @@ def routes(request):
 
 def route(request, pk):
     """
-    display route with schedule based on user performance.
+    display route with athlete's schedule based on the prediction model
+
+    The route page also contains a simple form to change the route activity_type
+    and tweak the schedule. the form presets and options depend on whether
+    the request user has a trained prediction model for the route's activty type.
+
     """
-    # load route from Database
     route = get_object_or_404(Route.objects.select_related(), id=pk)
 
-    # calculate personalized schedule if absent or different from ownwer
-    if not route.athlete.user == request.user or "schedule" not in route.data.columns:
-        route.calculate_projected_time_schedule(request.user)
+    # first we check if the activity type has been changed by the user
+    if request.method == "POST":
+        # get bound performance form with activity type only
+        activity_type_form = ActivityPerformanceForm(data=request.POST)
 
-        # adding schedule to old routes one-by-one, instead of migrating
-        if route.athlete.user == request.user:
-            route.save()
+        if activity_type_form.is_valid():
+            if "activity_type" in activity_type_form.changed_data:
+                activity_type_name = activity_type_form.cleaned_data["activity_type"]
+                route.activity_type, created = ActivityType.objects.get_or_create(
+                    name=activity_type_name
+                )
 
-    # retrieve checkpoints along the way and enrich them with schedule data
+    initial = {"activity_type": route.activity_type.name}
+
+    # retrieve activity perfomance for user and route's activity type
+    activity_performance = None
+
+    if request.user.is_authenticated:
+        try:
+            activity_performance = ActivityPerformance.objects.get(
+                athlete=request.user.athlete, activity_type=route.activity_type,
+            )
+        except ActivityPerformance.DoesNotExist:
+            pass
+
+    # initial gear and workout type values for the performance form and the route calculation
+    gear_id = None
+    workout_type = None
+
+    if request.method == "POST":
+        performance_form = ActivityPerformanceForm(
+            activity_performance, data=request.POST
+        )
+        if performance_form.is_valid():
+            workout_type = performance_form.cleaned_data.get(
+                "workout_type", workout_type
+            )
+            gear_id = performance_form.cleaned_data.get("gear", gear_id)
+
+    # invalid form means the choices did not correspond to the activity type
+    if request.method == "GET" or not performance_form.is_valid():
+        if activity_performance:
+            gear_list = activity_performance.gear_categories
+            workout_type_list = activity_performance.workout_type_categories
+            gear_id = initial["gear"] = gear_list[0]
+            workout_type = initial["workout_type"] = workout_type_list[0]
+
+        # get unbound performance form with initial values
+        performance_form = ActivityPerformanceForm(
+            activity_performance, initial=initial
+        )
+
+    # calculate route schedule for display
+    route.calculate_projected_time_schedule(
+        user=request.user, gear=gear_id, workout_type=workout_type,
+    )
+
+    # retrieve checkpoints along the way
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # not a calculated property on Checkpoint, because the schedule can change
+    # schedule is not a calculated property on Checkpoint, because the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
-    # enrich start and end place with data
+    # enrich start and end place with schedule and altitude
     if route.start_place_id:
         route.start_place.schedule = route.get_time_data(0, "schedule")
         route.start_place.altitude = route.get_distance_data(0, "altitude")
@@ -75,7 +128,12 @@ def route(request, pk):
         route.end_place.schedule = route.get_time_data(1, "schedule")
         route.end_place.altitude = route.get_distance_data(1, "altitude")
 
-    context = {"route": route, "checkpoints": checkpoints}
+    context = {
+        "route": route,
+        "checkpoints": checkpoints,
+        "form": performance_form,
+        "activity_performance": activity_performance,
+    }
     return render(request, "routes/route.html", context)
 
 

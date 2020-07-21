@@ -57,21 +57,46 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="activityperformance",
-            name="onehot_encoder_categories",
-            field=django.contrib.postgres.fields.ArrayField(
-                base_field=django.contrib.postgres.fields.ArrayField(
-                    base_field=models.CharField(max_length=50), size=None
-                ),
-                default=homebytwo.routes.models.activity.get_default_onehot_categories,
+            name="regression_coefficients",
+            field=homebytwo.routes.fields.NumpyArrayField(
+                base_field=models.FloatField(),
+                default=homebytwo.routes.models.activity.get_default_array,
                 size=None,
             ),
         ),
         migrations.AddField(
             model_name="activityperformance",
-            name="regression_coefficients",
-            field=homebytwo.routes.fields.NumpyArrayField(
-                base_field=models.FloatField(),
-                default=homebytwo.routes.models.activity.get_default_array,
+            name="gear_categories",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.CharField(max_length=50),
+                default=homebytwo.routes.models.activity.get_default_category,
+                size=None,
+            ),
+        ),
+        migrations.AddField(
+            model_name="activityperformance",
+            name="workout_type_categories",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.CharField(max_length=50),
+                default=homebytwo.routes.models.activity.get_default_category,
+                size=None,
+            ),
+        ),
+        migrations.AddField(
+            model_name="activitytype",
+            name="gear_categories",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.CharField(max_length=50),
+                default=homebytwo.routes.models.activity.get_default_category,
+                size=None,
+            ),
+        ),
+        migrations.AddField(
+            model_name="activitytype",
+            name="workout_type_categories",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.CharField(max_length=50),
+                default=homebytwo.routes.models.activity.get_default_category,
                 size=None,
             ),
         ),
@@ -99,17 +124,6 @@ class Migration(migrations.Migration):
             model_name="activitytype",
             name="min_pace",
             field=models.FloatField(default=0.12),
-        ),
-        migrations.AddField(
-            model_name="activitytype",
-            name="onehot_encoder_categories",
-            field=django.contrib.postgres.fields.ArrayField(
-                base_field=django.contrib.postgres.fields.ArrayField(
-                    base_field=models.CharField(max_length=50), size=None
-                ),
-                default=homebytwo.routes.models.activity.get_default_onehot_categories,
-                size=None,
-            ),
         ),
         migrations.AddField(
             model_name="activitytype",

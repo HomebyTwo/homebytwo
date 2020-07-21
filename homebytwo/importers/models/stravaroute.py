@@ -84,7 +84,7 @@ class StravaRoute(Route):
 
         # set route name and description
         self.name = strava_route.name
-        self.description = strava_route.description
+        self.description = strava_route.description if strava_route.description else ""
 
         # use Strava route distance and elevation_gain until we calculate them from data
         self.total_elevation_gain = unithelper.meters(strava_route.elevation_gain).num

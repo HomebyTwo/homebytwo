@@ -143,10 +143,13 @@ class Track(TimeStampedModel):
         return PredictionModel(
             regression_coefficients=performance.regression_coefficients,
             regression_intercept=performance.flat_parameter,
-            onehot_encoder_categories=performance.onehot_encoder_categories,
+            onehot_encoder_categories=[
+                performance.gear_categories,
+                performance.workout_type_categories,
+            ],
         )
 
-    def calculate_projected_time_schedule(self, user, workout_type="None", gear="None"):
+    def calculate_projected_time_schedule(self, user, workout_type=None, gear=None):
         """
         Calculates route pace and route schedule based on the athlete's prediction model
         for the route's activity type.
@@ -170,8 +173,8 @@ class Track(TimeStampedModel):
         data["total_elevation_gain"] = max(data.cummulative_elevation_gain)
 
         # add gear and workout type to every row
-        data["gear"] = gear
-        data["workout_type"] = workout_type
+        data["gear"] = gear or "None"
+        data["workout_type"] = workout_type or "None"
 
         # restore prediction model for athlete and activity_type
         prediction_model = self.get_prediction_model(user)

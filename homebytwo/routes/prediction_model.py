@@ -72,7 +72,7 @@ class PredictionModel:
             dummy_numerical_data = [1.0 for column in self.numerical_columns]
             # category must be recognised by the one-hot encoder
             dummy_categorical_data = [
-                str(category_list[0]) for category_list in onehot_encoder_categories
+                category_list[0] for category_list in onehot_encoder_categories
             ]
 
             # create a DataFrame with one row

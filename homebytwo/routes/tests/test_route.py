@@ -197,7 +197,6 @@ class RouteTestCase(TestCase):
             activity_type=activity_type,
             regression_coefficients=activity_type.regression_coefficients / 2,
             flat_parameter=activity_type.flat_parameter / 2,
-            onehot_encoder_categories=[["None"], ["None"]],
         )
 
         route.calculate_projected_time_schedule(user)

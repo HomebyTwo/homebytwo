@@ -14,16 +14,16 @@ from ..prediction_model import PredictionModel
 
 def get_default_array():
     """
-    define default array (mutable) for the `regression_coefficients` NumpyArrayField.
+    default array (mutable) for the `regression_coefficients` NumpyArrayField.
     """
     return array([0.0, 0.0, 0.0, 0.075, 0.0004, 0.0001, 0.0001]).copy()
 
 
-def get_default_onehot_categories():
+def get_default_category():
     """
-    define default lists (mutable) for the `onehot_encoder_categories` ArrayField.
+    default list (mutable) for the categories saved by the one-hot encoder ArrayField.
     """
-    return [["None"], ["None"]].copy()
+    return ["None"].copy()
 
 
 class ActivityQuerySet(models.QuerySet):
@@ -166,7 +166,7 @@ class Activity(TimeStampedModel):
         choices=WORKOUT_TYPE_CHOICES, blank=True, null=True
     )
 
-    # is it a commute
+    # is the activity flagged as a commute?
     commute = models.BooleanField(default=False)
 
     # Gear used if any
@@ -336,9 +336,7 @@ class Activity(TimeStampedModel):
             "total_elevation_gain": self.total_elevation_gain,
             "total_distance": self.distance,
             "gear": self.gear.strava_id if self.gear else "None",
-            "gear_name": self.gear.name if self.gear else "None",
-            "workout_type": str(self.workout_type),
-            "workout_type_name": self.get_workout_type_display()
+            "workout_type": self.get_workout_type_display()
             if self.workout_type
             else "None",
             "commute": self.commute,
@@ -465,10 +463,14 @@ class ActivityType(models.Model):
     # flat pace in seconds per meter, aka the intercept of the regression.
     flat_parameter = models.FloatField(default=0.36)  # 6:00/km or 10km/h
 
-    # default categories for the one-hot encoder: gear and workout type.
-    onehot_encoder_categories = ArrayField(
-        ArrayField(models.CharField(max_length=50)),
-        default=get_default_onehot_categories,
+    # gear categories in the absence of a prediction model for the athlete
+    gear_categories = ArrayField(
+        models.CharField(max_length=50), default=get_default_category,
+    )
+
+    # workout_type categories in the absence of a prediction model for the athlete
+    workout_type_categories = ArrayField(
+        models.CharField(max_length=50), default=get_default_category,
     )
 
     # min and max plausible gradient and speed to filter outliers in activity data.
@@ -496,11 +498,16 @@ class ActivityPerformance(TimeStampedModel):
     athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
     activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
-    # default categories for the one-hot encoder: gear and workout type.
-    onehot_encoder_categories = ArrayField(
-        ArrayField(models.CharField(max_length=50)),
-        default=get_default_onehot_categories,
+    # gear categories saved by the one-hot encoder in the prediction pipeline
+    gear_categories = ArrayField(
+        models.CharField(max_length=50), default=get_default_category,
     )
+
+    # workout_type categories saved by the one-hot encoder in the prediction pipeline
+    workout_type_categories = ArrayField(
+        models.CharField(max_length=50), default=get_default_category,
+    )
+
     # numpy array of regression coefficients as trained by the regression model
     regression_coefficients = NumpyArrayField(
         models.FloatField(), default=get_default_array
@@ -586,7 +593,10 @@ class ActivityPerformance(TimeStampedModel):
         self.regression_coefficients = regression.coef_
         self.flat_parameter = regression.intercept_
 
-        self.onehot_encoder_categories = prediction_model.onehot_encoder_categories
+        (
+            self.gear_categories,
+            self.workout_type_categories,
+        ) = prediction_model.onehot_encoder_categories
 
         self.save()
 
