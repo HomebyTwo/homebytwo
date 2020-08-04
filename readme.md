@@ -82,6 +82,11 @@ $ vagrant ssh
 $ tox
 ```
 
+## Add a requirement
+
+Add the requirement to the `requirements/xxx.in` file, and then run `make requirements` (from inside the box) to update
+the `.txt` files and install the requirement(s) in the virtual environment.
+
 
 ## Import Places from SwissNAMES3D
 
