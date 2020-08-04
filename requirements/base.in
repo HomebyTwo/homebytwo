@@ -17,6 +17,7 @@ polyline
 psycopg2-binary
 rcssmin
 requests
+scikit-learn
 sentry-sdk==0.13.5
 social-auth-core
 social-auth-app-django

@@ -27,10 +27,11 @@ gunicorn==20.0.4          # via -r requirements/base.in
 humanize==2.5.0           # via flower
 idna==2.10                # via requests
 importlib-metadata==1.7.0  # via kombu
+joblib==0.16.0            # via scikit-learn
 kombu==4.6.11             # via celery
 lxml==4.5.1               # via -r requirements/base.in
 numexpr==2.7.1            # via tables
-numpy==1.19.0             # via numexpr, pandas, tables
+numpy==1.19.0             # via numexpr, pandas, scikit-learn, scipy, tables
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 pandas==1.0.5             # via -r requirements/base.in
 pillow==7.2.0             # via -r requirements/base.in, easy-thumbnails
@@ -45,6 +46,8 @@ pytz==2020.1              # via celery, django, flower, pandas, stravalib
 rcssmin==1.0.6            # via -r requirements/base.in
 requests-oauthlib==1.3.0  # via social-auth-core
 requests==2.24.0          # via -r requirements/base.in, garmin-uploader, requests-oauthlib, social-auth-core, stravalib
+scikit-learn==0.23.2      # via -r requirements/base.in
+scipy==1.5.2              # via scikit-learn
 sentry-sdk==0.13.5        # via -r requirements/base.in
 six==1.15.0               # via cryptography, django-geojson, garmin-uploader, polyline, python-dateutil, social-auth-app-django, social-auth-core, stravalib
 social-auth-app-django==4.0.0  # via -r requirements/base.in
@@ -52,6 +55,7 @@ social-auth-core==3.3.3   # via -r requirements/base.in, social-auth-app-django
 sqlparse==0.3.1           # via django
 stravalib==0.10.2         # via -r requirements/base.in
 tables==3.6.1             # via -r requirements/base.in
+threadpoolctl==2.1.0      # via scikit-learn
 tornado==6.0.4            # via flower
 units==0.7                # via stravalib
 urllib3==1.25.9           # via requests, sentry-sdk
