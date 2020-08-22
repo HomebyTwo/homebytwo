@@ -58,7 +58,7 @@ def route(request, pk):
     # first we check if the activity type has been changed by the user
     if request.method == "POST":
         # get bound performance form with activity type only
-        activity_type_form = ActivityPerformanceForm(data=request.POST)
+        activity_type_form = ActivityPerformanceForm(route, data=request.POST)
 
         if activity_type_form.is_valid():
             if "activity_type" in activity_type_form.changed_data:
@@ -67,18 +67,8 @@ def route(request, pk):
                     name=activity_type_name
                 )
 
-    initial = {"activity_type": route.activity_type.name}
-
     # retrieve activity perfomance for user and route's activity type
     activity_performance = None
-
-    if request.user.is_authenticated:
-        try:
-            activity_performance = ActivityPerformance.objects.get(
-                athlete=request.user.athlete, activity_type=route.activity_type,
-            )
-        except ActivityPerformance.DoesNotExist:
-            pass
 
     # initial gear and workout type values for the performance form and the route calculation
     gear_id = None
@@ -86,13 +76,17 @@ def route(request, pk):
 
     if request.method == "POST":
         performance_form = ActivityPerformanceForm(
-            activity_performance, data=request.POST
+            route,
+            request.user.athlete if request.user.is_authenticated else None,
+            data=request.POST,
         )
         if performance_form.is_valid():
             workout_type = performance_form.cleaned_data.get(
                 "workout_type", workout_type
             )
             gear_id = performance_form.cleaned_data.get("gear", gear_id)
+
+    initial = {"activity_type": route.activity_type.name}
 
     # invalid form means the choices did not correspond to the activity type
     if request.method == "GET" or not performance_form.is_valid():
@@ -104,7 +98,9 @@ def route(request, pk):
 
         # get unbound performance form with initial values
         performance_form = ActivityPerformanceForm(
-            activity_performance, initial=initial
+            route,
+            request.user.athlete if request.user.is_authenticated else None,
+            initial=initial,
         )
 
     # calculate route schedule for display
