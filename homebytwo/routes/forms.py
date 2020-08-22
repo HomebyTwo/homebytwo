@@ -124,8 +124,10 @@ class ActivityPerformanceForm(Form):
         if athlete != None:
             activity_type_choices = [
                 (
-                    activity_performance.activity_type.id,
                     activity_performance.activity_type.name,
+                    dict(ActivityType.ACTIVITY_NAME_CHOICES)[
+                        activity_performance.activity_type.name
+                    ],
                 )
                 for activity_performance in athlete.activityperformance_set.all()
             ]
