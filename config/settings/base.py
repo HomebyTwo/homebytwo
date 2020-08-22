@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "homebytwo.routes",
     "homebytwo.importers",
     "homebytwo.landingpage",
+    "homebytwo.celery.CeleryConfig",
 ]
 
 MIDDLEWARE = [
