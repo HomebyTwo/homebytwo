@@ -2,7 +2,15 @@ from django.db import IntegrityError, transaction
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
-from .models import Activity, ActivityType, Checkpoint, Gear, Place, Route
+from .models import (
+    Activity,
+    ActivityType,
+    ActivityPerformance,
+    Checkpoint,
+    Gear,
+    Place,
+    Route,
+)
 
 
 class RouteForm(ModelForm):
@@ -101,21 +109,35 @@ class ActivityPerformanceForm(Form):
     Choose the activity perfomance parameters to apply to the pace prediction.
     """
 
-    activity_type_choices = [
-        (value, label)
-        for value, label in ActivityType.ACTIVITY_NAME_CHOICES
-        if value in ActivityType.SUPPORTED_ACTIVITY_TYPES
-    ]
-    activity_type = ChoiceField(choices=activity_type_choices)
-
-    def __init__(self, activity_performance=None, *args, **kwargs):
+    def __init__(self, route, athlete=None, *args, **kwargs):
         """
         set choices of the form according to an ActivityPerformance object of the user.
         """
         super().__init__(*args, **kwargs)
 
-        if activity_performance is None:
-            return None
+        activity_type_choices = [
+            (value, label)
+            for value, label in ActivityType.ACTIVITY_NAME_CHOICES
+            if value in ActivityType.SUPPORTED_ACTIVITY_TYPES
+        ]
+
+        if athlete != None:
+            activity_type_choices = [
+                (
+                    activity_performance.activity_type.id,
+                    activity_performance.activity_type.name,
+                )
+                for activity_performance in athlete.activityperformance_set.all()
+            ]
+
+        self.fields["activity_type"] = ChoiceField(choices=activity_type_choices)
+
+        try:
+            activity_performance = ActivityPerformance.objects.get(
+                athlete=athlete, activity_type=route.activity_type,
+            )
+        except ActivityPerformance.DoesNotExist:
+            return
 
         # retrieve choices from the encoded categories in the prediction model
         gear_list = activity_performance.gear_categories
