@@ -203,7 +203,17 @@ class Route(Track):
     def gpx_filename(self):
         return "homebytwo_{}.gpx".format(self.pk)
 
-    def update_from_remote(self):
+    def get_route_details(self, cookies=None):
+        """
+        retrieve route details from the remote service.
+
+        Must be implemented in in the proxy classes, e.g. SwitzerlandMobilityRoute, StravaRoute.
+        The `cookies` parameter expects authorization cookies for Switzerland Mobility stored in the session
+        and is only used for Switzerland Mobility.
+        """
+        raise NotImplementedError
+
+    def update_from_remote(self, cookies=None):
         """
         update an existing route with the data from the remote service.
         """
@@ -213,7 +223,7 @@ class Route(Track):
             route = route_class.objects.get(pk=self.pk)
 
             # overwrite route with remote info
-            route.get_route_details()
+            route.get_route_details(cookies)
 
             # reset the checkpoints, the price of updating from remote
             route.checkpoint_set.all().delete()

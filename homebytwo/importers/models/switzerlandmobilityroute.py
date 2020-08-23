@@ -35,7 +35,8 @@ class SwitzerlandMobilityRouteManager(RouteManager):
 
         # login cookies missing
         except KeyError:
-            raise SwitzerlandMobilityMissingCredentials
+            message = "Please connect to Switzerland Mobility, first."
+            raise SwitzerlandMobilityMissingCredentials(message)
 
         # retrieve route list
         routes_list_url = settings.SWITZERLAND_MOBILITY_LIST_URL
@@ -99,14 +100,18 @@ class SwitzerlandMobilityRoute(Route):
     # Custom manager
     objects = SwitzerlandMobilityRouteManager()
 
-    def get_route_details(self):
+    def get_route_details(self, cookies):
         """
         fetch route details from map.wanderland.ch.
+
+        Routes that are not shared publicly on Switzerland mobility
+        can only be accessed by their owner. We try to pass the authorization
+        cookies of the user to access his private routes.
         """
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % self.source_id
 
-        # request from Switzerland Mobility
-        raw_route_json = request_json(route_url)
+        # request route details from Switzerland Mobility
+        raw_route_json = request_json(route_url, cookies)
 
         # if response is a success, format the route info
         if raw_route_json:
@@ -121,7 +126,7 @@ class SwitzerlandMobilityRoute(Route):
                 "totaldown"
             ]
 
-            # save route profile to route DataFrame
+            # save route profile as DataFrame
             self.data = DataFrame(
                 literal_eval(raw_route_json["properties"]["profile"]),
                 columns=["lat", "lng", "altitude", "distance"],

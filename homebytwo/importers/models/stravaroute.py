@@ -69,7 +69,7 @@ class StravaRoute(Route):
     objects = StravaRouteManager()
 
     # retrieve strava information for a route
-    def get_route_details(self):
+    def get_route_details(self, cookies=None):
         """
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.

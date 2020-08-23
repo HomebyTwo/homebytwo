@@ -318,7 +318,9 @@ class RouteUpdate(RouteEdit):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
-            return route.update_from_remote()
+            return route.update_from_remote(
+                self.request.session.get("switzerland_mobility_cookies", None)
+            )
 
 
 @method_decorator(login_required, name="dispatch")
