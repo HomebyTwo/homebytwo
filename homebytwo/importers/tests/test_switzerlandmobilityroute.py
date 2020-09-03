@@ -127,7 +127,7 @@ class SwitzerlandMobilityTestCase(TestCase):
         )
         httpretty.disable()
 
-        self.assertEqual(len(remote_routes), 37)
+        self.assertEqual(len(remote_routes), 82)
 
     def test_get_remote_routes_empty(self):
         # create user
@@ -204,7 +204,7 @@ class SwitzerlandMobilityTestCase(TestCase):
         formatted_routes = manager._format_raw_remote_routes(raw_routes, self.athlete)
 
         self.assertTrue(type(formatted_routes) is list)
-        self.assertEqual(len(formatted_routes), 37)
+        self.assertEqual(len(formatted_routes), 82)
         for route in formatted_routes:
             self.assertIsInstance(route, SwitzerlandMobilityRoute)
             self.assertEqual(route.description, "")
@@ -293,7 +293,7 @@ class SwitzerlandMobilityTestCase(TestCase):
         )
         httpretty.disable()
 
-        self.assertEqual(len(remote_routes), 37)
+        self.assertEqual(len(remote_routes), 82)
 
     def test_get_raw_route_details_success(self):
         route_id = 2191833
@@ -426,7 +426,9 @@ class SwitzerlandMobilityTestCase(TestCase):
             self.assertContains(response, start_place_form_element)
         self.assertContains(response, map_data, html=True)
 
-    def test_switzerland_mobility_route_with_no_switzerland_mobility_account_success(self):
+    def test_switzerland_mobility_route_with_no_switzerland_mobility_account_success(
+        self,
+    ):
         session = self.client.session
         del session["switzerland_mobility_cookies"]
         session.save()
