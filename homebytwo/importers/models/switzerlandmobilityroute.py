@@ -62,15 +62,11 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         # Iterate through json object and create stubs
         for route in raw_routes:
             formatted_route = SwitzerlandMobilityRoute(
-                source_id=route[0],
-                name=route[1],
-                description=route[2],
+                source_id=route["id"],
+                name=route["name"],
+                description="",
                 athlete=athlete,
             )
-
-            # If description is None convert it to empty
-            if formatted_route.description is None:
-                formatted_route.description = ""
 
             formatted_routes.append(formatted_route)
 

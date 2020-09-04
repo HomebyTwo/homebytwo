@@ -2,11 +2,11 @@
 - name: fill-in Strava Route ENVDIR settings
   copy: "dest={{ django_root }}/envdir/STRAVA_ROUTE_URL content=https://www.strava.com/routes/%d"
 - name: fill-in Switzerland Mobility List ENVDIR settings
-  copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_LIST_URL content=https://map.wanderland.ch/api/4/tracks_list"
+  copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_LIST_URL content=https://map.wanderland.ch/api/5/tracks"
 - name: fill-in Switzerland Mobility Login ENVDIR settings
   copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_LOGIN_URL content=https://map.wanderland.ch/api/4/login"
 - name: fill-in Switzerland Mobility Route Data ENVDIR settings
-  copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_ROUTE_DATA_URL content=https://map.wanderland.ch/api/4/track/%d/show"
+  copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_ROUTE_DATA_URL content=https://map.wanderland.ch/api/4/tracks/%d"
 - name: fill-in Switzerland Mobility Route URL ENVDIR settings
   copy: "dest={{ django_root }}/envdir/SWITZERLAND_MOBILITY_ROUTE_URL content=https://map.wanderland.ch/?trackId=%d"
 - name: fill-in Garmin activity URL ENVDIR settings
