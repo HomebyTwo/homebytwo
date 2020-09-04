@@ -128,8 +128,8 @@ class Command(BaseCommand):
                 Swissname3dPlace,
                 shapefile,
                 swissname3d_mapping,
-                transform=False,
-                encoding="latin-1",
+                transform=True,
+                encoding="utf-8",
             )
 
         except gdal_error.GDALException:
