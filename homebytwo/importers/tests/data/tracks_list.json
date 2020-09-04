@@ -1,1 +1,576 @@
-[[3282330, "Puidoux - Tour de Gourze", null], [2823968, "Leuk Bridge", null], [2191833, "Haute Cime", null], [2906356, "Liip Company Outing - HARD", null], [2907880, "Liip Company Outing - ULTRA", null], [1745332, "Fully - Pont de Nant", null], [2937739, "MEDIUM alternative", null], [2954444, "Liip Company Outing MEDIUM TOO", null], [2444444, "Grammont - Cornettes", null], [2733343, "Les Vo\u00ebttes - Pic Chaussy", null], [2218746, "Hohbalm - Sch\u00f6nbiel - H\u00f6rnli", null], [1388616, "T\u00eate de Chalin", null], [2406491, "Vallorbe - La Cure", null], [2827447, "Villeneuve - Malatraix - Rochers de Naye", null], [3161968, "Vevey - Soladier - Montreux", null], [1673720, "Dent de Morcles", null], [1673727, "Perris Blancs", null], [1745309, "Saxon - Arolla", null], [1673545, "Pierre Avoi", null], [1347393, "Tour d'A\u00ef - Super Combo", null], [2231299, "Pointe de Zinal", null], [2179697, "Signal de Soi - Ant\u00e8me", null], [2191992, "Grande Garde", null], [3161872, "Vallorbe - Bi\u00e8re", null], [2433141, "Grammont", null], [2914613, "Orbe - Suchet - Ste-Croix", null], [2673122, "Molard - Cape - D. de Jaman - R. Naye", null], [2691746, "Pointe de Bellevue", null], [1347405, "Croix de Javerne", null], [2196905, "Finges - Bella Tola", null], [2071406, "Pierre qu'Abotse", null], [2692136, "Rochers de Nayes", null], [3011765, "Villeneuve - Leysin", null], [1443383, "Oberer Blausatz", null], [2906376, "Liip Company Outing - MEDIUM", null], [2906323, "Liip Company Outing - EASY", null], [3109696, "Morgins - Pointe de l'Au", null]]
+[
+  {
+    "filter_id": 11509,
+    "id": 2095757041,
+    "name": "Leytron - Rambert",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 815907535,
+    "name": "Besso plan B",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 7774957,
+    "name": "Hörnli - Gandegg",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 7736742,
+    "name": "Sion - Corbire par derrière",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 65106,
+    "id": 7678522,
+    "name": "Hohbalm - Pte. Zinal - Hörnli",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 4989080,
+    "name": "Ardon - Diablerets - Pillon",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 65106,
+    "id": 7646649,
+    "name": "Zermatt - Rothorn direct",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 65105,
+    "id": 7645154,
+    "name": "Cervo - Vrony",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2433141,
+    "name": "Cornettes - Grammont",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 7502332,
+    "name": "Grammont - Jumelles - Cornettes",
+    "original_id": 2433141,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 7472436,
+    "name": "Muveran",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 3497164,
+    "name": "Maurice - Morcles - Chavalard - Ovronnaz",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3395823,
+    "name": "Hubel - Zmutt - Staffelalp",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2218746,
+    "name": "Hohbalm - Schönbiel - Hörnli",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 7410687,
+    "name": "Lavey - Chavalard - Beudon",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 7445080,
+    "name": "Papiche!",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": 11509,
+    "id": 5507665,
+    "name": "Aigle - Aï",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 7396172,
+    "name": "Rochers-de-Naye - Dent-de-Jaman - Cubly",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2191833,
+    "name": "Haute Cime",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5077529,
+    "name": "Neuchâtel - Verticale - Hauterive",
+    "original_id": 2357633,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3473701,
+    "name": "Nestlé Suisse - Les Pléiades",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4989641,
+    "name": "St-Léonard - Cab. Moiry",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 1745332,
+    "name": "Fully - Pont de Nant",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5581267,
+    "name": "Villeneuve - Rossinière",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2733343,
+    "name": "Les Voëttes - Pic Chaussy",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4728393,
+    "name": "Zermatt Southside",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 1388616,
+    "name": "Tête de Chalin",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2827447,
+    "name": "Villeneuve - Malatraix - Rochers de Naye",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 1673727,
+    "name": "Perris Blancs",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 1745309,
+    "name": "Saxon - Arolla",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 1673545,
+    "name": "Pierre Avoi",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3973445,
+    "name": "Pic Chaussy alpin",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2231299,
+    "name": "Pointe de Zinal",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2179697,
+    "name": "Signal de Soi - Antème",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3161872,
+    "name": "Vallorbe - Bière",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2914613,
+    "name": "Orbe - Suchet - Ste-Croix",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2673122,
+    "name": "Molard - Cape - D. de Jaman - R. Naye",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2691746,
+    "name": "Pointe de Bellevue",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2071406,
+    "name": "Pierre qu'Abotse",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2692136,
+    "name": "Rochers de Nayes",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3011765,
+    "name": "Villeneuve - Leysin",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3877747,
+    "name": "Salette - Dent de Lys",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 2196905,
+    "name": "Finges - Bella Tola",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5637699,
+    "name": "Rochers Direct",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 6398144,
+    "name": "Trail du Besso",
+    "original_id": 4523699,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 6398066,
+    "name": "MXALPS",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4991708,
+    "name": "Lenk -  Morning Run",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3816358,
+    "name": "Outing 2017 - Easy",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3816342,
+    "name": "Outing 2017 - Medium One",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3503623,
+    "name": "Fully - Chavalard - Morcles - Plans",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5391409,
+    "name": "Zermatt cool 1900",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4680030,
+    "name": "La Sarraz - Mont-Tendre",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3282330,
+    "name": "Puidoux - Tour de Gourze",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 6328607,
+    "name": "Short Signal",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3375809,
+    "name": "Cully - Gourze - Home",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3377089,
+    "name": "Höhbalmen Direct",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3377114,
+    "name": "Stafelalp",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3377136,
+    "name": "Stafelalp - Schwarzsee",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3379816,
+    "name": "Wisshorn",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3816353,
+    "name": "Outing 2017 - Ultra",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5728188,
+    "name": "Cape au Moine - Dent de Jaman",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3424783,
+    "name": "Villeneuve - Rochers de Naye - Montreux",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3439874,
+    "name": "Sion - Greppon Blanc - Siviez",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3375791,
+    "name": "Vuachère - Chalet-à-Gobet",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3926994,
+    "name": "Interlaken - Harder - Brienzer Rothorn",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3464403,
+    "name": "Montreux - Dent de Lys - Montbovon",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3469224,
+    "name": "Défi du Vignoble",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3465850,
+    "name": "Liip Conf 2017",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3640259,
+    "name": "Ruinettes - Fionnay",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5729088,
+    "name": "Molard - Cape au Moine - Dent de Jaman",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3960110,
+    "name": "Gruyères - Moléson - Chatel",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4841504,
+    "name": "Catogne d'homme",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4747172,
+    "name": "Oberrothorn",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5362524,
+    "name": "Winthi Bestof",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3816372,
+    "name": "Outing 2017 - Medium Two",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 3816346,
+    "name": "Outing 2017 - Hard",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5520177,
+    "name": "Dent de Jaman",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4859844,
+    "name": "Prilly - Estavayer",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 5218315,
+    "name": "Ultraks Extreme",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4870201,
+    "name": "Liip Lunch Run",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4686888,
+    "name": "Säntis Classic",
+    "original_id": null,
+    "type": "legacy"
+  },
+  {
+    "filter_id": null,
+    "id": 4890004,
+    "name": "Montricher - Mont Tendre",
+    "original_id": null,
+    "type": "legacy"
+  }
+]

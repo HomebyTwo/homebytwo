@@ -1,4 +1,8 @@
 # Change Log
+## [0.9.3]
+- Adapt to changes in route list Switzerland Mobility API
+- Update python packages
+
 ## [0.9.0] - 2019-01-01 DataFrame fields for all
 - DataFrame fields can be used in any Model
 
@@ -84,7 +88,7 @@
 
 ## [0.2.0] - 2018-04-04 Individual Performance
 ### Added
-- Calculate Schedule based on athlete performance \o/ 
+- Calculate Schedule based on athlete performance \o/
 
 ## [0.1.5] - 2018-02-12 Pitch Pimp
 ### Changed
