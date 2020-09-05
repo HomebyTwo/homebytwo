@@ -218,7 +218,7 @@ AUTHENTICATION_BACKENDS = (
 
 # Strava settings for django social auth, see https://www.strava.com/settings/api
 SOCIAL_AUTH_STRAVA_KEY = get_env_variable("STRAVA_CLIENT_ID", "12186")
-SOCIAL_AUTH_STRAVA_SECRET = get_env_variable("STRAVA_CLIENT_SECRET")
+SOCIAL_AUTH_STRAVA_SECRET = get_env_variable("STRAVA_CLIENT_SECRET", "")
 SOCIAL_AUTH_STRAVA_SCOPE = ["read", "read_all", "activity:read", "activity:read_all"]
 
 SOCIAL_AUTH_STRAVA_PIPELINE = (
