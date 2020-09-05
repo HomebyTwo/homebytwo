@@ -119,3 +119,17 @@ Run the importer command:
 ```sh
 $ ./manage.py importswissname3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
 ```
+
+## Managing Celery
+
+After changing a task code, you'll need to restart Celery for changes to be taken into account (Celery is run asynchronously because some processes take a really long time, including the signup process which would otherwise timeout). To restart celery, run:
+
+```
+sudo systemctl restart celery
+```
+
+To see the output of Celery tasks, use `journalctl` (`-f` is to follow the output):
+
+```
+sudo journalctl -u celery -f
+```

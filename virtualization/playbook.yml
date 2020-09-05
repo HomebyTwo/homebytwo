@@ -13,3 +13,21 @@
     - { role: webpack }
     - { role: homebytwo_env }
     - { role: swissname3d }
+
+  tasks:
+    - name: Ensure celery service exists
+      copy:
+        src: celery.service
+        dest: /etc/systemd/system/celery.service
+      become: yes
+
+    - name: Reload systemd units
+      command: systemctl daemon-reload
+      become: yes
+
+    - name: Install Celery systemd unit
+      service:
+        name: celery.service
+        enabled: yes
+        state: started
+      become: yes

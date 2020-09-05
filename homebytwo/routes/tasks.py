@@ -1,8 +1,6 @@
 import logging
 
-from django.template.defaultfilters import pluralize
-
-from celery import shared_task
+from celery import group, shared_task
 from celery.schedules import crontab
 from celery.task import PeriodicTask
 from garmin_uploader.api import GarminAPIException
@@ -24,8 +22,14 @@ def import_strava_activities_task(athlete_id):
     athlete = Athlete.objects.get(pk=athlete_id)
     activities = Activity.objects.update_user_activities_from_strava(athlete)
 
-    return "The athlete now has {0} activit{1} saved in the database.".format(
-        len(activities), pluralize(len(activities), "y,ies")
+    return [activity.strava_id for activity in activities]
+
+
+@shared_task
+def import_strava_activities_streams_task(activities_ids):
+    return group(
+        import_strava_activity_streams_task(activity_id)
+        for activity_id in activities_ids
     )
 
 
