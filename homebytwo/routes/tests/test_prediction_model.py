@@ -24,7 +24,7 @@ def test_prediction_model_with_defaults():
         "total_distance",
     ]
     assert prediction_model.polynomial_columns == ["gradient"]
-    assert prediction_model.onehot_encoder_categories is None
+    assert prediction_model.onehot_encoder_categories == "auto"
     assert prediction_model.pipeline.named_steps["columntransformer"]
     assert prediction_model.pipeline.named_steps["ridge"]
 
@@ -34,7 +34,7 @@ def test_prediction_model_with_custom_parameters():
         categorical_columns=["gear", "workout_type"], numerical_columns=[],
     )
 
-    assert prediction_model.onehot_encoder_categories is None
+    assert prediction_model.onehot_encoder_categories == "auto"
     assert prediction_model.numerical_columns == []
 
 
