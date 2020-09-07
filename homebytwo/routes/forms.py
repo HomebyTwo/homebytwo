@@ -4,8 +4,8 @@ from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 from .fields import CheckpointsChoiceField
 from .models import (
     Activity,
-    ActivityType,
     ActivityPerformance,
+    ActivityType,
     Checkpoint,
     Gear,
     Place,
@@ -141,12 +141,12 @@ class ActivityPerformanceForm(Form):
         except ActivityPerformance.DoesNotExist:
             return
 
-        # retrieve choices from the encoded categories in the prediction model
+        # retrieve gear and workout type choices from the categories in the prediction model
         gear_list = activity_performance.gear_categories
         workout_type_list = activity_performance.workout_type_categories
 
         # construct gear choices and configure choice field
-        if gear_list != ["None"]:
+        if not all(gear_list == ["None"]):
             gears = Gear.objects.filter(strava_id__in=gear_list)
             gear_choices = [(gear.strava_id, gear.name) for gear in gears]
 
@@ -158,7 +158,7 @@ class ActivityPerformanceForm(Form):
 
         # construct workout_type_choices and configure choice field
         # we use the display values because the one-hot encoder hates integers.
-        if workout_type_list != ["None"]:
+        if not all(workout_type_list == ["None"]):
             workout_type_choices = [
                 (choice_name, choice_name)
                 for choice, choice_name in Activity.WORKOUT_TYPE_CHOICES

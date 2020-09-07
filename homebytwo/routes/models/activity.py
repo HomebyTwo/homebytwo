@@ -1,6 +1,5 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
-from django.contrib.postgres.fields import ArrayField
 
 from numpy import array
 from pandas import DataFrame
@@ -23,7 +22,7 @@ def get_default_category():
     """
     default list (mutable) for the categories saved by the one-hot encoder ArrayField.
     """
-    return ["None"].copy()
+    return array(["None"]).copy()
 
 
 class ActivityQuerySet(models.QuerySet):
@@ -464,12 +463,12 @@ class ActivityType(models.Model):
     flat_parameter = models.FloatField(default=0.36)  # 6:00/km or 10km/h
 
     # gear categories in the absence of a prediction model for the athlete
-    gear_categories = ArrayField(
+    gear_categories = NumpyArrayField(
         models.CharField(max_length=50), default=get_default_category,
     )
 
     # workout_type categories in the absence of a prediction model for the athlete
-    workout_type_categories = ArrayField(
+    workout_type_categories = NumpyArrayField(
         models.CharField(max_length=50), default=get_default_category,
     )
 
@@ -499,12 +498,12 @@ class ActivityPerformance(TimeStampedModel):
     activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
 
     # gear categories saved by the one-hot encoder in the prediction pipeline
-    gear_categories = ArrayField(
+    gear_categories = NumpyArrayField(
         models.CharField(max_length=50), default=get_default_category,
     )
 
     # workout_type categories saved by the one-hot encoder in the prediction pipeline
-    workout_type_categories = ArrayField(
+    workout_type_categories = NumpyArrayField(
         models.CharField(max_length=50), default=get_default_category,
     )
 
