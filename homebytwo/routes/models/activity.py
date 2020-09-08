@@ -336,7 +336,7 @@ class Activity(TimeStampedModel):
             "total_distance": self.distance,
             "gear": self.gear.strava_id if self.gear else "None",
             "workout_type": self.get_workout_type_display()
-            if self.workout_type
+            if self.workout_type or self.workout_type == 0
             else "None",
             "commute": self.commute,
         }

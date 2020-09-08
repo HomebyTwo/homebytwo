@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
-from factory import Faker, Sequence, SubFactory
+from factory import Faker, Iterator, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
@@ -65,10 +65,7 @@ class ActivityTypeFactory(DjangoModelFactory):
         model = ActivityType
         django_get_or_create = ("name",)
 
-    name = Faker(
-        "random_element",
-        elements=list(get_field_choices(ActivityType.ACTIVITY_NAME_CHOICES)),
-    )
+    name = Iterator(ActivityType.SUPPORTED_ACTIVITY_TYPES)
 
 
 class ActivityPerformanceFactory(DjangoModelFactory):
