@@ -46,33 +46,17 @@ def routes(request):
 
 def route(request, pk):
     """
-    display route with athlete's schedule based on the prediction model
+    display route schedule based on the prediction model of the logged-in athlete
 
-    The route page also contains a simple form to change the route activity_type
-    and tweak the schedule. the form presets and options depend on whether
-    the request user has a trained prediction model for the route's activty type.
+    The route page contains a simple form to change the route activity_type
+    and tweak the schedule.
+
+    If the athlete is not logged in or if the logged-in athlete has no
+    prediction model for the selected activity type, a default prediction model
+    is used.
 
     """
     route = get_object_or_404(Route.objects.select_related(), id=pk)
-
-    # first we check if the activity type has been changed by the user
-    if request.method == "POST":
-        # get bound performance form with activity type only
-        activity_type_form = ActivityPerformanceForm(route, data=request.POST)
-
-        if activity_type_form.is_valid():
-            if "activity_type" in activity_type_form.changed_data:
-                activity_type_name = activity_type_form.cleaned_data["activity_type"]
-                route.activity_type, created = ActivityType.objects.get_or_create(
-                    name=activity_type_name
-                )
-
-    # retrieve activity perfomance for user and route's activity type
-    activity_performance = None
-
-    # initial gear and workout type values for the performance form and the route calculation
-    gear_id = None
-    workout_type = None
 
     if request.method == "POST":
         performance_form = ActivityPerformanceForm(
@@ -80,27 +64,35 @@ def route(request, pk):
             request.user.athlete if request.user.is_authenticated else None,
             data=request.POST,
         )
+
         if performance_form.is_valid():
-            workout_type = performance_form.cleaned_data.get(
-                "workout_type", workout_type
+            activity_type_name = performance_form.cleaned_data["activity_type"]
+            workout_type = performance_form.cleaned_data.get("workout_type")
+            gear_id = performance_form.cleaned_data.get("gear")
+            route.activity_type, created = ActivityType.objects.get_or_create(
+                name=activity_type_name
             )
-            gear_id = performance_form.cleaned_data.get("gear", gear_id)
 
-    initial = {"activity_type": route.activity_type.name}
-
-    # invalid form means the choices did not correspond to the activity type
+    # invalid form: the activity type was changed in the form,
+    # we reinitialize the form to get gear and workout type
+    # matching the new activity type
     if request.method == "GET" or not performance_form.is_valid():
-        if activity_performance:
-            gear_list = activity_performance.gear_categories
-            workout_type_list = activity_performance.workout_type_categories
-            gear_id = initial["gear"] = gear_list[0]
-            workout_type = initial["workout_type"] = workout_type_list[0]
-
         # get unbound performance form with initial values
         performance_form = ActivityPerformanceForm(
             route,
             request.user.athlete if request.user.is_authenticated else None,
-            initial=initial,
+            initial={"activity_type": route.activity_type.name},
+        )
+
+        gear_id = (
+            performance_form.fields["gear"].choices[0][0]
+            if "gear" in performance_form.fields
+            else None
+        )
+        workout_type = (
+            performance_form.fields["workout_type"].choices[0][0]
+            if "workout_type" in performance_form.fields
+            else None
         )
 
     # calculate route schedule for display
@@ -128,7 +120,6 @@ def route(request, pk):
         "route": route,
         "checkpoints": checkpoints,
         "form": performance_form,
-        "activity_performance": activity_performance,
     }
     return render(request, "routes/route.html", context)
 

@@ -1,12 +1,4 @@
 <div class="box box--default">
   <h2 class="mrgt0">Calculate your personalized schedule</h2>
-  {% if activity_performance %}
-  <p>The schedule is calculated based on your historical <em>{{ route.activity_type.name }}</em> performance on
-    Strava.<br>
-    The the prediction has a score of <em>{{ activity_performance.model_score|floatformat:3 }}</em> out of a maximum of
-    1.</p>
-  {% else %}
-  <p>Schedule calculated based on the default performance for activity type: {{ route.activity_type.name }}</p>
-  {% endif %}
   {% include "routes/_performance_form.html" %}
 </div>
