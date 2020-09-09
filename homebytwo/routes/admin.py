@@ -4,7 +4,14 @@ from django.contrib.gis import admin
 
 from leaflet.admin import LeafletGeoAdmin
 
-from .models import Activity, ActivityPerformance, Athlete, Place, Route, WebhookTransaction
+from .models import (
+    Activity,
+    ActivityPerformance,
+    Athlete,
+    Place,
+    Route,
+    WebhookTransaction,
+)
 
 
 class RouteAdmin(LeafletGeoAdmin):
@@ -35,6 +42,10 @@ class ActivityAdmin(LeafletGeoAdmin):
     list_display = ["name", "athlete", "activity_type"]
 
 
+class ActivityPerformanceAdmin(LeafletGeoAdmin):
+    list_display = ["athlete", "activity_type", "model_score"]
+
+
 class AthleteInline(admin.StackedInline):
     model = Athlete
     can_delete = False
@@ -49,7 +60,7 @@ class UserAdmin(BaseUserAdmin):
 admin.site.register(Route, RouteAdmin)
 admin.site.register(Place, PlaceAdmin)
 admin.site.register(Activity, ActivityAdmin)
-admin.site.register(ActivityPerformance)
+admin.site.register(ActivityPerformance, ActivityPerformanceAdmin)
 admin.site.register(WebhookTransaction)
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)

@@ -520,7 +520,9 @@ class ActivityPerformance(TimeStampedModel):
     cv_scores = NumpyArrayField(models.FloatField(), default=get_default_array)
 
     def __str__(self):
-        return "{0} - {1}".format(self.athlete.user.username, self.activity_type.name)
+        return "{} - {} - {:.2%}".format(
+            self.athlete.user.username, self.activity_type.name, self.model_score
+        )
 
     def get_training_data(self, start_year=None):
         """
