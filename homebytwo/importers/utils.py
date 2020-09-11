@@ -7,7 +7,11 @@ from requests.exceptions import ConnectionError
 from social_django.models import UserSocialAuth
 
 from ..routes.models import Route
-from .exceptions import StravaMissingCredentials, SwitzerlandMobilityError
+from .exceptions import (
+    StravaMissingCredentials,
+    SwitzerlandMobilityError,
+    SwitzerlandMobilityMissingCredentials,
+)
 
 
 def request_json(url, cookies=None):
@@ -21,8 +25,8 @@ def request_json(url, cookies=None):
 
         # connection error and inform the user
         except ConnectionError:
-            message = "Connection Error: could not connect to {0}. "
-            raise ConnectionError(message.format(url))
+            message = "Connection Error: could not connect to {url}. "
+            raise ConnectionError(message.format(url=url))
 
         else:
             # if request is successful return json object
@@ -30,10 +34,27 @@ def request_json(url, cookies=None):
                 json = request.json()
                 return json
 
+            # client error: access denied
+            if request.status_code == 403:
+                message = "We could not import this route. \n"
+
+                # athlete is logged-in to Switzerland Mobility
+                if cookies:
+                    message += "Ask the route creator to share it publicly on Switzerland Mobility."
+                    raise SwitzerlandMobilityError(message)
+
+                # athlete is not logged-in to Switzerland Mobility
+                else:
+                    message += "If you are the route creator, try logging-in to Switzerland mobility. "
+                    message += "If the route is not yours, ask the creator to share it publicly."
+                    raise SwitzerlandMobilityMissingCredentials(message)
+
             # server error: display the status code
             else:
-                message = "Error {0}: could not retrieve information from {1}"
-                raise SwitzerlandMobilityError(message.format(request.status_code, url))
+                message = "Error {code}: could not retrieve information from {url}"
+                raise SwitzerlandMobilityError(
+                    message.format(code=request.status_code, url=url)
+                )
 
 
 def save_detail_forms(request, route_form):

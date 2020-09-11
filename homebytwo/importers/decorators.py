@@ -8,7 +8,11 @@ from requests.exceptions import ConnectionError
 from social_django.models import UserSocialAuth
 from stravalib.exc import AccessUnauthorized as StravaAccessUnauthorized
 
-from .exceptions import StravaMissingCredentials, SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
+from .exceptions import (
+    StravaMissingCredentials,
+    SwitzerlandMobilityError,
+    SwitzerlandMobilityMissingCredentials,
+)
 
 
 def strava_required(view_func):
@@ -67,9 +71,8 @@ def remote_connection(view_func):
                 )
             )
 
-        except SwitzerlandMobilityMissingCredentials:
-            message = "Please connect to Switzerland Mobility, first."
-            messages.info(request, message)
+        except SwitzerlandMobilityMissingCredentials as error:
+            messages.info(request, error)
             return redirect("switzerland_mobility_login")
         else:
             return response

@@ -16,7 +16,7 @@ from ...routes.models import Checkpoint
 from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
-from ..exceptions import SwitzerlandMobilityError
+from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
 from ..models.switzerlandmobilityroute import request_json
@@ -313,7 +313,7 @@ class SwitzerlandMobilityTestCase(TestCase):
             status=200,
         )
 
-        route.get_route_details()
+        route.get_route_details(cookies=None)
 
         httpretty.disable()
 
@@ -321,26 +321,70 @@ class SwitzerlandMobilityTestCase(TestCase):
         self.assertIsInstance(route.geom, LineString)
         self.assertEqual(len(route.data.columns), 2)
 
-    def test_get_raw_route_details_error(self):
-        route_id = 999999999
+    def test_get_raw_private_route_not_logged_in(self):
+        route_id = 1
+        route = SwitzerlandMobilityRouteFactory(source_id=route_id)
+
+        # intercept routes_list call to map.wandland.ch with httpretty
+        httpretty.enable(allow_net_connect=False)
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+
+        json_403 = read_data(file="403.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            route_url,
+            content_type="application/json",
+            body=json_403,
+            status=403,
+        )
+
+        with self.assertRaises(SwitzerlandMobilityMissingCredentials):
+            route.get_route_details(cookies=None)
+
+    def test_get_raw_private_route_not_owner(self):
+        route_id = 1
+        route = SwitzerlandMobilityRouteFactory(source_id=route_id)
+
+        # intercept routes_list call to map.wandland.ch with httpretty
+        httpretty.enable(allow_net_connect=False)
+        route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
+
+        json_403 = read_data(file="403.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            route_url,
+            content_type="application/json",
+            body=json_403,
+            status=403,
+        )
+
+        with self.assertRaises(SwitzerlandMobilityError):
+            route.get_route_details(
+                cookies=self.client.session["switzerland_mobility_cookies"]
+            )
+
+    def test_get_raw_route_details_404_error(self):
+        route_id = 2
         route = SwitzerlandMobilityRoute(source_id=route_id)
 
         # intercept routes_list call to map.wandland.ch with httpretty
         httpretty.enable(allow_net_connect=False)
         route_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
 
-        html_response = read_data(file="404.html", dir_path=CURRENT_DIR)
+        json_404 = read_data(file="404.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
             httpretty.GET,
             route_url,
-            content_type="text/html",
-            body=html_response,
+            content_type="application/json",
+            body=json_404,
             status=404,
         )
 
         with self.assertRaises(SwitzerlandMobilityError):
-            route.get_route_details()
+            route.get_route_details(cookies=None)
 
         httpretty.disable()
 
@@ -691,7 +735,7 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         httpretty.disable()
 
-        alert_box = '<li class="box mrgv- alert error">'
+        alert_box = '<li class="box mrgv- alert error" >'
         required_field = "This field is required."
         invalid_value = "Invalid value"
 
@@ -736,7 +780,7 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         httpretty.disable()
 
-        alert_box = '<li class="box mrgv- alert error">'
+        alert_box = '<li class="box mrgv- alert error" >'
         integrity_error = (
             "Integrity Error: duplicate key value violates unique constraint"
         )

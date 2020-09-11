@@ -54,7 +54,7 @@ def import_routes(request, data_source):
 @remote_connection
 def import_route(request, data_source, source_id):
     """
-    import form for Strava
+    import routes from external sources
 
     There is a modelform for the route with custom __init__ ans save methods
     to find available checkpoints and save the ones selected by the athlete
@@ -66,11 +66,11 @@ def import_route(request, data_source, source_id):
     # retrieve route class from data source in url
     route_class = get_route_class_from_data_source(data_source)
 
-    # instantiate route stub with athlte ans source_id from url
+    # instantiate route stub with athlete and source_id from url
     route = route_class(athlete=request.user.athlete, source_id=source_id)
 
     # fetch route details from Remote API
-    route.get_route_details()
+    route.get_route_details(request.session.get("switzerland_mobility_cookies", None))
     route.update_track_details_from_data()
 
     if request.method == "POST":
@@ -82,10 +82,6 @@ def import_route(request, data_source, source_id):
 
         # Success! redirect to the page of the newly imported route
         if new_route:
-
-            # udpate route details calculate route schedule for route owner
-            route.calculate_projected_time_schedule(route.athlete.user)
-
             message = "Route imported successfully from {}".format(
                 route_class.DATA_SOURCE_NAME
             )
