@@ -17,23 +17,26 @@
         </span>
       </a>
 
-      {% if user.is_authenticated %}
-      <ul class="list-inline list-inline--divided list-inline--center">
+      <ul class="list-inline list-inline--center">
+        {% if user.is_authenticated %}
         <li class="text-uppercase">
           <a href="{% url 'routes:routes' %}">
             My Routes
           </a>
         </li>
+        <li class="nav__item">
+          <a href="{% url 'logout' %}" class="btn btn--small">
+            Logout
+          </a>
+        </li>
+        {% else %}
+        <li class="text-uppercase text-small">
+          <a href="{% url "social:begin" "strava" %}?next={{ request.path }}">
+            Log-in
+          </a>
+        </li>
+        {% endif %}
       </ul>
-      {% endif %}
-    </li>
-
-    <li class="nav__item">
-      {% if user.is_authenticated %}
-      <a href="{% url 'logout' %}" class="btn btn--small">
-        Logout
-      </a>
-      {% endif %}
     </li>
   </ul>
 </nav>
