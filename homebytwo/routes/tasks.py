@@ -5,7 +5,14 @@ from celery.schedules import crontab
 from celery.task import PeriodicTask
 from garmin_uploader.api import GarminAPIException
 
-from .models import Activity, ActivityPerformance, Athlete, Route, WebhookTransaction
+from .models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Athlete,
+    Route,
+    WebhookTransaction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,18 +29,17 @@ def import_strava_activities_task(athlete_id):
     athlete = Athlete.objects.get(pk=athlete_id)
     activities = Activity.objects.update_user_activities_from_strava(athlete)
 
-    return [activity.strava_id for activity in activities]
+    return [activity.strava_id for activity in activities if activity.streams is None]
 
 
 @shared_task
-def import_strava_activities_streams_task(activities_ids):
+def import_strava_activities_streams_task(activity_ids):
     return group(
-        import_strava_activity_streams_task(activity_id)
-        for activity_id in activities_ids
+        import_strava_activity_streams_task(activity_id) for activity_id in activity_ids
     )
 
 
-@shared_task
+@shared_task(rate_limit="40/m")
 def import_strava_activity_streams_task(strava_id):
     """
     fetch time, altitude, distance and moving streams for an activty from the Strava API-
@@ -56,17 +62,25 @@ def import_strava_activity_streams_task(strava_id):
 
 
 @shared_task
-def train_prediction_model_task(activity_performance_id):
+def train_prediction_models_task(athlete_id):
     """
     train prediction model for a given activity_performance object
     """
-    logger.info(
-        f"Fitting prediction model for activity_performance_id: {activity_performance_id}"
-    )
+    logger.info(f"Fitting prediction models for athlete: {athlete_id}")
 
-    activity_performance = ActivityPerformance.objects.get(id=activity_performance_id)
-    message = activity_performance.train_prediction_model()
-    message += f"Activity type: {activity_performance.activity_type}, athlete: {activity_performance.athlete}."
+    athlete = Athlete.objects.get(id=athlete_id)
+    activities = athlete.activities.filter(
+        activity_type__name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES
+    )
+    activities = activities.order_by("activity_type")
+    activities = activities.distinct("activity_type")
+
+    message = f"Prediction models trained for athlete: {athlete}."
+    for activity in activities:
+        activity_performance, created = ActivityPerformance.objects.get_or_create(
+            athlete=athlete, activity_type=activity.activity_type
+        )
+        message += activity_performance.train_prediction_model()
 
     return message
 

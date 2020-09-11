@@ -688,7 +688,7 @@ class ActivityTestCase(TestCase):
         )
 
         with patch(
-            "homebytwo.routes.tasks.train_prediction_model_task.delay"
+            "homebytwo.routes.tasks.train_prediction_models_task.delay"
         ) as mock_task:
             response = self.client.get(train_url)
             self.assertRedirects(response, reverse("routes:activities"))

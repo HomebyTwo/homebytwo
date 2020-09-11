@@ -19,17 +19,11 @@ from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
 from .forms import ActivityPerformanceForm, RouteForm
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Route,
-    WebhookTransaction,
-)
+from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
     import_strava_activity_streams_task,
-    train_prediction_model_task,
+    train_prediction_models_task,
     upload_route_to_garmin_task,
 )
 
@@ -219,18 +213,7 @@ def train_prediction_models(request):
     trigger a task to calculate prediction models
     for all activity types found in the athlete's activities.
     """
-    athlete = request.user.athlete
-    activities = Activity.objects.filter(
-        athlete=athlete, activity_type__name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES,
-    )
-    activities = activities.order_by("activity_type")
-    activities = activities.distinct("activity_type")
-
-    for activity in activities:
-        activity_performance, created = ActivityPerformance.objects.get_or_create(
-            athlete=athlete, activity_type=activity.activity_type
-        )
-        train_prediction_model_task.delay(activity_performance.id)
+    train_prediction_models_task.delay(request.user.athlete.id)
 
     messages.success(request, "We are calculating your prediction models!")
     return redirect("routes:activities")
