@@ -14,7 +14,6 @@ from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
-from celery import current_app
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
@@ -217,19 +216,6 @@ def train_prediction_models(request):
 
     messages.success(request, "We are calculating your prediction models!")
     return redirect("routes:activities")
-
-
-def task_status(request, task_id):
-    """
-    JSON endpoint for the status of tasks in the Celery task queue.
-    """
-    task = current_app.AsyncResult(task_id)
-    response_data = {"task_status": task.status, "task_id": task.id}
-
-    if task.status == "SUCCESS":
-        response_data["results"] = task.get()
-
-    return JsonResponse(response_data)
 
 
 @csrf_exempt
