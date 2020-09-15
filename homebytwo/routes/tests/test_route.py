@@ -33,8 +33,8 @@ CURRENT_DIR = Path(__file__).resolve().parent
 )
 class RouteTestCase(TestCase):
     def setUp(self):
-        self.athlete = AthleteFactory(user__password="testpassword")
-        self.client.login(username=self.athlete.user.username, password="testpassword")
+        self.athlete = AthleteFactory(user__password="test_password")
+        self.client.login(username=self.athlete.user.username, password="test_password")
 
     #########
     # Model #
@@ -75,7 +75,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1234, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(
             data=data,
             total_distance=1000,
@@ -88,7 +91,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1000, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
@@ -99,6 +105,7 @@ class RouteTestCase(TestCase):
 
     def test_get_start_and_end_places(self):
         route = RouteFactory.build()
+
         PlaceFactory(name="Start_Place", geom="POINT(%s %s)" % route.geom[0])
         PlaceFactory(name="End_Place", geom="POINT(%s %s)" % route.geom[-1])
         start_place = route.get_closest_places_along_line()[0]
@@ -180,7 +187,8 @@ class RouteTestCase(TestCase):
         )
 
         self.assertListEqual(
-            list(data.gradient), [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
+            list(data.gradient),
+            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -206,24 +214,24 @@ class RouteTestCase(TestCase):
 
     def test_schedule_display(self):
         duration = timedelta(seconds=30, minutes=1, hours=6)
-        long_dspl = nice_repr(duration)
-        self.assertEqual(long_dspl, "6 hours 1 minute 30 seconds")
+        long_display = nice_repr(duration)
+        self.assertEqual(long_display, "6 hours 1 minute 30 seconds")
 
         duration = timedelta(seconds=0)
-        long_dspl = nice_repr(duration)
-        self.assertEqual(long_dspl, "0 seconds")
+        long_display = nice_repr(duration)
+        self.assertEqual(long_display, "0 seconds")
 
         duration = timedelta(seconds=30, minutes=2, hours=2)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "2 h 5 min")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "2 h 5 min")
 
         duration = timedelta(seconds=45, minutes=57, hours=2)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "3 h")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "3 h")
 
         duration = timedelta(seconds=30, minutes=2, hours=6)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "6 h")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "6 h")
 
     def test_base_round(self):
         values = [0, 3, 4.85, 12, -7]
@@ -287,8 +295,10 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
-            edit_url
+        edit_button = (
+            '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+                edit_url
+            )
         )
 
         response = self.client.get(url)
@@ -610,8 +620,8 @@ class RouteTestCase(TestCase):
 
         for i in range(5):
             filename = uuid4().hex + ".h5"
-            fullpath = data_dir / filename
-            with fullpath.open(mode="wb") as file_:
+            full_path = data_dir / filename
+            with full_path.open(mode="wb") as file_:
                 file_.write(urandom(64))
 
         call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
@@ -635,8 +645,8 @@ class RouteTestCase(TestCase):
 
         # add one random file
         filename = uuid4().hex + ".h5"
-        fullpath = data_dir / filename
-        with fullpath.open(mode="wb") as file_:
+        full_path = data_dir / filename
+        with full_path.open(mode="wb") as file_:
             file_.write(urandom(64))
 
         call_command("cleanup_hdf5_files", "--dry-run", stdout=out)

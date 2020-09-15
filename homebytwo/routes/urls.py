@@ -6,14 +6,14 @@ app_name = "routes"
 
 urlpatterns = [
     # display athlete routes list: /routes/
-    path("", views.routes, name="routes"),
+    path("", views.routes_view, name="routes"),
     # single route
     path(
         "<int:pk>/",
         include(
             [
                 # display route: routes/5/
-                path("", views.route, name="route"),
+                path("", views.route_view, name="route"),
                 # retrieve possible checkpoints as json: routes/5/checkpoints/
                 path(
                     "checkpoints/",
@@ -46,7 +46,9 @@ urlpatterns = [
                 path("", views.ActivityList.as_view(), name="activities"),
                 # import athlete's Strava activities
                 path(
-                    "import/", views.import_strava_activities, name="import_activities",
+                    "import/",
+                    views.import_strava_activities,
+                    name="import_activities",
                 ),
                 path(
                     "import-streams/",
@@ -54,7 +56,9 @@ urlpatterns = [
                     name="import_streams",
                 ),
                 path(
-                    "train-models/", views.train_prediction_models, name="train_models",
+                    "train-models/",
+                    views.train_prediction_models,
+                    name="train_models",
                 ),
             ]
         ),

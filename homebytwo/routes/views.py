@@ -29,7 +29,7 @@ from .tasks import (
 
 @login_required
 @require_safe
-def routes(request):
+def routes_view(request):
     routes = Route.objects.order_by("name")
     routes = Route.objects.for_user(request.user)
     context = {"routes": routes}
@@ -37,7 +37,7 @@ def routes(request):
     return render(request, "routes/routes.html", context)
 
 
-def route(request, pk):
+def route_view(request, pk):
     """
     display route schedule based on the prediction model of the logged-in athlete
 
@@ -179,7 +179,7 @@ def upload_route_to_garmin(request, pk):
 
 
 @login_required
-@strava_required  # the superuser account should be the only one logged-in without Strava
+@strava_required  # the superuser account is the only one that can be logged-in without Strava
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.
@@ -191,7 +191,7 @@ def import_strava_activities(request):
 
 
 @login_required
-@strava_required  # the superuser account should be the only one logged-in without Strava
+@strava_required  # the superuser account is the only one that can be logged-in without Strava
 def import_strava_streams(request):
     """
     trigger a task to import streams for activities without them.
