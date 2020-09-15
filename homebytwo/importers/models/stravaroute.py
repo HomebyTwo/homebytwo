@@ -5,7 +5,6 @@ from stravalib import unithelper
 
 from ...routes.models import ActivityType, Route, RouteManager
 from ...routes.utils import Link
-from ..utils import check_strava_credentials
 
 
 class StravaRouteManager(RouteManager):
@@ -19,14 +18,12 @@ class StravaRouteManager(RouteManager):
         return super().get_queryset().filter(data_source="strava")
 
     # login to Strava and retrieve route list
-    def get_remote_routes_list(self, athlete, session):
+    @staticmethod
+    def get_remote_routes_list(athlete, cookies=None):
         """
         fetches the athlete's routes list from Strava and returns them
         as a list of StravaRoute stubs.
         """
-
-        # ensure athlete has a Strava account
-        check_strava_credentials(athlete.user)
 
         # retrieve routes list from Strava
         strava_routes = athlete.strava_client.get_routes(athlete_id=athlete.strava_id)
@@ -52,35 +49,37 @@ class StravaRoute(Route):
 
     # data source name to display in templates
     DATA_SOURCE_NAME = "Strava"
-    DATA_SOURCE_LINK = Link("https://www.strava.com/athlete/routes", DATA_SOURCE_NAME,)
-
-    def __init__(self, *args, **kwargs):
-        """
-        Set the data_source of the route to strava
-        when instatiatind a route.
-        """
-        super().__init__(*args, **kwargs)
-        self.data_source = "strava"
-
-    class Meta:
-        proxy = True
+    DATA_SOURCE_LINK = Link(
+        "https://www.strava.com/athlete/routes",
+        DATA_SOURCE_NAME,
+    )
 
     # custom manager
     objects = StravaRouteManager()
 
-    # retrieve strava information for a route
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        """
+        Set the data_source of the route to strava
+        when instantiating a route.
+        """
+        super().__init__(*args, **kwargs)
+        self.data_source = "strava"
+
+    @property
+    def strava_client(self):
+        return self.athlete.strava_client
+
     def get_route_details(self, cookies=None):
         """
         retrieve route details including streams from strava.
         the source_id of the model instance must be set.
         """
 
-        # ensure athlete is connected to Strava
-        check_strava_credentials(self.athlete.user)
-        strava_client = self.athlete.strava_client
-
         # Retrieve route details from Strava API
-        strava_route = strava_client.get_route(self.source_id)
+        strava_route = self.strava_client.get_route(self.source_id)
 
         # set route name and description
         self.name = strava_route.name
@@ -97,27 +96,30 @@ class StravaRoute(Route):
             self.activity_type = ActivityType.objects.get(name=ActivityType.RUN)
 
         # create route data and geo from Strava API streams
-        self.get_route_data_streams(strava_client)
+        self.geom, self.data = self.get_route_data()
 
-    def get_route_data_streams(self, strava_client):
+    def get_route_data(self, cookies=None):
         """
-        convert route raw streams into a pandas DataFrame and create the geom
+        convert raw streams into the route geom and a pandas DataFrame
+        with columns for distance and altitude.
+
         the stravalib client creates a list of dicts:
         `[stream_type: <Stream object>, stream_type: <Stream object>, ...]`
         """
+
         # retrieve route streams from Strava API
-        route_streams = strava_client.get_route_streams(self.source_id)
+        route_streams = self.strava_client.get_route_streams(self.source_id)
 
+        # save streams to pandas dataframe
         data = DataFrame()
-
         for key, stream in route_streams.items():
             # create route geom from latlng stream
             if key == "latlng":
                 coords = [(lng, lat) for lat, lng in stream.data]
-                self.geom = LineString(coords, srid=4326).transform(21781, clone=True)
+                geom = LineString(coords, srid=4326).transform(21781, clone=True)
 
             # import other streams
             else:
                 data[key] = stream.data
 
-        self.data = data
+        return geom, data

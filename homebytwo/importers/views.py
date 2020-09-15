@@ -28,7 +28,8 @@ def import_routes(request, data_source):
 
     # retrieve remote routes list
     remote_routes = route_class.objects.get_remote_routes_list(
-        athlete=request.user.athlete, session=request.session
+        athlete=request.user.athlete,
+        cookies=request.session.get("switzerland_mobility_cookies"),
     )
 
     # retrieve the athlete's list of routes already saved in homebytwo
@@ -70,7 +71,7 @@ def import_route(request, data_source, source_id):
     route = route_class(athlete=request.user.athlete, source_id=source_id)
 
     # fetch route details from Remote API
-    route.get_route_details(request.session.get("switzerland_mobility_cookies", None))
+    route.get_route_details(request.session.get("switzerland_mobility_cookies"))
     route.update_track_details_from_data()
 
     if request.method == "POST":
@@ -110,7 +111,7 @@ def switzerland_mobility_login(request):
     # POST request, validate and login
     if request.method == "POST":
 
-        # instanciate login form and populate it with POST data:
+        # instantiate login form and populate it with POST data:
         form = SwitzerlandMobilityLogin(request.POST)
 
         # If the form validates,

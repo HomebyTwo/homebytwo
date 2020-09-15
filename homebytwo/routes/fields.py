@@ -145,7 +145,17 @@ class DataFrameField(models.CharField):
 
         # read dataframe from storage
         absolute_filepath = self.get_absolute_path(value)
-        dataframe = read_hdf(absolute_filepath)
+        try:
+            dataframe = read_hdf(absolute_filepath)
+
+        # if the file has been deleted return None
+        except FileNotFoundError:
+            return None
+
+        # if the file is corrupted, delete it and return None
+        except IOError:
+            Path(absolute_filepath).unlink()
+            return None
 
         # add relative filepath as instance property for later use
         dataframe.filepath = self.get_relative_path(value)

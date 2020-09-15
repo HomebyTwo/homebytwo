@@ -464,12 +464,14 @@ class ActivityType(models.Model):
 
     # gear categories in the absence of a prediction model for the athlete
     gear_categories = NumpyArrayField(
-        models.CharField(max_length=50), default=get_default_category,
+        models.CharField(max_length=50),
+        default=get_default_category,
     )
 
     # workout_type categories in the absence of a prediction model for the athlete
     workout_type_categories = NumpyArrayField(
-        models.CharField(max_length=50), default=get_default_category,
+        models.CharField(max_length=50),
+        default=get_default_category,
     )
 
     # min and max plausible gradient and speed to filter outliers in activity data.
@@ -499,12 +501,14 @@ class ActivityPerformance(TimeStampedModel):
 
     # gear categories saved by the one-hot encoder in the prediction pipeline
     gear_categories = NumpyArrayField(
-        models.CharField(max_length=50), default=get_default_category,
+        models.CharField(max_length=50),
+        default=get_default_category,
     )
 
     # workout_type categories saved by the one-hot encoder in the prediction pipeline
     workout_type_categories = NumpyArrayField(
-        models.CharField(max_length=50), default=get_default_category,
+        models.CharField(max_length=50),
+        default=get_default_category,
     )
 
     # numpy array of regression coefficients as trained by the regression model
@@ -584,7 +588,8 @@ class ActivityPerformance(TimeStampedModel):
             prediction_model.numerical_columns + prediction_model.categorical_columns
         )
         prediction_model.train(
-            y=data["pace"], X=data[feature_columns].fillna(value="None"),
+            y=data["pace"],
+            x=data[feature_columns].fillna(value="None"),
         )
         # save model score, coefficients and intercept for future predictions
         self.model_score = prediction_model.model_score

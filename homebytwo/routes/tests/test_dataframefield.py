@@ -13,6 +13,8 @@ from ..fields import DataFrameField
 from ..models import Route
 from .factories import RouteFactory
 
+CURRENT_DIR = Path(__file__).resolve().parent
+
 
 class DataFrameFieldTestCase(TestCase):
     def test_dataframe_field_deconstruct_reconstruct(self):
@@ -34,7 +36,10 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_no_unique_fields(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=[],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=[],
         )
         field.name = "data"
         field.model = Route
@@ -51,7 +56,10 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_inexistant_unique_field(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=["foo"],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=["foo"],
         )
         field.name = "data"
         field.model = Route
@@ -69,7 +77,10 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_ok(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=["data"],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=["data"],
         )
         field.name = "data"
         field.model = Route
@@ -107,8 +118,8 @@ class DataFrameFieldTestCase(TestCase):
         with connection.cursor() as cursor:
             cursor.execute(query)
 
-        with self.assertRaises(IOError):
-            route.refresh_from_db()
+        route.refresh_from_db()
+        assert route.data is None
 
     def test_dataframe_from_db_value_leading_slash(self):
         route = RouteFactory()
@@ -127,15 +138,29 @@ class DataFrameFieldTestCase(TestCase):
     def test_dataframe_from_db_value_not_hdf5(self):
         route = RouteFactory()
         field = DataFrameField()
-        fullpath = field.storage.path(route.data.filepath)
+        full_path = field.storage.path(route.data.filepath)
 
-        Path(fullpath).unlink()
+        Path(full_path).unlink()
 
-        with open(fullpath, "w+") as file:
+        with open(full_path, "w+") as file:
             file.write("I will not buy this record, it is scratched!")
 
-        with self.assertRaises(OSError):
-            route.refresh_from_db()
+        route.refresh_from_db()
+        assert route.data is None
+        assert not Path(full_path).exists()
+
+    def test_dataframe_from_db_value_corrupted_hdf5(self):
+        route = RouteFactory()
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        Path(full_path).unlink()
+
+        corrupted_file = CURRENT_DIR / "data" / "corrupted.h5"
+        shutil.copy(corrupted_file, full_path)
+
+        route.refresh_from_db()
+        assert route.data is None
+        assert not Path(full_path).exists()
 
     def test_dataframe_pre_save_not_a_dataframe(self):
         route = RouteFactory()

@@ -257,6 +257,18 @@ class RouteTestCase(TestCase):
         route = RouteFactory()
         self.assertIsNone(route.source_link)
 
+    def test_get_route_details(self):
+        route = RouteFactory()
+
+        with self.assertRaises(NotImplementedError):
+            route.get_route_details()
+
+    def test_get_route_data(self):
+        route = RouteFactory()
+
+        with self.assertRaises(NotImplementedError):
+            route.get_route_data()
+
     #########
     # Views #
     #########

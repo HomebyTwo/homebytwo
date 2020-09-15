@@ -1,3 +1,4 @@
+from numpy import array
 from pandas import DataFrame
 from sklearn.compose import make_column_transformer
 from sklearn.linear_model import Ridge
@@ -63,12 +64,14 @@ class PredictionModel:
             (PolynomialFeatures(2), self.polynomial_columns),
             remainder="passthrough",
         )
+        self.model_score = 0.0
+        self.cv_scores = array([0] * 5)
 
         # to use the pipeline for predictions,
         # we must fit the preprocessor with dummy data first
         if onehot_encoder_categories:
             # any numerical value will do
-            dummy_numerical_data = [1.0 for column in self.numerical_columns]
+            dummy_numerical_data = [1.0] * len(self.numerical_columns)
             # category must be recognised by the one-hot encoder
             dummy_categorical_data = [
                 category_list[0] for category_list in onehot_encoder_categories
@@ -84,7 +87,10 @@ class PredictionModel:
             self.preprocessor.fit(dummy_row)
 
         # join preprocessor and linear model into a pipeline
-        self.pipeline = make_pipeline(self.preprocessor, Ridge(),)
+        self.pipeline = make_pipeline(
+            self.preprocessor,
+            Ridge(),
+        )
 
         # restore trained model if regression parameters are provided
         if regression_intercept and regression_coefficients is not None:
@@ -92,19 +98,19 @@ class PredictionModel:
             regression.coef_ = regression_coefficients
             regression.intercept_ = regression_intercept
 
-    def train(self, y, X, test_size=0.3):
+    def train(self, y, x, test_size=0.3):
         """
         train the prediction model
         """
         # split data into training and testing data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size)
 
         # fit model with training data
-        self.pipeline.fit(X_train, y_train)
+        self.pipeline.fit(x_train, y_train)
 
         # evaluate model with test data
-        self.model_score = self.pipeline.score(X_test, y_test)
-        self.cv_scores = cross_val_score(self.pipeline, X_test, y_test, cv=5)
+        self.model_score = self.pipeline.score(x_test, y_test)
+        self.cv_scores = cross_val_score(self.pipeline, x_test, y_test, cv=5)
 
         # save one-hot encoder categories
         self.onehot_encoder_categories = (

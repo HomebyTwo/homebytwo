@@ -1,7 +1,8 @@
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.gis.geos import LineString
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.html import escape
 
@@ -10,10 +11,13 @@ from pandas import DataFrame
 from requests.exceptions import ConnectionError
 from stravalib import Client as StravaClient
 
+from ...routes.fields import DataFrameField
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import raise_connection_error, read_data
 from ..models import StravaRoute
 from .factories import StravaRouteFactory
+
+STRAVA_API_BASE_URL = "https://www.strava.com/api/v3/"
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -29,7 +33,9 @@ class StravaTestCase(TestCase):
         self.client.login(username=self.athlete.user.username, password="testpassword")
 
     def intercept_get_athlete(
-        self, body=read_data("strava_athlete.json", dir_path=CURRENT_DIR), status=200,
+        self,
+        body=read_data("strava_athlete.json", dir_path=CURRENT_DIR),
+        status=200,
     ):
         """
         intercept the Strava API call to get_athlete. This call is made
@@ -38,7 +44,7 @@ class StravaTestCase(TestCase):
         """
 
         # athlete API call
-        athlete_url = "https://www.strava.com/api/v3/athlete"
+        athlete_url = STRAVA_API_BASE_URL + "athlete"
         httpretty.register_uri(
             httpretty.GET,
             athlete_url,
@@ -64,7 +70,9 @@ class StravaTestCase(TestCase):
     def test_get_strava_athlete_no_connection(self):
         # intercept API calls with httpretty
         httpretty.enable(allow_net_connect=False)
-        self.intercept_get_athlete(body=raise_connection_error,)
+        self.intercept_get_athlete(
+            body=raise_connection_error,
+        )
 
         with self.assertRaises(ConnectionError):
             self.athlete.strava_client.get_athlete()
@@ -72,7 +80,7 @@ class StravaTestCase(TestCase):
     def test_strava_unauthorized(self):
         httpretty.enable(allow_net_connect=False)
         route_list_api_url = (
-            "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
+            STRAVA_API_BASE_URL + "athletes/%s/routes" % self.athlete.strava_id
         )
 
         unauthorized_json = read_data(
@@ -103,7 +111,7 @@ class StravaTestCase(TestCase):
     def test_strava_connection_error(self):
         httpretty.enable(allow_net_connect=False)
         route_list_api_url = (
-            "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
+            STRAVA_API_BASE_URL + "athletes/%s/routes" % self.athlete.strava_id
         )
 
         httpretty.register_uri(
@@ -128,12 +136,12 @@ class StravaTestCase(TestCase):
     # Model #
     #########
 
-    def test_data_from_streams(self):
+    def test_get_route_data(self):
         source_id = 2325453
 
         # intercept url with httpretty
         httpretty.enable(allow_net_connect=False)
-        url = "https://www.strava.com/api/v3/routes/%d/streams" % source_id
+        url = STRAVA_API_BASE_URL + "routes/%d/streams" % source_id
         streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -146,7 +154,7 @@ class StravaTestCase(TestCase):
 
         strava_client = self.athlete.strava_client
         strava_route = StravaRouteFactory()
-        strava_route.get_route_data_streams(strava_client)
+        strava_route.geom, strava_route.data = strava_route.get_route_data()
         nb_rows, nb_columns = strava_route.data.shape
 
         httpretty.disable()
@@ -161,7 +169,7 @@ class StravaTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
         # Route details API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % route.source_id
+        route_detail_url = STRAVA_API_BASE_URL + "routes/%d" % route.source_id
         route_detail_json = read_data("strava_route_detail.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -172,9 +180,7 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        route_streams_url = (
-            "https://www.strava.com/api/v3/routes/%d/streams" % route.source_id
-        )
+        route_streams_url = STRAVA_API_BASE_URL + "routes/%d/streams" % route.source_id
         streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -193,6 +199,7 @@ class StravaTestCase(TestCase):
     #########
     # views #
     #########
+
     def test_redirect_when_strava_token_missing(self):
         asocial_user = UserFactory(password="testpassword")
         self.client.login(username=asocial_user, password="testpassword")
@@ -218,7 +225,7 @@ class StravaTestCase(TestCase):
 
         # route list API call with athlete id
         route_list_url = (
-            "https://www.strava.com/api/v3/athletes/%s/routes" % self.athlete.strava_id
+            STRAVA_API_BASE_URL + "athletes/%s/routes" % self.athlete.strava_id
         )
 
         route_list_json = read_data("strava_route_list.json", dir_path=CURRENT_DIR)
@@ -246,11 +253,8 @@ class StravaTestCase(TestCase):
         # intercept API calls with httpretty
         httpretty.enable(allow_net_connect=False)
 
-        # Athlete API call
-        self.intercept_get_athlete()
-
         # route details API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % source_id
+        route_detail_url = STRAVA_API_BASE_URL + "routes/%d" % source_id
         route_detail_json = read_data("strava_route_detail.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -263,9 +267,7 @@ class StravaTestCase(TestCase):
         )
 
         # route streams API call
-        route_streams_url = (
-            "https://www.strava.com/api/v3/routes/%d/streams" % source_id
-        )
+        route_streams_url = STRAVA_API_BASE_URL + "routes/%d/streams" % source_id
         streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -285,19 +287,66 @@ class StravaTestCase(TestCase):
 
         route_name = escape("Nom de Route")
 
+        assert response.status_code == 200
         self.assertContains(response, route_name)
+
+    @override_settings(STRAVA_ROUTE_URL="https://example.com/routes/%d")
+    def test_display_strava_route_missing_data(self):
+        source_id = 4679628
+        strava_route = StravaRouteFactory(source_id=source_id, athlete=self.athlete)
+
+        # intercept Strava API call with httpretty
+        route_detail_url = STRAVA_API_BASE_URL + "routes/%d" % source_id
+        route_detail_json = read_data("strava_route_detail.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            route_detail_url,
+            content_type="application/json",
+            body=route_detail_json,
+            status=200,
+        )
+
+        route_streams_url = STRAVA_API_BASE_URL + "routes/%d/streams" % source_id
+        route_streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
+
+        httpretty.register_uri(
+            httpretty.GET,
+            route_streams_url,
+            content_type="application/json",
+            body=route_streams_json,
+            status=200,
+        )
+
+        # delete data file
+        field = DataFrameField()
+        file_path = field.storage.path(strava_route.data.filepath)
+        Path(file_path).unlink()
+
+        # intercept API calls with httpretty
+        httpretty.enable(allow_net_connect=False)
+
+        # get route page
+        response = self.client.get(
+            reverse("routes:route", kwargs={"pk": strava_route.id})
+        )
+
+        httpretty.disable()
+
+        assert response.status_code == 200
 
     def test_strava_route_already_imported(self):
         source_id = 22798494
         StravaRouteFactory(
-            source_id=source_id, athlete=self.athlete,
+            source_id=source_id,
+            athlete=self.athlete,
         )
 
         # intercept API calls with httpretty
         httpretty.enable(allow_net_connect=False)
 
         # Route API call
-        route_detail_url = "https://www.strava.com/api/v3/routes/%d" % source_id
+        route_detail_url = STRAVA_API_BASE_URL + "routes/%d" % source_id
         route_detail_json = read_data("strava_route_bike.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(
@@ -309,7 +358,7 @@ class StravaTestCase(TestCase):
         )
 
         # Streams API call
-        stream_url = "https://www.strava.com/api/v3/routes/%d/streams" % source_id
+        stream_url = STRAVA_API_BASE_URL + "routes/%d/streams" % source_id
         streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
 
         httpretty.register_uri(

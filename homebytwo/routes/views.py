@@ -5,7 +5,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -25,13 +25,14 @@ from .tasks import (
     train_prediction_models_task,
     upload_route_to_garmin_task,
 )
+from ..importers.exceptions import SwitzerlandMobilityError
 
 
 @login_required
 @require_safe
 def routes_view(request):
-    routes = Route.objects.order_by("name")
     routes = Route.objects.for_user(request.user)
+    routes = routes.order_by("name")
     context = {"routes": routes}
 
     return render(request, "routes/routes.html", context)
@@ -88,9 +89,23 @@ def route_view(request, pk):
             else None
         )
 
+    # restore route data from remote source if data file was corrupted or deleted
+    if route.data is None:
+        try:
+            route.geom, route.data = route.get_route_data(
+                cookies=request.session.get("switzerland_mobility_cookies")
+            )
+        except SwitzerlandMobilityError:
+            raise Http404("Route information could not be found.")
+
+        else:
+            route.update_track_details_from_data()
+
     # calculate route schedule for display
     route.calculate_projected_time_schedule(
-        user=request.user, gear=gear_id, workout_type=workout_type,
+        user=request.user,
+        gear=gear_id,
+        workout_type=workout_type,
     )
 
     # retrieve checkpoints along the way
@@ -304,6 +319,10 @@ class RouteUpdate(RouteEdit):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
+
+            # reset the checkpoints, the price of updating from remote
+            route.checkpoint_set.all().delete()
+
             return route.update_from_remote(
                 self.request.session.get("switzerland_mobility_cookies", None)
             )

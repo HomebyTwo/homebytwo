@@ -41,7 +41,7 @@ def strava_required(view_func):
 
 def remote_connection(view_func):
     """
-    cacth connection errors to remote services and handle
+    catch connection errors to remote services and handle
     them as gracefully as possible.
     """
 
@@ -51,8 +51,10 @@ def remote_connection(view_func):
             response = view_func(request, *args, **kwargs)
 
         except ConnectionError as error:
-            message = "Could not connect to the remote server. Try again later: {}".format(
-                error
+            message = (
+                "Could not connect to the remote server. Try again later: {}".format(
+                    error
+                )
             )
             messages.error(request, message)
             return redirect("routes:routes")
