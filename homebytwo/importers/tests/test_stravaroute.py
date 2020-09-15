@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from django.conf import settings
 from django.contrib.gis.geos import LineString
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -152,7 +151,6 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        strava_client = self.athlete.strava_client
         strava_route = StravaRouteFactory()
         strava_route.geom, strava_route.data = strava_route.get_route_data()
         nb_rows, nb_columns = strava_route.data.shape
