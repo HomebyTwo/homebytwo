@@ -42,7 +42,7 @@ def import_strava_activities_streams_task(activity_ids):
 @shared_task(rate_limit="40/m")
 def import_strava_activity_streams_task(strava_id):
     """
-    fetch time, altitude, distance and moving streams for an activty from the Strava API-
+    fetch time, altitude, distance and moving streams for an activity from the Strava API-
     This task generates one API call for every activity.
     """
     # log task request
@@ -129,8 +129,10 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         return "Garmin API failure: {}".format(e)
 
     if uploaded:
-        return "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
-            route=str(route), url=garmin_activity_url
+        return (
+            "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
+                route=str(route), url=garmin_activity_url
+            )
         )
 
 
