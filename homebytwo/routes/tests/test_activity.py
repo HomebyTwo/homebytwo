@@ -13,6 +13,7 @@ from pandas import DataFrame
 from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
+from ..fields import DataFrameField
 from ..models import Activity, Gear, WebhookTransaction
 from ..tasks import ProcessStravaEvents, import_strava_activities_task
 from .factories import (
@@ -35,8 +36,8 @@ class ActivityTestCase(TestCase):
     ERROR = WebhookTransaction.ERROR
 
     def setUp(self):
-        self.athlete = AthleteFactory(user__password="testpassword")
-        self.client.login(username=self.athlete.user.username, password="testpassword")
+        self.athlete = AthleteFactory(user__password="test_password")
+        self.client.login(username=self.athlete.user.username, password="test_password")
 
     def load_strava_activity_from_json(self, file):
         """
@@ -70,8 +71,8 @@ class ActivityTestCase(TestCase):
         Logged-in user with no Strava auth connected, i.e. from createsuperuser
         """
 
-        non_strava_user = UserFactory(password="testpassword")
-        self.client.login(username=non_strava_user.username, password="testpassword")
+        non_strava_user = UserFactory(password="test_password")
+        self.client.login(username=non_strava_user.username, password="test_password")
 
         url = reverse("routes:import_activities")
 
@@ -313,7 +314,10 @@ class ActivityTestCase(TestCase):
         ]
 
         httpretty.register_uri(
-            httpretty.GET, activities_url, responses=responses, match_querystring=False,
+            httpretty.GET,
+            activities_url,
+            responses=responses,
+            match_querystring=False,
         )
 
         # update athlete activities: 2 received
@@ -392,21 +396,26 @@ class ActivityTestCase(TestCase):
             + ",".join(self.STREAM_TYPES)
         )
 
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(
-            httpretty.GET,
-            streams_url,
-            content_type="application/json",
-            body=read_data("streams.json", dir_path=CURRENT_DIR),
-            status=200,
-            match_querystring=False,
-        )
+        with httpretty.enabled(allow_net_connect=False):
+            httpretty.register_uri(
+                httpretty.GET,
+                streams_url,
+                content_type="application/json",
+                body=read_data("streams.json", dir_path=CURRENT_DIR),
+                status=200,
+                match_querystring=False,
+            )
 
-        assert activity.save_streams_from_strava()
+            assert activity.save_streams_from_strava()
+
+        field = DataFrameField()
+        full_path = field.storage.path(activity.streams.filepath)
+
         assert isinstance(activity.streams, DataFrame)
         assert all(
             stream_type in activity.streams.columns for stream_type in self.STREAM_TYPES
         )
+        assert str(self.athlete.id) in full_path
 
     def test_save_streams_from_strava_missing_streams(self):
         activity = ActivityFactory(athlete=self.athlete, streams=None)
@@ -433,7 +442,7 @@ class ActivityTestCase(TestCase):
     @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
     def test_strava_webhook_callback_url(self):
 
-        # subscritption validation successful
+        # subscription validation successful
         url = reverse("routes:strava_webhook")
         data = {
             "hub.verify_token": "RIGHT_TOKEN",
@@ -461,7 +470,8 @@ class ActivityTestCase(TestCase):
         self.assertEqual(
             str(transaction),
             "{0} - {1}".format(
-                transaction.get_status_display(), transaction.date_generated,
+                transaction.get_status_display(),
+                transaction.date_generated,
             ),
         )
 
@@ -471,7 +481,7 @@ class ActivityTestCase(TestCase):
         # link transaction to athlete
         transaction.body["owner_id"] = self.athlete.strava_id
 
-        # transaction creates a new activty
+        # transaction creates a new activity
         transaction.body["aspect_type"] = "create"
         transaction.body["object_type"] = "activity"
         transaction.body["object_id"] = 12345
@@ -585,7 +595,7 @@ class ActivityTestCase(TestCase):
     def test_process_strava_event_missing_user(self):
         transaction = WebhookTransactionFactory()
 
-        # link transaction to inexistant athlete
+        # link transaction to non-existent athlete
         transaction.body["owner_id"] = 666
         transaction.save()
 
@@ -684,7 +694,9 @@ class ActivityTestCase(TestCase):
         train_url = reverse("routes:train_models")
         activity_type = ActivityTypeFactory.create(name="Run")
         ActivityFactory.create_batch(
-            5, athlete=self.athlete, activity_type=activity_type,
+            5,
+            athlete=self.athlete,
+            activity_type=activity_type,
         )
 
         with patch(

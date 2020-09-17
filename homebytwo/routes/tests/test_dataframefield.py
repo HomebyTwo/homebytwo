@@ -27,7 +27,7 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_init(self):
         field_instance = DataFrameField(
-            upload_to="foo", storage="bar", max_length=100, unique_fields=["fooba"]
+            upload_to="foo", storage="bar", max_length=100, unique_fields=["foobar"]
         )
 
         assert field_instance.upload_to == "foo"
@@ -54,7 +54,7 @@ class DataFrameFieldTestCase(TestCase):
         ]
         assert errors == expected_errors
 
-    def test_dataframe_field_check_inexistant_unique_field(self):
+    def test_dataframe_field_check_non_existent_unique_field(self):
         field = DataFrameField(
             upload_to="foo",
             storage="bar",
@@ -94,26 +94,11 @@ class DataFrameFieldTestCase(TestCase):
         route.refresh_from_db()
         assert route.data is None
 
-    def test_dataframe_from_db_value_no_dirname(self):
-        route = RouteFactory()
-        complete_filepath = route.data.filepath
-
-        # save DB entry without dirname
-        filename = Path(route.data.filepath).name
-        query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
-            filename, route.id
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-
-        route.refresh_from_db()
-        assert str(route.data.filepath) == complete_filepath
-
     def test_dataframe_from_db_value_missing_file(self):
         route = RouteFactory()
 
         query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
-            "inexistant.h5", route.id
+            "non_existent.h5", route.id
         )
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -208,8 +193,8 @@ class DataFrameFieldTestCase(TestCase):
             start_place=None, end_place=None, athlete=athlete, uuid=uuid
         )
 
-        filepath = "{}/{}_{}_{}.h5".format(
-            "data", route.__class__.__name__.lower(), "data", uuid
+        filepath = "athlete_{}/data/{}_{}_{}.h5".format(
+            athlete.id, route.__class__.__name__.lower(), "data", uuid
         )
 
         route.save()

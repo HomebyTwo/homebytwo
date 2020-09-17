@@ -14,6 +14,11 @@ from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
 
 
+def athlete_data_directory_path(instance, filename):
+    # streams will upload to MEDIA_ROOT/athlete_<id>/<filename>
+    return f"athlete_{instance.athlete.id}/data/{filename}"
+
+
 class Track(TimeStampedModel):
     class Meta:
         abstract = True
@@ -57,7 +62,9 @@ class Track(TimeStampedModel):
     uuid = models.UUIDField(default=uuid4, editable=False)
 
     # track data as a pandas DataFrame
-    data = DataFrameField(null=True, upload_to="data", unique_fields=["uuid"])
+    data = DataFrameField(
+        null=True, upload_to=athlete_data_directory_path, unique_fields=["uuid"]
+    )
 
     def update_track_details_from_data(self):
         """

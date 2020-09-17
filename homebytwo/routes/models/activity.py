@@ -11,6 +11,11 @@ from ..fields import DataFrameField, NumpyArrayField
 from ..prediction_model import PredictionModel
 
 
+def athlete_streams_directory_path(instance, filename):
+    # streams will upload to MEDIA_ROOT/athlete_<id>/<filename>
+    return f"athlete_{instance.athlete.id}/streams/{filename}"
+
+
 def get_default_array():
     """
     default array (mutable) for the `regression_coefficients` NumpyArrayField.
@@ -69,7 +74,7 @@ class ActivityManager(models.Manager):
             if strava_activity.type not in ActivityType.SUPPORTED_ACTIVITY_TYPES:
                 continue
             try:
-                activity = Activity.objects.get(strava_id=strava_activity.id)
+                activity = self.get(strava_id=strava_activity.id)
 
             except Activity.DoesNotExist:
                 activity = Activity(athlete=athlete, strava_id=strava_activity.id)
@@ -157,7 +162,7 @@ class Activity(TimeStampedModel):
 
     # streams retrieved from the Strava API
     streams = DataFrameField(
-        null=True, upload_to="streams", unique_fields=["strava_id"]
+        null=True, upload_to=athlete_streams_directory_path, unique_fields=["strava_id"]
     )
 
     # Workout Type as defined in Strava
@@ -285,18 +290,18 @@ class Activity(TimeStampedModel):
         for better accuracy in the prediction.
         """
 
-        STREAM_TYPES = ["time", "altitude", "distance", "moving"]
+        stream_types = ["time", "altitude", "distance", "moving"]
 
         # exclude manually created activities because they have no streams
         if not self.manual:
             strava_client = self.athlete.strava_client
 
             raw_streams = strava_client.get_activity_streams(
-                self.strava_id, types=STREAM_TYPES, resolution=resolution
+                self.strava_id, types=stream_types, resolution=resolution
             )
 
             # ensure that we have all stream types and that they all contain values
-            if all(stream_type in raw_streams for stream_type in STREAM_TYPES) and all(
+            if all(stream_type in raw_streams for stream_type in stream_types) and all(
                 raw_stream.original_size > 0 for key, raw_stream in raw_streams.items()
             ):
                 return raw_streams

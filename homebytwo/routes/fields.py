@@ -1,3 +1,4 @@
+import logging
 from inspect import getmro
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from django.utils.translation import gettext_lazy as _
 
 from numpy import array
 from pandas import DataFrame, read_hdf
+
+logger = logging.getLogger(__name__)
 
 
 def LineSubstring(line, start_location, end_location):
@@ -60,7 +63,7 @@ class DataFrameField(models.CharField):
         name=None,
         upload_to="data",
         storage=None,
-        unique_fields=[],
+        unique_fields=None,
         **kwargs,
     ):
 
@@ -78,7 +81,7 @@ class DataFrameField(models.CharField):
         ]
 
     def _check_unique_fields(self, **kwargs):
-        if not isinstance(self.unique_fields, list) or self.unique_fields == []:
+        if not self.unique_fields or not isinstance(self.unique_fields, list):
             return [
                 checks.Error(
                     "you must provide a list of unique fields.",
@@ -120,23 +123,12 @@ class DataFrameField(models.CharField):
 
         return self.retrieve_dataframe(value)
 
-    def get_relative_path(self, value):
-        """
-        return file path based on the value saved in the Database.
-        prepend filepath to older objects that were saved without it.
-        """
-        *dirs, filename = Path(value).parts
-        dirs = dirs or [self.upload_to]
-        return Path(*dirs, filename)
-
     def get_absolute_path(self, value):
         """
         return absolute path based on the value saved in the Database.
         """
-        filepath = self.get_relative_path(value)
 
-        # return absolute path
-        return self.storage.path(filepath)
+        return self.storage.path(value)
 
     def retrieve_dataframe(self, value):
         """
@@ -150,15 +142,17 @@ class DataFrameField(models.CharField):
 
         # if the file has been deleted return None
         except FileNotFoundError:
+            logger.error("DataFrame file was deleted from the media folder.")
             return None
 
         # if the file is corrupted, delete it and return None
         except IOError:
+            logger.error("DataFrame file could not be read from the media folder.")
             Path(absolute_filepath).unlink()
             return None
 
         # add relative filepath as instance property for later use
-        dataframe.filepath = self.get_relative_path(value)
+        dataframe.filepath = value
 
         return dataframe
 
@@ -173,7 +167,8 @@ class DataFrameField(models.CharField):
 
         if not isinstance(dataframe, DataFrame):
             raise ValidationError(
-                self.error_messages["invalid"], code="invalid",
+                self.error_messages["invalid"],
+                code="invalid",
             )
 
         self.save_dataframe_to_file(dataframe, model_instance)
@@ -250,8 +245,11 @@ class DataFrameField(models.CharField):
         )
 
         # generate filepath
-        dirname = self.upload_to
-        filepath = Path(dirname, filename)
+        if callable(self.upload_to):
+            filepath = Path(self.upload_to(instance, filename))
+        else:
+            dirname = self.upload_to
+            filepath = Path(dirname, filename)
         return self.storage.generate_filename(filepath)
 
 
@@ -302,7 +300,7 @@ class CheckpointsSelectMultiple(CheckboxSelectMultiple):
             # add checkpoint place geojson as data-attribute to display on the map.
             attrs.update({"data-geom": value.place.get_geojson(fields=["name"])})
 
-            # convert chekpoint to 'place_id' + "_" + 'line_location' string
+            # convert checkpoint to 'place_id' + "_" + 'line_location' string
             value = value.field_value
 
         return super().create_option(
@@ -327,7 +325,9 @@ class CheckpointsChoiceField(MultipleChoiceField):
 
         except KeyError:
             raise ValidationError(
-                _("Invalid value: %(value)s"), code="invalid", params={"value": value},
+                _("Invalid value: %(value)s"),
+                code="invalid",
+                params={"value": value},
             )
 
     def validate(self, value):

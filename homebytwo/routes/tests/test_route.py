@@ -17,6 +17,7 @@ from django.utils.six import StringIO
 import httpretty
 from pandas import DataFrame
 
+from ..fields import DataFrameField
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import open_data, read_data
 from ..forms import RouteForm
@@ -646,10 +647,12 @@ class RouteTestCase(TestCase):
 
     def test_cleanup_hdf5_files_missing_route_file(self):
         out = StringIO()
-        data_dir = Path(settings.MEDIA_ROOT, "data")
 
-        # 5 routes
-        RouteFactory.create_batch(5)
+        # 5 routes, include one to use the filepath
+        route, *_ = RouteFactory.create_batch(5)
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        data_dir = Path(full_path).parent.resolve()
 
         # delete one route file
         file_to_delete = list(data_dir.glob("*"))[0]
