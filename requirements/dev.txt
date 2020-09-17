@@ -9,13 +9,14 @@ amqp==2.6.1               # via kombu
 appdirs==1.4.4            # via virtualenv
 arrow==0.16.0             # via stravalib
 backcall==0.2.0           # via ipython
+bcrypt==3.2.0             # via paramiko
 billiard==3.6.3.0         # via celery
 celery==4.4.7             # via -r requirements/base.in, flower
 certifi==2020.6.20        # via requests, sentry-sdk
-cffi==1.14.3              # via cryptography
+cffi==1.14.3              # via bcrypt, cryptography, pynacl
 chardet==3.0.4            # via requests
 click==7.1.2              # via pip-tools
-cryptography==3.1         # via social-auth-core
+cryptography==3.1         # via paramiko, social-auth-core
 decorator==4.4.2          # via ipython
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 distlib==0.3.1            # via virtualenv
@@ -28,8 +29,11 @@ django-leaflet==0.27.1    # via -r requirements/base.in
 django-widget-tweaks==1.4.8  # via -r requirements/base.in
 django==2.2.16            # via -r requirements/base.in, django-appconf, django-debug-toolbar, django-geojson, django-leaflet, easy-thumbnails
 easy-thumbnails==2.7      # via -r requirements/base.in
+fabric3==1.14.post1       # via -r requirements/dev.in
 filelock==3.0.12          # via tox, virtualenv
 flower==0.9.5             # via -r requirements/base.in
+future==0.18.2            # via -r requirements/base.in
+gitric==0.4               # via -r requirements/dev.in
 gpxpy==1.4.2              # via -r requirements/base.in
 gunicorn==20.0.4          # via -r requirements/base.in
 humanize==2.6.0           # via flower
@@ -46,6 +50,7 @@ numpy==1.19.2             # via numexpr, pandas, scikit-learn, scipy, tables
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 packaging==20.4           # via tox
 pandas==1.1.2             # via -r requirements/base.in
+paramiko==2.7.2           # via fabric3
 parso==0.7.1              # via jedi
 pexpect==4.8.0            # via ipython
 pickleshare==0.7.5        # via ipython
@@ -61,6 +66,7 @@ py==1.9.0                 # via tox
 pycparser==2.20           # via cffi
 pygments==2.7.0           # via ipython
 pyjwt==1.7.1              # via social-auth-core
+pynacl==1.4.0             # via paramiko
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via arrow, pandas
 python3-openid==3.2.0     # via social-auth-core
@@ -71,7 +77,7 @@ requests==2.24.0          # via -r requirements/base.in, garmin-uploader, reques
 scikit-learn==0.23.2      # via -r requirements/base.in
 scipy==1.5.2              # via scikit-learn
 sentry-sdk==0.13.5        # via -r requirements/base.in
-six==1.15.0               # via cryptography, django-geojson, garmin-uploader, packaging, pip-tools, polyline, python-dateutil, social-auth-app-django, social-auth-core, stravalib, tox, virtualenv
+six==1.15.0               # via bcrypt, cryptography, django-geojson, fabric3, garmin-uploader, packaging, pip-tools, polyline, pynacl, python-dateutil, social-auth-app-django, social-auth-core, stravalib, tox, virtualenv
 social-auth-app-django==4.0.0  # via -r requirements/base.in
 social-auth-core==3.3.3   # via -r requirements/base.in, social-auth-app-django
 sqlparse==0.3.1           # via django, django-debug-toolbar

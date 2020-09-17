@@ -8,6 +8,7 @@ django-leaflet
 django-widget-tweaks
 easy_thumbnails
 flower
+future
 gpxpy
 gunicorn
 lxml

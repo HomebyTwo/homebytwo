@@ -21,6 +21,7 @@ django-widget-tweaks==1.4.8  # via -r requirements/base.in
 django==2.2.16            # via -r requirements/base.in, django-geojson, django-leaflet, easy-thumbnails
 easy-thumbnails==2.7      # via -r requirements/base.in
 flower==0.9.5             # via -r requirements/base.in
+future==0.18.2            # via -r requirements/base.in
 gpxpy==1.4.2              # via -r requirements/base.in
 gunicorn==20.0.4          # via -r requirements/base.in
 humanize==2.6.0           # via flower
