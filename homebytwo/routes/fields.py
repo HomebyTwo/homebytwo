@@ -137,6 +137,14 @@ class DataFrameField(models.CharField):
 
         # read dataframe from storage
         absolute_filepath = self.get_absolute_path(value)
+
+        # HaCkY as F* for migration 0044 and 0046.
+        # We can remove it once deployed.
+        if not Path(absolute_filepath).exists():
+            *dirs, filename = Path(value).parts
+            old_path = Path(*dirs, "data", filename).as_posix()
+            absolute_filepath = self.get_absolute_path(old_path)
+
         try:
             dataframe = read_hdf(absolute_filepath)
 
