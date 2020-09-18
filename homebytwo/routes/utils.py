@@ -8,7 +8,7 @@ from django.contrib.gis.measure import D
 from .fields import LineSubstring
 from .models import ActivityType, Place
 
-# named tupple to handle Urls
+# named tuple to handle Urls
 Link = namedtuple("Link", ["url", "text"])
 
 GARMIN_ACTIVITY_TYPE_MAP = {
@@ -130,9 +130,12 @@ def get_places_from_line(line, max_distance):
     places = places.annotate(line_location=LineLocatePoint(line, "geom"))
 
     # remove start and end places within 1% of start and end location
-    places = places.filter(line_location__gt=0.01, line_location__lt=0.99,)
+    places = places.filter(
+        line_location__gt=0.01,
+        line_location__lt=0.99,
+    )
 
-    # sort in order of apparence along the line
+    # sort in order of appearance along the line
     places = places.order_by("line_location")
 
     return places
@@ -149,6 +152,8 @@ def get_places_within(point, max_distance=100):
     places = places.annotate(distance_from_line=Distance("geom", point))
 
     # sort by distance
-    places = places.order_by("distance_from_line",)
+    places = places.order_by(
+        "distance_from_line",
+    )
 
     return places
