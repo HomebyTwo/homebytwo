@@ -4,10 +4,12 @@ from django.http import Http404
 
 from requests import Session, codes
 from requests.exceptions import ConnectionError
-from social_django.models import UserSocialAuth
 
 from ..routes.models import Route
-from .exceptions import StravaMissingCredentials, SwitzerlandMobilityError
+from .exceptions import (
+    SwitzerlandMobilityError,
+    SwitzerlandMobilityMissingCredentials,
+)
 
 
 def request_json(url, cookies=None):
@@ -21,8 +23,8 @@ def request_json(url, cookies=None):
 
         # connection error and inform the user
         except ConnectionError:
-            message = "Connection Error: could not connect to {0}. "
-            raise ConnectionError(message.format(url))
+            message = "Connection Error: could not connect to {url}. "
+            raise ConnectionError(message.format(url=url))
 
         else:
             # if request is successful return json object
@@ -30,10 +32,27 @@ def request_json(url, cookies=None):
                 json = request.json()
                 return json
 
+            # client error: access denied
+            if request.status_code == 403:
+                message = "We could not import this route. \n"
+
+                # athlete is logged-in to Switzerland Mobility
+                if cookies:
+                    message += "Ask the route creator to share it publicly on Switzerland Mobility."
+                    raise SwitzerlandMobilityError(message)
+
+                # athlete is not logged-in to Switzerland Mobility
+                else:
+                    message += "If you are the route creator, try logging-in to Switzerland mobility. "
+                    message += "If the route is not yours, ask the creator to share it publicly."
+                    raise SwitzerlandMobilityMissingCredentials(message)
+
             # server error: display the status code
             else:
-                message = "Error {0}: could not retrieve information from {1}"
-                raise SwitzerlandMobilityError(message.format(request.status_code, url))
+                message = "Error {code}: could not retrieve information from {url}"
+                raise SwitzerlandMobilityError(
+                    message.format(code=request.status_code, url=url)
+                )
 
 
 def save_detail_forms(request, route_form):
@@ -59,7 +78,7 @@ def save_detail_forms(request, route_form):
 
 def split_routes(remote_routes, local_routes):
     """
-    splits the list of remote routes in  3 groups: new, existiing and deleted
+    splits the list of remote routes in  3 groups: new, existing and deleted
     """
 
     # routes in remote service but not in homebytwo
@@ -93,23 +112,9 @@ def get_route_class_from_data_source(data_source):
     """
     retrieve route class from "data source" value in the url or raise 404
     """
-    try:
-        route_class = Route(data_source=data_source).proxy_class
-    except KeyError:
+    route_class = Route(data_source=data_source).proxy_class
+
+    if route_class is None:
         raise Http404("Data Source does not exist")
     else:
         return route_class
-
-
-def check_strava_credentials(user):
-    """
-    view function provided to check whether a user
-    has access to Strava.
-    """
-    # check if the user has an associated Strava account
-    try:
-        user.social_auth.get(provider="strava")
-
-    # redirect to login with strava page
-    except UserSocialAuth.DoesNotExist:
-        raise StravaMissingCredentials

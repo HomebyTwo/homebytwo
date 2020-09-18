@@ -1,9 +1,9 @@
 {% if messages %}
 <ul class="list">
   {% for message in messages %}
-    <li{% if message.tags %} class="box mrgv- alert {{message.tags}}"{% endif %}>
-      {{ message }}
+  <li{% if message.tags %} class="box mrgv- alert {{message.tags}}" {% endif %}>
+    {{ message|linebreaksbr }}
     </li>
-  {% endfor %}
+    {% endfor %}
 </ul>
 {% endif %}

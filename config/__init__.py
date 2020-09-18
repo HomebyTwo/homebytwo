@@ -1,5 +1,5 @@
-from glob import glob
-from os import environ, path, sep
+from os import environ
+from pathlib import Path
 
 
 def import_env_vars(directory):
@@ -8,16 +8,16 @@ def import_env_vars(directory):
     an environment variable named after the file, and which value is the
     contents of the file.
     """
-    env_vars = glob(path.join(directory, '*'))
+    path = Path(directory)
+    env_vars = path.glob("*")
     for env_var in env_vars:
-        with open(env_var, 'r') as env_var_file:
-            environ.setdefault(env_var.split(sep)[-1],
-                               env_var_file.read().strip())
+        with open(env_var, "r") as env_var_file:
+            environ.setdefault(env_var.name, env_var_file.read().strip())
 
 
 def get_project_root_path(*dirs):
     """
     Return the absolute path to the root of the project.
     """
-    base_dir = path.join(path.dirname(__file__), '..')
-    return path.abspath(path.join(base_dir, *dirs))
+    base_dir = Path(__file__).parent.parent.resolve()
+    return Path(base_dir, *dirs)

@@ -1,6 +1,6 @@
-import os
 import shutil
 import stat
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.core.checks import Error
@@ -12,6 +12,8 @@ from ...utils.factories import AthleteFactory
 from ..fields import DataFrameField
 from ..models import Route
 from .factories import RouteFactory
+
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 class DataFrameFieldTestCase(TestCase):
@@ -25,7 +27,7 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_init(self):
         field_instance = DataFrameField(
-            upload_to="foo", storage="bar", max_length=100, unique_fields=["fooba"]
+            upload_to="foo", storage="bar", max_length=100, unique_fields=["foobar"]
         )
 
         assert field_instance.upload_to == "foo"
@@ -34,7 +36,10 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_no_unique_fields(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=[],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=[],
         )
         field.name = "data"
         field.model = Route
@@ -49,9 +54,12 @@ class DataFrameFieldTestCase(TestCase):
         ]
         assert errors == expected_errors
 
-    def test_dataframe_field_check_inexistant_unique_field(self):
+    def test_dataframe_field_check_non_existent_unique_field(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=["foo"],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=["foo"],
         )
         field.name = "data"
         field.model = Route
@@ -69,7 +77,10 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_ok(self):
         field = DataFrameField(
-            upload_to="foo", storage="bar", max_length=80, unique_fields=["data"],
+            upload_to="foo",
+            storage="bar",
+            max_length=80,
+            unique_fields=["data"],
         )
         field.name = "data"
         field.model = Route
@@ -83,38 +94,23 @@ class DataFrameFieldTestCase(TestCase):
         route.refresh_from_db()
         assert route.data is None
 
-    def test_dataframe_from_db_value_no_dirname(self):
+    def test_dataframe_from_db_value_missing_file(self):
         route = RouteFactory()
-        complete_filepath = route.data.filepath
 
-        # save DB entry without dirname
-        dirname, filename = os.path.split(route.data.filepath)
         query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
-            filename, route.id
+            "non_existent.h5", route.id
         )
         with connection.cursor() as cursor:
             cursor.execute(query)
 
         route.refresh_from_db()
-        assert route.data.filepath == complete_filepath
-
-    def test_dataframe_from_db_value_missing_file(self):
-        route = RouteFactory()
-
-        query = "UPDATE routes_route SET data='{}' WHERE id={}".format(
-            "inexistant.h5", route.id
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-
-        with self.assertRaises(IOError):
-            route.refresh_from_db()
+        assert route.data is None
 
     def test_dataframe_from_db_value_leading_slash(self):
         route = RouteFactory()
 
         # save DB entry with a leading slash
-        dirname, filename = os.path.split(route.data.filepath)
+        filename = Path(route.data.filepath).name
         query = "UPDATE routes_route SET data='/{}' WHERE id={}".format(
             filename, route.id
         )
@@ -127,15 +123,29 @@ class DataFrameFieldTestCase(TestCase):
     def test_dataframe_from_db_value_not_hdf5(self):
         route = RouteFactory()
         field = DataFrameField()
-        fullpath = field.storage.path(route.data.filepath)
+        full_path = field.storage.path(route.data.filepath)
 
-        os.remove(fullpath)
+        Path(full_path).unlink()
 
-        with open(fullpath, "w+") as file:
+        with open(full_path, "w+") as file:
             file.write("I will not buy this record, it is scratched!")
 
-        with self.assertRaises(OSError):
-            route.refresh_from_db()
+        route.refresh_from_db()
+        assert route.data is None
+        assert not Path(full_path).exists()
+
+    def test_dataframe_from_db_value_corrupted_hdf5(self):
+        route = RouteFactory()
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        Path(full_path).unlink()
+
+        corrupted_file = CURRENT_DIR / "data" / "corrupted.h5"
+        shutil.copy(corrupted_file, full_path)
+
+        route.refresh_from_db()
+        assert route.data is None
+        assert not Path(full_path).exists()
 
     def test_dataframe_pre_save_not_a_dataframe(self):
         route = RouteFactory()
@@ -150,21 +160,22 @@ class DataFrameFieldTestCase(TestCase):
 
         route = RouteFactory()
         field = route._meta.get_field("data")
-        dirname, filename = os.path.split(field.get_absolute_path(route.data.filepath))
-        mode = os.stat(dirname).st_mode
+        dirname = Path(field.get_absolute_path(route.data.filepath)).parent
+        mode = dirname.stat().st_mode
         assert stat.filemode(mode) == "drwxr-x--x"
 
     def test_dataframe_save_dataframe_to_file_exists_not_a_directory(self):
         route = RouteFactory()
         field = route._meta.get_field("data")
         filepath = field.get_absolute_path(route.data.filepath)
-        dirname, filename = os.path.split(filepath)
+        dirname = Path(filepath).parent
         shutil.rmtree(dirname)
         with open(dirname, "w+") as file:
             file.write("I cannot wait until lunchtime!")
         with self.assertRaises(IOError):
             route.save(update_fields=["data"])
-        os.remove(dirname)
+        if dirname.is_dir():
+            dirname.rmdir()
 
     def test_dataframe_save_dataframe_to_file_lost_filepath(self):
         route = RouteFactory()
@@ -182,8 +193,8 @@ class DataFrameFieldTestCase(TestCase):
             start_place=None, end_place=None, athlete=athlete, uuid=uuid
         )
 
-        filepath = "{}/{}_{}_{}.h5".format(
-            "data", route.__class__.__name__.lower(), "data", uuid
+        filepath = "athlete_{}/data/{}_{}_{}.h5".format(
+            athlete.id, route.__class__.__name__.lower(), "data", uuid
         )
 
         route.save()

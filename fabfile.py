@@ -2,10 +2,24 @@ import os
 import random
 from datetime import datetime
 from io import StringIO
+from pathlib import Path
 
 import dj_database_url
 from config import get_project_root_path
-from fabric.api import cd, env, execute, get, local, put, require, run, settings, shell_env, sudo, task
+from fabric.api import (
+    cd,
+    env,
+    execute,
+    get,
+    local,
+    put,
+    require,
+    run,
+    settings,
+    shell_env,
+    sudo,
+    task,
+)
 from fabric.context_managers import quiet
 from fabric.operations import prompt
 from gitric import api as gitric
@@ -73,28 +87,28 @@ def get_project_root():
     """
     Return the path to the root of the project on the remote server.
     """
-    return os.path.join(env.root, env.project_name)
+    return Path(env.root, env.project_name).resolve().as_posix()
 
 
 def get_virtualenv_root():
     """
     Return the path to the virtual environment on the remote server.
     """
-    return os.path.join(env.root, "venv")
+    return Path(env.root, "venv").as_posix()
 
 
 def get_backups_root():
     """
     Return the path to the backups directory on the remote server.
     """
-    return os.path.join(env.root, "backups")
+    return Path(env.root, "backups").as_posix()
 
 
 def run_in_virtualenv(cmd, args):
     """
     Run the given command from the remote virtualenv.
     """
-    return run("%s %s" % (os.path.join(get_virtualenv_root(), "bin", cmd), args))
+    return run("%s %s" % (Path(get_virtualenv_root(), "bin", cmd).as_posix(), args))
 
 
 def run_pip(args):
@@ -184,7 +198,7 @@ def set_setting(setting_key, value=None, description=None):
     if value is None:
         value = prompt("Please provide value for setting %s: " % setting_key)
 
-    with cd(os.path.join(get_project_root(), "envdir")):
+    with cd(Path(get_project_root(), "envdir")):
         put(StringIO(value), setting_key)
 
 
@@ -202,13 +216,7 @@ def bootstrap():
     execute(git_push, commit="master")
 
     required_settings = set(
-        [
-            "CELERY_BROKER_URL",
-            "MEDIA_ROOT",
-            "MEDIA_URL",
-            "STATIC_ROOT",
-            "STATIC_URL",
-        ]
+        ["CELERY_BROKER_URL", "MEDIA_ROOT", "MEDIA_URL", "STATIC_ROOT", "STATIC_URL"]
     )
 
     env_settings = getattr(env, "settings", {})
@@ -240,7 +248,7 @@ def compile_assets():
             host=env.host,
             user=env.user,
             port=env.port,
-            path=os.path.join(env.root, "static"),
+            path=Path(env.root, "static"),
         )
     )
 
@@ -273,9 +281,9 @@ def dump_db(destination):
             "The dump_db task doesn't support the remote database engine"
         )
 
-    outfile = os.path.join(
+    outfile = Path(
         destination, datetime.now().strftime("%Y-%m-%d_%H%M%S.sql.gz")
-    )
+    ).as_posix()
 
     with shell_env(PGPASSWORD=db_credentials_dict["PASSWORD"].replace("$", "\$")):
         run(
@@ -303,7 +311,7 @@ def fetch_db(destination="."):
     get(dump_path, destination)
     run("rm %s" % dump_path)
 
-    return os.path.basename(dump_path)
+    return Path(dump_path).name
 
 
 @task
@@ -353,7 +361,7 @@ def clean_old_database_backups(nb_backups_to_keep):
         backups_to_delete = backups[nb_backups_to_keep:]
 
         for backup_to_delete in backups_to_delete:
-            run('rm "%s"' % os.path.join(get_backups_root(), backup_to_delete))
+            run('rm "%s"' % Path(get_backups_root(), backup_to_delete))
 
         print("%d backups deleted." % len(backups_to_delete))
     else:
@@ -369,7 +377,7 @@ def fetch_media():
     with cd(get_project_root()), quiet():
         remote_media_root = run("cat envdir/MEDIA_ROOT")
 
-    if os.path.exists("envdir/MEDIA_ROOT"):
+    if Path("envdir/MEDIA_ROOT").exists():
         with open("envdir/MEDIA_ROOT", "r") as media_root_file:
             local_media_root = media_root_file.read()
     else:
@@ -381,7 +389,7 @@ def fetch_media():
             user=env.user,
             host=env.host,
             port=env.port,
-            source_directory=os.path.join(remote_media_root, ""),  # add trailing slash
+            source_directory=f"{remote_media_root}{os.sep}",  # add trailing slash
             target_directory=local_media_root,
         )
     )

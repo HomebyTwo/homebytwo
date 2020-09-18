@@ -18,20 +18,20 @@ class SwitzerlandMobilityLogin(forms.Form):
         label="Username",
         max_length=100,
         widget=forms.EmailInput(
-            attrs={"placeholder": "Username on Switzeland Mobility Plus"}
+            attrs={"placeholder": "Username on Switzerland Mobility Plus"}
         ),
     )
 
     password = forms.CharField(
         label="Password",
         widget=forms.PasswordInput(
-            attrs={"placeholder": "Password on Switzeland Mobility Plus"}
+            attrs={"placeholder": "Password on Switzerland Mobility Plus"}
         ),
     )
 
     def retrieve_authorization_cookie(self, request):
         """
-        Retrieves auth cookies from Switzeland Mobility
+        Retrieves auth cookies from Switzerland Mobility
         and returns cookies or False
         The cookies are required to display a user's list of saved routes.
 
@@ -81,7 +81,7 @@ class SwitzerlandMobilityLogin(forms.Form):
             # Some other server error
             else:
                 message = (
-                    "Error %s: logging to Switzeland Mobility. "
+                    "Error %s: logging to Switzerland Mobility. "
                     "Try again later" % login_request.status_code
                 )
                 messages.error(request, message)

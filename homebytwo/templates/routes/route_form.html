@@ -5,13 +5,15 @@
 {% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
 
 {% block extralinks %}
-  {% leaflet_js %}
-  {% leaflet_css %}
+{% leaflet_js %}
+{% leaflet_css %}
 {% endblock extralinks %}
 
 {% block content %}
 <h2 class="text-center mrgb0">{{ object.name }}</h2>
-<div class="h3 text-center mrgt0">{{ object.get_length.km|floatformat:1|intcomma }}km - {{ object.get_totalup.m|floatformat:0|intcomma }}m+ - {{ object.get_totaldown.m|floatformat:0|intcomma }}m-</div>
+<div class="h3 text-center mrgt0">{{ object.get_total_distance.km|floatformat:1|intcomma }}km -
+  {{ object.get_total_elevation_gain.m|floatformat:0|intcomma }}m+ -
+  {{ object.get_total_elevation_loss.m|floatformat:0|intcomma }}m-</div>
 
 {# map #}
 {% include "routes/_route_edit_map.html" %}
@@ -29,30 +31,30 @@
 {% endblock content %}
 
 {% if object.geom %}
-  {% block extrajs %}
-    <script>
-      function route_map_init (map, options) {
-        const route = L.geoJson({{ object|geojsonfeature|safe }});
-        route.addTo(map);
-        map.fitBounds(route.getBounds());
-        map.scrollWheelZoom.disable();
-        map.touchZoom.disable();
-        map.boxZoom.disable();
-        const icon = L.divIcon({
-          className: 'placeIcon placeIcon--default',
-        });
-        const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
-        const markers = checkpoints.map(checkpoint => {
-          L.geoJson(JSON.parse(checkpoint.dataset.geom), {
-            pointToLayer: (feature, latlng) => L.marker(latlng, {
-              icon: icon,
-              title: feature.properties.name
-            }),
-            style: feature => ({color: '000000'}),
-            onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
-          }).addTo(map);
-        });
+{% block extrajs %}
+<script>
+  function route_map_init(map, options) {
+    const route = L.geoJson({{ object | geojsonfeature | safe }});
+  route.addTo(map);
+  map.fitBounds(route.getBounds());
+  map.scrollWheelZoom.disable();
+  map.touchZoom.disable();
+  map.boxZoom.disable();
+  const icon = L.divIcon({
+    className: 'placeIcon placeIcon--default',
+  });
+  const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
+  const markers = checkpoints.map(checkpoint => {
+    L.geoJson(JSON.parse(checkpoint.dataset.geom), {
+      pointToLayer: (feature, latlng) => L.marker(latlng, {
+        icon: icon,
+        title: feature.properties.name
+      }),
+      style: feature => ({ color: '000000' }),
+      onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
+    }).addTo(map);
+  });
       }
-    </script>
-  {% endblock extrajs %}
+</script>
+{% endblock extrajs %}
 {% endif %}

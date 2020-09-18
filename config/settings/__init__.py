@@ -1,4 +1,5 @@
-import os
+from os import environ
+
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -7,7 +8,7 @@ def get_env_variable(var_name, default=None):
     Get the environment variable or return exception
     """
     try:
-        return os.environ[var_name]
+        return environ[var_name]
     except KeyError:
         if default is not None:
             return default

@@ -82,6 +82,11 @@ $ vagrant ssh
 $ tox
 ```
 
+## Add a requirement
+
+Add the requirement to the `requirements/xxx.in` file, and then run `make requirements` (from inside the box) to update
+the `.txt` files and install the requirement(s) in the virtual environment.
+
 
 ## Import Places from SwissNAMES3D
 
@@ -113,4 +118,18 @@ Run the importer command:
 
 ```sh
 $ ./manage.py importswissname3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
+```
+
+## Managing Celery
+
+After changing a task code, you'll need to restart Celery for changes to be taken into account (Celery is run asynchronously because some processes take a really long time, including the signup process which would otherwise timeout). To restart celery, run:
+
+```
+sudo systemctl restart celery
+```
+
+To see the output of Celery tasks, use `journalctl` (`-f` is to follow the output):
+
+```
+sudo journalctl -u celery -f
 ```

@@ -1,0 +1,13 @@
+[Unit]
+Description=Celery homebytwo
+After=syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+ExecStart=/home/vagrant/ENV/bin/celery -c 1 -A homebytwo worker --app=homebytwo.celery:app --loglevel=info
+User=vagrant
+Group=vagrant
+WorkingDirectory=/vagrant
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

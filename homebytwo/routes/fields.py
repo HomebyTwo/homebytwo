@@ -1,9 +1,11 @@
-import os
+import logging
 from inspect import getmro
+from pathlib import Path
 
 from django.apps import apps
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.postgres.fields import ArrayField
 from django.core import checks
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
@@ -12,9 +14,10 @@ from django.forms import MultipleChoiceField
 from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
 
+from numpy import array
 from pandas import DataFrame, read_hdf
 
-from .models import Checkpoint
+logger = logging.getLogger(__name__)
 
 
 def LineSubstring(line, start_location, end_location):
@@ -60,8 +63,8 @@ class DataFrameField(models.CharField):
         name=None,
         upload_to="data",
         storage=None,
-        unique_fields=[],
-        **kwargs
+        unique_fields=None,
+        **kwargs,
     ):
 
         self.storage = storage or default_storage
@@ -78,7 +81,7 @@ class DataFrameField(models.CharField):
         ]
 
     def _check_unique_fields(self, **kwargs):
-        if not isinstance(self.unique_fields, list) or self.unique_fields == []:
+        if not self.unique_fields or not isinstance(self.unique_fields, list):
             return [
                 checks.Error(
                     "you must provide a list of unique fields.",
@@ -120,23 +123,12 @@ class DataFrameField(models.CharField):
 
         return self.retrieve_dataframe(value)
 
-    def get_relative_path(self, value):
-        """
-        return file path based on the value saved in the Database.
-        prepend filepath to older objects that were saved without it.
-        """
-        dirname, filename = os.path.split(value)
-        dirname = dirname or self.upload_to
-        return os.path.join(dirname, filename)
-
     def get_absolute_path(self, value):
         """
         return absolute path based on the value saved in the Database.
         """
-        filepath = self.get_relative_path(value)
 
-        # return absolute path
-        return self.storage.path(filepath)
+        return self.storage.path(value)
 
     def retrieve_dataframe(self, value):
         """
@@ -145,10 +137,30 @@ class DataFrameField(models.CharField):
 
         # read dataframe from storage
         absolute_filepath = self.get_absolute_path(value)
-        dataframe = read_hdf(absolute_filepath)
+
+        # HaCkY as F* for migration 0044 and 0046.
+        # We can remove it once deployed.
+        if not Path(absolute_filepath).exists():
+            *dirs, filename = Path(value).parts
+            old_path = Path(*dirs, "data", filename).as_posix()
+            absolute_filepath = self.get_absolute_path(old_path)
+
+        try:
+            dataframe = read_hdf(absolute_filepath)
+
+        # if the file has been deleted return None
+        except FileNotFoundError:
+            logger.error("DataFrame file was deleted from the media folder.")
+            return None
+
+        # if the file is corrupted, delete it and return None
+        except IOError:
+            logger.error("DataFrame file could not be read from the media folder.")
+            Path(absolute_filepath).unlink()
+            return None
 
         # add relative filepath as instance property for later use
-        dataframe.filepath = self.get_relative_path(value)
+        dataframe.filepath = value
 
         return dataframe
 
@@ -163,7 +175,8 @@ class DataFrameField(models.CharField):
 
         if not isinstance(dataframe, DataFrame):
             raise ValidationError(
-                self.error_messages["invalid"], code="invalid",
+                self.error_messages["invalid"],
+                code="invalid",
             )
 
         self.save_dataframe_to_file(dataframe, model_instance)
@@ -192,27 +205,20 @@ class DataFrameField(models.CharField):
         full_filepath = self.storage.path(dataframe.filepath)
 
         # Create any intermediate directories that do not exist.
-        # shamelessly copied from Django's original Storage class
-        directory = os.path.dirname(full_filepath)
-        if not os.path.exists(directory):
-            try:
-                if self.storage.directory_permissions_mode is not None:
-                    # os.makedirs applies the global umask, so we reset it,
-                    # for consistency with file_permissions_mode behavior.
-                    old_umask = os.umask(0)
-                    try:
-                        os.makedirs(directory, self.storage.directory_permissions_mode)
-                    finally:
-                        os.umask(old_umask)
-                else:
-                    os.makedirs(directory)
-            except FileExistsError:
-                # There's a race between os.path.exists() and os.makedirs().
-                # If os.makedirs() fails with FileExistsError, the directory
-                # was created concurrently.
-                pass
-        if not os.path.isdir(directory):
-            raise IOError("%s exists and is not a directory." % directory)
+        directory = Path(full_filepath).parent
+
+        if directory.exists() and not directory.is_dir():
+            raise IOError(f"{directory} exists and is not a directory.")
+
+        if not directory.is_dir():
+            if self.storage.directory_permissions_mode is not None:
+                directory.mkdir(
+                    mode=self.storage.directory_permissions_mode,
+                    parents=True,
+                    exist_ok=True,
+                )
+            else:
+                directory.mkdir(parents=True, exist_ok=True)
 
         # save to storage
         dataframe.to_hdf(full_filepath, "df", mode="w", format="fixed")
@@ -247,9 +253,41 @@ class DataFrameField(models.CharField):
         )
 
         # generate filepath
-        dirname = self.upload_to
-        filepath = os.path.join(dirname, filename)
+        if callable(self.upload_to):
+            filepath = Path(self.upload_to(instance, filename))
+        else:
+            dirname = self.upload_to
+            filepath = Path(dirname, filename)
         return self.storage.generate_filename(filepath)
+
+
+class NumpyArrayField(ArrayField):
+    """
+    Save NumPy arrays to PostgreSQl ArrayFields.
+    """
+
+    def get_prep_value(self, value):
+        """
+        convert NumPy array to a list.
+        """
+        return list(value)
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        value = super().get_db_prep_value(value, connection, prepared)
+        return self.get_prep_value(value)
+
+    def value_to_string(self, obj):
+        value = self.value_from_object(obj)
+        return self.get_prep_value(value)
+
+    def to_python(self, value):
+        """
+        convert the list value to a NumPy array.
+        """
+        return array(value)
+
+    def from_db_value(self, value, *args, **kwargs):
+        return self.to_python(value)
 
 
 class CheckpointsSelectMultiple(CheckboxSelectMultiple):
@@ -264,12 +302,13 @@ class CheckpointsSelectMultiple(CheckboxSelectMultiple):
         self, name, value, label, selected, index, subindex=None, attrs=None
     ):
         # make sure it's a checkpoint
+        Checkpoint = apps.get_model("routes", "checkpoint")
         if isinstance(value, Checkpoint):
 
             # add checkpoint place geojson as data-attribute to display on the map.
             attrs.update({"data-geom": value.place.get_geojson(fields=["name"])})
 
-            # convert chekpoint to 'place_id' + "_" + 'line_location' string
+            # convert checkpoint to 'place_id' + "_" + 'line_location' string
             value = value.field_value
 
         return super().create_option(
@@ -294,7 +333,9 @@ class CheckpointsChoiceField(MultipleChoiceField):
 
         except KeyError:
             raise ValidationError(
-                _("Invalid value: %(value)s"), code="invalid", params={"value": value},
+                _("Invalid value: %(value)s"),
+                code="invalid",
+                params={"value": value},
             )
 
     def validate(self, value):

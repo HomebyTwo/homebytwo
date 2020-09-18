@@ -1,6 +1,6 @@
 from collections import namedtuple
 from itertools import chain, islice, tee
-from os import path
+from pathlib import Path
 
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
@@ -8,7 +8,7 @@ from django.contrib.gis.measure import D
 from .fields import LineSubstring
 from .models import ActivityType, Place
 
-# named tupple to handle Urls
+# named tuple to handle Urls
 Link = namedtuple("Link", ["url", "text"])
 
 GARMIN_ACTIVITY_TYPE_MAP = {
@@ -43,9 +43,7 @@ def get_image_path(instance, filename):
     to the type of object: segment, route, etc.. as well as
     the id of the object.
     """
-    return path.join(
-        "images", instance.__class__.__name__, str(instance.id), filename
-    )
+    return Path("images", instance.__class__.__name__, str(instance.id), filename)
 
 
 def current_and_next(some_iterable):
@@ -132,9 +130,12 @@ def get_places_from_line(line, max_distance):
     places = places.annotate(line_location=LineLocatePoint(line, "geom"))
 
     # remove start and end places within 1% of start and end location
-    places = places.filter(line_location__gt=0.01, line_location__lt=0.99,)
+    places = places.filter(
+        line_location__gt=0.01,
+        line_location__lt=0.99,
+    )
 
-    # sort in order of apparence along the line
+    # sort in order of appearance along the line
     places = places.order_by("line_location")
 
     return places
@@ -151,6 +152,8 @@ def get_places_within(point, max_distance=100):
     places = places.annotate(distance_from_line=Distance("geom", point))
 
     # sort by distance
-    places = places.order_by("distance_from_line",)
+    places = places.order_by(
+        "distance_from_line",
+    )
 
     return places

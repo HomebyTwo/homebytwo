@@ -5,7 +5,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -17,45 +17,107 @@ from django.views.generic.list import ListView
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
-from .forms import RouteForm
-from .models import Activity, Route, WebhookTransaction
-from .tasks import import_strava_activities_task, upload_route_to_garmin_task
+from .forms import ActivityPerformanceForm, RouteForm
+from .models import Activity, ActivityType, Route, WebhookTransaction
+from .tasks import (
+    import_strava_activities_task,
+    import_strava_activity_streams_task,
+    train_prediction_models_task,
+    upload_route_to_garmin_task,
+    process_strava_events,
+)
+from ..importers.exceptions import SwitzerlandMobilityError
 
 
 @login_required
 @require_safe
-def routes(request):
-    routes = Route.objects.order_by("name")
+def routes_view(request):
     routes = Route.objects.for_user(request.user)
+    routes = routes.order_by("name")
     context = {"routes": routes}
 
     return render(request, "routes/routes.html", context)
 
 
-def route(request, pk):
+def route_view(request, pk):
     """
-    display route with schedule based on user performance.
+    display route schedule based on the prediction model of the logged-in athlete
+
+    The route page contains a simple form to change the route activity_type
+    and tweak the schedule.
+
+    If the athlete is not logged in or if the logged-in athlete has no
+    prediction model for the selected activity type, a default prediction model
+    is used.
+
     """
-    # load route from Database
     route = get_object_or_404(Route.objects.select_related(), id=pk)
 
-    # calculate personalized schedule if absent or different from ownwer
-    if not route.athlete.user == request.user or "schedule" not in route.data.columns:
-        route.calculate_projected_time_schedule(request.user)
+    if request.method == "POST":
+        performance_form = ActivityPerformanceForm(
+            route,
+            request.user.athlete if request.user.is_authenticated else None,
+            data=request.POST,
+        )
 
-        # adding schedule to old routes one-by-one, instead of migrating
-        if route.athlete.user == request.user:
-            route.save()
+        if performance_form.is_valid():
+            activity_type_name = performance_form.cleaned_data["activity_type"]
+            workout_type = performance_form.cleaned_data.get("workout_type")
+            gear_id = performance_form.cleaned_data.get("gear")
+            route.activity_type, created = ActivityType.objects.get_or_create(
+                name=activity_type_name
+            )
 
-    # retrieve checkpoints along the way and enrich them with schedule data
+    # invalid form: the activity type was changed in the form,
+    # we reinitialize the form to get gear and workout type
+    # matching the new activity type
+    if request.method == "GET" or not performance_form.is_valid():
+        # get unbound performance form with initial values
+        performance_form = ActivityPerformanceForm(
+            route,
+            request.user.athlete if request.user.is_authenticated else None,
+            initial={"activity_type": route.activity_type.name},
+        )
+
+        gear_id = (
+            performance_form.fields["gear"].choices[0][0]
+            if "gear" in performance_form.fields
+            else None
+        )
+        workout_type = (
+            performance_form.fields["workout_type"].choices[0][0]
+            if "workout_type" in performance_form.fields
+            else None
+        )
+
+    # restore route data from remote source if data file was corrupted or deleted
+    if route.data is None:
+        try:
+            route.geom, route.data = route.get_route_data(
+                cookies=request.session.get("switzerland_mobility_cookies")
+            )
+        except SwitzerlandMobilityError:
+            raise Http404("Route information could not be found.")
+
+        else:
+            route.update_track_details_from_data()
+
+    # calculate route schedule for display
+    route.calculate_projected_time_schedule(
+        user=request.user,
+        gear=gear_id,
+        workout_type=workout_type,
+    )
+
+    # retrieve checkpoints along the way
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # not a calculated property on Checkpoint, because the schedule can change
+    # schedule is not a calculated property on Checkpoint, because the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
-    # enrich start and end place with data
+    # enrich start and end place with schedule and altitude
     if route.start_place_id:
         route.start_place.schedule = route.get_time_data(0, "schedule")
         route.start_place.altitude = route.get_distance_data(0, "altitude")
@@ -63,7 +125,11 @@ def route(request, pk):
         route.end_place.schedule = route.get_time_data(1, "schedule")
         route.end_place.altitude = route.get_distance_data(1, "altitude")
 
-    context = {"route": route, "checkpoints": checkpoints}
+    context = {
+        "route": route,
+        "checkpoints": checkpoints,
+        "form": performance_form,
+    }
     return render(request, "routes/route.html", context)
 
 
@@ -129,22 +195,50 @@ def upload_route_to_garmin(request, pk):
 
 
 @login_required
-@strava_required  # the superuser account should be the only one logged-in without Strava
+@strava_required  # the superuser account is the only one that can be logged-in without Strava
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.
     still work in progress
     """
-    if request.method == "GET":
-        import_strava_activities_task.delay(request.user.athlete.id)
-        messages.success(request, "We are importing your Strava activities!")
-        return redirect("routes:activities")
+    import_strava_activities_task.delay(request.user.athlete.id)
+    messages.success(request, "We are importing your Strava activities!")
+    return redirect("routes:activities")
+
+
+@login_required
+@strava_required  # the superuser account is the only one that can be logged-in without Strava
+def import_strava_streams(request):
+    """
+    trigger a task to import streams for activities without them.
+    """
+    activities = Activity.objects.filter(athlete=request.user.athlete)
+    activities = activities.filter(streams__isnull=True)
+    activities = activities.order_by("-start_date")
+
+    for activity in activities:
+        import_strava_activity_streams_task.delay(activity.strava_id)
+    messages.success(request, "We are importing your Strava streams!")
+    return redirect("routes:activities")
+
+
+@login_required
+def train_prediction_models(request):
+    """
+    trigger a task to calculate prediction models
+    for all activity types found in the athlete's activities.
+    """
+    train_prediction_models_task.delay(request.user.athlete.id)
+
+    messages.success(request, "We are calculating your prediction models!")
+    return redirect("routes:activities")
 
 
 @csrf_exempt
 def strava_webhook(request):
     """
-    handle events sent by the Strava Webhook Events API
+    handle events sent by the Strava Webhook Events API, the API to receive
+    Strava updates instead of polling.
 
     Strava validates a subscription with a GET request to the callback URL.
     Events from the subscriptions are POSTed to the callback URL. For now
@@ -177,6 +271,9 @@ def strava_webhook(request):
             date_generated=datetime.fromtimestamp(data["event_time"], tz=utc),
         )
 
+        # import activity into the database
+        process_strava_events.delay()
+
         return HttpResponse(status=200)
 
     # Anything else
@@ -197,7 +294,7 @@ class ImageFormView(UpdateView):
 @method_decorator(login_required, name="dispatch")
 class RouteDelete(DeleteView):
     """
-    Playing around with class based views.
+    Class based  views are not so bad after all.
     """
 
     model = Route
@@ -226,7 +323,13 @@ class RouteUpdate(RouteEdit):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
-            return route.update_from_remote()
+
+            # reset the checkpoints, the price of updating from remote
+            route.checkpoint_set.all().delete()
+
+            return route.update_from_remote(
+                self.request.session.get("switzerland_mobility_cookies", None)
+            )
 
 
 @method_decorator(login_required, name="dispatch")

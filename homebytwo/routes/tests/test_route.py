@@ -1,8 +1,6 @@
 from datetime import timedelta
-from os import listdir, makedirs, remove, urandom
-from os.path import dirname, exists, join, realpath
-from shutil import rmtree
-from tempfile import mkdtemp
+from os import urandom
+from pathlib import Path
 from unittest import skip
 from uuid import uuid4
 
@@ -19,6 +17,7 @@ from django.utils.six import StringIO
 import httpretty
 from pandas import DataFrame
 
+from ..fields import DataFrameField
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import open_data, read_data
 from ..forms import RouteForm
@@ -26,7 +25,7 @@ from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 @override_settings(
@@ -35,8 +34,8 @@ CURRENT_DIR = dirname(realpath(__file__))
 )
 class RouteTestCase(TestCase):
     def setUp(self):
-        self.athlete = AthleteFactory(user__password="testpassword")
-        self.client.login(username=self.athlete.user.username, password="testpassword")
+        self.athlete = AthleteFactory(user__password="test_password")
+        self.client.login(username=self.athlete.user.username, password="test_password")
 
     #########
     # Model #
@@ -55,32 +54,35 @@ class RouteTestCase(TestCase):
         route = RouteFactory()
         self.assertEqual(route.display_url, route.get_absolute_url())
 
-    def test_get_length(self):
-        route = RouteFactory.build(length=12345)
-        length = route.get_length()
+    def test_get_total_distance(self):
+        route = RouteFactory.build(total_distance=12345)
+        total_distance = route.get_total_distance()
 
-        self.assertTrue(isinstance(length, Distance))
-        self.assertEqual(length.km, 12.345)
+        self.assertTrue(isinstance(total_distance, Distance))
+        self.assertEqual(total_distance.km, 12.345)
 
-    def test_get_totalup(self):
-        route = RouteFactory.build(totalup=1234)
-        totalup = route.get_totalup()
+    def test_get_total_elevation_gain(self):
+        route = RouteFactory.build(total_elevation_gain=1234)
+        total_elevation_gain = route.get_total_elevation_gain()
 
-        self.assertTrue(isinstance(totalup, Distance))
-        self.assertAlmostEqual(totalup.ft, 4048.556430446194)
+        self.assertTrue(isinstance(total_elevation_gain, Distance))
+        self.assertAlmostEqual(total_elevation_gain.ft, 4048.556430446194)
 
-    def test_get_totaldown(self):
-        route = RouteFactory.build(totaldown=4321)
-        totaldown = route.get_totaldown()
+    def test_get_total_elevation_loss(self):
+        route = RouteFactory.build(total_elevation_loss=4321)
+        total_elevation_loss = route.get_total_elevation_loss()
 
-        self.assertTrue(isinstance(totaldown, Distance))
-        self.assertAlmostEqual(totaldown.m, 4321)
+        self.assertTrue(isinstance(total_elevation_loss, Distance))
+        self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "length"],)
+        data = DataFrame(
+            [[0, 0], [1234, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(
             data=data,
-            length=1000,
+            total_distance=1000,
             geom=LineString(((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781),
         )
         start_altitude = route.get_start_altitude()
@@ -90,8 +92,11 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "length"],)
-        route = RouteFactory.build(data=data, length=1000)
+        data = DataFrame(
+            [[0, 0], [1000, 1000]],
+            columns=["altitude", "distance"],
+        )
+        route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
         point_altitude = route.get_distance_data(0.5, "altitude")
@@ -101,6 +106,7 @@ class RouteTestCase(TestCase):
 
     def test_get_start_and_end_places(self):
         route = RouteFactory.build()
+
         PlaceFactory(name="Start_Place", geom="POINT(%s %s)" % route.geom[0])
         PlaceFactory(name="End_Place", geom="POINT(%s %s)" % route.geom[-1])
         start_place = route.get_closest_places_along_line()[0]
@@ -163,25 +169,27 @@ class RouteTestCase(TestCase):
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)
 
-    def test_calculate_elevation_gain_distance(self):
+    def test_calculate_gradient(self):
         data = DataFrame(
-            {"altitude": [0, 1, 2, 3, 2, 1, 0], "length": [0, 1, 2, 2, 3, 4, 5]}
+            {"altitude": [0, 2, 4, 6, 4, 2, 0], "distance": [0, 2, 4, 5, 6, 8, 10]}
         )
 
         route = RouteFactory(data=data)
 
-        route.calculate_elevation_gain_and_distance()
+        data = route.calculate_gradient(data)
 
         self.assertListEqual(
-            list(route.data), ["altitude", "length", "distance", "gain"]
+            data.columns.tolist(),
+            ["altitude", "distance", "step_distance", "gradient"],
         )
 
         self.assertListEqual(
-            list(route.data.distance), [0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
+            list(data.step_distance), [0.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0]
         )
 
         self.assertListEqual(
-            list(route.data.gain), [0.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0]
+            list(data.gradient),
+            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -196,10 +204,8 @@ class RouteTestCase(TestCase):
         ActivityPerformance.objects.create(
             athlete=user.athlete,
             activity_type=activity_type,
-            slope_squared_param=activity_type.slope_squared_param / 2,
-            slope_param=activity_type.slope_param / 2,
-            flat_param=activity_type.flat_param / 2,
-            total_elevation_gain_param=activity_type.total_elevation_gain_param,
+            regression_coefficients=activity_type.regression_coefficients / 2,
+            flat_parameter=activity_type.flat_parameter / 2,
         )
 
         route.calculate_projected_time_schedule(user)
@@ -209,24 +215,24 @@ class RouteTestCase(TestCase):
 
     def test_schedule_display(self):
         duration = timedelta(seconds=30, minutes=1, hours=6)
-        long_dspl = nice_repr(duration)
-        self.assertEqual(long_dspl, "6 hours 1 minute 30 seconds")
+        long_display = nice_repr(duration)
+        self.assertEqual(long_display, "6 hours 1 minute 30 seconds")
 
         duration = timedelta(seconds=0)
-        long_dspl = nice_repr(duration)
-        self.assertEqual(long_dspl, "0 seconds")
+        long_display = nice_repr(duration)
+        self.assertEqual(long_display, "0 seconds")
 
         duration = timedelta(seconds=30, minutes=2, hours=2)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "2 h 5 min")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "2 h 5 min")
 
         duration = timedelta(seconds=45, minutes=57, hours=2)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "3 h")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "3 h")
 
         duration = timedelta(seconds=30, minutes=2, hours=6)
-        hike_dspl = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_dspl, "6 h")
+        hike_display = nice_repr(duration, display_format="hike")
+        self.assertEqual(hike_display, "6 h")
 
     def test_base_round(self):
         values = [0, 3, 4.85, 12, -7]
@@ -251,6 +257,18 @@ class RouteTestCase(TestCase):
 
         route = RouteFactory()
         self.assertIsNone(route.source_link)
+
+    def test_get_route_details(self):
+        route = RouteFactory()
+
+        with self.assertRaises(NotImplementedError):
+            route.get_route_details()
+
+    def test_get_route_data(self):
+        route = RouteFactory()
+
+        with self.assertRaises(NotImplementedError):
+            route.get_route_data()
 
     #########
     # Views #
@@ -290,8 +308,10 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
-            edit_url
+        edit_button = (
+            '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+                edit_url
+            )
         )
 
         response = self.client.get(url)
@@ -584,56 +604,72 @@ class RouteTestCase(TestCase):
     # Management Commands #
     #######################
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_no_data(self):
         # No files in data directory
         out = StringIO()
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn("No files to delete.", out.getvalue())
+
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_routes(self):
-        # five routes no extra files
         out = StringIO()
+
+        # five routes no extra files
         RouteFactory.create_batch(5)
 
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn("No files to delete.", out.getvalue())
+
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("No files to delete.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_delete_trash(self):
-        # five random files not in DB
-        data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
-
-        if not exists(data_dir):
-            makedirs(data_dir)
-
         out = StringIO()
+        data_dir = Path(settings.MEDIA_ROOT, "data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+
         for i in range(5):
             filename = uuid4().hex + ".h5"
-            fullpath = join(data_dir, filename)
-            with open(fullpath, "wb") as file_:
+            full_path = data_dir / filename
+            with full_path.open(mode="wb") as file_:
                 file_.write(urandom(64))
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn(
+            "Clean-up command would delete 5 and keep 0 files.", out.getvalue()
+        )
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 5 files.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
-    @override_settings(MEDIA_ROOT=mkdtemp())
     def test_cleanup_hdf5_files_missing_route_file(self):
-        # One deleted route data file one random file
-        data_dir = join(settings.BASE_DIR, settings.MEDIA_ROOT, "data")
         out = StringIO()
-        [RouteFactory() for i in range(5)]
-        file_to_delete = listdir(data_dir)[0]
-        remove(join(data_dir, file_to_delete))
+
+        # 5 routes, include one to use the filepath
+        route, *_ = RouteFactory.create_batch(5)
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        data_dir = Path(full_path).parent.resolve()
+
+        # delete one route file
+        file_to_delete = list(data_dir.glob("*"))[0]
+        (data_dir / file_to_delete).unlink()
+
+        # add one random file
         filename = uuid4().hex + ".h5"
-        fullpath = join(data_dir, filename)
-        with open(fullpath, "wb") as file_:
+        full_path = data_dir / filename
+        with full_path.open(mode="wb") as file_:
             file_.write(urandom(64))
+
+        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+        self.assertIn(
+            "Clean-up command would delete 1 and keep 4 files.", out.getvalue()
+        )
+        self.assertIn("1 missing file(s):", out.getvalue())
 
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
-        rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        self.assertIn("1 missing file(s):", out.getvalue())

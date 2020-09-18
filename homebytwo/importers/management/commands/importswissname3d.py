@@ -1,12 +1,9 @@
-import os
+from pathlib import Path
 
-from django.contrib.gis.gdal import error as gdal_error
 from django.contrib.gis.gdal import DataSource
+from django.contrib.gis.gdal import error as gdal_error
 from django.contrib.gis.utils import LayerMapping
-from django.core.management.base import (
-    BaseCommand,
-    CommandError,
-)
+from django.core.management.base import BaseCommand, CommandError
 
 from ...models import Swissname3dPlace
 
@@ -109,9 +106,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # Generate path and make sure the file exists
-        shapefile = os.path.abspath(options["shapefile"])
-        if not os.path.exists(shapefile):
-            error_msg = 'The file "%s" could not be found.' % shapefile
+        shapefile_path = Path(options["shapefile"]).resolve()
+        shapefile = str(shapefile_path)
+        if not shapefile_path.exists():
+            error_msg = "The file '{}' could not be found.".format(shapefile)
             raise OSError(error_msg)
 
         # Define mapping between layer fields of the shapefile
@@ -130,8 +128,8 @@ class Command(BaseCommand):
                 Swissname3dPlace,
                 shapefile,
                 swissname3d_mapping,
-                transform=False,
-                encoding="latin-1",
+                transform=True,
+                encoding="utf-8",
             )
 
         except gdal_error.GDALException:

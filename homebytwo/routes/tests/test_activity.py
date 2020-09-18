@@ -1,35 +1,43 @@
 import json
 from copy import deepcopy
 from datetime import timedelta
-from os.path import dirname, realpath
+from pathlib import Path
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 import httpretty
 from mock import patch
+from pandas import DataFrame
 
 from ...importers.exceptions import StravaMissingCredentials
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
+from ..fields import DataFrameField
 from ..models import Activity, Gear, WebhookTransaction
-from ..tasks import ProcessStravaEvents, import_strava_activities_task
-from .factories import ActivityFactory, GearFactory, WebhookTransactionFactory
+from ..tasks import process_strava_events, import_strava_activities_task
+from .factories import (
+    ActivityFactory,
+    ActivityTypeFactory,
+    GearFactory,
+    WebhookTransactionFactory,
+)
 
-CURRENT_DIR = dirname(realpath(__file__))
+CURRENT_DIR = Path(__file__).resolve().parent
 
 
 class ActivityTestCase(TestCase):
 
     STRAVA_BASE_URL = "https://www.strava.com/api/v3"
+    STREAM_TYPES = ["time", "altitude", "distance", "moving"]
     PROCESSED = WebhookTransaction.PROCESSED
     UNPROCESSED = WebhookTransaction.UNPROCESSED
     SKIPPED = WebhookTransaction.SKIPPED
     ERROR = WebhookTransaction.ERROR
 
     def setUp(self):
-        self.athlete = AthleteFactory(user__password="testpassword")
-        self.client.login(username=self.athlete.user.username, password="testpassword")
+        self.athlete = AthleteFactory(user__password="test_password")
+        self.client.login(username=self.athlete.user.username, password="test_password")
 
     def load_strava_activity_from_json(self, file):
         """
@@ -63,10 +71,10 @@ class ActivityTestCase(TestCase):
         Logged-in user with no Strava auth connected, i.e. from createsuperuser
         """
 
-        non_strava_user = UserFactory(password="testpassword")
-        self.client.login(username=non_strava_user.username, password="testpassword")
+        non_strava_user = UserFactory(password="test_password")
+        self.client.login(username=non_strava_user.username, password="test_password")
 
-        url = reverse("routes:import_strava")
+        url = reverse("routes:import_activities")
 
         with self.assertRaises(StravaMissingCredentials):
             self.client.get(url)
@@ -74,7 +82,7 @@ class ActivityTestCase(TestCase):
     def test_not_logged_in(self):
         self.client.logout()
 
-        url = reverse("routes:import_strava")
+        url = reverse("routes:import_activities")
         response = self.client.get(url)
         redirected_response = self.client.get(url, follow=True)
 
@@ -115,7 +123,9 @@ class ActivityTestCase(TestCase):
         url = "https://www.strava.com/activities/{}".format(activity.strava_id)
         self.assertEqual(url, activity.get_strava_url())
         self.assertAlmostEqual(activity.distance / 1000, activity.get_distance().km)
-        self.assertAlmostEqual(activity.totalup, activity.get_totalup().m)
+        self.assertAlmostEqual(
+            activity.total_elevation_gain, activity.get_total_elevation_gain().m
+        )
 
     def test_save_strava_activity_add_existing_gear(self):
 
@@ -131,8 +141,8 @@ class ActivityTestCase(TestCase):
         # map id back to strava_id
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         #  add existing gear to the Strava activity
@@ -158,8 +168,8 @@ class ActivityTestCase(TestCase):
         # map id back to strava_id
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         #  add new gear to the Strava activity
@@ -200,8 +210,8 @@ class ActivityTestCase(TestCase):
         # map id back to Strava
         strava_activity.id = activity.strava_id
 
-        # map totalup back to total_elevation_gain and activity_type to type
-        strava_activity.total_elevation_gain = activity.totalup
+        # map total_elevation_gain back to total_elevation_gain and activity_type to type
+        strava_activity.total_elevation_gain = activity.total_elevation_gain
         strava_activity.type = activity.activity_type
 
         # remove gear
@@ -304,7 +314,10 @@ class ActivityTestCase(TestCase):
         ]
 
         httpretty.register_uri(
-            httpretty.GET, activities_url, responses=responses, match_querystring=False,
+            httpretty.GET,
+            activities_url,
+            responses=responses,
+            match_querystring=False,
         )
 
         # update athlete activities: 2 received
@@ -329,10 +342,10 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        STREAM_TYPES = ["time", "altitude", "distance"]
-        streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
-            activity.strava_id,
-            ",".join(STREAM_TYPES),
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
         )
 
         httpretty.register_uri(
@@ -354,10 +367,10 @@ class ActivityTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        STREAM_TYPES = ["time", "altitude", "distance"]
-        streams_url = self.STRAVA_BASE_URL + "/activities/%s/streams/%s" % (
-            activity.strava_id,
-            ",".join(STREAM_TYPES),
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
         )
 
         httpretty.register_uri(
@@ -372,19 +385,74 @@ class ActivityTestCase(TestCase):
         raw_streams = activity.get_streams_from_strava()
         httpretty.disable()
 
-        self.assertEqual(len(raw_streams), 3)
+        self.assertEqual(len(raw_streams), 4)
 
-    @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
+    def test_save_streams_from_strava(self):
+        activity = ActivityFactory(athlete=self.athlete, streams=None)
+
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
+        )
+
+        with httpretty.enabled(allow_net_connect=False):
+            httpretty.register_uri(
+                httpretty.GET,
+                streams_url,
+                content_type="application/json",
+                body=read_data("streams.json", dir_path=CURRENT_DIR),
+                status=200,
+                match_querystring=False,
+            )
+
+            assert activity.save_streams_from_strava()
+
+        field = DataFrameField()
+        full_path = field.storage.path(activity.streams.filepath)
+
+        assert isinstance(activity.streams, DataFrame)
+        assert all(
+            stream_type in activity.streams.columns for stream_type in self.STREAM_TYPES
+        )
+        assert str(self.athlete.id) in full_path
+
+    def test_save_streams_from_strava_missing_streams(self):
+        activity = ActivityFactory(athlete=self.athlete, streams=None)
+
+        streams_url = (
+            self.STRAVA_BASE_URL
+            + f"/activities/{activity.strava_id}/streams/"
+            + ",".join(self.STREAM_TYPES)
+        )
+
+        httpretty.enable(allow_net_connect=False)
+        httpretty.register_uri(
+            httpretty.GET,
+            streams_url,
+            content_type="application/json",
+            body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
+
+        assert activity.save_streams_from_strava() is None
+        assert activity.streams is None
+
+    @override_settings(
+        STRAVA_VERIFY_TOKEN="RIGHT_TOKEN",
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
+    )
     def test_strava_webhook_callback_url(self):
 
-        # subscritption validation successful
+        # subscription validation successful
         url = reverse("routes:strava_webhook")
         data = {
             "hub.verify_token": "RIGHT_TOKEN",
             "hub.challenge": "challenge",
             "hub.mode": "subscribe",
         }
-
         response = self.client.get(url, data)
         self.assertContains(response, data["hub.challenge"])
 
@@ -395,8 +463,27 @@ class ActivityTestCase(TestCase):
         self.assertEqual(response.status_code, 401)
 
         # event posted by Strava
-        data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
-        response = self.client.post(url, data, content_type="application/json")
+        with httpretty.enabled(allow_net_connect=False):
+
+            activity_response = read_data(
+                "race_run_activity.json", dir_path=CURRENT_DIR
+            )
+            event_data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
+
+            strava_activity_url = (
+                self.STRAVA_BASE_URL + f"/activities/{event_data['object_id']}"
+            )
+
+            httpretty.register_uri(
+                uri=strava_activity_url,
+                method=httpretty.GET,
+                body=activity_response,
+                status=200,
+            )
+
+            response = self.client.post(
+                url, event_data, content_type="application/json"
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookTransaction.objects.count(), 1)
@@ -405,7 +492,8 @@ class ActivityTestCase(TestCase):
         self.assertEqual(
             str(transaction),
             "{0} - {1}".format(
-                transaction.get_status_display(), transaction.date_generated,
+                transaction.get_status_display(),
+                transaction.date_generated,
             ),
         )
 
@@ -415,7 +503,7 @@ class ActivityTestCase(TestCase):
         # link transaction to athlete
         transaction.body["owner_id"] = self.athlete.strava_id
 
-        # transaction creates a new activty
+        # transaction creates a new activity
         transaction.body["aspect_type"] = "create"
         transaction.body["object_type"] = "activity"
         transaction.body["object_id"] = 12345
@@ -425,7 +513,7 @@ class ActivityTestCase(TestCase):
         httpretty.enable(allow_net_connect=False)
 
         activity_url = (
-            self.STRAVA_BASE_URL + "/activities/%s" % transaction.body["object_id"]
+            self.STRAVA_BASE_URL + "/activities/" + str(transaction.body["object_id"])
         )
         activity_json = read_data("manual_activity.json", dir_path=CURRENT_DIR)
 
@@ -438,8 +526,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 
@@ -483,8 +570,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
         httpretty.disable()
 
         transactions = WebhookTransaction.objects.all()
@@ -514,8 +600,7 @@ class ActivityTestCase(TestCase):
         httpretty.enable(allow_net_connect=False)
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
         httpretty.disable()
 
         transactions = WebhookTransaction.objects.all()
@@ -529,15 +614,14 @@ class ActivityTestCase(TestCase):
     def test_process_strava_event_missing_user(self):
         transaction = WebhookTransactionFactory()
 
-        # link transaction to inexistant athlete
+        # link transaction to non-existent athlete
         transaction.body["owner_id"] = 666
         transaction.save()
 
         httpretty.enable(allow_net_connect=False)
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 
@@ -584,8 +668,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 
@@ -601,12 +684,42 @@ class ActivityTestCase(TestCase):
         self.assertEqual(transactions.filter(status=self.SKIPPED).count(), 1)
 
     def test_import_strava_activities_view(self):
-        import_url = reverse("routes:import_strava")
+        import_url = reverse("routes:import_activities")
 
         with patch(
             "homebytwo.routes.tasks.import_strava_activities_task.delay"
         ) as mock_task:
             response = self.client.get(import_url)
+            self.assertRedirects(response, reverse("routes:activities"))
+            self.assertTrue(mock_task.called)
+
+    def test_import_strava_activity_streams(self):
+        import_url = reverse("routes:import_streams")
+        activity_type = ActivityTypeFactory.create(name="Run")
+        ActivityFactory.create_batch(
+            5, athlete=self.athlete, activity_type=activity_type, streams=None
+        )
+
+        with patch(
+            "homebytwo.routes.tasks.import_strava_activity_streams_task.delay"
+        ) as mock_task:
+            response = self.client.get(import_url)
+            self.assertRedirects(response, reverse("routes:activities"))
+            self.assertTrue(mock_task.called)
+
+    def test_train_prediction_models(self):
+        train_url = reverse("routes:train_models")
+        activity_type = ActivityTypeFactory.create(name="Run")
+        ActivityFactory.create_batch(
+            5,
+            athlete=self.athlete,
+            activity_type=activity_type,
+        )
+
+        with patch(
+            "homebytwo.routes.tasks.train_prediction_models_task.delay"
+        ) as mock_task:
+            response = self.client.get(train_url)
             self.assertRedirects(response, reverse("routes:activities"))
             self.assertTrue(mock_task.called)
 

@@ -9,8 +9,14 @@ from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from ..prediction_model import PredictionModel
 from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
+
+
+def athlete_data_directory_path(instance, filename):
+    # streams will upload to MEDIA_ROOT/athlete_<id>/<filename>
+    return f"athlete_{instance.athlete.id}/data/{filename}"
 
 
 class Track(TimeStampedModel):
@@ -32,13 +38,13 @@ class Track(TimeStampedModel):
     )
 
     # elevation gain in m
-    totalup = models.FloatField("Total elevation gain in m", default=0)
+    total_elevation_gain = models.FloatField("Total elevation gain in m", default=0)
 
     # elevation loss in m
-    totaldown = models.FloatField("Total elevation loss in m", default=0)
+    total_elevation_loss = models.FloatField("Total elevation loss in m", default=0)
 
     # route distance in m
-    length = models.FloatField("Total length of the track in m", default=0)
+    total_distance = models.FloatField("Total length of the track in m", default=0)
 
     # geographic information
     geom = models.LineStringField("line geometry", srid=21781)
@@ -56,154 +62,154 @@ class Track(TimeStampedModel):
     uuid = models.UUIDField(default=uuid4, editable=False)
 
     # track data as a pandas DataFrame
-    data = DataFrameField(null=True, upload_to="data", unique_fields=["uuid"])
+    data = DataFrameField(
+        null=True, upload_to=athlete_data_directory_path, unique_fields=["uuid"]
+    )
 
-    def update_route_details_from_data(self):
+    def update_track_details_from_data(self):
         """
         set track details from the track data,
         usually replacing remote information received for the route
         """
-        if not all(column in ["totalup", "totaldown"] for column in self.data.columns):
-            self.calculate_cummulative_elevation_differences()
+        if not all(
+            column in ["total_elevation_gain", "total_elevation_loss"]
+            for column in self.data.columns
+        ):
+            self.data = self.calculate_cummulative_elevation_differences(self.data)
 
-        # update length, totalup and totaldown from data
-        self.length = self.data.length.max()
-        self.totaldown = abs(self.data.totaldown.min())
-        self.totalup = self.data.totalup.max()
+        # update total_distance, total_elevation_gain and total_elevation_loss from data
+        self.total_distance = self.data.distance.max()
+        self.total_elevation_loss = abs(self.data.cummulative_elevation_loss.min())
+        self.total_elevation_gain = self.data.cummulative_elevation_gain.max()
 
-    def calculate_elevation_gain_and_distance(self):
+    def calculate_gradient(self, data):
         """
-        add elevation gain and distance between each point to the track data
+        add gradient and distance between each point of the track data.
         """
+
+        # ignore rows where step_distance is shorter than 1m
+        first_row = data.head(1)
+        filtered_rows = data[data["distance"].diff() >= 1]
+        data = first_row.append(filtered_rows)
+
         # calculate distance between each point
-        self.data["distance"] = self.data["length"].diff().fillna(value=0)
+        data["step_distance"] = data.distance.diff().fillna(value=0)
 
-        # calculate elevation gain between each point
-        self.data["gain"] = self.data["altitude"].diff().fillna(value=0)
+        # calculate slope percentage between each point
+        data["gradient"] = (data.altitude.diff() / data.step_distance * 100).fillna(
+            value=0
+        )
 
-    def calculate_cummulative_elevation_differences(self):
+        return data
+
+    def calculate_cummulative_elevation_differences(self, data):
         """
         Calculates two colums from the altitude data:
-        - totalup: cummulative sum of positive elevation data
-        - totaldown: cummulative sum of negative elevation data
+        - cummulative_elevation_gain: cummulative sum of positive elevation data
+        - cummulative_elevation_loss: cummulative sum of negative elevation data
         """
-        data = self.data
 
         # only consider entries where altitude difference is greater than 0
-        data["totalup"] = data["altitude"].diff()[data["altitude"].diff() >= 0].cumsum()
+        data["cummulative_elevation_gain"] = data.altitude.diff()[
+            data.altitude.diff() >= 0
+        ].cumsum()
 
         # only consider entries where altitude difference is less than 0
-        data["totaldown"] = (
-            data["altitude"].diff()[data["altitude"].diff() <= 0].cumsum()
-        )
+        data["cummulative_elevation_loss"] = data.altitude.diff()[
+            data.altitude.diff() <= 0
+        ].cumsum()
 
         # Fill the NaNs with the last valid value of the series
         # then, replace the remainng NaN (at the beginning) with 0
-        data[["totalup", "totaldown"]] = (
-            data[["totalup", "totaldown"]].fillna(method="ffill").fillna(value=0)
+        data[["cummulative_elevation_gain", "cummulative_elevation_loss"]] = (
+            data[["cummulative_elevation_gain", "cummulative_elevation_loss"]]
+            .fillna(method="ffill")
+            .fillna(value=0)
         )
 
-        self.data = data
+        return data
 
-    def get_performance_data(self, user):
+    def get_prediction_model(self, user):
         """
-        retrieve performance parameters for activity type
+        retrieve performance parameters for user and activity type,
+        fallback on activity type if missing and return prediction model.
         """
-        activity_type = self.activity_type
-
         if user.is_authenticated:
             performance = ActivityPerformance.objects
             performance = performance.filter(athlete=user.athlete)
-            performance = performance.filter(activity_type=activity_type)
+            performance = performance.filter(activity_type=self.activity_type)
 
         if user.is_authenticated and performance.exists():
             # we have performance values for this athlete and activity
             performance = performance.get()
 
         else:
-            # no user performance: fallback on activity defaults
-            performance = activity_type
+            # no user performance: fallback on activity_type defaults
+            performance = self.activity_type
 
-        return performance
+        return PredictionModel(
+            regression_coefficients=performance.regression_coefficients,
+            regression_intercept=performance.flat_parameter,
+            onehot_encoder_categories=[
+                performance.gear_categories,
+                performance.workout_type_categories,
+            ],
+        )
 
-    def calculate_projected_time_schedule(self, user):
+    def calculate_projected_time_schedule(self, user, workout_type=None, gear=None):
         """
-        Calculates a time schedule based on activity, user performance,
-        and total elevation gain.
-
-        The pace of the athlete depends on the slope of the travelled terrain.
-        we estimate a polynomial equation for the pace.
-
-            pace = slope_param_squared * slope**2 +
-                   slope_param * slope +
-                   flat_pace_param +
-                   total_elevation_gain_param * total_elevation_gain
-
-        Where the pace in s/m and slope_param_squared, slope_param,
-        flat_pace_param and total_elevation_gain_param are variables fitted
-        with a polynomial linear regression from past Strava performances.
-
-            pace = time / distance
-            slope = elevation_gain / distance
-
-        We solve for time:
-
-        time = (slope_param_squared * elevation_gain**2 / distance) +
-                slope_param * elevation_gain +
-                flat_pace_param * distance +
-                total_elevation_gain_param * total_elevation_gain * distance
-
-        total_elevation_gain_param * total_elevation_gain is added to account for the total effort.
-
+        Calculates route pace and route schedule based on the athlete's prediction model
+        for the route's activity type.
         """
 
         data = self.data
 
         # make sure we have cummulative elevation differences
-        if not all(column in ["totalup", "totaldown"] for column in data.columns):
-            self.calculate_cummulative_elevation_differences()
+        if not all(
+            column in ["total_elevation_gain", "total_elevation_loss"]
+            for column in data.columns
+        ):
+            data = self.calculate_cummulative_elevation_differences(data)
 
         # make sure we have elevation gain and distance data
-        if not all(column in ["gain", "distance"] for column in data.columns):
-            self.calculate_elevation_gain_and_distance()
+        if not all(column in ["gradient", "step_distance"] for column in data.columns):
+            data = self.calculate_gradient(data)
 
-        # get performance data for athlete and activity
-        performance = self.get_performance_data(user)
+        # add route totals to every row
+        data["total_distance"] = max(data.distance)
+        data["total_elevation_gain"] = max(data.cummulative_elevation_gain)
 
-        # set performance parameters
-        slope_squared_param = performance.slope_squared_param
-        slope_param = performance.slope_param
-        flat_param = performance.flat_param
-        total_elevation_gain_param = performance.total_elevation_gain_param
+        # add gear and workout type to every row
+        data["gear"] = gear or "None"
+        data["workout_type"] = workout_type or "None"
 
-        # Calculate schedule, ignoring segments where distance is 0
-        data["schedule"] = (
-            (
-                (slope_squared_param * data["gain"] ** 2) / data["distance"]
-                + slope_param * data["gain"]
-                + flat_param * data["distance"]
-                + total_elevation_gain_param * data["totalup"] / 1000 * data["distance"]
-            )
-            .where(data["distance"] > 0.1, 0)
-            .cumsum()
-            .fillna(value=0)
-        )
+        # restore prediction model for athlete and activity_type
+        prediction_model = self.get_prediction_model(user)
+
+        # keep model pipelines and columns in local variable for readability
+        pipeline = prediction_model.pipeline
+        numerical_columns = prediction_model.numerical_columns
+        categorical_columns = prediction_model.categorical_columns
+        feature_columns = numerical_columns + categorical_columns
+
+        data["pace"] = pipeline.predict(data[feature_columns])
+        data["schedule"] = (data.pace * data.step_distance).cumsum().fillna(value=0)
 
         self.data = data
 
     def get_data(self, line_location, data_column):
         """
         interpolate the value of a given column in the DataFrame
-        based on the line_location and the distance column.
+        based on the line_location and the total_distance column.
         """
 
         # calculate the distance value to interpolate with
         # based on line location and the total length of the track.
-        interp_x = line_location * self.length
+        interp_x = line_location * self.total_distance
 
         # interpolate the value, see:
         # https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html
-        return interp(interp_x, self.data["length"], self.data[data_column])
+        return interp(interp_x, self.data["distance"], self.data[data_column])
 
     def get_distance_data(self, line_location, data_column):
         """
@@ -234,23 +240,23 @@ class Track(TimeStampedModel):
         end_altitude = self.get_distance_data(1, "altitude")
         return end_altitude
 
-    def get_length(self):
+    def get_total_distance(self):
         """
-        returns track length as a Distance object
+        returns track total_distance as a Distance object
         """
-        return D(m=self.length)
+        return D(m=self.total_distance)
 
-    def get_totalup(self):
+    def get_total_elevation_gain(self):
         """
         returns cummalive altitude gain as a Distance object
         """
-        return D(m=self.totalup)
+        return D(m=self.total_elevation_gain)
 
-    def get_totaldown(self):
+    def get_total_elevation_loss(self):
         """
         returns cummalive altitude loss as a Distance object
         """
-        return D(m=self.totaldown)
+        return D(m=self.total_elevation_loss)
 
     def get_total_duration(self):
         """

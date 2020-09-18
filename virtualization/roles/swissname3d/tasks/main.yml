@@ -27,7 +27,7 @@
     - "/tmp/sn3d/swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.*"
 
 - name: import places from shapefile
-  command: "{{ env_root }}/bin/python {{ django_root }}manage.py importswissname3d --no-input --delete {{ django_root }}{{ project_name}}/media/shapefiles/swissNAMES3D_PKT.shp"
+  command: "{{ env_root }}/bin/python {{ django_root }}manage.py importswissname3d --no-input --delete {{ django_root }}{{ project_name}}/media/swissNAMES3D_PKT.shp"
 
 - name: remove temporary directory
   file:

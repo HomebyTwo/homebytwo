@@ -3,6 +3,8 @@
 django-appconf
 django-debug-toolbar
 django-extensions
+fabric3
+gitric
 ipython
 pip-tools
 tox

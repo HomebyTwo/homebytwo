@@ -28,14 +28,17 @@ def import_routes(request, data_source):
 
     # retrieve remote routes list
     remote_routes = route_class.objects.get_remote_routes_list(
-        athlete=request.user.athlete, session=request.session
+        athlete=request.user.athlete,
+        cookies=request.session.get("switzerland_mobility_cookies"),
     )
 
     # retrieve the athlete's list of routes already saved in homebytwo
     local_routes = route_class.objects.for_user(request.user)
 
     # split routes in 3 lists
-    new_routes, existing_routes, deleted_routes = split_routes(remote_routes, local_routes)
+    new_routes, existing_routes, deleted_routes = split_routes(
+        remote_routes, local_routes
+    )
 
     context = {
         "new_routes": new_routes,
@@ -52,7 +55,7 @@ def import_routes(request, data_source):
 @remote_connection
 def import_route(request, data_source, source_id):
     """
-    import form for Strava
+    import routes from external sources
 
     There is a modelform for the route with custom __init__ ans save methods
     to find available checkpoints and save the ones selected by the athlete
@@ -64,12 +67,12 @@ def import_route(request, data_source, source_id):
     # retrieve route class from data source in url
     route_class = get_route_class_from_data_source(data_source)
 
-    # instantiate route stub with athlte ans source_id from url
+    # instantiate route stub with athlete and source_id from url
     route = route_class(athlete=request.user.athlete, source_id=source_id)
 
     # fetch route details from Remote API
-    route.get_route_details()
-    route.update_route_details_from_data()
+    route.get_route_details(request.session.get("switzerland_mobility_cookies"))
+    route.update_track_details_from_data()
 
     if request.method == "POST":
         # populate checkpoints_formset with POST data
@@ -80,10 +83,6 @@ def import_route(request, data_source, source_id):
 
         # Success! redirect to the page of the newly imported route
         if new_route:
-
-            # udpate route details calculate route schedule for route owner
-            route.calculate_projected_time_schedule(route.athlete.user)
-
             message = "Route imported successfully from {}".format(
                 route_class.DATA_SOURCE_NAME
             )
@@ -112,7 +111,7 @@ def switzerland_mobility_login(request):
     # POST request, validate and login
     if request.method == "POST":
 
-        # instanciate login form and populate it with POST data:
+        # instantiate login form and populate it with POST data:
         form = SwitzerlandMobilityLogin(request.POST)
 
         # If the form validates,

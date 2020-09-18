@@ -1,14 +1,23 @@
-import os
+import json
+from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
-from factory import Faker, Sequence, SubFactory
+from factory import Faker, Iterator, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
-from pandas import read_json
+from pandas import DataFrame, read_json
 from pytz import utc
 
-from ...routes.models import Activity, ActivityType, Gear, Place, Route, WebhookTransaction
+from ...routes.models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Gear,
+    Place,
+    Route,
+    WebhookTransaction,
+)
 from ...utils.factories import AthleteFactory, get_field_choices
 
 
@@ -35,10 +44,8 @@ Faker.add_provider(DjangoGeoLocationProvider)
 
 
 def load_data(file):
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    data_dir = "data"
-
-    json_path = os.path.join(dir_path, data_dir, file,)
+    dir_path = Path(__file__).resolve().parent
+    json_path = dir_path / "data" / file
 
     return open(json_path).read()
 
@@ -58,14 +65,15 @@ class ActivityTypeFactory(DjangoModelFactory):
         model = ActivityType
         django_get_or_create = ("name",)
 
-    name = Faker(
-        "random_element",
-        elements=list(get_field_choices(ActivityType.ACTIVITY_NAME_CHOICES)),
-    )
-    slope_squared_param = Faker("pyfloat", min_value=3, max_value=10)
-    slope_param = Faker("pyfloat", min_value=0, max_value=1)
-    flat_param = Faker("pyfloat", min_value=0, max_value=1)
-    total_elevation_gain_param = Faker("pyfloat", min_value=0, max_value=1)
+    name = Iterator(ActivityType.SUPPORTED_ACTIVITY_TYPES)
+
+
+class ActivityPerformanceFactory(DjangoModelFactory):
+    class Meta:
+        model = ActivityPerformance
+
+    athlete = SubFactory(AthleteFactory)
+    activity_type = SubFactory(ActivityTypeFactory)
 
 
 class PlaceFactory(DjangoModelFactory):
@@ -97,9 +105,9 @@ class RouteFactory(DjangoModelFactory):
     description = Faker("bs")
     athlete = SubFactory(AthleteFactory)
     garmin_id = None
-    totalup = Faker("random_int", min=0, max=5000)
-    totaldown = Faker("random_int", min=0, max=5000)
-    length = Faker("random_int", min=1, max=5000)
+    total_elevation_gain = Faker("random_int", min=0, max=5000)
+    total_elevation_loss = Faker("random_int", min=0, max=5000)
+    total_distance = Faker("random_int", min=1, max=5000)
     geom = GEOSGeometry(route_geojson, srid=21781)
     start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0]))
     end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1]))
@@ -109,6 +117,9 @@ class RouteFactory(DjangoModelFactory):
 class ActivityFactory(DjangoModelFactory):
     class Meta:
         model = Activity
+        exclude = ("streams_json",)
+
+    streams_json = load_data("streams.json")
 
     name = Faker("sentence")
     description = Faker("bs")
@@ -118,7 +129,7 @@ class ActivityFactory(DjangoModelFactory):
     activity_type = SubFactory(ActivityTypeFactory)
     manual = False
     distance = Faker("random_int", min=500, max=5000)
-    totalup = Faker("random_int", min=0, max=5000)
+    total_elevation_gain = Faker("random_int", min=0, max=5000)
     elapsed_time = Faker("time_delta")
     moving_time = elapsed_time
     workout_type = Faker(
@@ -126,6 +137,9 @@ class ActivityFactory(DjangoModelFactory):
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
     gear = SubFactory(GearFactory)
+    streams = DataFrame(
+        {stream["type"]: stream["data"] for stream in json.loads(streams_json)}
+    )
 
 
 class WebhookTransactionFactory(DjangoModelFactory):

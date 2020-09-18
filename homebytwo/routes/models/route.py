@@ -15,14 +15,19 @@ from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
 
 from ..models import Checkpoint, Track
-from ..utils import GARMIN_ACTIVITY_TYPE_MAP, Link, create_segments_from_checkpoints, get_places_from_segment
+from ..utils import (
+    GARMIN_ACTIVITY_TYPE_MAP,
+    Link,
+    create_segments_from_checkpoints,
+    get_places_from_segment,
+)
 
 
 class RouteQuerySet(models.QuerySet):
     def for_user(self, user):
         """
         return all routes of a given user.
-        this is convinient with the 'request.user' object in views.
+        this is convenient with the 'request.user' object in views.
         """
         return self.filter(athlete=user.athlete)
 
@@ -133,7 +138,7 @@ class Route(Track):
         retrieve the route URL on the site that the route was imported from
 
         The Strava API agreement requires that a link to the original resources
-        be diplayed on the pages that use data from Strava.
+        be displayed on the pages that use data from Strava.
         """
 
         # Switzerland Mobility Route
@@ -180,7 +185,8 @@ class Route(Track):
 
     @property
     def proxy_class(self):
-        return apps.get_model(self.DATA_SOURCE_PROXY_MODELS[self.data_source])
+        proxy_model = self.DATA_SOURCE_PROXY_MODELS.get(self.data_source)
+        return apps.get_model(proxy_model) if proxy_model else None
 
     @property
     def can_be_imported(self):
@@ -198,7 +204,38 @@ class Route(Track):
     def gpx_filename(self):
         return "homebytwo_{}.gpx".format(self.pk)
 
-    def update_from_remote(self):
+    def get_route_details(self, cookies=None):
+        """
+        retrieve route details from the remote service.
+
+        Must be implemented in in the proxy class of the remote service,
+        e.g. SwitzerlandMobilityRoute, StravaRoute. The `cookies` parameter
+        expects authorization cookies for Switzerland Mobility stored in the session
+        and is only used for Switzerland Mobility.
+        """
+        raise NotImplementedError
+
+    def get_route_data(self, cookies=None):
+        """
+        retrieve route details from the remote service.
+
+        Must be implemented in in the proxy class of the remote service,
+        e.g. SwitzerlandMobilityRoute, StravaRoute. The `cookies` parameter
+        expects authorization cookies for Switzerland Mobility stored in the session
+        and is only used for Switzerland Mobility.
+        """
+
+        # get the proxy class corresponding to the data_source
+        route_class = self.proxy_class
+
+        if route_class:
+            proxy_route = route_class.objects.get(pk=self.pk)
+            return proxy_route.get_route_data(cookies)
+
+        else:
+            raise NotImplementedError
+
+    def update_from_remote(self, cookies=None):
         """
         update an existing route with the data from the remote service.
         """
@@ -208,10 +245,7 @@ class Route(Track):
             route = route_class.objects.get(pk=self.pk)
 
             # overwrite route with remote info
-            route.get_route_details()
-
-            # reset the checkpoints, the price of updating from remote
-            route.checkpoint_set.all().delete()
+            route.get_route_details(cookies)
 
             return route
 
@@ -236,7 +270,7 @@ class Route(Track):
         The recursive strategy creates a new line substrings between
         the found checkpoints and runs the query on these line substrings again.
         If a new place is found on the line substring. We look for other checkpoints
-        again on the newly created segements. If no new checkpoint is found,
+        again on the newly created segments. If no new checkpoint is found,
         the segment is discarded from the recursion.
 
         For example, if the route passes through these checkpoints:
@@ -333,8 +367,8 @@ class Route(Track):
         """
         return the GPXTrack object corresponding to the route
 
-        According to GPX specificatioins, GPS tracks can contain one or segments of
-        continuous GPS tracking. For our scchedule, we create a single segement.
+        According to GPX specifications, GPS tracks can contain one or segments of
+        continuous GPS tracking. For our schedule, we create a single segment.
         """
         # Instantiate GPX Track
         gpx_track = gpxpy.gpx.GPXTrack(name=self.name)
@@ -348,17 +382,20 @@ class Route(Track):
 
         # we cannot start from the route geometry
         # because it can have a different number of coords than the number of rows
-        # in the route data. We start from the length column in the route data and
+        # in the route data. We start from the distance column in the route data and
         # save the corresponding Point in the Linestring geometry to lat, lng columns.
-        self.data["lng"], self.data["lat"] = zip(  # unpack list of coords tupples
-            *(self.data["length"] / self.data["length"].max())  # line location
+        self.data["lng"], self.data["lat"] = zip(  # unpack list of coords tuples
+            *(self.data["distance"] / self.data["distance"].max())  # line location
             .apply(lambda x: geom.interpolate_normalized(x).coords)  # get Point
-            .to_list()  # dump list of coords tupples
+            .to_list()  # dump list of coords tuples
         )
 
         # create the GPXTrackPoints from the route data and append them to the segment
         for lng, lat, altitude, schedule in zip(
-            self.data.lng, self.data.lat, self.data.altitude, self.data.schedule,
+            self.data.lng,
+            self.data.lat,
+            self.data.altitude,
+            self.data.schedule,
         ):
             gpx_track_point = gpxpy.gpx.GPXTrackPoint(
                 latitude=lat,
@@ -396,7 +433,7 @@ class Route(Track):
         garmin_api = GarminAPI()
         session = self.authenticate_on_garmin(garmin_api)
 
-        # delete existing activity on Garmmin
+        # delete existing activity on Garmin
         if self.garmin_id > 1:
             self.delete_garmin_activity(session)
 
@@ -404,7 +441,7 @@ class Route(Track):
         with NamedTemporaryFile(mode="w+b", suffix=".gpx") as file:
             file.write(bytes(self.get_gpx(), encoding="utf-8"))
 
-            # instantiate activity object from garmin_uploade
+            # instantiate activity object from garmin_upload
             activity = GarminActivity(
                 path=file.name,
                 name="HB2 {}".format(self.name),
