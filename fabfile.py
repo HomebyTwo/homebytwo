@@ -245,7 +245,10 @@ def compile_assets():
     local(
         "rsync -e 'ssh -p {port}' -r --exclude *.map --exclude *.swp static/dist/ "
         "{user}@{host}:{path}".format(
-            host=env.host, user=env.user, port=env.port, path=Path(env.root, "static"),
+            host=env.host,
+            user=env.user,
+            port=env.port,
+            path=Path(env.root, "static"),
         )
     )
 

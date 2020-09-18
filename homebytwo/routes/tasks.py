@@ -1,8 +1,6 @@
 import logging
 
 from celery import group, shared_task
-from celery.schedules import crontab
-from celery.task import PeriodicTask
 from garmin_uploader.api import GarminAPIException
 
 from .models import (
@@ -136,7 +134,8 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         )
 
 
-class ProcessStravaEvents(PeriodicTask):
+@shared_task
+def process_strava_events():
     """
     process events received from Strava and saved as transactions in the database
 
@@ -145,73 +144,77 @@ class ProcessStravaEvents(PeriodicTask):
 
     """
 
-    run_every = crontab(minute="*/15")  # this will run every 15 minutes
+    # run_every = crontab(minute="*/15")  # this will run every 15 minutes
+    # retrieve only latest unprocessed transaction per object
+    unprocessed_transactions = WebhookTransaction.objects.filter(
+        status=WebhookTransaction.UNPROCESSED
+    )
+    distinct_transactions = unprocessed_transactions.distinct(
+        "body__object_id", "body__object_type"
+    )
+    distinct_transactions = distinct_transactions.order_by(
+        "body__object_id", "body__object_type", "-date_generated"
+    )
 
-    def run(self):
-        unprocessed_transactions = self.get_transactions_to_process()
-
-        # process only one transaction per object
-        distinct_transactions = unprocessed_transactions.distinct(
-            "body__object_id", "body__object_type"
-        )
-
-        # sort by `-date_generated` to keep the latest
-        distinct_transactions = distinct_transactions.order_by(
-            "body__object_id", "body__object_type", "-date_generated"
-        )
-
-        for transaction in unprocessed_transactions:
-
-            # only process the latest event for each object
-            if transaction in distinct_transactions:
-                try:
-                    self.process_transaction(transaction)
-                    transaction.status = WebhookTransaction.PROCESSED
-                    transaction.save()
-
-                except Exception:
-                    transaction.status = WebhookTransaction.ERROR
-                    logger.exception("Error handling the Strava event.")
-
-                    transaction.save()
-
-            # mark duplicate entries for an object as SKIPPED
-            else:
-                logger.info("webhook transaction {} skipped".format(transaction.id))
-                transaction.status = WebhookTransaction.SKIPPED
+    # handle errors and status
+    for transaction in unprocessed_transactions:
+        if transaction in distinct_transactions:
+            try:
+                _process_transaction(transaction)
+                transaction.status = WebhookTransaction.PROCESSED
                 transaction.save()
 
-    def get_transactions_to_process(self):
-        return WebhookTransaction.objects.filter(status=WebhookTransaction.UNPROCESSED)
+            except Athlete.DoesNotExist:
+                transaction.status = WebhookTransaction.ERROR
+                logger.exception("Athlete not found for this Strava event.")
+                transaction.save()
 
-    def process_transaction(self, transaction):
+            except Exception as error:
+                transaction.status = WebhookTransaction.ERROR
+                logger.exception(f"Error processing Strava event: {error}")
+                transaction.save()
 
-        # find the Strava Athlete
-        athlete = Athlete.objects.get(
-            user__social_auth__provider="strava",
-            user__social_auth__uid=transaction.body["owner_id"],
-        )
+        # mark duplicate entries for the same object as SKIPPED
+        else:
+            logger.info("webhook transaction {} skipped".format(transaction.id))
+            transaction.status = WebhookTransaction.SKIPPED
+            transaction.save()
 
-        # retrieve event values to process
-        object_type = transaction.body["object_type"]
-        object_id = transaction.body["object_id"]
-        aspect_type = transaction.body["aspect_type"]
 
-        # create a new activity if it does not exist already
-        if object_type == "activity":
+def _process_transaction(transaction):
+    """
+    process transactions created by the Strava Event Webhook
+    """
 
-            # retrieve the activity from the database if it exists
-            try:
-                activity = Activity.objects.get(strava_id=object_id)
+    # find the Strava Athlete
+    athlete = Athlete.objects.get(
+        user__social_auth__provider="strava",
+        user__social_auth__uid=transaction.body["owner_id"],
+    )
 
-            # if the activity does not exist, create a stub
-            except Activity.DoesNotExist:
-                activity = Activity(athlete=athlete, strava_id=object_id)
+    # retrieve event values to process
+    object_type = transaction.body["object_type"]
+    object_id = transaction.body["object_id"]
+    aspect_type = transaction.body["aspect_type"]
 
-            # create or update activity from the Strava server
-            if aspect_type in ["create", "update"]:
-                activity.update_from_strava()
+    # create a new activity if it does not exist already
+    if object_type == "activity":
 
-            # delete activity, if it exists
-            if aspect_type == "delete" and activity.id:
-                activity.delete()
+        # retrieve the activity from the database if it exists
+        try:
+            activity = Activity.objects.get(strava_id=object_id)
+
+        # if the activity does not exist, create a stub
+        except Activity.DoesNotExist:
+            activity = Activity(athlete=athlete, strava_id=object_id)
+
+        # create or update activity from the Strava server
+        if aspect_type in ["create", "update"]:
+            activity.update_from_strava()
+
+        # delete activity, if it exists
+        if aspect_type == "delete" and activity.id:
+            activity.delete()
+
+    else:
+        logger.info(f"No action triggered by Strava Event: {object_type}")
