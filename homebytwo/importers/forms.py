@@ -108,7 +108,7 @@ class GpxUploadForm(forms.Form):
 
     def save(self, commit=True):
         gpx = self.cleaned_data["gpx"]
-        points = gpx.tracks[0].segments[0].points
+        points = list((p[0] for p in gpx.walk()))
 
         route = Route(source_id=None)
         (
