@@ -57,8 +57,8 @@ class Route(Track):
     # uuid field to generate unique file names
     uuid = models.UUIDField(default=uuid4, editable=False)
 
-    # source and unique id (at the source) that the route came from
-    source_id = models.BigIntegerField()
+    # source and unique id (at the source) that the route came from. Can be null for some sources such as GPX import
+    source_id = models.BigIntegerField(null=True, blank=True)
     data_source = models.CharField(
         "Where the route came from", default="homebytwo", max_length=50
     )
@@ -392,10 +392,7 @@ class Route(Track):
 
         # create the GPXTrackPoints from the route data and append them to the segment
         for lng, lat, altitude, schedule in zip(
-            self.data.lng,
-            self.data.lat,
-            self.data.altitude,
-            self.data.schedule,
+            self.data.lng, self.data.lat, self.data.altitude, self.data.schedule,
         ):
             gpx_track_point = gpxpy.gpx.GPXTrackPoint(
                 latitude=lat,
