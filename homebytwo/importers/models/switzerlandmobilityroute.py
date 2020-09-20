@@ -66,8 +66,7 @@ class SwitzerlandMobilityRoute(Route):
     # data source name to display in templates
     DATA_SOURCE_NAME = "Switzerland Mobility Plus"
     DATA_SOURCE_LINK = Link(
-        "https://map.schweizmobil.ch/?lang=en&showLogin=true",
-        DATA_SOURCE_NAME,
+        "https://map.schweizmobil.ch/?lang=en&showLogin=true", DATA_SOURCE_NAME,
     )
 
     # Custom manager
@@ -132,7 +131,7 @@ class SwitzerlandMobilityRoute(Route):
             )
 
             # create geom from lat, lng data columns
-            coords = [(lat, lng) for lat, lng in zip(data["lat"], data["lng"])]
+            coords = zip(data["lat"], data["lng"])
             geom = LineString(coords, srid=21781)
 
             # remove redundant lat, lng columns in data
