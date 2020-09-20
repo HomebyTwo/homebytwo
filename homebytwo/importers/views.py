@@ -1,11 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from ..routes.forms import RouteForm
+from ..routes.models import Route
 from .decorators import remote_connection
-from .forms import SwitzerlandMobilityLogin
+from .forms import SwitzerlandMobilityLogin, GpxUploadForm
 from .utils import get_route_class_from_data_source, save_detail_forms, split_routes
 
 
@@ -57,7 +59,7 @@ def import_route(request, data_source, source_id):
     """
     import routes from external sources
 
-    There is a modelform for the route with custom __init__ ans save methods
+    There is a modelform for the route with custom __init__ and save methods
     to find available checkpoints and save the ones selected by the athlete
     to the route.
     """
@@ -100,6 +102,50 @@ def import_route(request, data_source, source_id):
     }
 
     return render(request, template, context)
+
+
+@login_required
+@require_POST
+def upload_gpx(request):
+    """
+    Create a new route from GPX information, save it, and redirect to the import route.
+    """
+    form = GpxUploadForm(request.POST, files=request.FILES)
+
+    if form.is_valid():
+        route = form.save(commit=False)
+        route.athlete = request.user.athlete
+        route.save()
+        return redirect("import_existing_route", route_id=route.pk)
+
+    # FIXME return a 400 if this route is called from JS or show the form with errors
+    return HttpResponse("Invalid form")
+
+
+@login_required
+def import_existing_route(request, route_id):
+    """
+    Add checkpoints, start place and end place to a route that has already been populated with `geom` and `data` (eg.
+    after a GPX import).
+    """
+    route = get_object_or_404(Route, pk=route_id, athlete=request.user.athlete)
+
+    if request.method == "POST":
+        route_form = RouteForm(request.POST, instance=route)
+        new_route = save_detail_forms(request, route_form)
+
+        if new_route:
+            messages.success(request, "Route successfully imported")
+            return redirect("routes:route", pk=route_id)
+    else:
+        route_form = RouteForm(instance=route)
+
+    context = {
+        "object": route,
+        "form": route_form,
+    }
+
+    return render(request, "routes/route_form.html", context)
 
 
 @login_required

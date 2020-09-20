@@ -1,5 +1,5 @@
 from collections import namedtuple
-from itertools import chain, islice, tee
+from itertools import accumulate, chain, islice, tee
 from pathlib import Path
 
 from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
@@ -152,3 +152,17 @@ def get_places_within(point, max_distance=100):
     places = places.order_by("distance_from_line",)
 
     return places
+
+
+def get_distances(points):
+    """
+    Return a list with the distance of each point relative to the previous one in the list.
+    """
+
+    def get_relative_distances():
+        if points:
+            yield 0
+
+        yield from (p2.distance(p1) for p1, p2 in zip(points[1:], points))
+
+    return list(accumulate(get_relative_distances()))

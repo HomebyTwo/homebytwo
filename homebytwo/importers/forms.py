@@ -3,8 +3,14 @@ from json import dumps as json_dumps
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.gis.geos import LineString, Point
 
+import gpxpy
+from pandas import DataFrame
 from requests import Session, codes
+
+from homebytwo.routes.models import Route
+from homebytwo.routes.utils import get_distances
 
 
 class SwitzerlandMobilityLogin(forms.Form):
@@ -86,3 +92,43 @@ class SwitzerlandMobilityLogin(forms.Form):
                 )
                 messages.error(request, message)
                 return False
+
+
+class GpxUploadForm(forms.Form):
+    gpx = forms.FileField()
+
+    def clean_gpx(self):
+        gpx_file = self.cleaned_data["gpx"]
+        try:
+            return gpxpy.parse(gpx_file)
+        except gpxpy.gpx.GPXXMLSyntaxException as e:
+            raise forms.ValidationError(
+                f'Your file doesn\'t appear to be a valid GPX file (error was: "{str(e)}")'
+            )
+
+    def save(self, commit=True):
+        gpx = self.cleaned_data["gpx"]
+        points = gpx.tracks[0].segments[0].points
+
+        route = Route(source_id=None)
+        (
+            route.total_elevation_gain,
+            route.total_elevation_loss,
+        ) = gpx.get_uphill_downhill()
+        # FIXME use length_3d once `Route.geom` has been converted to 3d
+        route.total_distance = gpx.length_2d()
+        # FIXME include `point.elevation` in the tuple once `Route.geom` has been converted to 3d
+        coords = [(point.longitude, point.latitude) for point in points]
+        route.geom = LineString(coords, srid=4326).transform(21781, clone=True)
+
+        distances = get_distances([Point(p) for p in route.geom])
+        route_data = [
+            {"distance": distance, "altitude": point.elevation,}
+            for point, distance in zip(points, distances)
+        ]
+        route.data = DataFrame(route_data, columns=["distance", "altitude"])
+
+        if commit:
+            route.save()
+
+        return route
