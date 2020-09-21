@@ -58,6 +58,10 @@ module.exports = {
         ],
       },
       {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      },
+      {
         test: /\.(svg|png|jpe?g|gif|webp|woff|woff2|eot|ttf|otf)$/,
         exclude: path.resolve('./assets/icons'),
         use: [
@@ -112,17 +116,5 @@ module.exports = {
     contentBase: ['./homebytwo/templates/'],
     publicPath: '/static/assets/',
     watchContentBase: true,
-  },
-  optimization: {
-    splitChunks: {
-      cacheGroups: {
-        styles: {
-          name: 'styles',
-          test: /\.css$/,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    },
   },
 };
