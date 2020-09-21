@@ -1,6 +1,8 @@
 {% if object.geom %}
-<div class="mrgv grid grid--right">
-  <div class="field-label grid__item lg-w-1/5">Route Map</div>
-  <div class="grid__item lg-w-4/5">{% leaflet_map "main" callback="route_map_init" %}</div>
-</div>
+  <div class="mrgv grid grid--right">
+    <div class="field-label grid__item lg-w-1/5">Route Map</div>
+    <div class="grid__item lg-w-4/5">
+      <div id="mapid"></div>
+    </div>
+  </div>
 {% endif %}

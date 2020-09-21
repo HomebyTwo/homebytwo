@@ -3,11 +3,6 @@
 
 {% block title %}Home by Two - {{ route.name }}{% endblock %}
 
-{% block extralinks %}
-{% leaflet_js %}
-{% leaflet_css %}
-{% endblock extralinks %}
-
 {% block header %}
 {% include "routes/_performance_box.html" %}
 {% include "routes/_route_title.html" %}
@@ -22,29 +17,16 @@
 {% endblock content %}
 
 {% if route.geom %}
-{% block extrajs %}
-<script>
-  function route_map_init(map, options) {
-    const route = L.geoJson({{ route| geojsonfeature | safe }});
-  route.addTo(map);
-  map.fitBounds(route.getBounds());
-  map.dragging.disable();
-  map.scrollWheelZoom.disable();
-  const icon = L.divIcon({
-    className: 'placeIcon placeIcon--default',
-  });
-  const places = Array.from(document.querySelectorAll('.place--known'));
-  const markers = places.map(place => {
-    L.geoJson(JSON.parse(place.dataset.geom), {
-      pointToLayer: (feature, latlng) => L.marker(latlng, {
-        icon: icon,
-        title: feature.properties.name
-      }),
-      style: feature => ({ color: '000000' }),
-      onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
-    }).addTo(map);
-  });
-      }
-</script>
-{% endblock extrajs %}
+  {% block extrajs %}
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
+          id: 'mapid',
+          routeGeoJson: {{ route | geojsonfeature | safe }},
+          divIconClassName: 'placeIcon placeIcon--default',
+          markersSelector: '.place--known',
+        }, ['dragging', 'scrollWheelZoom']);
+      });
+    </script>
+  {% endblock extrajs %}
 {% endif %}

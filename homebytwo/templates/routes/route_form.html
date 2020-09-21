@@ -4,11 +4,6 @@
 
 {% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
 
-{% block extralinks %}
-{% leaflet_js %}
-{% leaflet_css %}
-{% endblock extralinks %}
-
 {% block content %}
 <h2 class="text-center mrgb0">{{ object.name }}</h2>
 <div class="h3 text-center mrgt0">{{ object.get_total_distance.km|floatformat:1|intcomma }}km -
@@ -31,30 +26,16 @@
 {% endblock content %}
 
 {% if object.geom %}
-{% block extrajs %}
-<script>
-  function route_map_init(map, options) {
-    const route = L.geoJson({{ object | geojsonfeature | safe }});
-  route.addTo(map);
-  map.fitBounds(route.getBounds());
-  map.scrollWheelZoom.disable();
-  map.touchZoom.disable();
-  map.boxZoom.disable();
-  const icon = L.divIcon({
-    className: 'placeIcon placeIcon--default',
-  });
-  const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
-  const markers = checkpoints.map(checkpoint => {
-    L.geoJson(JSON.parse(checkpoint.dataset.geom), {
-      pointToLayer: (feature, latlng) => L.marker(latlng, {
-        icon: icon,
-        title: feature.properties.name
-      }),
-      style: feature => ({ color: '000000' }),
-      onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
-    }).addTo(map);
-  });
-      }
-</script>
-{% endblock extrajs %}
+  {% block extrajs %}
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
+          id: 'mapid',
+          routeGeoJson: {{ object | geojsonfeature | safe }},
+          divIconClassName: 'placeIcon placeIcon--default',
+          markersSelector: '[data-geom]',
+        }, ['touchZoom', 'scrollWheelZoom', 'boxZoom']);
+      });
+    </script>
+  {% endblock extrajs %}
 {% endif %}

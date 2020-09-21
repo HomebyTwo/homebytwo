@@ -1,6 +1,6 @@
 {% if route.geom %}
-<div class="section mrgv" id="map">
-  <h2>Route Map</h2>
-  {% leaflet_map "main" callback="route_map_init" %}
-</div>
+  <div class="section mrgv" id="map">
+    <h2>Route Map</h2>
+    <div id="mapid"></div>
+  </div>
 {% endif %}
