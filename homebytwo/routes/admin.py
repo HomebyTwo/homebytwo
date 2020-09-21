@@ -11,6 +11,7 @@ from .models import (
     Place,
     Route,
     WebhookTransaction,
+    ActivityType,
 )
 
 
@@ -57,6 +58,7 @@ class UserAdmin(BaseUserAdmin):
     ]
 
 
+admin.site.register(ActivityType)
 admin.site.register(Route, RouteAdmin)
 admin.site.register(Place, PlaceAdmin)
 admin.site.register(Activity, ActivityAdmin)
