@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load leaflet_tags geojson_tags humanize %}
+{% load geojson_tags humanize %}
 
 
 {% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
