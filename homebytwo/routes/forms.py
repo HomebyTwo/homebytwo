@@ -94,11 +94,15 @@ class RouteForm(ModelForm):
         ]
 
     start_place = ModelChoiceField(
-        queryset=Place.objects.all(), empty_label=None, required=False,
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
     )
 
     end_place = ModelChoiceField(
-        queryset=Place.objects.all(), empty_label=None, required=False,
+        queryset=Place.objects.all(),
+        empty_label=None,
+        required=False,
     )
 
     checkpoints = CheckpointsChoiceField(required=False)

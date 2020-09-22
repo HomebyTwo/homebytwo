@@ -141,12 +141,16 @@ class Place(TimeStampedModel):
         # The pair 'data_source' and 'source_id' should be unique together.
         constraints = [
             models.UniqueConstraint(
-                name="unique place for source", fields=["data_source", "source_id"],
+                name="unique place for source",
+                fields=["data_source", "source_id"],
             ),
         ]
 
     def __str__(self):
-        return "{0} - {1}".format(self.name, self.get_place_type_display(),)
+        return "{0} - {1}".format(
+            self.name,
+            self.get_place_type_display(),
+        )
 
     def save(self, *args, **kwargs):
         """
@@ -241,5 +245,7 @@ class Checkpoint(models.Model):
         route = route or self.route
 
         return self.place.get_gpx_waypoint(
-            route=route, line_location=self.line_location, start_time=start_time,
+            route=route,
+            line_location=self.line_location,
+            start_time=start_time,
         )
