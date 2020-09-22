@@ -123,7 +123,10 @@ class GpxUploadForm(forms.Form):
 
         distances = get_distances([Point(p) for p in route.geom])
         route_data = [
-            {"distance": distance, "altitude": point.elevation,}
+            {
+                "distance": distance,
+                "altitude": point.elevation,
+            }
             for point, distance in zip(points, distances)
         ]
         route.data = DataFrame(route_data, columns=["distance", "altitude"])

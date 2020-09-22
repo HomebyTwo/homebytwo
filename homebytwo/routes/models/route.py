@@ -392,7 +392,10 @@ class Route(Track):
 
         # create the GPXTrackPoints from the route data and append them to the segment
         for lng, lat, altitude, schedule in zip(
-            self.data.lng, self.data.lat, self.data.altitude, self.data.schedule,
+            self.data.lng,
+            self.data.lat,
+            self.data.altitude,
+            self.data.schedule,
         ):
             gpx_track_point = gpxpy.gpx.GPXTrackPoint(
                 latitude=lat,

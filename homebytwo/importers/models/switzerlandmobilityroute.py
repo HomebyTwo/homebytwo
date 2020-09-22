@@ -66,7 +66,8 @@ class SwitzerlandMobilityRoute(Route):
     # data source name to display in templates
     DATA_SOURCE_NAME = "Switzerland Mobility Plus"
     DATA_SOURCE_LINK = Link(
-        "https://map.schweizmobil.ch/?lang=en&showLogin=true", DATA_SOURCE_NAME,
+        "https://map.schweizmobil.ch/?lang=en&showLogin=true",
+        DATA_SOURCE_NAME,
     )
 
     # Custom manager
