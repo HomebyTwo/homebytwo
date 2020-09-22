@@ -30,12 +30,13 @@ def test_prediction_model_with_defaults():
     assert prediction_model.polynomial_columns == ["gradient"]
     assert prediction_model.onehot_encoder_categories == "auto"
     assert prediction_model.pipeline.named_steps["columntransformer"]
-    assert prediction_model.pipeline.named_steps["ridge"]
+    assert prediction_model.pipeline.named_steps["linearregression"]
 
 
 def test_prediction_model_with_custom_parameters():
     prediction_model = PredictionModel(
-        categorical_columns=["gear", "workout_type"], numerical_columns=[],
+        categorical_columns=["gear", "workout_type"],
+        numerical_columns=[],
     )
 
     assert prediction_model.onehot_encoder_categories == "auto"
@@ -165,7 +166,8 @@ def test_activity_performance_form_no_activity_performance(test_athlete):
     athlete_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=other_activity_type)
     ActivityPerformanceFactory(
-        athlete=test_athlete, activity_type=athlete_activity_type,
+        athlete=test_athlete,
+        activity_type=athlete_activity_type,
     )
     form = ActivityPerformanceForm(route=route, athlete=test_athlete)
 

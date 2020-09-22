@@ -81,7 +81,8 @@ class PlaceFactory(DjangoModelFactory):
         model = Place
 
     place_type = Faker(
-        "random_element", elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
+        "random_element",
+        elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
     )
     name = Faker("city")
     description = Faker("bs")

@@ -600,7 +600,7 @@ class ActivityPerformance(TimeStampedModel):
         self.model_score = prediction_model.model_score
         self.cv_scores = prediction_model.cv_scores
 
-        regression = prediction_model.pipeline.named_steps["ridge"]
+        regression = prediction_model.pipeline.named_steps["linearregression"]
         self.regression_coefficients = regression.coef_
         self.flat_parameter = regression.intercept_
 
