@@ -21,17 +21,17 @@ def athlete(db, client):
 
 
 @fixture()
-def data_dir_path(request):
-    def _data_dir_path():
+def test_dir_path(request):
+    def _test_dir_path():
         return Path(request.module.__file__).parent.resolve()
 
-    return _data_dir_path
+    return _test_dir_path
 
 
 @fixture()
-def open_file(data_dir_path):
+def open_file(test_dir_path):
     def _open_file(file, binary=False):
-        return open_data(file, data_dir_path(), binary)
+        return open_data(file, test_dir_path(), binary)
 
     return _open_file
 

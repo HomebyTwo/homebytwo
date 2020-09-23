@@ -168,6 +168,7 @@ class Route(Track):
         data_source_svg = {
             "switzerland_mobility": "images/switzerland_mobility.svg",
             "strava": "images/strava.svg",
+            "homebytwo": "images/homebytwo.svg",
         }
 
         return data_source_svg.get(self.data_source)

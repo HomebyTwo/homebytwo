@@ -123,13 +123,13 @@ class GpxUploadForm(forms.Form):
 
     def save(self, commit=True):
         gpx = self.cleaned_data["gpx"]
+        route = Route(source_id=None)
+
+        # use the `name` in the GPX file as proposition for the route name
+        route.name = gpx.name if gpx.name else ""
 
         # assume we want to use all points of all tracks in the GPX file
         points = list(gpx.walk(only_points=True))
-
-        # use the `name` in the GPX file as proposition for the route name
-        route = Route(source_id=None)
-        route.name = gpx.name if gpx.name else ""
 
         # create route geometry from coords
         coords = [(point.longitude, point.latitude) for point in points]

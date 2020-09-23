@@ -1,22 +1,12 @@
-from django import forms
 from django.contrib.gis.geos import LineString
 from django.urls import reverse
 
 from pandas import DataFrame
-from pytest import approx, raises
+from pytest import approx
 from pytest_django.asserts import assertRedirects, assertTemplateUsed
 
 from ...routes.models import Route
 from ..forms import GpxUploadForm
-
-try:
-    # Load LXML or fallback to cET or ET
-    import lxml.etree as mod_etree  # type: ignore
-except ImportError:
-    try:
-        import xml.etree.cElementTree as mod_etree  # type: ignore
-    except ImportError:
-        import xml.etree.ElementTree as mod_etree  # type: ignore
 
 
 def test_gpx_upload_form(uploaded_file):
