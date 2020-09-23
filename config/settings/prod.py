@@ -18,6 +18,20 @@ LOGGING = {
     "loggers": {"django": {"handlers": ["file"], "level": "ERROR", "propagate": True}},
 }
 
+##################
+# Secure Cookies #
+##################
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+#########################
+# File upload permission#
+#########################
+
+FILE_UPLOAD_PERMISSIONS = 0o660
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o770
+
 ######################
 # Sentry Integration #
 ######################

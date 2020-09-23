@@ -24,6 +24,7 @@ from .tasks import (
     import_strava_activity_streams_task,
     train_prediction_models_task,
     upload_route_to_garmin_task,
+    process_strava_events,
 )
 from ..importers.exceptions import SwitzerlandMobilityError
 
@@ -269,6 +270,9 @@ def strava_webhook(request):
             request_meta=meta_data,
             date_generated=datetime.fromtimestamp(data["event_time"], tz=utc),
         )
+
+        # import activity into the database
+        process_strava_events.delay()
 
         return HttpResponse(status=200)
 

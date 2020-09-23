@@ -15,7 +15,7 @@ from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..fields import DataFrameField
 from ..models import Activity, Gear, WebhookTransaction
-from ..tasks import ProcessStravaEvents, import_strava_activities_task
+from ..tasks import process_strava_events, import_strava_activities_task
 from .factories import (
     ActivityFactory,
     ActivityTypeFactory,
@@ -439,7 +439,11 @@ class ActivityTestCase(TestCase):
         assert activity.save_streams_from_strava() is None
         assert activity.streams is None
 
-    @override_settings(STRAVA_VERIFY_TOKEN="RIGHT_TOKEN")
+    @override_settings(
+        STRAVA_VERIFY_TOKEN="RIGHT_TOKEN",
+        CELERY_TASK_ALWAYS_EAGER=True,
+        CELERY_TASK_EAGER_PROPAGATES=True,
+    )
     def test_strava_webhook_callback_url(self):
 
         # subscription validation successful
@@ -449,7 +453,6 @@ class ActivityTestCase(TestCase):
             "hub.challenge": "challenge",
             "hub.mode": "subscribe",
         }
-
         response = self.client.get(url, data)
         self.assertContains(response, data["hub.challenge"])
 
@@ -460,8 +463,27 @@ class ActivityTestCase(TestCase):
         self.assertEqual(response.status_code, 401)
 
         # event posted by Strava
-        data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
-        response = self.client.post(url, data, content_type="application/json")
+        with httpretty.enabled(allow_net_connect=False):
+
+            activity_response = read_data(
+                "race_run_activity.json", dir_path=CURRENT_DIR
+            )
+            event_data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
+
+            strava_activity_url = (
+                self.STRAVA_BASE_URL + f"/activities/{event_data['object_id']}"
+            )
+
+            httpretty.register_uri(
+                uri=strava_activity_url,
+                method=httpretty.GET,
+                body=activity_response,
+                status=200,
+            )
+
+            response = self.client.post(
+                url, event_data, content_type="application/json"
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookTransaction.objects.count(), 1)
@@ -504,8 +526,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 
@@ -549,8 +570,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
         httpretty.disable()
 
         transactions = WebhookTransaction.objects.all()
@@ -580,8 +600,7 @@ class ActivityTestCase(TestCase):
         httpretty.enable(allow_net_connect=False)
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
         httpretty.disable()
 
         transactions = WebhookTransaction.objects.all()
@@ -602,8 +621,7 @@ class ActivityTestCase(TestCase):
         httpretty.enable(allow_net_connect=False)
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 
@@ -650,8 +668,7 @@ class ActivityTestCase(TestCase):
         )
 
         # process the event
-        task = ProcessStravaEvents()
-        task.run()
+        process_strava_events()
 
         httpretty.disable()
 

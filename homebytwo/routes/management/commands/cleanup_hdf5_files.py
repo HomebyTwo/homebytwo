@@ -73,7 +73,8 @@ class Command(BaseCommand):
         for model, field in dataframe_fields:
             if field.column:
                 query = "SELECT {column} FROM {db_table}".format(
-                    column=field.column, db_table=model._meta.db_table,
+                    column=field.column,
+                    db_table=model._meta.db_table,
                 )
 
                 with connection.cursor() as cursor:

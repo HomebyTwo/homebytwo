@@ -1,5 +1,9 @@
 # Change Log
-## [0.9.3]
+## [0.10.0] - 2020-09-19 Calculate prediction models in the app
+- Retrieve user activities from Strava and calculate prediction models
+- Upload athlete data to own folder
+
+## [0.9.3] - 2020-09-04 New privacy settings on Switzerland Mobility
 - Adapt to changes in route list Switzerland Mobility API
 - Update python packages
 

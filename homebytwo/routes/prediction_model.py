@@ -1,7 +1,7 @@
 from numpy import array
 from pandas import DataFrame
 from sklearn.compose import make_column_transformer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
@@ -89,12 +89,12 @@ class PredictionModel:
         # join preprocessor and linear model into a pipeline
         self.pipeline = make_pipeline(
             self.preprocessor,
-            Ridge(),
+            LinearRegression(),
         )
 
         # restore trained model if regression parameters are provided
         if regression_intercept and regression_coefficients is not None:
-            regression = self.pipeline.named_steps["ridge"]
+            regression = self.pipeline.named_steps["linearregression"]
             regression.coef_ = regression_coefficients
             regression.intercept_ = regression_intercept
 
