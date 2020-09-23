@@ -6,11 +6,6 @@ urlpatterns = [
     # importers: /import/
     path("", views.index, name="importers_index"),
     path("gpx/", views.upload_gpx, name="upload_gpx"),
-    path(
-        "import/<int:route_id>/",
-        views.import_existing_route,
-        name="import_existing_route",
-    ),
     # /import/strava/
     path("<str:data_source>/", views.import_routes, name="import_routes"),
     # /import/strava/1234567/

@@ -6,14 +6,14 @@ app_name = "routes"
 
 urlpatterns = [
     # display athlete routes list: /routes/
-    path("", views.routes_view, name="routes"),
+    path("", views.view_routes, name="routes"),
     # single route
     path(
         "<int:pk>/",
         include(
             [
                 # display route: routes/5/
-                path("", views.route_view, name="route"),
+                path("", views.view_route, name="route"),
                 # retrieve possible checkpoints as json: routes/5/checkpoints/
                 path(
                     "checkpoints/",

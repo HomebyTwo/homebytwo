@@ -95,32 +95,54 @@ class SwitzerlandMobilityLogin(forms.Form):
 
 
 class GpxUploadForm(forms.Form):
+    """
+    Athletes create a new route uploading a GPS exchange format file.
+    """
+
     gpx = forms.FileField()
 
     def clean_gpx(self):
         gpx_file = self.cleaned_data["gpx"]
         try:
-            return gpxpy.parse(gpx_file)
-        except gpxpy.gpx.GPXXMLSyntaxException as e:
+            gpx = gpxpy.parse(gpx_file)
+        except (
+            gpxpy.gpx.GPXXMLSyntaxException,
+            gpxpy.gpx.GPXException,
+            ValueError,  # namespace declaration error in Swisstopo app exports
+        ) as error:
             raise forms.ValidationError(
-                f'Your file doesn\'t appear to be a valid GPX file (error was: "{str(e)}")'
+                "Your file does not appear to be a valid GPX file"
+                f'(error was: "{str(error)}") '
             )
+
+        # check that we can create a lineString from the file
+        if len(list(gpx.walk(only_points=True))) > 1:
+            return gpx
+        else:
+            raise forms.ValidationError("Your file does not contain a valid route.")
 
     def save(self, commit=True):
         gpx = self.cleaned_data["gpx"]
-        points = list((p[0] for p in gpx.walk()))
 
+        # assume we want to use all points of all tracks in the GPX file
+        points = list(gpx.walk(only_points=True))
+
+        # use the `name` in the GPX file as proposition for the route name
         route = Route(source_id=None)
+        route.name = gpx.name if gpx.name else ""
+
+        # create route geometry from coords
+        coords = [(point.longitude, point.latitude) for point in points]
+        route.geom = LineString(coords, srid=4326).transform(21781, clone=True)
+
+        # calculate total distance and elevation differences
+        route.total_distance = gpx.length_2d()
         (
             route.total_elevation_gain,
             route.total_elevation_loss,
         ) = gpx.get_uphill_downhill()
-        # FIXME use length_3d once `Route.geom` has been converted to 3d
-        route.total_distance = gpx.length_2d()
-        # FIXME include `point.elevation` in the tuple once `Route.geom` has been converted to 3d
-        coords = [(point.longitude, point.latitude) for point in points]
-        route.geom = LineString(coords, srid=4326).transform(21781, clone=True)
 
+        # create route DataFrame with distance and elevation
         distances = get_distances([Point(p) for p in route.geom])
         route_data = [
             {

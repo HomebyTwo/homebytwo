@@ -15,7 +15,7 @@ from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..fields import DataFrameField
 from ..models import Activity, Gear, WebhookTransaction
-from ..tasks import process_strava_events, import_strava_activities_task
+from ..tasks import import_strava_activities_task, process_strava_events
 from .factories import (
     ActivityFactory,
     ActivityTypeFactory,

@@ -57,7 +57,8 @@ class Route(Track):
     # uuid field to generate unique file names
     uuid = models.UUIDField(default=uuid4, editable=False)
 
-    # source and unique id (at the source) that the route came from. Can be null for some sources such as GPX import
+    # source and unique id (at the source).
+    # Can be null for some sources such as GPX import
     source_id = models.BigIntegerField(null=True, blank=True)
     data_source = models.CharField(
         "Where the route came from", default="homebytwo", max_length=50

@@ -11,14 +11,7 @@
       </a>
     </li>
     <li>
-      {# TODO hide the field and post using JS #}
-      <form enctype="multipart/form-data" method="post" action="{% url 'import_routes' 'gpx' %}">
-        {% csrf_token %}
-        <input type="file" name="gpx">
-        <button class="btn btn--primary btn--block" href="{% url 'import_routes' 'gpx' %}" title="Import from GPX file">
-          Import from GPX file
-        </button>
-      </form>
+      {% include "importers/gpx/_import_button.html" %}
     </li>
   </ul>
 </div>

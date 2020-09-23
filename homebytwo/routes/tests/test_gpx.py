@@ -205,7 +205,9 @@ class GPXTestCase(TestCase):
 
         # update activity
         httpretty.register_uri(
-            httpretty.POST, activity_url, body="yeah!",
+            httpretty.POST,
+            activity_url,
+            body="yeah!",
         )
 
         # get activity types
@@ -226,7 +228,9 @@ class GPXTestCase(TestCase):
             garmin_activity_id
         )
         httpretty.register_uri(
-            httpretty.DELETE, delete_url, body="",
+            httpretty.DELETE,
+            delete_url,
+            body="",
             status=status,
         )
 

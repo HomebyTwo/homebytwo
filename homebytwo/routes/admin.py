@@ -7,11 +7,11 @@ from leaflet.admin import LeafletGeoAdmin
 from .models import (
     Activity,
     ActivityPerformance,
+    ActivityType,
     Athlete,
     Place,
     Route,
     WebhookTransaction,
-    ActivityType,
 )
 
 

@@ -5,7 +5,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponse, JsonResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -17,21 +17,21 @@ from django.views.generic.list import ListView
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
+from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
     import_strava_activity_streams_task,
+    process_strava_events,
     train_prediction_models_task,
     upload_route_to_garmin_task,
-    process_strava_events,
 )
-from ..importers.exceptions import SwitzerlandMobilityError
 
 
 @login_required
 @require_safe
-def routes_view(request):
+def view_routes(request):
     routes = Route.objects.for_user(request.user)
     routes = routes.order_by("name")
     context = {"routes": routes}
@@ -39,7 +39,7 @@ def routes_view(request):
     return render(request, "routes/routes.html", context)
 
 
-def route_view(request, pk):
+def view_route(request, pk):
     """
     display route schedule based on the prediction model of the logged-in athlete
 
@@ -113,7 +113,7 @@ def route_view(request, pk):
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # schedule is not a calculated property on Checkpoint, because the schedule can change
+    # schedule is not a calculated property on Checkpoint: the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
@@ -131,6 +131,47 @@ def route_view(request, pk):
         "form": performance_form,
     }
     return render(request, "routes/route.html", context)
+
+
+@method_decorator(login_required, name="dispatch")
+class RouteDelete(DeleteView):
+    """
+    Class based  views are not so bad after all.
+    """
+
+    model = Route
+    success_url = reverse_lazy("routes:routes")
+
+
+@method_decorator(login_required, name="dispatch")
+class RouteEdit(UpdateView):
+    model = Route
+    form_class = RouteForm
+    template_name = "routes/route_form.html"
+
+    def form_valid(self, form):
+        # This method is called when valid form data has been POSTed.
+        # if the activity_type has changed recalculate the route schedule
+        if "activity_type" in form.changed_data:
+            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
+
+        return super().form_valid(form)
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(remote_connection, name="dispatch")
+class RouteUpdate(RouteEdit):
+    def get_object(self, queryset=None):
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        if pk is not None:
+            route = get_object_or_404(Route, pk=pk)
+
+            # reset the checkpoints, the price of updating from remote
+            route.checkpoint_set.all().delete()
+
+            return route.update_from_remote(
+                self.request.session.get("switzerland_mobility_cookies", None)
+            )
 
 
 @require_safe
@@ -194,8 +235,18 @@ def upload_route_to_garmin(request, pk):
     return redirect(route)
 
 
+@method_decorator(login_required, name="dispatch")
+@method_decorator(require_safe, name="dispatch")
+class ActivityList(ListView):
+    paginate_by = 50
+    context_object_name = "strava_activities"
+
+    def get_queryset(self):
+        return Activity.objects.for_user(self.request.user)
+
+
 @login_required
-@strava_required  # the superuser account is the only one that can be logged-in without Strava
+@strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_activities(request):
     """
     send a task to import the athlete's Strava activities and redirects to the activity list.
@@ -207,7 +258,7 @@ def import_strava_activities(request):
 
 
 @login_required
-@strava_required  # the superuser account is the only one that can be logged-in without Strava
+@strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_streams(request):
     """
     trigger a task to import streams for activities without them.
@@ -289,54 +340,3 @@ class ImageFormView(UpdateView):
     model = Route
     fields = ["image"]
     template_name_suffix = "_image_form"
-
-
-@method_decorator(login_required, name="dispatch")
-class RouteDelete(DeleteView):
-    """
-    Class based  views are not so bad after all.
-    """
-
-    model = Route
-    success_url = reverse_lazy("routes:routes")
-
-
-@method_decorator(login_required, name="dispatch")
-class RouteEdit(UpdateView):
-    model = Route
-    form_class = RouteForm
-    template_name = "routes/route_form.html"
-
-    def form_valid(self, form):
-        # This method is called when valid form data has been POSTed.
-        # if the activity_type has changed recalculate the route schedule
-        if "activity_type" in form.changed_data:
-            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
-
-        return super().form_valid(form)
-
-
-@method_decorator(login_required, name="dispatch")
-@method_decorator(remote_connection, name="dispatch")
-class RouteUpdate(RouteEdit):
-    def get_object(self, queryset=None):
-        pk = self.kwargs.get(self.pk_url_kwarg)
-        if pk is not None:
-            route = get_object_or_404(Route, pk=pk)
-
-            # reset the checkpoints, the price of updating from remote
-            route.checkpoint_set.all().delete()
-
-            return route.update_from_remote(
-                self.request.session.get("switzerland_mobility_cookies", None)
-            )
-
-
-@method_decorator(login_required, name="dispatch")
-@method_decorator(require_safe, name="dispatch")
-class ActivityList(ListView):
-    paginate_by = 50
-    context_object_name = "strava_activities"
-
-    def get_queryset(self):
-        return Activity.objects.for_user(self.request.user)

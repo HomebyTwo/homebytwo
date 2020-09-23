@@ -5,9 +5,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..routes.forms import RouteForm
-from ..routes.models import Route
 from .decorators import remote_connection
-from .forms import SwitzerlandMobilityLogin, GpxUploadForm
+from .forms import GpxUploadForm, SwitzerlandMobilityLogin
 from .utils import get_route_class_from_data_source, save_detail_forms, split_routes
 
 
@@ -116,36 +115,10 @@ def upload_gpx(request):
         route = form.save(commit=False)
         route.athlete = request.user.athlete
         route.save()
-        return redirect("import_existing_route", route_id=route.pk)
+        return redirect("routes:edit", pk=route.pk)
 
-    # FIXME return a 400 if this route is called from JS or show the form with errors
-    return HttpResponse("Invalid form")
-
-
-@login_required
-def import_existing_route(request, route_id):
-    """
-    Add checkpoints, start place and end place to a route that has already been populated with `geom` and `data` (eg.
-    after a GPX import).
-    """
-    route = get_object_or_404(Route, pk=route_id, athlete=request.user.athlete)
-
-    if request.method == "POST":
-        route_form = RouteForm(request.POST, instance=route)
-        new_route = save_detail_forms(request, route_form)
-
-        if new_route:
-            messages.success(request, "Route successfully imported")
-            return redirect("routes:route", pk=route_id)
-    else:
-        route_form = RouteForm(instance=route)
-
-    context = {
-        "object": route,
-        "form": route_form,
-    }
-
-    return render(request, "routes/route_form.html", context)
+    template = "importers/index.html"
+    return render(request, template, {"gpx_upload_form": form})
 
 
 @login_required
