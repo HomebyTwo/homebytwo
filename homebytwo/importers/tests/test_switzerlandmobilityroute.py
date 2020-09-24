@@ -533,7 +533,7 @@ class SwitzerlandMobilityTestCase(TestCase):
             'id="id_start_place"',
         ]
 
-        map_data = '<div id="main" class="leaflet-container-default"></div>'
+        map_data = '<div id="mapid"></div>'
 
         self.assertContains(response, title, html=True)
         for start_place_form_element in start_place_form_elements:
