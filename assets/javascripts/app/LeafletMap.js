@@ -8,7 +8,7 @@ export default class LeafletMap {
   }
 
   constructor(leaflet, config, disabledServices = []) {
-    const map = leaflet.map(config.id, {crs: leaflet.CRS.EPSG2056});
+    const map = leaflet.map(config.id, {crs: leaflet.CRS.EPSG21781});
 
     const route = leaflet.geoJson(config.routeGeoJson, {
       style: {color: LeafletMap.ROUTE_COLOR, weight: LeafletMap.ROUTE_WEIGHT}
@@ -19,7 +19,7 @@ export default class LeafletMap {
     disabledServices.forEach(service => map[service].disable());
 
     // Add Swiss layer with default options
-    leaflet.tileLayer.swiss().addTo(map);
+    leaflet.tileLayer.swiss({layer: 'ch.swisstopo.pixelkarte-grau', crs: leaflet.CRS.EPSG21781}).addTo(map);
 
     const icon = L.divIcon({className: config.divIconClassName});
     document.querySelectorAll(config.markersSelector).forEach(place => {
@@ -28,7 +28,7 @@ export default class LeafletMap {
           icon: icon,
           title: feature.properties.name
         }),
-        style: {color: LeafletMap.POINT_COLOR},
+        style: {},
         onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
       }).addTo(map);
     });
