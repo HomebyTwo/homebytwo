@@ -451,7 +451,7 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=self.athlete)
         url = reverse("routes:edit", args=[route.id])
         response = self.client.get(url)
-        content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
+        content = '<h1 class="mrgb0">{}</h1>'.format(route.name)
         self.assertContains(response, content, html=True)
 
     def test_get_route_edit_form_not_logged(self):
@@ -543,7 +543,7 @@ class RouteTestCase(TestCase):
         httpretty.disable()
 
         remote_route_name = "Haute Cime"
-        content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
+        content = '<h1 class="mrgb0">{}</h1>'.format(remote_route_name)
         self.assertContains(response, content, html=True)
 
     def test_post_route_update_form(self):

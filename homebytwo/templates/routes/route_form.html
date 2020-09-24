@@ -1,41 +1,22 @@
 {% extends "base.html" %}
-{% load geojson_tags humanize %}
-
 
 {% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
 
+{% block header %}
+  {% include "routes/_route_title.html" with route=object %}
+{% endblock header %}
+
 {% block content %}
-<h2 class="text-center mrgb0">{{ object.name }}</h2>
-<div class="h3 text-center mrgt0">{{ object.get_total_distance.km|floatformat:1|intcomma }}km -
-  {{ object.get_total_elevation_gain.m|floatformat:0|intcomma }}m+ -
-  {{ object.get_total_elevation_loss.m|floatformat:0|intcomma }}m-</div>
-
-{# map #}
-{% include "routes/_route_edit_map.html" %}
-
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-
-  {# form fields #}
-  {% include "_kanbasu_form.html" with form=form %}
-
-  {# buttons #}
-  {% include "routes/_save_buttons.html" %}
-</form>
-
+  {% include "routes/_route_edit_map.html" %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% include "_kanbasu_form.html" with form=form %}
+      {% include "routes/_save_buttons.html" %}
+    </form>
 {% endblock content %}
 
 {% if object.geom %}
   {% block extrajs %}
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
-          id: 'mapid',
-          routeGeoJson: {{ object | geojsonfeature | safe }},
-          divIconClassName: 'placeIcon placeIcon--default',
-          markersSelector: '[data-geom]',
-        }, ['touchZoom', 'scrollWheelZoom', 'boxZoom']);
-      });
-    </script>
+    {% include "routes/_route_map_script.html" with route=object %}
   {% endblock extrajs %}
 {% endif %}
