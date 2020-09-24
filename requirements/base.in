@@ -4,6 +4,7 @@ celery
 dj-database-url
 django<2.3
 django-geojson
+django-leaflet
 django-widget-tweaks
 easy_thumbnails
 flower

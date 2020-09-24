@@ -162,6 +162,38 @@ MAILCHIMP_LIST_ID = get_env_variable("MAILCHIMP_LIST_ID", "")
 GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID", "")
 
 ##########
+# Mapbox #
+##########
+
+# https://www.mapbox.com/studio/account/tokens/
+
+MAPBOX_ACCESS_TOKEN = get_env_variable("MAPBOX_ACCESS_TOKEN", "")
+
+
+###########
+# Leaflet #
+###########
+
+# http://krzysztofzuraw.com/blog/2016/geodjango-leaflet-part-two.html
+
+LEAFLET_CONFIG = {
+    "DEFAULT_CENTER": (46.818188, 8.227512),
+    "DEFAULT_ZOOM": 7,
+    "scrollWheelZoom": False,
+    "MIN_ZOOM": 3,
+    "MAX_ZOOM": 18,
+    "TILES": "https://api.mapbox.com/styles/v1/drixslecta/cipip6crl004wcnngbqlofo9z/tiles/256/{z}/{x}/{y}?access_token="
+    + MAPBOX_ACCESS_TOKEN,
+    "ATTRIBUTION_PREFIX": '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery &copy; <a href="http://mapbox.com">Mapbox</a>',
+    "PLUGINS": {
+        "Leaflet.encoded": {
+            "js": [STATIC_URL + "/javascripts/Polyline.encoded.js"],
+            "auto-include": True,
+        },
+    },
+}
+
+##########
 # Strava #
 ##########
 
