@@ -1,17 +1,17 @@
 export default class LeafletMap {
   static get ROUTE_COLOR() {
-    return 'red';
+    return '#cc0605';
   }
 
-  static get POINT_COLOR() {
-    return 'black';
+  static get ROUTE_WEIGHT() {
+    return 4;
   }
 
   constructor(leaflet, config, disabledServices = []) {
-    const map = leaflet.map(config.id, { crs: leaflet.CRS.EPSG2056 });
+    const map = leaflet.map(config.id, {crs: leaflet.CRS.EPSG2056});
 
     const route = leaflet.geoJson(config.routeGeoJson, {
-      style: { color: LeafletMap.ROUTE_COLOR }
+      style: {color: LeafletMap.ROUTE_COLOR, weight: LeafletMap.ROUTE_WEIGHT}
     });
     route.addTo(map);
     map.fitBounds(route.getBounds());
@@ -21,14 +21,14 @@ export default class LeafletMap {
     // Add Swiss layer with default options
     leaflet.tileLayer.swiss().addTo(map);
 
-    const icon = L.divIcon({ className: config.divIconClassName });
+    const icon = L.divIcon({className: config.divIconClassName});
     document.querySelectorAll(config.markersSelector).forEach(place => {
       leaflet.geoJson(JSON.parse(place.dataset.geom), {
         pointToLayer: (feature, latlng) => leaflet.marker(latlng, {
           icon: icon,
           title: feature.properties.name
         }),
-        style: { color: LeafletMap.POINT_COLOR },
+        style: {color: LeafletMap.POINT_COLOR},
         onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
       }).addTo(map);
     });
