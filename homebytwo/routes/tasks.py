@@ -211,6 +211,7 @@ def _process_transaction(transaction):
         # create or update activity from the Strava server
         if aspect_type in ["create", "update"]:
             activity.update_from_strava()
+            activity.save_streams_from_strava()
 
         # delete activity, if it exists
         if aspect_type == "delete" and activity.id:

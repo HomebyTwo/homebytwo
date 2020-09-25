@@ -27,45 +27,33 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    username = factory.Sequence(lambda n: "testuser%s" % n)
+    username = factory.Sequence(lambda n: "test_user_%s" % n)
     email = factory.LazyAttribute(lambda o: "%s@example.org" % o.username)
-    password = "testpassword"
+    password = "test_password"
+    athlete = factory.RelatedFactory(
+        "homebytwo.utils.factories.AthleteFactory", factory_related_name="user"
+    )
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
         """Override the default ``_create`` with our custom call."""
         manager = cls._get_manager(model_class)
-        # The default would use ``manager.create(*args, **kwargs)``
         return manager.create_user(*args, **kwargs)
+
+    @factory.post_generation
+    def social_auth(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        # check if the user has an associated Strava account and create one if missing
+        social_auth, created = self.social_auth.get_or_create(
+            provider="strava", uid=factory.Sequence(lambda n: 1000 + n)
+        )
+        return social_auth
 
 
 class AthleteFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Athlete
-        exclude = ["place_types"]
 
-    user = factory.SubFactory(UserFactory)
-
-    @factory.post_generation
-    def create_social_user(self, create, extracted, **kwargd):
-        # check if the user has an associated Strava account and create one if missing
-        if create:
-            try:
-                self.user.social_auth.get(provider="strava")
-            except UserSocialAuth.DoesNotExist:
-                """
-                prevent duplicate entries for uid in the test database
-                when tests run in parallel.
-                """
-                latest_social_user = UserSocialAuth.objects.order_by("-uid").first()
-
-                if latest_social_user:
-                    uid = int(latest_social_user.uid) + 1
-                else:
-                    uid = 1
-
-                UserSocialAuth.objects.create(
-                    user=self.user,
-                    provider="strava",
-                    uid=uid,
-                )
+    user = factory.SubFactory(UserFactory, athlete=None)

@@ -24,7 +24,7 @@ class Athlete(models.Model):
     def strava_client(self):
         """
         the Strava API client instantiated with the athlete's
-        authorizatio token. Note that it only generates a hit to the Strava
+        authorization token. Note that it only generates a hit to the Strava
         API if the authorization token is expired.
         """
 
