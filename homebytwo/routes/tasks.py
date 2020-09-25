@@ -1,6 +1,9 @@
 import logging
 
 from celery import group, shared_task
+from codaio import Coda, Document, Cell
+from django.conf import settings
+from django.contrib.auth.models import User
 from garmin_uploader.api import GarminAPIException
 
 from .models import (
@@ -218,3 +221,46 @@ def _process_transaction(transaction):
 
     else:
         logger.info(f"No action triggered by Strava Event: {object_type}")
+
+
+@shared_task
+def report_usage_to_coda():
+
+    coda = Coda(settings.CODA_API_KEY)
+    doc_id, table_id = settings.CODA_DOC_ID, settings.CODA_TABLE_ID
+    doc = Document(doc_id, coda=coda)
+    table = doc.get_table(table_id)
+
+    COLUMNS = {
+        "ID": "c-tvhxIacYKe",
+        "Date Joined": "c-Jp9H-YLm53",
+        "Last Login": "c-MaXhtn5PLd",
+        "Routes Count": "c-Yb41FFtCNo",
+        "Email": "c-rm6QRVu8fe",
+        "Username": "c-k0Nxuz9LLw",
+        "Strava Activities Count": "c-7muBsb1Iqs",
+    }
+
+    rows = []
+
+    for user in User.objects.exclude(athlete=None):
+        mapping = {
+            COLUMNS["ID"]: user.id,
+            COLUMNS["Username"]: user.username,
+            COLUMNS["Email"]: user.email,
+            COLUMNS["Date Joined"]: user.date_joined.__str__(),
+            COLUMNS["Last Login"]: user.last_login.__str__(),
+            COLUMNS["Routes Count"]: user.athlete.tracks.count(),
+            COLUMNS["Strava Activities Count"]: user.athlete.activities.count(),
+        }
+
+        rows.append(
+            [
+                Cell(column=table.get_column_by_id(key), value_storage=value)
+                for key, value in mapping.items()
+            ]
+        )
+
+    table.upsert_rows(rows, key_columns=[COLUMNS["ID"]])
+
+    return f"Updated {len(rows)} rows in Coda table at https://coda.io/d/{doc_id}"

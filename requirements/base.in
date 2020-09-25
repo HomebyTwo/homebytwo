@@ -1,4 +1,5 @@
 -e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
+-e git+git://github.com/drixselecta/codaio@master#egg=codaio
 
 celery
 dj-database-url

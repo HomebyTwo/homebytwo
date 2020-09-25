@@ -161,6 +161,14 @@ MAILCHIMP_LIST_ID = get_env_variable("MAILCHIMP_LIST_ID", "")
 
 GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID", "")
 
+###########
+# Coda.io #
+###########
+
+CODA_API_KEY = get_env_variable("CODA_API_KEY", "")
+CODA_DOC_ID = get_env_variable("CODA_DOC_ID", "")
+CODA_TABLE_ID = get_env_variable("CODA_TABLE_ID", "")
+
 ##########
 # Mapbox #
 ##########
