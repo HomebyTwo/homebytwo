@@ -1,9 +1,11 @@
+from datetime import timedelta
 from homebytwo.routes.models import WebhookTransaction
 from homebytwo.routes.tasks import (
     import_strava_activities_task,
     import_strava_activities_streams_task,
     import_strava_activity_streams_task,
     train_prediction_models_task,
+    process_strava_events,
 )
 from homebytwo.routes.tests.factories import (
     ActivityFactory,
@@ -134,9 +136,76 @@ def test_train_prediction_models_task_no_activity(athlete):
     assert expected in response
 
 
-def test_process_strava_events(athlete):
-    WebhookTransactionFactory.create_batch(5, status=WebhookTransaction.UNPROCESSED)
+def test_process_strava_events_create_update_delete(athlete, intercept):
+    activity_strava_id = 1234567890
+    WebhookTransactionFactory(
+        action="create",
+        athlete_strava_id=athlete.strava_id,
+        activity_strava_id=activity_strava_id,
+    )
+    call = process_strava_events
+    url = STRAVA_API_BASE_URL + "activities/" + str(activity_strava_id)
+    response_json = "manual_activity.json"
+    intercept(call, url, response_json)
+
+    transactions = WebhookTransaction.objects.all()
+    processed_transactions = transactions.filter(status=WebhookTransaction.PROCESSED)
+
+    assert transactions.count() == 1
+    assert processed_transactions.count() == 1
+    assert athlete.activities.count() == 1
+
+    WebhookTransactionFactory(
+        action="update",
+        athlete_strava_id=athlete.strava_id,
+        activity_strava_id=activity_strava_id,
+    )
+    intercept(call, url, response_json)
+    assert processed_transactions.count() == 2
+    assert athlete.activities.count() == 1
+
+    WebhookTransactionFactory(
+        action="delete",
+        athlete_strava_id=athlete.strava_id,
+        activity_strava_id=activity_strava_id,
+    )
+    call()
+    assert processed_transactions.count() == 3
+    assert athlete.activities.count() == 0
 
 
-def test_process_transaction(athlete):
-    pass
+def test_process_strava_events_duplicates(athlete):
+
+    first_transaction = WebhookTransactionFactory(
+        action="create", athlete_strava_id=athlete.strava_id
+    )
+    WebhookTransactionFactory(
+        action="delete",
+        athlete_strava_id=athlete.strava_id,
+        date_generated=first_transaction.date_generated + timedelta(minutes=2),
+    )
+    process_strava_events()
+
+    transactions = WebhookTransaction.objects.all()
+    processed_transactions = transactions.filter(status=WebhookTransaction.PROCESSED)
+    skipped_transactions = transactions.filter(status=WebhookTransaction.SKIPPED)
+    assert processed_transactions.count() == 1
+    assert processed_transactions.first().body["aspect_type"] == "delete"
+    assert skipped_transactions.count() == 1
+
+
+def test_process_strava_events_errors(athlete, connection_error):
+    WebhookTransactionFactory(athlete_strava_id=0)
+    WebhookTransactionFactory(athlete_strava_id=athlete.strava_id, activity_strava_id=0)
+    WebhookTransactionFactory(
+        athlete_strava_id=athlete.strava_id, object_type="athlete"
+    )
+
+    # process the event
+    call = process_strava_events
+    url = STRAVA_API_BASE_URL + "activities/0"
+    connection_error(call, url)
+
+    transactions = WebhookTransaction.objects.all()
+    assert transactions.filter(status=WebhookTransaction.ERROR).count() == 2
+    assert transactions.filter(status=WebhookTransaction.PROCESSED).count() == 1

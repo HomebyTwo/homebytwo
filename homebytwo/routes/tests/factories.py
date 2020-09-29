@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
-from factory import Faker, Iterator, Sequence, SubFactory
+from factory import Faker, Iterator, Sequence, SubFactory, LazyAttribute
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
@@ -81,7 +81,8 @@ class PlaceFactory(DjangoModelFactory):
         model = Place
 
     place_type = Faker(
-        "random_element", elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
+        "random_element",
+        elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
     )
     name = Faker("city")
     description = Faker("bs")
@@ -146,15 +147,23 @@ class WebhookTransactionFactory(DjangoModelFactory):
     class Meta:
         model = WebhookTransaction
 
+    class Params:
+        athlete_strava_id = 1000
+        activity_strava_id = 1234567890
+        action = "create"
+        object_type = "activity"
+
     date_generated = Faker("past_datetime", tzinfo=utc)
     status = WebhookTransaction.UNPROCESSED
     request_meta = {}
-    body = {
-        "updates": {"title": "Messy"},
-        "owner_id": 0,
-        "object_id": 0,
-        "event_time": 0,
-        "aspect_type": "update",
-        "object_type": "activity",
-        "subscription_id": 0,
-    }
+    body = LazyAttribute(
+        lambda o: {
+            "updates": {},
+            "owner_id": o.athlete_strava_id,
+            "object_id": o.activity_strava_id,
+            "event_time": 1600000000,
+            "aspect_type": o.action,
+            "object_type": o.object_type,
+            "subscription_id": 1,
+        }
+    )
