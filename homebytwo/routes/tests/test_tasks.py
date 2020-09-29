@@ -4,12 +4,10 @@ from homebytwo.routes.tasks import (
     import_strava_activities_streams_task,
     import_strava_activity_streams_task,
     train_prediction_models_task,
-    upload_route_to_garmin_task,
 )
 from homebytwo.routes.tests.factories import (
     ActivityFactory,
     ActivityTypeFactory,
-    RouteFactory,
     WebhookTransactionFactory,
 )
 
@@ -133,22 +131,6 @@ def test_train_prediction_models_task(athlete):
 def test_train_prediction_models_task_no_activity(athlete):
     response = train_prediction_models_task(athlete.id)
     expected = f"No prediction model trained for athlete: {athlete}"
-    assert expected in response
-
-
-def test_upload_route_to_garmin_task(athlete, intercept):
-    route = RouteFactory(athlete=athlete)
-    call = upload_route_to_garmin_task
-    url = GARMIN_UPLOAD_URL
-    response = intercept(
-        call,
-        url,
-        response_json="200.json",
-        method="post",
-        route_id=route.id,
-        athlete_id=athlete.id,
-    )
-    expected = f"Route '{str(route)}' successfully uploaded to Garmin connect"
     assert expected in response
 
 
