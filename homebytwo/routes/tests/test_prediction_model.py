@@ -35,8 +35,7 @@ def test_prediction_model_with_defaults():
 
 def test_prediction_model_with_custom_parameters():
     prediction_model = PredictionModel(
-        categorical_columns=["gear", "workout_type"],
-        numerical_columns=[],
+        categorical_columns=["gear", "workout_type"], numerical_columns=[],
     )
 
     assert prediction_model.onehot_encoder_categories == "auto"
@@ -96,9 +95,7 @@ def test_train_prediction_model_data_success_no_gear_no_workout_type(athlete):
 
 def test_get_activity_performance_training_data(athlete):
     activity_performance = ActivityPerformanceFactory(athlete=athlete)
-    ActivityFactory(
-        athlete=athlete, activity_type=activity_performance.activity_type
-    )
+    ActivityFactory(athlete=athlete, activity_type=activity_performance.activity_type)
     observations = activity_performance.get_training_data()
 
     assert all(
@@ -166,8 +163,7 @@ def test_activity_performance_form_no_activity_performance(athlete):
     athlete_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=other_activity_type)
     ActivityPerformanceFactory(
-        athlete=athlete,
-        activity_type=athlete_activity_type,
+        athlete=athlete, activity_type=athlete_activity_type,
     )
     form = ActivityPerformanceForm(route=route, athlete=athlete)
 
@@ -205,9 +201,7 @@ def test_activity_performance_form_change_activity_type(athlete):
     one_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=one_activity_type)
     ActivityPerformanceForm(
-        route=route,
-        athlete=athlete,
-        data={"activity_type": other_activity_type.name},
+        route=route, athlete=athlete, data={"activity_type": other_activity_type.name},
     )
 
     assert route.activity_type == other_activity_type

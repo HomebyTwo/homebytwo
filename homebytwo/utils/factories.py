@@ -26,12 +26,16 @@ def get_field_choices(choices):
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
+        django_get_or_create = ("social_auth",)
 
     username = factory.Sequence(lambda n: "test_user_%s" % n)
     email = factory.LazyAttribute(lambda o: "%s@example.org" % o.username)
     password = "test_password"
     athlete = factory.RelatedFactory(
         "homebytwo.utils.factories.AthleteFactory", factory_related_name="user"
+    )
+    social_auth = factory.RelatedFactory(
+        "homebytwo.utils.factories.SocialAuthFactory", factory_related_name="user"
     )
 
     @classmethod
@@ -40,20 +44,17 @@ class UserFactory(factory.django.DjangoModelFactory):
         manager = cls._get_manager(model_class)
         return manager.create_user(*args, **kwargs)
 
-    @factory.post_generation
-    def social_auth(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        # check if the user has an associated Strava account and create one if missing
-        social_auth, created = self.social_auth.get_or_create(
-            provider="strava", uid=factory.Sequence(lambda n: 1000 + n)
-        )
-        return social_auth
-
 
 class AthleteFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Athlete
 
     user = factory.SubFactory(UserFactory, athlete=None)
+
+
+class SocialAuthFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = UserSocialAuth
+
+    provider = "strava"
+    uid = factory.Sequence(lambda n: 1000 + n)

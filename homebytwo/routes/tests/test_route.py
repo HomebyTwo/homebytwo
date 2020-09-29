@@ -76,10 +76,7 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame(
-            [[0, 0], [1234, 1000]],
-            columns=["altitude", "distance"],
-        )
+        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "distance"],)
         route = RouteFactory.build(
             data=data,
             total_distance=1000,
@@ -92,10 +89,7 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame(
-            [[0, 0], [1000, 1000]],
-            columns=["altitude", "distance"],
-        )
+        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "distance"],)
         route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
@@ -188,8 +182,7 @@ class RouteTestCase(TestCase):
         )
 
         self.assertListEqual(
-            list(data.gradient),
-            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
+            list(data.gradient), [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -308,10 +301,8 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = (
-            '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
-                edit_url
-            )
+        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+            edit_url
         )
 
         response = self.client.get(url)

@@ -81,8 +81,7 @@ class PlaceFactory(DjangoModelFactory):
         model = Place
 
     place_type = Faker(
-        "random_element",
-        elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
+        "random_element", elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
     )
     name = Faker("city")
     description = Faker("bs")
@@ -124,7 +123,7 @@ class ActivityFactory(DjangoModelFactory):
 
     name = Faker("sentence")
     description = Faker("bs")
-    strava_id = Sequence(lambda n: "100%d" % n)
+    strava_id = Sequence(lambda n: 1000 + n)
     start_date = Faker("past_datetime", tzinfo=utc)
     athlete = SubFactory(AthleteFactory)
     activity_type = SubFactory(ActivityTypeFactory)

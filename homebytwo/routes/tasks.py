@@ -2,6 +2,8 @@ import logging
 
 from celery import group, shared_task
 from garmin_uploader.api import GarminAPIException
+from requests.exceptions import ConnectionError
+from stravalib.exc import Fault
 
 from .models import (
     Activity,
@@ -44,19 +46,27 @@ def import_strava_activity_streams_task(strava_id):
     This task generates one API call for every activity.
     """
     # log task request
-    logger.info("import Strava activity streams for activity {}".format(strava_id))
+    logger.info("import Strava activity streams for activity {}.".format(strava_id))
 
     try:
         activity = Activity.objects.get(strava_id=strava_id)
     except Activity.DoesNotExist:
-        return "Activity {} has been deleted from the Database".format(strava_id)
+        return "Activity {} has been deleted from the Database. ".format(strava_id)
 
-    imported = activity.save_streams_from_strava()
+    try:
+        imported = activity.save_streams_from_strava()
+    except (ConnectionError, Fault) as error:
+        message = (
+            f"Streams for activity {strava_id} could not be retrieved from Strava."
+        )
+        message += f"error was: {error}. "
+        logger.info(message)
+        return message
 
     if imported:
-        return "Streams successfully imported for activity {}".format(strava_id)
+        return "Streams successfully imported for activity {}.".format(strava_id)
     else:
-        return "Streams not imported for activity {}".format(strava_id)
+        return "Streams not imported for activity {}.".format(strava_id)
 
 
 @shared_task
@@ -64,7 +74,7 @@ def train_prediction_models_task(athlete_id):
     """
     train prediction model for a given activity_performance object
     """
-    logger.info(f"Fitting prediction models for athlete: {athlete_id}")
+    logger.info(f"Fitting prediction models for athlete: {athlete_id}. ")
 
     athlete = Athlete.objects.get(id=athlete_id)
     activities = athlete.activities.filter(
@@ -72,6 +82,9 @@ def train_prediction_models_task(athlete_id):
     )
     activities = activities.order_by("activity_type")
     activities = activities.distinct("activity_type")
+
+    if not activities:
+        return f"No prediction model trained for athlete: {athlete}"
 
     message = f"Prediction models trained for athlete: {athlete}."
     for activity in activities:
@@ -93,45 +106,27 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
     compatible Garmin devices.
     """
 
+    # retrieve route and athlete
+    route = Route.objects.get(pk=route_id)
+    athlete = Athlete.objects.get(pk=athlete_id) if athlete_id else route.athlete
+
     # log message
-    log_message = "Upload route {route_id} to garmin for user {user_id}"
-
-    # retrieve route
-    route = Route.objects.select_related("athlete").get(pk=route_id)
-
-    # retrieve athlete from DB if different from route athlete
-    if athlete_id and athlete_id != route.athlete.id:
-        # retrieve athlete from DB
-        athlete = Athlete.objects.get(pk=athlete_id)
-        # log task
-        logger.info(log_message.format(route_id=route_id, user_id=athlete.user.id))
-
-    else:
-        # defaults to `route.athlete` in `route.upload_to_garmin` method
-        athlete = None
-        # log task
-        logger.info(
-            log_message.format(route_id=route_id, user_id=route.athlete.user.id)
-        )
+    logger.info(f"Upload route {route.id} to garmin for user {athlete.user.id}")
 
     try:
         # upload to Garmin Connect
         garmin_activity_url, uploaded = route.upload_to_garmin(athlete)
 
-    except GarminAPIException as e:
+    except GarminAPIException as error:
         # remove Garmin ID if status was uploading
         if route.garmin_id == 1:
             route.garmin_id = None
             route.save(update_fields=["garmin_id"])
 
-        return "Garmin API failure: {}".format(e)
+        return "Garmin API failure: {}".format(error)
 
     if uploaded:
-        return (
-            "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
-                route=str(route), url=garmin_activity_url
-            )
-        )
+        return f"Route '{str(route)}' successfully uploaded to Garmin connect at {garmin_activity_url}."
 
 
 @shared_task

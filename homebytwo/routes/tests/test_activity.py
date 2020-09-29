@@ -71,7 +71,7 @@ class ActivityTestCase(TestCase):
         Logged-in user with no Strava auth connected, i.e. from createsuperuser
         """
 
-        non_strava_user = UserFactory(password="test_password")
+        non_strava_user = UserFactory(password="test_password", social_auth=None)
         self.client.login(username=non_strava_user.username, password="test_password")
 
         url = reverse("routes:import_activities")
@@ -314,10 +314,7 @@ class ActivityTestCase(TestCase):
         ]
 
         httpretty.register_uri(
-            httpretty.GET,
-            activities_url,
-            responses=responses,
-            match_querystring=False,
+            httpretty.GET, activities_url, responses=responses, match_querystring=False,
         )
 
         # update athlete activities: 2 received
@@ -492,8 +489,7 @@ class ActivityTestCase(TestCase):
         self.assertEqual(
             str(transaction),
             "{0} - {1}".format(
-                transaction.get_status_display(),
-                transaction.date_generated,
+                transaction.get_status_display(), transaction.date_generated,
             ),
         )
 
@@ -711,9 +707,7 @@ class ActivityTestCase(TestCase):
         train_url = reverse("routes:train_models")
         activity_type = ActivityTypeFactory.create(name="Run")
         ActivityFactory.create_batch(
-            5,
-            athlete=self.athlete,
-            activity_type=activity_type,
+            5, athlete=self.athlete, activity_type=activity_type,
         )
 
         with patch(
