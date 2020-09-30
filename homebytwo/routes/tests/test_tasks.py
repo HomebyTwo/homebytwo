@@ -30,6 +30,14 @@ def test_import_strava_activities_task(athlete, intercept):
     assert athlete.activities.count() == 2
 
 
+def test_import_strava_activities_task_server_error(athlete, server_error):
+    url = STRAVA_API_BASE_URL + "athlete/activities"
+    call = import_strava_activities_task
+    response_json = "activities.json"
+    response = server_error(call, url, response_json, athlete_id=athlete.id)
+    assert response == []
+
+
 def test_import_strava_activities_streams_task(athlete, mocker):
     activities = ActivityFactory.create_batch(10, athlete=athlete, streams=None)
     activity_ids = [activity.strava_id for activity in activities]
@@ -145,7 +153,7 @@ def test_process_strava_events_create_update_delete(athlete, intercept):
     )
     call = process_strava_events
     url = STRAVA_API_BASE_URL + "activities/" + str(activity_strava_id)
-    response_json = "manual_activity.json"
+    response_json = "race_run_activity.json"
     intercept(call, url, response_json)
 
     transactions = WebhookTransaction.objects.all()
@@ -194,14 +202,23 @@ def test_process_strava_events_duplicates(athlete):
     assert skipped_transactions.count() == 1
 
 
+def test_process_events_deleted_activity(athlete, not_found):
+    activity = ActivityFactory()
+    WebhookTransactionFactory(
+        athlete_strava_id=athlete.strava_id, activity_strava_id=activity.strava_id
+    )
+    call = process_strava_events
+    url = STRAVA_API_BASE_URL + "activities/" + str(activity.strava_id)
+    response_json = "activity_not_found.json"
+    not_found(call, url, response_json)
+
+
 def test_process_strava_events_errors(athlete, connection_error):
     WebhookTransactionFactory(athlete_strava_id=0)
     WebhookTransactionFactory(athlete_strava_id=athlete.strava_id, activity_strava_id=0)
     WebhookTransactionFactory(
         athlete_strava_id=athlete.strava_id, object_type="athlete"
     )
-
-    # process the event
     call = process_strava_events
     url = STRAVA_API_BASE_URL + "activities/0"
     connection_error(call, url)

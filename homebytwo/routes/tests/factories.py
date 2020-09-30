@@ -128,7 +128,6 @@ class ActivityFactory(DjangoModelFactory):
     start_date = Faker("past_datetime", tzinfo=utc)
     athlete = SubFactory(AthleteFactory)
     activity_type = SubFactory(ActivityTypeFactory)
-    manual = False
     distance = Faker("random_int", min=500, max=5000)
     total_elevation_gain = Faker("random_int", min=0, max=5000)
     elapsed_time = Faker("time_delta")

@@ -81,9 +81,15 @@ def enable_httpretty():
 
 @fixture()
 def intercept(read_file, enable_httpretty):
-    def _intercept(call, url, response_json, method="get", *args, **kwargs):
+    def _intercept(call, url, response_json, method="get", status=200, *args, **kwargs):
         return enable_httpretty(
-            call, url, body=read_file(response_json), method=method, *args, **kwargs
+            call,
+            url,
+            body=read_file(response_json),
+            method=method,
+            status=status,
+            *args,
+            **kwargs
         )
 
     return _intercept
@@ -97,3 +103,8 @@ def connection_error(enable_httpretty):
 @fixture()
 def server_error(intercept):
     return partial(intercept, status=500)
+
+
+@fixture()
+def not_found(intercept):
+    return partial(intercept, status=404)

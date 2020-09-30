@@ -3,7 +3,7 @@ import logging
 from celery import group, shared_task
 from garmin_uploader.api import GarminAPIException
 from requests.exceptions import ConnectionError
-from stravalib.exc import Fault
+from stravalib.exc import Fault, RateLimitExceeded
 
 from .models import (
     Activity,
@@ -13,6 +13,7 @@ from .models import (
     Route,
     WebhookTransaction,
 )
+from .models.activity import update_user_activities_from_strava, is_activity_supported
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +24,24 @@ def import_strava_activities_task(athlete_id):
     import or update all Strava activities for an athlete.
     This task generates one query to the Strava API for every 200 activities.
     """
-    # log task request
-    logger.info("import Strava activities for {user_id}".format(user_id=athlete_id))
-
+    logger.info(f"import Strava activities for athlete with id: {athlete_id}.")
     athlete = Athlete.objects.get(pk=athlete_id)
-    activities = Activity.objects.update_user_activities_from_strava(athlete)
 
-    return [activity.strava_id for activity in activities if activity.streams is None]
+    try:
+        activities = update_user_activities_from_strava(athlete)
+    except (Fault, RateLimitExceeded) as error:
+        message = (
+            f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
+        )
+        message += f"Error was: {error}. "
+        logger.error(message)
+        return []
+
+    return [
+        activity.strava_id
+        for activity in activities
+        if activity.streams is None and not activity.skip_streams_import
+    ]
 
 
 @shared_task
@@ -60,7 +72,7 @@ def import_strava_activity_streams_task(strava_id):
             f"Streams for activity {strava_id} could not be retrieved from Strava."
         )
         message += f"error was: {error}. "
-        logger.info(message)
+        logger.error(message)
         return message
 
     if imported:
@@ -155,7 +167,7 @@ def process_strava_events():
     for transaction in unprocessed_transactions:
         if transaction in distinct_transactions:
             try:
-                _process_transaction(transaction)
+                process_transaction(transaction)
                 transaction.status = WebhookTransaction.PROCESSED
                 transaction.save()
 
@@ -176,41 +188,40 @@ def process_strava_events():
             transaction.save()
 
 
-def _process_transaction(transaction):
+def process_transaction(transaction):
     """
     process transactions created by the Strava Event Webhook
     """
 
-    # find the Strava Athlete
+    # find the Strava Athlete in the database
     athlete = Athlete.objects.get(
         user__social_auth__provider="strava",
         user__social_auth__uid=transaction.body["owner_id"],
     )
 
-    # retrieve event values to process
+    # event values to process
     object_type = transaction.body["object_type"]
     object_id = transaction.body["object_id"]
     aspect_type = transaction.body["aspect_type"]
 
-    # create a new activity if it does not exist already
-    if object_type == "activity":
+    # we only support activity update
+    if not object_type == "activity":
+        logger.info(f"Strava event with object type: {object_type} has triggered no action. ")
+        return
 
-        # retrieve the activity from the database if it exists
-        try:
-            activity = Activity.objects.get(strava_id=object_id)
+    # get activity from database or create a new one
+    activity = Activity.get_or_stub(object_id, athlete)
 
-        # if the activity does not exist, create a stub
-        except Activity.DoesNotExist:
-            activity = Activity(athlete=athlete, strava_id=object_id)
+    # create or update activity with Strava
+    if aspect_type in ["create", "update"]:
+        # retrieve activity information from Strava
+        strava_activity = activity.get_activity_from_strava()
+        # activity was found on Strava and is supported by Homebytwo
+        if strava_activity and is_activity_supported(strava_activity):
+            activity.update_with_strava_data(strava_activity)
+            return True
 
-        # create or update activity from the Strava server
-        if aspect_type in ["create", "update"]:
-            activity.update_from_strava()
-            activity.save_streams_from_strava()
-
-        # delete activity, if it exists
-        if aspect_type == "delete" and activity.id:
-            activity.delete()
-
-    else:
-        logger.info(f"No action triggered by Strava Event: {object_type}")
+    # Activity is not supported by Homebytwo or the transaction `aspect_type` is `delete`
+    if activity.id:
+        activity.delete()
+        logger.info(f"Strava activity: {object_id} was deleted from Homebytwo.")
