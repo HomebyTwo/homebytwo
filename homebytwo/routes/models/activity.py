@@ -10,6 +10,8 @@ from ...core.models import TimeStampedModel
 from ..fields import DataFrameField, NumpyArrayField
 from ..prediction_model import PredictionModel
 
+STREAM_TYPES = ["time", "altitude", "distance", "moving"]
+
 
 def athlete_streams_directory_path(instance, filename):
     # streams will upload to MEDIA_ROOT/athlete_<id>/<filename>
@@ -77,12 +79,25 @@ def update_user_activities_from_strava(athlete, after=None, before=None, limit=1
 
 def is_activity_supported(strava_activity):
     """
-    update or create activity from data retrieved from Strava
+    check that the activity was not manually uploaded by the athlete
+    and if the activity type is supported by homebytwo
     """
     if strava_activity.manual:
-        return
+        return False
     if strava_activity.type not in ActivityType.SUPPORTED_ACTIVITY_TYPES:
-        return
+        return False
+    return True
+
+
+def are_streams_valid(strava_streams):
+    """
+    check if all required stream types are present and
+    if they all contain values.
+    """
+    if not all(stream_type in strava_streams for stream_type in STREAM_TYPES):
+        return False
+    if not all(raw_stream.original_size > 0 for raw_stream in strava_streams.values()):
+        return False
     return True
 
 
@@ -282,21 +297,24 @@ class Activity(TimeStampedModel):
         if commit:
             self.save()
 
-    def save_streams_from_strava(self):
+    def update_activity_streams_from_strava(self):
         """
-        save activity streams in a pandas DataFrame
+        save activity streams from Strava in a pandas DataFrame.
+        returns True if streams could be imported.
         """
-        # skip
-        if self.skip_streams_import:
-            return
+        strava_streams = self.get_streams_from_strava()
 
-        raw_streams = self.get_streams_from_strava()
-        if raw_streams:
+        if strava_streams and are_streams_valid(strava_streams):
             self.streams = DataFrame(
-                {key: stream.data for key, stream in raw_streams.items()}
+                {key: stream.data for key, stream in strava_streams.items()}
             )
             self.save(update_fields=["streams"])
             return True
+
+        # otherwise, skip trying to get the streams next time
+        self.skip_streams_import = True
+        self.save(update_fields=["skip_streams_import"])
+        return False
 
     def get_streams_from_strava(self, resolution="low"):
         """
@@ -307,22 +325,10 @@ class Activity(TimeStampedModel):
         for better accuracy in the prediction.
         """
 
-        stream_types = ["time", "altitude", "distance", "moving"]
-
         strava_client = self.athlete.strava_client
-        raw_streams = strava_client.get_activity_streams(
-            self.strava_id, types=stream_types, resolution=resolution
+        return strava_client.get_activity_streams(
+            self.strava_id, types=STREAM_TYPES, resolution=resolution
         )
-
-        # ensure we have all required stream types and all streams contain values
-        if all(stream_type in raw_streams for stream_type in stream_types) and all(
-            raw_stream.original_size > 0 for raw_stream in raw_streams.values()
-        ):
-            return raw_streams
-
-        # otherwise, skip trying to get the streams next time
-        self.skip_streams_import = True
-        self.save(update_fields=["skip_streams_import"])
 
     def get_training_data(self):
         """

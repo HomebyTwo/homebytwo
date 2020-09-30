@@ -1,4 +1,4 @@
-from homebytwo.routes import auth_pipeline
+from .. import auth_pipeline
 from .factories import ActivityFactory
 
 

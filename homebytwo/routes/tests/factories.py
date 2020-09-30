@@ -3,21 +3,13 @@ from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
-from factory import Faker, Iterator, Sequence, SubFactory, LazyAttribute
+from factory import Faker, Iterator, LazyAttribute, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
-from ...routes.models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Gear,
-    Place,
-    Route,
-    WebhookTransaction,
-)
+from ...routes.models import Activity, ActivityPerformance, ActivityType, Gear, Place, Route, WebhookTransaction
 from ...utils.factories import AthleteFactory, get_field_choices
 
 
@@ -132,6 +124,7 @@ class ActivityFactory(DjangoModelFactory):
     total_elevation_gain = Faker("random_int", min=0, max=5000)
     elapsed_time = Faker("time_delta")
     moving_time = elapsed_time
+    skip_streams_import = False
     workout_type = Faker(
         "random_element",
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),

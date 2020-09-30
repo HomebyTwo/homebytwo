@@ -5,15 +5,8 @@ from garmin_uploader.api import GarminAPIException
 from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Athlete,
-    Route,
-    WebhookTransaction,
-)
-from .models.activity import update_user_activities_from_strava, is_activity_supported
+from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
+from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +53,19 @@ def import_strava_activity_streams_task(strava_id):
     # log task request
     logger.info("import Strava activity streams for activity {}.".format(strava_id))
 
+    # get the activity from the database
     try:
         activity = Activity.objects.get(strava_id=strava_id)
     except Activity.DoesNotExist:
         return "Activity {} has been deleted from the Database. ".format(strava_id)
 
+    # marked as skip because of missing stream data
+    if activity.skip_streams_import:
+        return "Skipped importing streams for activity {}. ".format(strava_id)
+
+    # get streams from Strava
     try:
-        imported = activity.save_streams_from_strava()
+        imported = activity.update_activity_streams_from_strava()
     except (ConnectionError, Fault) as error:
         message = (
             f"Streams for activity {strava_id} could not be retrieved from Strava."

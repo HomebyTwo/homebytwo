@@ -35,7 +35,8 @@ def test_prediction_model_with_defaults():
 
 def test_prediction_model_with_custom_parameters():
     prediction_model = PredictionModel(
-        categorical_columns=["gear", "workout_type"], numerical_columns=[],
+        categorical_columns=["gear", "workout_type"],
+        numerical_columns=[],
     )
 
     assert prediction_model.onehot_encoder_categories == "auto"
@@ -163,7 +164,8 @@ def test_activity_performance_form_no_activity_performance(athlete):
     athlete_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=other_activity_type)
     ActivityPerformanceFactory(
-        athlete=athlete, activity_type=athlete_activity_type,
+        athlete=athlete,
+        activity_type=athlete_activity_type,
     )
     form = ActivityPerformanceForm(route=route, athlete=athlete)
 
@@ -201,7 +203,9 @@ def test_activity_performance_form_change_activity_type(athlete):
     one_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=one_activity_type)
     ActivityPerformanceForm(
-        route=route, athlete=athlete, data={"activity_type": other_activity_type.name},
+        route=route,
+        athlete=athlete,
+        data={"activity_type": other_activity_type.name},
     )
 
     assert route.activity_type == other_activity_type
@@ -225,12 +229,17 @@ def test_performance_form_on_route_page(athlete, client):
         selected_activity_type.name, selected_activity_type.get_name_display()
     )
 
+    assert str(activity_performance) == "{} - {} - {:.2%}".format(
+        athlete.user.username,
+        activity_performance.activity_type.name,
+        activity_performance.model_score,
+    )
     assert response.status_code == 200
     assert selected in response.content.decode("utf-8")
     assert all(
         [
-            type in response.content.decode("utf-8")
-            for type in athlete_activity_types.values_list(
+            activity_type in response.content.decode("utf-8")
+            for activity_type in athlete_activity_types.values_list(
                 "activity_type__name", flat=True
             )
         ]

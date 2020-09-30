@@ -1,11 +1,12 @@
 from datetime import timedelta
+
 from homebytwo.routes.models import WebhookTransaction
 from homebytwo.routes.tasks import (
-    import_strava_activities_task,
     import_strava_activities_streams_task,
+    import_strava_activities_task,
     import_strava_activity_streams_task,
-    train_prediction_models_task,
     process_strava_events,
+    train_prediction_models_task,
 )
 from homebytwo.routes.tests.factories import (
     ActivityFactory,
@@ -51,7 +52,7 @@ def test_import_strava_activities_streams_task(athlete, mocker):
 
 def test_import_strava_activity_streams_task_success(athlete, intercept):
     activity = ActivityFactory(athlete=athlete, streams=None)
-    url = STRAVA_STREAMS_URL.format(str(activity.strava_id))
+    url = STRAVA_STREAMS_URL.format(activity.strava_id)
     expected = "Streams successfully imported for activity {}".format(
         activity.strava_id
     )
@@ -63,6 +64,14 @@ def test_import_strava_activity_streams_task_success(athlete, intercept):
     )
     activity.refresh_from_db()
     assert activity.streams is not None
+    assert expected in response
+
+
+def test_update_activity_streams_from_strava_skip(athlete):
+    activity = ActivityFactory(athlete=athlete, streams=None, skip_streams_import=True)
+    expected = "Skipped importing streams for activity {}. ".format(activity.strava_id)
+    response = import_strava_activity_streams_task(activity.strava_id)
+    assert activity.streams is None
     assert expected in response
 
 

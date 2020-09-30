@@ -17,9 +17,9 @@ from django.utils.six import StringIO
 import httpretty
 from pandas import DataFrame
 
-from ..fields import DataFrameField
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import open_data, read_data
+from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import ActivityPerformance
 from ..templatetags.duration import baseround, nice_repr

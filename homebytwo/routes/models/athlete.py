@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
-from social_django.models import UserSocialAuth
 
+from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
 from stravalib.client import Client as StravaClient
 
