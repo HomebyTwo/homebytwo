@@ -26,7 +26,9 @@ def import_strava(user, is_new, *args, **kwargs):
 
     # existing athlete
     else:
-        activities = user.athlete.activities.filter(streams__isnull=True)
+        activities = user.athlete.activities.filter(
+            streams__isnull=True, skip_streams_import=False
+        )
         activity_ids = activities.values_list("strava_id", flat=True)
         (
             import_strava_activities_streams_task.s(list(activity_ids))

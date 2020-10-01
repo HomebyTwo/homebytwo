@@ -23,7 +23,9 @@ def test_auth_pipeline_existing_athlete(athlete, celery, mocker):
     ActivityFactory.create_batch(5, athlete=athlete, streams=None)
     ActivityFactory.create_batch(5, athlete=athlete)
 
-    activities = athlete.activities.filter(streams__isnull=True)
+    activities = athlete.activities.filter(
+        streams__isnull=True, skip_streams_import=False
+    )
     activity_ids = list(activities.values_list("strava_id", flat=True))
     assert athlete.activities.count() == 10
 
