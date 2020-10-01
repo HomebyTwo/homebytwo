@@ -32,15 +32,6 @@ def get_default_category():
     return array(["None"]).copy()
 
 
-class ActivityQuerySet(models.QuerySet):
-    def for_user(self, user):
-        """
-        return all routes of a given user.
-        this is convenient with the 'request.user' object in views.
-        """
-        return self.filter(athlete=user.athlete)
-
-
 def update_user_activities_from_strava(athlete, after=None, before=None, limit=1000):
     """
     fetches an athlete's activities from Strava and saves them to the Database.
@@ -99,6 +90,15 @@ def are_streams_valid(strava_streams):
     if not all(raw_stream.original_size > 0 for raw_stream in strava_streams.values()):
         return False
     return True
+
+
+class ActivityQuerySet(models.QuerySet):
+    def for_user(self, user):
+        """
+        return all routes of a given user.
+        this is convenient with the 'request.user' object in views.
+        """
+        return self.filter(athlete=user.athlete)
 
 
 class ActivityManager(models.Manager):
