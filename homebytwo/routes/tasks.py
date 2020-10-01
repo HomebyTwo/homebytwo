@@ -30,6 +30,11 @@ def import_strava_activities_task(athlete_id):
         logger.error(message)
         return []
 
+    # upon successful import, set the athlete's flag to True
+    athlete.activities_imported = True
+    athlete.save(update_fields=["activities_imported"])
+
+    # return the list of activities for importing the streams
     return [
         activity.strava_id
         for activity in activities

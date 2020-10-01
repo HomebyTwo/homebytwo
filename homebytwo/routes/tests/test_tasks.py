@@ -29,6 +29,7 @@ def test_import_strava_activities_task(athlete, intercept):
     intercept(call, url, response_json, athlete_id=athlete.id)
 
     assert athlete.activities.count() == 2
+    assert athlete.activities_imported
 
 
 def test_import_strava_activities_task_server_error(athlete, server_error):

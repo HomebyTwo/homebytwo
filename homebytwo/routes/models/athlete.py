@@ -17,6 +17,9 @@ class Athlete(models.Model):
         "ActivityType", through="ActivityPerformance"
     )
 
+    # has the initial import of all Strava activities already taken place?
+    activities_imported = models.BooleanField(default=False)
+
     def __str__(self):
         return str(self.user.username)
 

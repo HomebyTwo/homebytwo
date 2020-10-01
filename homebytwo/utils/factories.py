@@ -50,6 +50,7 @@ class AthleteFactory(factory.django.DjangoModelFactory):
         model = Athlete
 
     user = factory.SubFactory(UserFactory, athlete=None)
+    activities_imported = True
 
 
 class SocialAuthFactory(factory.django.DjangoModelFactory):

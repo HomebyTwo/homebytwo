@@ -5,7 +5,7 @@ from .tasks import (
 )
 
 
-def import_strava(user, is_new, *args, **kwargs):
+def import_strava(user, *args, **kwargs):
     """
     Final step of the social authentication pipeline
 
@@ -17,7 +17,7 @@ def import_strava(user, is_new, *args, **kwargs):
     """
 
     # new athlete, created by social auth
-    if is_new:
+    if not user.athlete.activities_imported:
         (
             import_strava_activities_task.s(athlete_id=user.athlete.id)
             | import_strava_activities_streams_task.s()

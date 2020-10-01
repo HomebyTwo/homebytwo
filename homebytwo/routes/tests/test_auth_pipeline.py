@@ -3,6 +3,9 @@ from .factories import ActivityFactory
 
 
 def test_auth_pipeline_new_athlete(athlete, celery, mocker):
+    athlete.activities_imported = False
+    athlete.save(update_fields=["activities_imported"])
+
     mock_import_task = mocker.patch(
         "homebytwo.routes.tasks.import_strava_activities_task.run"
     )
