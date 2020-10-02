@@ -1,4 +1,7 @@
 # Change Log
+## [0.10.2] - 20200-10-02 Do not import Strava activities on every login
+- New flag to only import all athlete Strava activities once
+
 ## [0.10.1] - 2020-09-24 Replace Ridge Regression
 - Improve stability of model training by using "normal" Linear Regression
 
