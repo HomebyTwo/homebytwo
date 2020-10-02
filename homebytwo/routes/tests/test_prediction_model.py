@@ -43,17 +43,17 @@ def test_prediction_model_with_custom_parameters():
     assert prediction_model.numerical_columns == []
 
 
-def test_train_prediction_model_data_no_data(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_train_prediction_model_data_no_data(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     activity_type = activity_performance.activity_type.name
     result = activity_performance.train_prediction_model()
     assert f"No training data found for activity type: {activity_type}" in result
 
 
-def test_train_prediction_model_data_success(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_train_prediction_model_data_success(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     activity = ActivityFactory(
-        athlete=test_athlete, activity_type=activity_performance.activity_type
+        athlete=athlete, activity_type=activity_performance.activity_type
     )
     result = activity_performance.train_prediction_model()
 
@@ -64,10 +64,10 @@ def test_train_prediction_model_data_success(test_athlete):
     ]
 
 
-def test_train_prediction_model_data_default_run(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_train_prediction_model_data_default_run(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     activity = ActivityFactory(
-        athlete=test_athlete,
+        athlete=athlete,
         activity_type=activity_performance.activity_type,
         workout_type=0,
     )
@@ -80,10 +80,10 @@ def test_train_prediction_model_data_default_run(test_athlete):
     ]
 
 
-def test_train_prediction_model_data_success_no_gear_no_workout_type(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_train_prediction_model_data_success_no_gear_no_workout_type(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     ActivityFactory(
-        athlete=test_athlete,
+        athlete=athlete,
         activity_type=activity_performance.activity_type,
         gear=None,
         workout_type=None,
@@ -94,11 +94,9 @@ def test_train_prediction_model_data_success_no_gear_no_workout_type(test_athlet
     assert activity_performance.workout_type_categories == ["None"]
 
 
-def test_get_activity_performance_training_data(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
-    ActivityFactory(
-        athlete=test_athlete, activity_type=activity_performance.activity_type
-    )
+def test_get_activity_performance_training_data(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
+    ActivityFactory(athlete=athlete, activity_type=activity_performance.activity_type)
     observations = activity_performance.get_training_data()
 
     assert all(
@@ -114,45 +112,45 @@ def test_get_activity_performance_training_data(test_athlete):
     )
 
 
-def test_get_activity_training_data(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_get_activity_training_data(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     activity = ActivityFactory(
-        athlete=test_athlete, activity_type=activity_performance.activity_type
+        athlete=athlete, activity_type=activity_performance.activity_type
     )
     activity_data = activity.get_training_data()
     assert activity_data.shape == (99, 15)
 
 
-def test_track_return_prediction_model(test_athlete):
+def test_track_return_prediction_model(athlete):
     route = RouteFactory()
-    route.calculate_projected_time_schedule(test_athlete.user)
+    route.calculate_projected_time_schedule(athlete.user)
 
     assert "schedule" in route.data.columns
     assert "pace" in route.data.columns
 
 
-def test_activity_performance_form_no_choices(test_athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=test_athlete)
+def test_activity_performance_form_no_choices(athlete):
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
     form = ActivityPerformanceForm(
         route=RouteFactory(activity_type=activity_performance.activity_type),
-        athlete=test_athlete,
+        athlete=athlete,
     )
 
     assert "gear" not in form.fields
     assert "workout_type" not in form.fields
 
 
-def test_activity_performance_form(test_athlete):
+def test_activity_performance_form(athlete):
     gears = GearFactory.create_batch(5)
     activity_performance = ActivityPerformanceFactory(
-        athlete=test_athlete,
+        athlete=athlete,
         gear_categories=[gear.strava_id for gear in gears],
         workout_type_categories=["None", "long run"],
     )
 
     form = ActivityPerformanceForm(
         route=RouteFactory(activity_type=activity_performance.activity_type),
-        athlete=test_athlete,
+        athlete=athlete,
     )
 
     assert len(form.fields["gear"].choices) == 5
@@ -162,14 +160,14 @@ def test_activity_performance_form(test_athlete):
     ]
 
 
-def test_activity_performance_form_no_activity_performance(test_athlete):
+def test_activity_performance_form_no_activity_performance(athlete):
     athlete_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=other_activity_type)
     ActivityPerformanceFactory(
-        athlete=test_athlete,
+        athlete=athlete,
         activity_type=athlete_activity_type,
     )
-    form = ActivityPerformanceForm(route=route, athlete=test_athlete)
+    form = ActivityPerformanceForm(route=route, athlete=athlete)
 
     assert len(form.fields["activity_type"].choices) == len(
         ActivityType.SUPPORTED_ACTIVITY_TYPES
@@ -178,7 +176,7 @@ def test_activity_performance_form_no_activity_performance(test_athlete):
     assert "workout_type" not in form.fields
 
 
-def test_activity_performance_form_not_logged_in(test_athlete):
+def test_activity_performance_form_not_logged_in(athlete):
     form = ActivityPerformanceForm(route=RouteFactory(), athlete=None)
 
     assert len(form.fields["activity_type"].choices) == len(
@@ -188,55 +186,60 @@ def test_activity_performance_form_not_logged_in(test_athlete):
     assert "workout_type" not in form.fields
 
 
-def test_activity_performance_form_invalid_post_data(test_athlete):
+def test_activity_performance_form_invalid_post_data(athlete):
     route = RouteFactory()
     original_route_activity_type = route.activity_type
     invalid_activity_type_name = "foobar"
     ActivityPerformanceForm(
         route=route,
-        athlete=test_athlete,
+        athlete=athlete,
         data={"activity_type": invalid_activity_type_name},
     )
 
     assert route.activity_type == original_route_activity_type
 
 
-def test_activity_performance_form_change_activity_type(test_athlete):
+def test_activity_performance_form_change_activity_type(athlete):
     one_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
     route = RouteFactory(activity_type=one_activity_type)
     ActivityPerformanceForm(
         route=route,
-        athlete=test_athlete,
+        athlete=athlete,
         data={"activity_type": other_activity_type.name},
     )
 
     assert route.activity_type == other_activity_type
 
 
-def test_performance_form_on_route_page(test_athlete, client):
+def test_performance_form_on_route_page(athlete, client):
     (
         activity_performance,
         other_activity_performance,
         *_,
-    ) = ActivityPerformanceFactory.create_batch(8, athlete=test_athlete)
+    ) = ActivityPerformanceFactory.create_batch(8, athlete=athlete)
     route = RouteFactory(activity_type=activity_performance.activity_type)
     url = reverse("routes:route", kwargs={"pk": route.pk})
     selected_activity_type = other_activity_performance.activity_type
     data = {"activity_type": selected_activity_type}
     response = client.post(url, data=data)
 
-    athlete_activity_types = test_athlete.activityperformance_set.all()
+    athlete_activity_types = athlete.activityperformance_set.all()
 
     selected = '<option value="{}" selected>{}</option>'.format(
         selected_activity_type.name, selected_activity_type.get_name_display()
     )
 
+    assert str(activity_performance) == "{} - {} - {:.2%}".format(
+        athlete.user.username,
+        activity_performance.activity_type.name,
+        activity_performance.model_score,
+    )
     assert response.status_code == 200
     assert selected in response.content.decode("utf-8")
     assert all(
         [
-            type in response.content.decode("utf-8")
-            for type in athlete_activity_types.values_list(
+            activity_type in response.content.decode("utf-8")
+            for activity_type in athlete_activity_types.values_list(
                 "activity_type__name", flat=True
             )
         ]
