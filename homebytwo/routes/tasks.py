@@ -2,15 +2,11 @@ import logging
 
 from celery import group, shared_task
 from garmin_uploader.api import GarminAPIException
+from requests.exceptions import ConnectionError
+from stravalib.exc import Fault, RateLimitExceeded
 
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Athlete,
-    Route,
-    WebhookTransaction,
-)
+from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
+from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +17,29 @@ def import_strava_activities_task(athlete_id):
     import or update all Strava activities for an athlete.
     This task generates one query to the Strava API for every 200 activities.
     """
-    # log task request
-    logger.info("import Strava activities for {user_id}".format(user_id=athlete_id))
-
+    logger.info(f"import Strava activities for athlete with id: {athlete_id}.")
     athlete = Athlete.objects.get(pk=athlete_id)
-    activities = Activity.objects.update_user_activities_from_strava(athlete)
 
-    return [activity.strava_id for activity in activities if activity.streams is None]
+    try:
+        activities = update_user_activities_from_strava(athlete)
+    except (Fault, RateLimitExceeded) as error:
+        message = (
+            f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
+        )
+        message += f"Error was: {error}. "
+        logger.error(message)
+        return []
+
+    # upon successful import, set the athlete's flag to True
+    athlete.activities_imported = True
+    athlete.save(update_fields=["activities_imported"])
+
+    # return the list of activities for importing the streams
+    return [
+        activity.strava_id
+        for activity in activities
+        if activity.streams is None and not activity.skip_streams_import
+    ]
 
 
 @shared_task
@@ -44,19 +56,33 @@ def import_strava_activity_streams_task(strava_id):
     This task generates one API call for every activity.
     """
     # log task request
-    logger.info("import Strava activity streams for activity {}".format(strava_id))
+    logger.info("import Strava activity streams for activity {}.".format(strava_id))
 
+    # get the activity from the database
     try:
         activity = Activity.objects.get(strava_id=strava_id)
     except Activity.DoesNotExist:
-        return "Activity {} has been deleted from the Database".format(strava_id)
+        return "Activity {} has been deleted from the Database. ".format(strava_id)
 
-    imported = activity.save_streams_from_strava()
+    # marked as skip because of missing stream data
+    if activity.skip_streams_import:
+        return "Skipped importing streams for activity {}. ".format(strava_id)
+
+    # get streams from Strava
+    try:
+        imported = activity.update_activity_streams_from_strava()
+    except (ConnectionError, Fault) as error:
+        message = (
+            f"Streams for activity {strava_id} could not be retrieved from Strava."
+        )
+        message += f"error was: {error}. "
+        logger.error(message)
+        return message
 
     if imported:
-        return "Streams successfully imported for activity {}".format(strava_id)
+        return "Streams successfully imported for activity {}.".format(strava_id)
     else:
-        return "Streams not imported for activity {}".format(strava_id)
+        return "Streams not imported for activity {}.".format(strava_id)
 
 
 @shared_task
@@ -64,7 +90,7 @@ def train_prediction_models_task(athlete_id):
     """
     train prediction model for a given activity_performance object
     """
-    logger.info(f"Fitting prediction models for athlete: {athlete_id}")
+    logger.info(f"Fitting prediction models for athlete: {athlete_id}. ")
 
     athlete = Athlete.objects.get(id=athlete_id)
     activities = athlete.activities.filter(
@@ -72,6 +98,9 @@ def train_prediction_models_task(athlete_id):
     )
     activities = activities.order_by("activity_type")
     activities = activities.distinct("activity_type")
+
+    if not activities:
+        return f"No prediction model trained for athlete: {athlete}"
 
     message = f"Prediction models trained for athlete: {athlete}."
     for activity in activities:
@@ -93,45 +122,27 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
     compatible Garmin devices.
     """
 
+    # retrieve route and athlete
+    route = Route.objects.get(pk=route_id)
+    athlete = Athlete.objects.get(pk=athlete_id) if athlete_id else route.athlete
+
     # log message
-    log_message = "Upload route {route_id} to garmin for user {user_id}"
-
-    # retrieve route
-    route = Route.objects.select_related("athlete").get(pk=route_id)
-
-    # retrieve athlete from DB if different from route athlete
-    if athlete_id and athlete_id != route.athlete.id:
-        # retrieve athlete from DB
-        athlete = Athlete.objects.get(pk=athlete_id)
-        # log task
-        logger.info(log_message.format(route_id=route_id, user_id=athlete.user.id))
-
-    else:
-        # defaults to `route.athlete` in `route.upload_to_garmin` method
-        athlete = None
-        # log task
-        logger.info(
-            log_message.format(route_id=route_id, user_id=route.athlete.user.id)
-        )
+    logger.info(f"Upload route {route.id} to garmin for user {athlete.user.id}")
 
     try:
         # upload to Garmin Connect
         garmin_activity_url, uploaded = route.upload_to_garmin(athlete)
 
-    except GarminAPIException as e:
+    except GarminAPIException as error:
         # remove Garmin ID if status was uploading
         if route.garmin_id == 1:
             route.garmin_id = None
             route.save(update_fields=["garmin_id"])
 
-        return "Garmin API failure: {}".format(e)
+        return "Garmin API failure: {}".format(error)
 
     if uploaded:
-        return (
-            "Route '{route}' successfully uploaded to Garmin connect at {url}".format(
-                route=str(route), url=garmin_activity_url
-            )
-        )
+        return f"Route '{str(route)}' successfully uploaded to Garmin connect at {garmin_activity_url}."
 
 
 @shared_task
@@ -160,7 +171,7 @@ def process_strava_events():
     for transaction in unprocessed_transactions:
         if transaction in distinct_transactions:
             try:
-                _process_transaction(transaction)
+                process_transaction(transaction)
                 transaction.status = WebhookTransaction.PROCESSED
                 transaction.save()
 
@@ -181,40 +192,40 @@ def process_strava_events():
             transaction.save()
 
 
-def _process_transaction(transaction):
+def process_transaction(transaction):
     """
     process transactions created by the Strava Event Webhook
     """
 
-    # find the Strava Athlete
+    # find the Strava Athlete in the database
     athlete = Athlete.objects.get(
         user__social_auth__provider="strava",
         user__social_auth__uid=transaction.body["owner_id"],
     )
 
-    # retrieve event values to process
+    # event values to process
     object_type = transaction.body["object_type"]
     object_id = transaction.body["object_id"]
     aspect_type = transaction.body["aspect_type"]
 
-    # create a new activity if it does not exist already
-    if object_type == "activity":
+    # we only support activity update
+    if not object_type == "activity":
+        logger.info(f"Strava event with object type: {object_type} has triggered no action. ")
+        return
 
-        # retrieve the activity from the database if it exists
-        try:
-            activity = Activity.objects.get(strava_id=object_id)
+    # get activity from database or create a new one
+    activity = Activity.get_or_stub(object_id, athlete)
 
-        # if the activity does not exist, create a stub
-        except Activity.DoesNotExist:
-            activity = Activity(athlete=athlete, strava_id=object_id)
+    # create or update activity with Strava
+    if aspect_type in ["create", "update"]:
+        # retrieve activity information from Strava
+        strava_activity = activity.get_activity_from_strava()
+        # activity was found on Strava and is supported by Homebytwo
+        if strava_activity and is_activity_supported(strava_activity):
+            activity.update_with_strava_data(strava_activity)
+            return True
 
-        # create or update activity from the Strava server
-        if aspect_type in ["create", "update"]:
-            activity.update_from_strava()
-
-        # delete activity, if it exists
-        if aspect_type == "delete" and activity.id:
-            activity.delete()
-
-    else:
-        logger.info(f"No action triggered by Strava Event: {object_type}")
+    # Activity is not supported by Homebytwo or the transaction `aspect_type` is `delete`
+    if activity.id:
+        activity.delete()
+        logger.info(f"Strava activity: {object_id} was deleted from Homebytwo.")

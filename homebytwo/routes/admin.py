@@ -4,15 +4,7 @@ from django.contrib.gis import admin
 
 from leaflet.admin import LeafletGeoAdmin
 
-from .models import (
-    Activity,
-    ActivityPerformance,
-    Athlete,
-    Place,
-    Route,
-    WebhookTransaction,
-    ActivityType,
-)
+from .models import Activity, ActivityPerformance, ActivityType, Athlete, Place, Route, WebhookTransaction
 
 
 class RouteAdmin(LeafletGeoAdmin):

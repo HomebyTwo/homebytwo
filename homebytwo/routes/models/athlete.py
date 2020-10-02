@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
-from social_django.models import UserSocialAuth
 
+from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
 from stravalib.client import Client as StravaClient
 
@@ -17,6 +17,9 @@ class Athlete(models.Model):
         "ActivityType", through="ActivityPerformance"
     )
 
+    # has the initial import of all Strava activities already taken place?
+    activities_imported = models.BooleanField(default=False)
+
     def __str__(self):
         return str(self.user.username)
 
@@ -24,7 +27,7 @@ class Athlete(models.Model):
     def strava_client(self):
         """
         the Strava API client instantiated with the athlete's
-        authorizatio token. Note that it only generates a hit to the Strava
+        authorization token. Note that it only generates a hit to the Strava
         API if the authorization token is expired.
         """
 
