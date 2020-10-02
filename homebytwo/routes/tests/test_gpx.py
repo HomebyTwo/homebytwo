@@ -19,6 +19,113 @@ from .factories import PlaceFactory, RouteFactory
 CURRENT_DIR = dirname(realpath(__file__))
 
 
+def block_garmin_authentication_urls():
+    """
+    helper task to authenticate with the Garmin uploader blocking all calls
+    """
+
+    # get hostname
+    host_name_response = '{"host": "https://connect.garmin.com"}'
+    httpretty.register_uri(
+        httpretty.GET,
+        garmin_api.URL_HOSTNAME,
+        body=host_name_response,
+        content_type="application/json",
+    )
+
+    # get login form
+    get_login_body = '<input type="hidden" name="_csrf" value="CSRF" />'
+    httpretty.register_uri(
+        httpretty.GET,
+        garmin_api.URL_LOGIN,
+        body=get_login_body,
+        match_querystring=False,
+    )
+
+    # sign-in
+    sign_in_body = "var response_url = 'foo?ticket=bar'"
+    httpretty.register_uri(
+        httpretty.POST,
+        garmin_api.URL_LOGIN,
+        body=sign_in_body,
+        match_querystring=False,
+        adding_headers={"set-cookie": "GARMIN-SSO-GUID=foo; Domain=garmin.com; Path=/"},
+    )
+
+    # redirect to some place
+    post_login = "almost there..."
+    httpretty.register_uri(
+        httpretty.GET,
+        garmin_api.URL_POST_LOGIN,
+        body=post_login,
+        match_querystring=False,
+    )
+
+    # check login
+    check_login = '{"fullName": "homebytwo"}'
+    httpretty.register_uri(
+        httpretty.GET,
+        garmin_api.URL_PROFILE,
+        body=check_login,
+        content_type="application/json",
+    )
+
+
+def block_garmin_delete_urls(garmin_activity_id, status=200):
+    # delete activity
+    delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}".format(
+        garmin_activity_id
+    )
+    httpretty.register_uri(
+        httpretty.DELETE, delete_url, body="", status=status,
+    )
+
+
+def block_garmin_upload_urls(garmin_activity_id, route_activity_type):
+
+    activity_url = "{}/{}".format(garmin_api.URL_ACTIVITY_BASE, garmin_activity_id)
+
+    # upload activity
+    upload_url = f"{garmin_api.URL_UPLOAD}/.gpx"
+    upload_activity_response = {
+        "detailedImportResult": {"successes": [{"internalId": garmin_activity_id}]}
+    }
+    httpretty.register_uri(
+        httpretty.POST,
+        upload_url,
+        body=json.dumps(upload_activity_response),
+        content_type="application/json",
+    )
+
+    # update activity
+    httpretty.register_uri(
+        httpretty.POST, activity_url, body="yeah!",
+    )
+
+    activity_type = GARMIN_ACTIVITY_TYPE_MAP.get(route_activity_type, "other")
+    activity_type_response = [{"typeKey": activity_type}]
+    httpretty.register_uri(
+        httpretty.GET,
+        garmin_api.URL_ACTIVITY_TYPES,
+        body=json.dumps(activity_type_response),
+        content_type="application/json",
+    )
+
+
+def intercepted_garmin_upload_task(route, athlete):
+    """
+    helper method to upload a route to Garmin while blocking all external calls
+    """
+    garmin_activity_id = route.garmin_id or 654321
+
+    with httpretty.enabled():
+        block_garmin_authentication_urls()
+        block_garmin_upload_urls(garmin_activity_id, route.activity_type.name)
+        block_garmin_delete_urls(garmin_activity_id)
+
+        return upload_route_to_garmin_task(route.pk, athlete.id)
+
+
 @override_settings(
     GARMIN_CONNECT_USERNAME="example@example.com",
     GARMIN_CONNECT_PASSWORD="testpassword",
@@ -134,134 +241,14 @@ class GPXTestCase(TestCase):
             self.assertRedirects(response, route_url)
             self.assertTrue(mock_task.called)
 
-    def block_garmin_authentication_urls(self):
-        """
-        helper task to authenticate with the Garmin uploader blocking all calls
-        """
-
-        # get hostname
-        host_name_response = '{"host": "https://connect.garmin.com"}'
-        httpretty.register_uri(
-            httpretty.GET,
-            garmin_api.URL_HOSTNAME,
-            body=host_name_response,
-            content_type="application/json",
-        )
-
-        # get login form
-        get_login_body = '<input type="hidden" name="_csrf" value="CSRF" />'
-        httpretty.register_uri(
-            httpretty.GET,
-            garmin_api.URL_LOGIN,
-            body=get_login_body,
-            match_querystring=False,
-        )
-
-        # sign-in
-        sign_in_body = "var response_url = 'foo?ticket=bar'"
-        httpretty.register_uri(
-            httpretty.POST,
-            garmin_api.URL_LOGIN,
-            body=sign_in_body,
-            match_querystring=False,
-            adding_headers={
-                "set-cookie": "GARMIN-SSO-GUID=foo; Domain=garmin.com; Path=/"
-            },
-        )
-
-        # redirect to some place
-        post_login = "almost there..."
-        httpretty.register_uri(
-            httpretty.GET,
-            garmin_api.URL_POST_LOGIN,
-            body=post_login,
-            match_querystring=False,
-        )
-
-        # check login
-        check_login = '{"fullName": "homebytwo"}'
-        httpretty.register_uri(
-            httpretty.GET,
-            garmin_api.URL_PROFILE,
-            body=check_login,
-            content_type="application/json",
-        )
-
-    def block_garmin_upload_urls(self, garmin_activity_id):
-
-        activity_url = "{}/{}".format(garmin_api.URL_ACTIVITY_BASE, garmin_activity_id)
-
-        # upload activity
-        upload_url = "{}/{}".format(garmin_api.URL_UPLOAD, ".gpx")
-        upload_activity_response = {
-            "detailedImportResult": {"successes": [{"internalId": garmin_activity_id}]}
-        }
-        httpretty.register_uri(
-            httpretty.POST,
-            upload_url,
-            body=json.dumps(upload_activity_response),
-            content_type="application/json",
-        )
-
-        # update activity
-        httpretty.register_uri(
-            httpretty.POST,
-            activity_url,
-            body="yeah!",
-        )
-
-        # get activity types
-        activity_type = GARMIN_ACTIVITY_TYPE_MAP.get(
-            self.route.activity_type.name, "other"
-        )
-        activity_type_response = [{"typeKey": activity_type}]
-        httpretty.register_uri(
-            httpretty.GET,
-            garmin_api.URL_ACTIVITY_TYPES,
-            body=json.dumps(activity_type_response),
-            content_type="application/json",
-        )
-
-    def block_garmin_delete_urls(self, garmin_activity_id, status=200):
-        # delete activity
-        delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}".format(
-            garmin_activity_id
-        )
-        httpretty.register_uri(
-            httpretty.DELETE,
-            delete_url,
-            body="",
-            status=status,
-        )
-
-    def blocked_garmin_upload_task(self, route=None, athlete=None):
-        """
-        helper method to upload a route to Garmin while blocking all external calls
-        """
-        route = route or self.route
-        athlete = athlete or self.athlete
-        garmin_activity_id = self.route.garmin_id or 654321
-
-        httpretty.enable()
-
-        self.block_garmin_authentication_urls()
-        self.block_garmin_upload_urls(garmin_activity_id)
-        self.block_garmin_delete_urls(garmin_activity_id)
-
-        response = upload_route_to_garmin_task(route.pk, athlete.id)
-
-        httpretty.disable()
-
-        return response
-
     def test_garmin_upload_task_success(self):
         self.route.garmin_id = 123456
         self.route.save(update_fields=["garmin_id"])
 
-        message = "Route '{route}' successfully uploaded to Garmin connect at {url}"
+        message = "Route '{route}' successfully uploaded to Garmin connect at {url}."
         route_str = str(self.route)
 
-        response = self.blocked_garmin_upload_task()
+        response = intercepted_garmin_upload_task(self.route, self.athlete)
 
         self.route.refresh_from_db()
         garmin_activity_url = self.route.garmin_activity_url
@@ -277,10 +264,10 @@ class GPXTestCase(TestCase):
 
         self.route.save(update_fields=["data", "garmin_id"])
 
-        message = "Route '{route}' successfully uploaded to Garmin connect at {url}"
+        message = "Route '{route}' successfully uploaded to Garmin connect at {url}."
         route_str = str(self.route)
 
-        response = self.blocked_garmin_upload_task()
+        response = intercepted_garmin_upload_task(self.route, self.athlete)
 
         self.route.refresh_from_db()
         garmin_activity_url = self.route.garmin_activity_url
@@ -297,10 +284,10 @@ class GPXTestCase(TestCase):
         second_athlete = AthleteFactory(user__password="123456")
         self.client.login(username=second_athlete.user.username, password="123456")
 
-        message = "Route '{route}' successfully uploaded to Garmin connect at {url}"
+        message = "Route '{route}' successfully uploaded to Garmin connect at {url}."
         route_str = str(self.route)
 
-        response = self.blocked_garmin_upload_task(athlete=second_athlete)
+        response = intercepted_garmin_upload_task(self.route, second_athlete)
 
         self.route.refresh_from_db()
         garmin_activity_url = self.route.garmin_activity_url
@@ -335,8 +322,8 @@ class GPXTestCase(TestCase):
 
         httpretty.enable(allow_net_connect=False)
 
-        self.block_garmin_authentication_urls()
-        self.block_garmin_delete_urls(self.route.garmin_id, status=500)
+        block_garmin_authentication_urls()
+        block_garmin_delete_urls(self.route.garmin_id, status=500)
 
         response = upload_route_to_garmin_task(self.route.pk, self.athlete.id)
 

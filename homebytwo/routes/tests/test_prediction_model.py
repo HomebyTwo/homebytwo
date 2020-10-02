@@ -229,12 +229,17 @@ def test_performance_form_on_route_page(athlete, client):
         selected_activity_type.name, selected_activity_type.get_name_display()
     )
 
+    assert str(activity_performance) == "{} - {} - {:.2%}".format(
+        athlete.user.username,
+        activity_performance.activity_type.name,
+        activity_performance.model_score,
+    )
     assert response.status_code == 200
     assert selected in response.content.decode("utf-8")
     assert all(
         [
-            type in response.content.decode("utf-8")
-            for type in athlete_activity_types.values_list(
+            activity_type in response.content.decode("utf-8")
+            for activity_type in athlete_activity_types.values_list(
                 "activity_type__name", flat=True
             )
         ]

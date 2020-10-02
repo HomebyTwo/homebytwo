@@ -40,6 +40,16 @@ class RouteManager(models.Manager):
         return self.get_queryset().for_user(user)
 
 
+def authenticate_on_garmin(garmin_api):
+    # sign-in to Homebytwo account
+    try:
+        return garmin_api.authenticate(
+            settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
+        )
+    except Exception as e:
+        raise GarminAPIException("Unable to sign-in: {}".format(e))
+
+
 class Route(Track):
     """
     Subclass of track with source information and relations to checkpoints.
@@ -318,17 +328,17 @@ class Route(Track):
 
         return checkpoints
 
-    def get_gpx(self):
+    def get_gpx(self, start_time=None):
         """
         returns the route as a GPX with track schedule and waypoints
         https://www.topografix.com/gpx.asp
         """
+        # GPX requires datetime objects but route.data["schedule"] is in timedelta
+        start_time = start_time or datetime.utcnow()
+
         # instantiate GPX object
         gpx = gpxpy.gpx.GPX()
         gpx.creator = "Homebytwo -- homebytwo.ch"
-
-        # GPX requires datetime objects, route.data["schedule"] id in timedelta
-        start_time = datetime.utcnow()
 
         # add route waypoints
         gpx.waypoints.extend(self.get_gpx_waypoints(start_time))
@@ -336,7 +346,7 @@ class Route(Track):
 
         return gpx.to_xml()
 
-    def get_gpx_waypoints(self, start_time=datetime.utcnow()):
+    def get_gpx_waypoints(self, start_time):
         """
         return the set of all waypoints including start and end place
         as GPXWaypoint objects.
@@ -365,13 +375,14 @@ class Route(Track):
 
         return gpx_waypoints
 
-    def get_gpx_track(self, start_time=datetime.utcnow()):
+    def get_gpx_track(self, start_time):
         """
         return the GPXTrack object corresponding to the route
 
-        According to GPX specifications, GPS tracks can contain one or segments of
-        continuous GPS tracking. For our schedule, we create a single segment.
+        According to GPX specifications, GPS tracks can contain one or more segments
+        of continuous GPS tracking. For our schedule, we create a single segment.
         """
+
         # Instantiate GPX Track
         gpx_track = gpxpy.gpx.GPXTrack(name=self.name)
 
@@ -429,11 +440,11 @@ class Route(Track):
 
             # adding schedule to old routes one-by-one, instead of migrating
             if athlete == self.athlete:
-                self.save()
+                self.save(update_fields=["data"])
 
         # instantiate API from garmin_uploader and authenticate
         garmin_api = GarminAPI()
-        session = self.authenticate_on_garmin(garmin_api)
+        session = authenticate_on_garmin(garmin_api)
 
         # delete existing activity on Garmin
         if self.garmin_id > 1:
@@ -463,15 +474,6 @@ class Route(Track):
 
         return self.garmin_activity_url, uploaded
 
-    def authenticate_on_garmin(self, garmin_api):
-        # sign-in to Homebytwo account
-        try:
-            return garmin_api.authenticate(
-                settings.GARMIN_CONNECT_USERNAME, settings.GARMIN_CONNECT_PASSWORD
-            )
-        except Exception as e:
-            raise GarminAPIException("Unable to sign-in: {}".format(e))
-
     def delete_garmin_activity(self, session):
         """
         delete an existing activity on Garmin based on the route garmin_id
@@ -481,8 +483,8 @@ class Route(Track):
         delete_url = (
             "https://connect.garmin.com/modern/proxy/activity-service/activity/{}"
         )
-
         garmin_response = session.delete(delete_url.format(self.garmin_id))
+
         try:
             # 404 is ok, job was already done
             if not garmin_response.status_code == 404:

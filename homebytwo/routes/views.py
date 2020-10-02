@@ -263,7 +263,7 @@ def import_strava_streams(request):
     """
     trigger a task to import streams for activities without them.
     """
-    activities = Activity.objects.filter(athlete=request.user.athlete)
+    activities = request.user.athlete.activities
     activities = activities.filter(streams__isnull=True)
     activities = activities.order_by("-start_date")
 

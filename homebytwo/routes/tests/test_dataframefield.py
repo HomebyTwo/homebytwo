@@ -36,10 +36,7 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_no_unique_fields(self):
         field = DataFrameField(
-            upload_to="foo",
-            storage="bar",
-            max_length=80,
-            unique_fields=[],
+            upload_to="foo", storage="bar", max_length=80, unique_fields=[],
         )
         field.name = "data"
         field.model = Route
@@ -56,10 +53,7 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_non_existent_unique_field(self):
         field = DataFrameField(
-            upload_to="foo",
-            storage="bar",
-            max_length=80,
-            unique_fields=["foo"],
+            upload_to="foo", storage="bar", max_length=80, unique_fields=["foo"],
         )
         field.name = "data"
         field.model = Route
@@ -77,10 +71,7 @@ class DataFrameFieldTestCase(TestCase):
 
     def test_dataframe_field_check_ok(self):
         field = DataFrameField(
-            upload_to="foo",
-            storage="bar",
-            max_length=80,
-            unique_fields=["data"],
+            upload_to="foo", storage="bar", max_length=80, unique_fields=["data"],
         )
         field.name = "data"
         field.model = Route

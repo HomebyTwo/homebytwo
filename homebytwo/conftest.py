@@ -1,16 +1,24 @@
+from functools import partial
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+import httpretty
 
 from pytest import fixture
 
 from .utils.factories import AthleteFactory
-from .utils.tests import open_data
+from .utils.tests import open_data, raise_connection_error
 
 
 @fixture(autouse=True)
 def media_storage(settings, tmpdir):
     settings.MEDIA_ROOT = tmpdir.strpath
+
+
+@fixture()
+def celery(settings):
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.CELERY_TASK_EAGER_PROPAGATES = True
 
 
 @fixture()
@@ -45,6 +53,36 @@ def read_file(open_file):
 
 
 @fixture()
+def enable_httpretty():
+    def _httpretty(
+        call,
+        uri,
+        method="get",
+        body=None,
+        content_type="application/json",
+        status=200,
+        *args,
+        **kwargs
+    ):
+        with httpretty.enabled(allow_net_connect=False):
+            method_map = {
+                "get": httpretty.GET,
+                "post": httpretty.POST,
+                "delete": httpretty.DELETE,
+            }
+            httpretty.register_uri(
+                method=method_map[method],
+                uri=uri,
+                body=body,
+                content_type=content_type,
+                status=status,
+            )
+            return call(*args, **kwargs)
+
+    return _httpretty
+
+
+@fixture()
 def uploaded_file(read_file):
     def _uploaded_file(file):
         return SimpleUploadedFile(
@@ -53,3 +91,34 @@ def uploaded_file(read_file):
         )
 
     return _uploaded_file
+
+
+@fixture()
+def intercept(read_file, enable_httpretty):
+    def _intercept(call, url, response_json, method="get", status=200, *args, **kwargs):
+        return enable_httpretty(
+            call,
+            url,
+            body=read_file(response_json),
+            method=method,
+            status=status,
+            *args,
+            **kwargs
+        )
+
+    return _intercept
+
+
+@fixture()
+def connection_error(enable_httpretty):
+    return partial(enable_httpretty, body=raise_connection_error)
+
+
+@fixture()
+def server_error(intercept):
+    return partial(intercept, status=500)
+
+
+@fixture()
+def not_found(intercept):
+    return partial(intercept, status=404)
