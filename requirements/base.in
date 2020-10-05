@@ -1,7 +1,7 @@
 -e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
--e git+git://github.com/drixselecta/codaio@master#egg=codaio
 
 celery
+coda
 dj-database-url
 django<2.3
 django-geojson

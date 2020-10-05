@@ -11,4 +11,5 @@ pytest
 pytest-cov
 pytest-django
 pytest-env
+pytest-mock
 pytest-xdist

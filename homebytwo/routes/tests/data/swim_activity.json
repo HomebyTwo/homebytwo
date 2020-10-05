@@ -1,0 +1,136 @@
+{
+  "resource_state": 3,
+  "athlete": {
+    "id": 1234567,
+    "resource_state": 1
+  },
+  "name": "Swim",
+  "distance": 150.0,
+  "moving_time": 905,
+  "elapsed_time": 905,
+  "total_elevation_gain": 316.0,
+  "type": "Swim",
+  "id": 1234567890,
+  "external_id": "file.fit",
+  "upload_id": 1234567890,
+  "start_date": "2018-08-19T14:59:17Z",
+  "start_date_local": "2018-08-19T16:59:17Z",
+  "timezone": "(GMT+01:00) Europe/Zurich",
+  "utc_offset": 7200.0,
+  "start_latlng": [
+    46.510828,
+    6.633728
+  ],
+  "end_latlng": [
+    46.510812,
+    6.633703
+  ],
+  "location_city": "Lausanne",
+  "location_state": "VD",
+  "location_country": "Switzerland",
+  "start_latitude": 46.510828,
+  "start_longitude": 6.633728,
+  "achievement_count": 0,
+  "kudos_count": 0,
+  "comment_count": 0,
+  "athlete_count": 1,
+  "photo_count": 0,
+  "map": {
+    "id": "a1816232428",
+    "polyline": "sc{zGwsng@@a@Au@OB^^OSBq@ExBBB",
+    "resource_state": 3,
+    "summary_polyline": "sc{zGwsng@ByBA|B"
+  },
+  "trainer": false,
+  "commute": false,
+  "manual": false,
+  "private": false,
+  "visibility": "everyone",
+  "flagged": false,
+  "gear_id": null,
+  "from_accepted_tag": false,
+  "upload_id_str": "1234567890",
+  "average_speed": 0.166,
+  "max_speed": 3.5,
+  "average_temp": 25,
+  "has_heartrate": true,
+  "average_heartrate": 68.2,
+  "max_heartrate": 87.0,
+  "heartrate_opt_out": false,
+  "display_hide_heartrate_option": true,
+  "elev_high": 436.0,
+  "elev_low": 45.0,
+  "pr_count": 0,
+  "total_photo_count": 0,
+  "has_kudoed": false,
+  "suffer_score": 0.0,
+  "description": "",
+  "calories": 56.0,
+  "perceived_exertion": null,
+  "prefer_perceived_exertion": null,
+  "segment_efforts": [],
+  "splits_metric": [
+    {
+      "distance": 152.0,
+      "elapsed_time": 904,
+      "elevation_difference": 0.0,
+      "moving_time": 889,
+      "split": 1,
+      "average_speed": 0.17,
+      "average_grade_adjusted_speed": null,
+      "average_heartrate": 68.18893129770993,
+      "pace_zone": 0
+    }
+  ],
+  "splits_standard": [
+    {
+      "distance": 152.0,
+      "elapsed_time": 904,
+      "elevation_difference": 0.0,
+      "moving_time": 889,
+      "split": 1,
+      "average_speed": 0.17,
+      "average_grade_adjusted_speed": null,
+      "average_heartrate": 68.18893129770993,
+      "pace_zone": 0
+    }
+  ],
+  "laps": [
+    {
+      "id": 1234567890,
+      "resource_state": 2,
+      "name": "Lap 1",
+      "activity": {
+        "id": 1234567890,
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 1234567,
+        "resource_state": 1
+      },
+      "elapsed_time": 905,
+      "moving_time": 905,
+      "start_date": "2018-08-19T14:59:17Z",
+      "start_date_local": "2018-08-19T16:59:17Z",
+      "distance": 152.0,
+      "start_index": 0,
+      "end_index": 904,
+      "total_elevation_gain": 247.0,
+      "average_speed": 0.17,
+      "max_speed": 3.5,
+      "average_heartrate": 81.6,
+      "max_heartrate": 87.0,
+      "lap_index": 1,
+      "split": 1
+    }
+  ],
+  "photos": {
+    "primary": null,
+    "count": 0
+  },
+  "device_name": "Suunto Ambit3 Peak",
+  "embed_token": "805a0c395122a648aec16e21045c3fcdeb298ef4",
+  "available_zones": [
+    "heartrate"
+  ]
+}

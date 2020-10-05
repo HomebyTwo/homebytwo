@@ -10,6 +10,8 @@ from ...core.models import TimeStampedModel
 from ..fields import DataFrameField, NumpyArrayField
 from ..prediction_model import PredictionModel
 
+STREAM_TYPES = ["time", "altitude", "distance", "moving"]
+
 
 def athlete_streams_directory_path(instance, filename):
     # streams will upload to MEDIA_ROOT/athlete_<id>/<filename>
@@ -30,6 +32,66 @@ def get_default_category():
     return array(["None"]).copy()
 
 
+def update_user_activities_from_strava(athlete, after=None, before=None, limit=1000):
+    """
+    fetches an athlete's activities from Strava and saves them to the Database.
+    It erases the ones that are no more available because they have been deleted
+    or set to private and returns all of the athlete's current activities.
+
+    Parameters:
+    'after': start date is after specified value (UTC). datetime.datetime, str or None.
+    'before': start date is before specified value (UTC). datetime.datetime or str or None
+    'limit': maximum activities retrieved. Integer
+
+    See https://pythonhosted.org/stravalib/usage/activities.html#list-of-activities
+    and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
+    """
+
+    # retrieve the athlete's activities on Strava
+    strava_activities = athlete.strava_client.get_activities(
+        before=before, after=after, limit=limit
+    )
+
+    current_activities = []
+    for strava_activity in strava_activities:
+        if is_activity_supported(strava_activity):
+            activity = Activity.get_or_stub(strava_activity.id, athlete)
+            activity.update_with_strava_data(strava_activity)
+            current_activities.append(activity)
+
+    # delete existing activities that are not in the Strava result
+    existing_activities = Activity.objects.filter(athlete=athlete)
+    existing_activities.exclude(
+        id__in=[activity.id for activity in current_activities]
+    ).delete()
+
+    return current_activities
+
+
+def is_activity_supported(strava_activity):
+    """
+    check that the activity was not manually uploaded by the athlete
+    and if the activity type is supported by homebytwo
+    """
+    if strava_activity.manual:
+        return False
+    if strava_activity.type not in ActivityType.SUPPORTED_ACTIVITY_TYPES:
+        return False
+    return True
+
+
+def are_streams_valid(strava_streams):
+    """
+    check if all required stream types are present and
+    if they all contain values.
+    """
+    if not all(stream_type in strava_streams for stream_type in STREAM_TYPES):
+        return False
+    if not all(raw_stream.original_size > 0 for raw_stream in strava_streams.values()):
+        return False
+    return True
+
+
 class ActivityQuerySet(models.QuerySet):
     def for_user(self, user):
         """
@@ -45,50 +107,6 @@ class ActivityManager(models.Manager):
 
     def for_user(self, user):
         return self.get_queryset().for_user(user)
-
-    def update_user_activities_from_strava(
-        self, athlete, after=None, before=None, limit=0
-    ):
-        """
-        fetches an athlete's activities from Strava and saves them to the Database.
-        It erases the ones that are no more available because they have been deleted
-        or set to private. It returns all of the athlete's current activities.
-
-        Parameters:
-        'after': start date is after specified value (UTC). datetime.datetime, str or None.
-        'before': start date is before specified value (UTC). datetime.datetime or str or None
-        'limit': maximum activites retrieved. Integer
-
-        See https://pythonhosted.org/stravalib/usage/activities.html#list-of-activities
-        and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
-        """
-
-        # retrieve the athlete's activities on Strava
-        strava_activities = athlete.strava_client.get_activities(
-            before=before, after=after, limit=limit
-        )
-
-        # create or update retrieved activities
-        activities = []
-        for strava_activity in strava_activities:
-            if strava_activity.type not in ActivityType.SUPPORTED_ACTIVITY_TYPES:
-                continue
-            try:
-                activity = self.get(strava_id=strava_activity.id)
-
-            except Activity.DoesNotExist:
-                activity = Activity(athlete=athlete, strava_id=strava_activity.id)
-
-            activity.save_from_strava(strava_activity)
-            activities.append(activity)
-
-        # delete activities not in the Strava result
-        existing_activities = Activity.objects.filter(athlete=athlete)
-        existing_activities.exclude(
-            id__in=[activity.id for activity in activities]
-        ).delete()
-
-        return activities
 
 
 class Activity(TimeStampedModel):
@@ -139,9 +157,6 @@ class Activity(TimeStampedModel):
         "ActivityType", on_delete=models.PROTECT, related_name="activities"
     )
 
-    # Was the activity created manually? If yes there are no associated data streams.
-    manual = models.BooleanField(default=False)
-
     # Total activity distance
     distance = models.FloatField("Activity distance in m", blank=True, null=True)
 
@@ -164,6 +179,9 @@ class Activity(TimeStampedModel):
     streams = DataFrameField(
         null=True, upload_to=athlete_streams_directory_path, unique_fields=["strava_id"]
     )
+
+    # skip trying to import streams from Strava
+    skip_streams_import = models.BooleanField(default=False)
 
     # Workout Type as defined in Strava
     workout_type = models.SmallIntegerField(
@@ -204,32 +222,44 @@ class Activity(TimeStampedModel):
         # return the activity distance as a Distance object
         return D(m=self.total_elevation_gain)
 
-    def update_from_strava(self):
-        # retrieve activity from Strava and update it.
+    @classmethod
+    def get_or_stub(cls, strava_id, athlete):
+        """
+        use Strava id to return an activity from the database or an activity stub
+        """
+        try:
+            activity = cls.objects.get(strava_id=strava_id)
+        except cls.DoesNotExist:
+            activity = cls(strava_id=strava_id, athlete=athlete)
+
+        return activity
+
+    def get_activity_from_strava(self):
+        """
+        retrieve single activity information from Strava.
+        """
         try:
             strava_activity = self.athlete.strava_client.get_activity(self.strava_id)
 
-        # Object not found on Strava: e.g. changed privacy setting
+        # Activity was was deleted or made private on Strava
         except ObjectNotFound:
-            self.delete()
+            if self.id:
+                self.delete()
 
-        # strava activity was found in Strava
+        # strava activity was found on Strava
         else:
-            self.save_from_strava(strava_activity)
+            return strava_activity
 
-    def save_from_strava(self, strava_activity):
+    def update_with_strava_data(self, strava_activity, commit=True):
         """
-        create or update an activity based on information received from Strava.
-
+        update an activity based on information received from Strava.
         `strava_activity` is the activity object returned by the Strava API client.
-        returns the saved activity.
         """
 
         # fields from the Strava API object mapped to the Activity Model
         fields_map = {
             "name": strava_activity.name,
             "activity_type": strava_activity.type,
-            "manual": strava_activity.manual,
             "start_date": strava_activity.start_date,
             "elapsed_time": strava_activity.elapsed_time,
             "moving_time": strava_activity.moving_time,
@@ -248,38 +278,43 @@ class Activity(TimeStampedModel):
             name=strava_activity.type
         )
 
-        # resolve foreign key relationship for gear if any
         if strava_activity.gear_id:
+            # resolve foreign key relationship for gear and get gear info if new
             fields_map["gear"], created = Gear.objects.get_or_create(
                 strava_id=strava_activity.gear_id, athlete=self.athlete
             )
-            # Retrieve the gear information from Strava if gear is new.
             if created:
                 fields_map["gear"].update_from_strava()
 
-        # transform text field to empty if None
+        # transform description text to empty if None
         if strava_activity.description is None:
             fields_map["description"] = ""
 
-        # update the activity in the Database
+        # update activity information
         for key, value in fields_map.items():
             setattr(self, key, value)
 
-        self.save()
+        if commit:
+            self.save()
 
-    def save_streams_from_strava(self):
+    def update_activity_streams_from_strava(self):
         """
-        save streams from Strava to a pandas DataFrame using the custom
-        Model field DataFrameField.
+        save activity streams from Strava in a pandas DataFrame.
+        returns True if streams could be imported.
         """
+        strava_streams = self.get_streams_from_strava()
 
-        raw_streams = self.get_streams_from_strava()
-        if raw_streams:
+        if strava_streams and are_streams_valid(strava_streams):
             self.streams = DataFrame(
-                {key: stream.data for key, stream in raw_streams.items()}
+                {key: stream.data for key, stream in strava_streams.items()}
             )
             self.save(update_fields=["streams"])
             return True
+
+        # otherwise, skip trying to get the streams next time
+        self.skip_streams_import = True
+        self.save(update_fields=["skip_streams_import"])
+        return False
 
     def get_streams_from_strava(self, resolution="low"):
         """
@@ -290,25 +325,14 @@ class Activity(TimeStampedModel):
         for better accuracy in the prediction.
         """
 
-        stream_types = ["time", "altitude", "distance", "moving"]
-
-        # exclude manually created activities because they have no streams
-        if not self.manual:
-            strava_client = self.athlete.strava_client
-
-            raw_streams = strava_client.get_activity_streams(
-                self.strava_id, types=stream_types, resolution=resolution
-            )
-
-            # ensure that we have all stream types and that they all contain values
-            if all(stream_type in raw_streams for stream_type in stream_types) and all(
-                raw_stream.original_size > 0 for key, raw_stream in raw_streams.items()
-            ):
-                return raw_streams
+        strava_client = self.athlete.strava_client
+        return strava_client.get_activity_streams(
+            self.strava_id, types=STREAM_TYPES, resolution=resolution
+        )
 
     def get_training_data(self):
         """
-        return actvity data for training the linear regression model.
+        return activity data for training the linear regression model.
         """
 
         # load activity streams as a DataFrame
@@ -492,7 +516,7 @@ class ActivityType(models.Model):
 class ActivityPerformance(TimeStampedModel):
     """
     Intermediate model for athlete - activity type
-    The perfomance of an athlete is calculated using his Strava history.
+    The performance of an athlete is calculated using his Strava history.
 
     The base assumption is that the pace of the athlete depends
     on the *slope* of the travelled distance.

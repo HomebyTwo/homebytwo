@@ -3,21 +3,13 @@ from pathlib import Path
 
 from django.contrib.gis.geos import GEOSGeometry, Point
 
-from factory import Faker, Iterator, Sequence, SubFactory
+from factory import Faker, Iterator, LazyAttribute, Sequence, SubFactory
 from factory.django import DjangoModelFactory
 from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
-from ...routes.models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Gear,
-    Place,
-    Route,
-    WebhookTransaction,
-)
+from ...routes.models import Activity, ActivityPerformance, ActivityType, Gear, Place, Route, WebhookTransaction
 from ...utils.factories import AthleteFactory, get_field_choices
 
 
@@ -124,15 +116,15 @@ class ActivityFactory(DjangoModelFactory):
 
     name = Faker("sentence")
     description = Faker("bs")
-    strava_id = Sequence(lambda n: "100%d" % n)
+    strava_id = Sequence(lambda n: 1000 + n)
     start_date = Faker("past_datetime", tzinfo=utc)
     athlete = SubFactory(AthleteFactory)
     activity_type = SubFactory(ActivityTypeFactory)
-    manual = False
     distance = Faker("random_int", min=500, max=5000)
     total_elevation_gain = Faker("random_int", min=0, max=5000)
     elapsed_time = Faker("time_delta")
     moving_time = elapsed_time
+    skip_streams_import = False
     workout_type = Faker(
         "random_element",
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
@@ -147,15 +139,23 @@ class WebhookTransactionFactory(DjangoModelFactory):
     class Meta:
         model = WebhookTransaction
 
+    class Params:
+        athlete_strava_id = 1000
+        activity_strava_id = 1234567890
+        action = "create"
+        object_type = "activity"
+
     date_generated = Faker("past_datetime", tzinfo=utc)
     status = WebhookTransaction.UNPROCESSED
     request_meta = {}
-    body = {
-        "updates": {"title": "Messy"},
-        "owner_id": 0,
-        "object_id": 0,
-        "event_time": 0,
-        "aspect_type": "update",
-        "object_type": "activity",
-        "subscription_id": 0,
-    }
+    body = LazyAttribute(
+        lambda o: {
+            "updates": {},
+            "owner_id": o.athlete_strava_id,
+            "object_id": o.activity_strava_id,
+            "event_time": 1600000000,
+            "aspect_type": o.action,
+            "object_type": o.object_type,
+            "subscription_id": 1,
+        }
+    )

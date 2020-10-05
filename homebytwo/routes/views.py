@@ -5,7 +5,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponse, JsonResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
@@ -17,6 +17,7 @@ from django.views.generic.list import ListView
 from pytz import utc
 
 from ..importers.decorators import remote_connection, strava_required
+from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
@@ -26,7 +27,6 @@ from .tasks import (
     upload_route_to_garmin_task,
     process_strava_events,
 )
-from ..importers.exceptions import SwitzerlandMobilityError
 
 
 @login_required
@@ -212,7 +212,7 @@ def import_strava_streams(request):
     """
     trigger a task to import streams for activities without them.
     """
-    activities = Activity.objects.filter(athlete=request.user.athlete)
+    activities = request.user.athlete.activities
     activities = activities.filter(streams__isnull=True)
     activities = activities.order_by("-start_date")
 
