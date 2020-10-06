@@ -12,7 +12,6 @@ from django.urls import reverse
 import responses
 from requests.exceptions import ConnectionError
 
-from ...conftest import METHODS
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint

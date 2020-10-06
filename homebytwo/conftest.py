@@ -1,6 +1,7 @@
 from functools import partial
-import responses
 from pathlib import Path
+
+import responses
 from pytest import fixture
 from requests.exceptions import ConnectionError
 
@@ -52,8 +53,9 @@ def read_file(open_file):
 
 @fixture
 def celery(settings):
-    settings.CELERY_TASK_ALWAYS_EAGER = True
-    settings.CELERY_TASK_EAGER_PROPAGATES = True
+    settings.celery_task_always_eager = True
+    settings.celery_task_eager_propagates = True
+
 
 @fixture
 def coda(settings):

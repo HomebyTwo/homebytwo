@@ -1,23 +1,19 @@
 import logging
 
-from celery import group, shared_task
-from codaio import Coda, Document, Cell
-import codaio.err
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
+
+import codaio.err
+from celery import group, shared_task
+from celery.schedules import crontab
+from codaio import Cell, Coda, Document
 from garmin_uploader.api import GarminAPIException
 from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Athlete,
-    Route,
-    WebhookTransaction,
-)
+from ..celery import app as celery_app
+from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
 from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
@@ -243,7 +239,16 @@ def process_transaction(transaction):
         logger.info(f"Strava activity: {object_id} was deleted from Homebytwo.")
 
 
-@shared_task
+@celery_app.on_after_finalize.connect
+def setup_periodic_tasks(sender, **kwargs):
+    # everyday at noon
+    sender.add_periodic_task(
+        crontab(hour=12, minute=0),
+        report_usage_to_coda.si(),
+    )
+
+
+@celery_app.task
 def report_usage_to_coda():
 
     coda = Coda(settings.CODA_API_KEY)
