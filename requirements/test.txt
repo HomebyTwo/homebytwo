@@ -39,7 +39,6 @@ flower==0.9.5             # via -r requirements/base.in
 future==0.18.2            # via -r requirements/base.in
 gpxpy==1.4.2              # via -r requirements/base.in
 gunicorn==20.0.4          # via -r requirements/base.in
-httpretty==1.0.2          # via -r requirements/test.in
 humanize==3.0.1           # via flower
 idna==2.10                # via requests
 importlib-metadata==2.0.0  # via flake8, kombu, pluggy, pytest
