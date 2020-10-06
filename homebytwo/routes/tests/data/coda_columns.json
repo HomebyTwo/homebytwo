@@ -1,0 +1,82 @@
+{
+  "items": [
+    {
+      "id": "c-column1_id",
+      "type": "column",
+      "name": "ID",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column1_id",
+      "format": {
+        "useThousandsSeparator": false,
+        "type": "number",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column2_id",
+      "type": "column",
+      "name": "Date Joined",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column2_id",
+      "format": {
+        "dateFormat": "DD/MM/YYYY",
+        "timeFormat": "HH:mm:ss",
+        "type": "dateTime",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column3_id",
+      "type": "column",
+      "name": "Last Login",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column3_id",
+      "format": {
+        "dateFormat": "DD/MM/YYYY",
+        "timeFormat": "HH:mm:ss",
+        "type": "dateTime",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column4_id",
+      "type": "column",
+      "name": "Routes Count",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column4_id",
+      "format": {
+        "useThousandsSeparator": false,
+        "type": "number",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column5_id",
+      "type": "column",
+      "name": "Email",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column5_id",
+      "format": {
+        "type": "text",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column6_id",
+      "type": "column",
+      "name": "Username",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column6_id",
+      "display": true,
+      "format": {
+        "type": "text",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column7_id",
+      "type": "column",
+      "name": "Strava Activities Count",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column7_id",
+      "format": {
+        "type": "select",
+        "isArray": false
+      }
+    }
+  ],
+  "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns?pageToken=token"
+}

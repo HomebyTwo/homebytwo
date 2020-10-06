@@ -2,13 +2,22 @@ import logging
 
 from celery import group, shared_task
 from codaio import Coda, Document, Cell
+import codaio.err
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.exceptions import ImproperlyConfigured
 from garmin_uploader.api import GarminAPIException
 from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
-from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
+from .models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Athlete,
+    Route,
+    WebhookTransaction,
+)
 from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
@@ -26,9 +35,7 @@ def import_strava_activities_task(athlete_id):
     try:
         activities = update_user_activities_from_strava(athlete)
     except (Fault, RateLimitExceeded) as error:
-        message = (
-            f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
-        )
+        message = f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
         message += f"Error was: {error}. "
         logger.error(message)
         return []
@@ -213,7 +220,9 @@ def process_transaction(transaction):
 
     # we only support activity update
     if not object_type == "activity":
-        logger.info(f"Strava event with object type: {object_type} has triggered no action. ")
+        logger.info(
+            f"Strava event with object type: {object_type} has triggered no action. "
+        )
         return
 
     # get activity from database or create a new one
@@ -242,36 +251,29 @@ def report_usage_to_coda():
     doc = Document(doc_id, coda=coda)
     table = doc.get_table(table_id)
 
-    COLUMNS = {
-        "ID": "c-tvhxIacYKe",
-        "Date Joined": "c-Jp9H-YLm53",
-        "Last Login": "c-MaXhtn5PLd",
-        "Routes Count": "c-Yb41FFtCNo",
-        "Email": "c-rm6QRVu8fe",
-        "Username": "c-k0Nxuz9LLw",
-        "Strava Activities Count": "c-7muBsb1Iqs",
-    }
-
     rows = []
-
     for user in User.objects.exclude(athlete=None):
         mapping = {
-            COLUMNS["ID"]: user.id,
-            COLUMNS["Username"]: user.username,
-            COLUMNS["Email"]: user.email,
-            COLUMNS["Date Joined"]: user.date_joined.__str__(),
-            COLUMNS["Last Login"]: user.last_login.__str__(),
-            COLUMNS["Routes Count"]: user.athlete.tracks.count(),
-            COLUMNS["Strava Activities Count"]: user.athlete.activities.count(),
+            "ID": user.id,
+            "Username": user.username,
+            "Email": user.email,
+            "Date Joined": user.date_joined.__str__(),
+            "Last Login": user.last_login.__str__(),
+            "Routes Count": user.athlete.tracks.count(),
+            "Strava Activities Count": user.athlete.activities.count(),
         }
+        try:
+            rows.append(
+                [
+                    Cell(column=table.get_column_by_name(key), value_storage=value)
+                    for key, value in mapping.items()
+                ]
+            )
+        except codaio.err.ColumnNotFound as error:
+            message = f"Missing column in coda document at https://coda.io/d/{doc_id}: {error}"
+            logger.error(message)
+            raise ImproperlyConfigured(message)
 
-        rows.append(
-            [
-                Cell(column=table.get_column_by_id(key), value_storage=value)
-                for key, value in mapping.items()
-            ]
-        )
-
-    table.upsert_rows(rows, key_columns=[COLUMNS["ID"]])
+    table.upsert_rows(rows, key_columns=["ID"])
 
     return f"Updated {len(rows)} rows in Coda table at https://coda.io/d/{doc_id}"

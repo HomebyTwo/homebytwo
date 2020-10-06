@@ -8,9 +8,8 @@
 amqp==5.0.1               # via kombu
 apipkg==1.5               # via execnet
 arrow==0.16.0             # via stravalib
-attrs==20.2.0             # via pytest
+attrs==19.3.0             # via codaio, pytest
 billiard==3.6.3.0         # via celery
-cached-property==1.5.2    # via coda
 celery==5.0.0             # via -r requirements/base.in, flower
 certifi==2020.6.20        # via requests, sentry-sdk
 cffi==1.14.3              # via cryptography
@@ -18,10 +17,11 @@ chardet==3.0.4            # via requests
 click-didyoumean==0.0.3   # via celery
 click-repl==0.1.6         # via celery
 click==7.1.2              # via celery, click-didyoumean, click-repl
-coda==0.1.0               # via -r requirements/base.in
+codaio==0.6.3             # via -r requirements/base.in
 coverage==5.3             # via -r requirements/test.in, coveralls, pytest-cov
 coveralls==2.1.2          # via -r requirements/test.in
 cryptography==3.1.1       # via social-auth-core
+decorator==4.4.2          # via codaio
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 dj-database-url==0.5.0    # via -r requirements/base.in
 django-geojson==3.0.0     # via -r requirements/base.in
@@ -30,22 +30,23 @@ django-widget-tweaks==1.4.8  # via -r requirements/base.in
 django==2.2.16            # via -r requirements/base.in, django-geojson, django-leaflet, easy-thumbnails
 docopt==0.6.2             # via coveralls
 easy-thumbnails==2.7      # via -r requirements/base.in
+envparse==0.2.0           # via codaio
 execnet==1.7.1            # via pytest-xdist
 factory-boy==3.0.1        # via -r requirements/test.in
-faker==4.1.6              # via factory-boy
-flake8==3.8.3             # via -r requirements/test.in
+faker==4.4.0              # via factory-boy
+flake8==3.8.4             # via -r requirements/test.in
 flower==0.9.5             # via -r requirements/base.in
 future==0.18.2            # via -r requirements/base.in
-gems==0.4.0               # via coda
 gpxpy==1.4.2              # via -r requirements/base.in
 gunicorn==20.0.4          # via -r requirements/base.in
 httpretty==1.0.2          # via -r requirements/test.in
-humanize==3.0.0           # via flower
+humanize==3.0.1           # via flower
 idna==2.10                # via requests
 importlib-metadata==2.0.0  # via flake8, kombu, pluggy, pytest
+inflection==0.3.1         # via codaio
 iniconfig==1.0.1          # via pytest
 isort==5.5.4              # via -r requirements/test.in
-joblib==0.16.0            # via scikit-learn
+joblib==0.17.0            # via scikit-learn
 kombu==5.0.2              # via celery
 lxml==4.5.2               # via -r requirements/base.in
 mccabe==0.6.1             # via flake8
@@ -54,7 +55,7 @@ numexpr==2.7.1            # via tables
 numpy==1.19.2             # via numexpr, pandas, scikit-learn, scipy, tables
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 packaging==20.4           # via pytest
-pandas==1.1.2             # via -r requirements/base.in
+pandas==1.1.3             # via -r requirements/base.in
 pillow==7.2.0             # via -r requirements/base.in, easy-thumbnails
 pluggy==0.13.1            # via pytest
 polyline==1.4.0           # via -r requirements/base.in
@@ -66,7 +67,6 @@ pycodestyle==2.6.0        # via flake8
 pycparser==2.20           # via cffi
 pyflakes==2.2.0           # via flake8
 pyjwt==1.7.1              # via social-auth-core
-pymongo==3.11.0           # via coda
 pyparsing==2.4.7          # via packaging
 pytest-cov==2.10.1        # via -r requirements/test.in
 pytest-django==3.10.0     # via -r requirements/test.in
@@ -74,17 +74,18 @@ pytest-env==0.6.2         # via -r requirements/test.in
 pytest-forked==1.3.0      # via pytest-xdist
 pytest-mock==3.3.1        # via -r requirements/test.in
 pytest-xdist==2.1.0       # via -r requirements/test.in
-pytest==6.1.0             # via -r requirements/test.in, pytest-cov, pytest-django, pytest-env, pytest-forked, pytest-mock, pytest-xdist
-python-dateutil==2.8.1    # via arrow, faker, pandas
+pytest==6.1.1             # via -r requirements/test.in, pytest-cov, pytest-django, pytest-env, pytest-forked, pytest-mock, pytest-xdist
+python-dateutil==2.8.1    # via arrow, codaio, faker, pandas
 python3-openid==3.2.0     # via social-auth-core
 pytz==2020.1              # via celery, django, flower, pandas, stravalib
 rcssmin==1.0.6            # via -r requirements/base.in
 requests-oauthlib==1.3.0  # via social-auth-core
-requests==2.24.0          # via -r requirements/base.in, coveralls, garmin-uploader, requests-oauthlib, social-auth-core, stravalib
+requests==2.24.0          # via -r requirements/base.in, codaio, coveralls, garmin-uploader, requests-oauthlib, responses, social-auth-core, stravalib
+responses==0.12.0         # via -r requirements/test.in
 scikit-learn==0.23.2      # via -r requirements/base.in
 scipy==1.5.2              # via scikit-learn
 sentry-sdk==0.18.0        # via -r requirements/base.in
-six==1.15.0               # via click-repl, cryptography, django-geojson, garmin-uploader, packaging, polyline, python-dateutil, social-auth-app-django, social-auth-core, stravalib
+six==1.15.0               # via click-repl, cryptography, django-geojson, garmin-uploader, packaging, polyline, python-dateutil, responses, social-auth-app-django, social-auth-core, stravalib
 social-auth-app-django==4.0.0  # via -r requirements/base.in
 social-auth-core==3.3.3   # via -r requirements/base.in, social-auth-app-django
 sqlparse==0.3.1           # via django
@@ -95,10 +96,10 @@ threadpoolctl==2.1.0      # via scikit-learn
 toml==0.10.1              # via pytest
 tornado==6.0.4            # via flower
 units==0.7                # via stravalib
-urllib3==1.25.10          # via requests, sentry-sdk
+urllib3==1.25.10          # via requests, responses, sentry-sdk
 vine==5.0.0               # via amqp, celery
 wcwidth==0.2.5            # via prompt-toolkit
-zipp==3.2.0               # via importlib-metadata
+zipp==3.3.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

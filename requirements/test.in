@@ -2,7 +2,7 @@
 
 coverage
 coveralls
-factory-boy
+factory-boy<3.1
 flake8
 httpretty
 isort
@@ -13,3 +13,4 @@ pytest-django
 pytest-env
 pytest-mock
 pytest-xdist
+responses
