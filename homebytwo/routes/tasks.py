@@ -250,6 +250,14 @@ def setup_periodic_tasks(sender, **kwargs):
 
 @celery_app.task
 def report_usage_to_coda():
+    """
+    report key performance metrics to coda.io
+
+    runs only if `CODA_API_KEY` is set. It should only be configured in production
+    to prevent reporting data from local or staging environments.
+    """
+    if not settings.CODA_API_KEY:
+        return "CODA_API_KEY is not set."
 
     coda = Coda(settings.CODA_API_KEY)
     doc_id, table_id = settings.CODA_DOC_ID, settings.CODA_TABLE_ID

@@ -8,6 +8,11 @@ from homebytwo.routes.tests.factories import ActivityFactory, RouteFactory
 from homebytwo.utils.factories import AthleteFactory
 
 
+def test_report_usage_to_coda_no_key(settings):
+    settings.CODA_API_KEY = None
+    assert report_usage_to_coda() == "CODA_API_KEY is not set."
+
+
 def test_report_usage_to_coda_success(
     athlete, mock_call_json_responses, coda, settings
 ):

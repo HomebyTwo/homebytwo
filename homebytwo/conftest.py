@@ -59,6 +59,7 @@ def celery(settings):
 
 @fixture
 def coda(settings):
+    settings.CODA_API_KEY = "coda_key"
     settings.CODA_DOC_ID = "doc_id"
     settings.CODA_TABLE_ID = "grid-table_id"
     api_url = "https://coda.io/apis/v1"
