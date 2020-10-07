@@ -5,24 +5,12 @@ from io import StringIO
 from pathlib import Path
 
 import dj_database_url
-from config import get_project_root_path
-from fabric.api import (
-    cd,
-    env,
-    execute,
-    get,
-    local,
-    put,
-    require,
-    run,
-    settings,
-    shell_env,
-    sudo,
-    task,
-)
+from fabric.api import cd, env, execute, get, local, put, require, run, settings, shell_env, sudo, task
 from fabric.context_managers import quiet
 from fabric.operations import prompt
 from gitric import api as gitric
+
+from config import get_project_root_path
 
 # This is the definition of your environments. Every item of the ENVIRONMENTS
 # dict will be made available as a fabric task and the properties you put in a
@@ -154,6 +142,14 @@ def restart_processes():
         sudo("/bin/systemctl restart {}.service".format(service), shell=False)
 
 
+def check_deployment_settings():
+    """
+    Check the entire Django project for potential problems with deployment settings
+    """
+    with cd(get_project_root()):
+        run_python("manage.py check --deploy")
+
+
 def generate_secret_key():
     """
     Generate a random secret key, suitable to be used as a SECRET_KEY setting.
@@ -260,9 +256,9 @@ def deploy(tag):
     execute(git_push, commit="@")
     dump_db(get_backups_root())
     execute(install_requirements)
+    execute(check_deployment_settings)
     execute(collect_static)
     execute(migrate_database)
-
     execute(restart_processes)
     execute(clean_old_database_backups, nb_backups_to_keep=10)
 
