@@ -3,13 +3,7 @@ from django.urls import reverse
 from ..forms import ActivityPerformanceForm
 from ..models import ActivityType
 from ..prediction_model import PredictionModel
-from .factories import (
-    ActivityFactory,
-    ActivityPerformanceFactory,
-    ActivityTypeFactory,
-    GearFactory,
-    RouteFactory,
-)
+from .factories import ActivityFactory, ActivityPerformanceFactory, ActivityTypeFactory, GearFactory, RouteFactory
 
 
 def test_prediction_model_with_defaults():

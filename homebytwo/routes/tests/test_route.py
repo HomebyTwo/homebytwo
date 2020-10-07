@@ -14,7 +14,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.six import StringIO
 
-import httpretty
+import responses
 from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
@@ -514,16 +514,16 @@ class RouteTestCase(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    @responses.activate
     def test_get_route_update_form(self):
         route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
         url = reverse("routes:update", args=[route.id])
 
-        httpretty.enable(allow_net_connect=False)
         remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
         json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
 
-        httpretty.register_uri(
-            httpretty.GET,
+        responses.add(
+            responses.GET,
             remote_url,
             content_type="application/json",
             body=json_response,
@@ -531,12 +531,12 @@ class RouteTestCase(TestCase):
         )
 
         response = self.client.get(url)
-        httpretty.disable()
 
         remote_route_name = "Haute Cime"
         content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
         self.assertContains(response, content, html=True)
 
+    @responses.activate
     def test_post_route_update_form(self):
         route = RouteFactory(athlete=self.athlete, data_source="switzerland_mobility")
         url = reverse("routes:update", args=[route.id])
@@ -544,12 +544,11 @@ class RouteTestCase(TestCase):
             "name": route.name,
             "activity_type": route.activity_type.id,
         }
-        httpretty.enable(allow_net_connect=False)
         remote_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % int(route.source_id)
         json_response = read_data(file="2191833_show.json", dir_path=CURRENT_DIR)
 
-        httpretty.register_uri(
-            httpretty.GET,
+        responses.add(
+            responses.GET,
             remote_url,
             content_type="application/json",
             body=json_response,
@@ -557,7 +556,6 @@ class RouteTestCase(TestCase):
         )
 
         response = self.client.post(url, post_data)
-        httpretty.disable()
 
         redirect_url = reverse("routes:route", args=[route.id])
         self.assertEqual(response.status_code, 302)

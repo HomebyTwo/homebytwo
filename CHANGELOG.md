@@ -1,4 +1,7 @@
 # Change Log
+## [0.10.3] - 20200-10-07 Report usage data to coda.io
+- Report athlete, routes and activities count on a daily basis 
+
 ## [0.10.2] - 20200-10-02 Do not import Strava activities on every login
 - New flag to only import all athlete Strava activities once
 

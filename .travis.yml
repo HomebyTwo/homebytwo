@@ -25,4 +25,4 @@ before_script:
   - psql -c "CREATE EXTENSION postgis_topology;" -U postgres
 
 script:
-  - tox
+  - tox -e travis

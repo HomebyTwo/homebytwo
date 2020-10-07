@@ -2,7 +2,7 @@
 Description=Celery homebytwo
 After=syslog.target network.target remote-fs.target nss-lookup.target
 [Service]
-ExecStart=/home/vagrant/ENV/bin/celery -c 1 -A homebytwo worker --app=homebytwo.celery:app --loglevel=info
+ExecStart=/home/vagrant/ENV/bin/celery -A homebytwo worker -B -s /vagrant/celerybeat-schedule --loglevel=INFO
 User=vagrant
 Group=vagrant
 WorkingDirectory=/vagrant
