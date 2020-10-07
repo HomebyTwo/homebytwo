@@ -7,7 +7,7 @@ def get_mailchimp_base_url():
     """
     key, data_center = settings.MAILCHIMP_API_KEY.split("-")
     return "https://{data_center}.api.mailchimp.com/3.0".format(
-        data_center=data_center
+        data_center=data_center.lower()
     )
 
 

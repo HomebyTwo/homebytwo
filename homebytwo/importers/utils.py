@@ -6,10 +6,7 @@ from requests import Session, codes
 from requests.exceptions import ConnectionError
 
 from ..routes.models import Route
-from .exceptions import (
-    SwitzerlandMobilityError,
-    SwitzerlandMobilityMissingCredentials,
-)
+from .exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 
 
 def request_json(url, cookies=None):

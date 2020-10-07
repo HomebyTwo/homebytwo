@@ -1,0 +1,34 @@
+{
+  "id": "grid-table_id",
+  "type": "table",
+  "tableType": "table",
+  "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id",
+  "browserLink": "https://coda.io/d/_ddoc_id#_tugrid-table_id",
+  "parent": {
+    "id": "canvas-canvas_id",
+    "type": "page",
+    "href": "https://coda.io/apis/v1/docs/doc_id/pages/canvas-canvas_id",
+    "browserLink": "https://coda.io/d/_ddoc_id/_su_jS",
+    "name": "KPIs"
+  },
+  "name": "Athletes",
+  "displayColumn": {
+    "id": "c-column_id",
+    "type": "column",
+    "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column_id"
+  },
+  "rowCount": 1,
+  "createdAt": "2020-01-01T00:00:00.000Z",
+  "updatedAt": "2020-01-01T00:00:00.000Z",
+  "sorts": [
+    {
+      "column": {
+        "id": "c-sort_column_id",
+        "type": "column",
+        "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-sort_column_id"
+      },
+      "direction": "descending"
+    }
+  ],
+  "layout": "default"
+}

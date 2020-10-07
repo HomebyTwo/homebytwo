@@ -7,7 +7,7 @@ from django.contrib.gis.geos import Point
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-import httpretty
+import responses
 from garmin_uploader import api as garmin_api
 from mock import patch
 
@@ -26,8 +26,8 @@ def block_garmin_authentication_urls():
 
     # get hostname
     host_name_response = '{"host": "https://connect.garmin.com"}'
-    httpretty.register_uri(
-        httpretty.GET,
+    responses.add(
+        responses.GET,
         garmin_api.URL_HOSTNAME,
         body=host_name_response,
         content_type="application/json",
@@ -35,8 +35,8 @@ def block_garmin_authentication_urls():
 
     # get login form
     get_login_body = '<input type="hidden" name="_csrf" value="CSRF" />'
-    httpretty.register_uri(
-        httpretty.GET,
+    responses.add(
+        responses.GET,
         garmin_api.URL_LOGIN,
         body=get_login_body,
         match_querystring=False,
@@ -44,8 +44,8 @@ def block_garmin_authentication_urls():
 
     # sign-in
     sign_in_body = "var response_url = 'foo?ticket=bar'"
-    httpretty.register_uri(
-        httpretty.POST,
+    responses.add(
+        responses.POST,
         garmin_api.URL_LOGIN,
         body=sign_in_body,
         match_querystring=False,
@@ -54,8 +54,8 @@ def block_garmin_authentication_urls():
 
     # redirect to some place
     post_login = "almost there..."
-    httpretty.register_uri(
-        httpretty.GET,
+    responses.add(
+        responses.GET,
         garmin_api.URL_POST_LOGIN,
         body=post_login,
         match_querystring=False,
@@ -63,8 +63,8 @@ def block_garmin_authentication_urls():
 
     # check login
     check_login = '{"fullName": "homebytwo"}'
-    httpretty.register_uri(
-        httpretty.GET,
+    responses.add(
+        responses.GET,
         garmin_api.URL_PROFILE,
         body=check_login,
         content_type="application/json",
@@ -73,11 +73,16 @@ def block_garmin_authentication_urls():
 
 def block_garmin_delete_urls(garmin_activity_id, status=200):
     # delete activity
-    delete_url = "https://connect.garmin.com/modern/proxy/activity-service/activity/{}".format(
-        garmin_activity_id
+    delete_url = (
+        "https://connect.garmin.com/modern/proxy/activity-service/activity/{}".format(
+            garmin_activity_id
+        )
     )
-    httpretty.register_uri(
-        httpretty.DELETE, delete_url, body="", status=status,
+    responses.add(
+        responses.DELETE,
+        delete_url,
+        body="",
+        status=status,
     )
 
 
@@ -90,40 +95,42 @@ def block_garmin_upload_urls(garmin_activity_id, route_activity_type):
     upload_activity_response = {
         "detailedImportResult": {"successes": [{"internalId": garmin_activity_id}]}
     }
-    httpretty.register_uri(
-        httpretty.POST,
+    responses.add(
+        responses.POST,
         upload_url,
         body=json.dumps(upload_activity_response),
         content_type="application/json",
     )
 
     # update activity
-    httpretty.register_uri(
-        httpretty.POST, activity_url, body="yeah!",
+    responses.add(
+        responses.POST,
+        activity_url,
+        body="yeah!",
     )
 
     activity_type = GARMIN_ACTIVITY_TYPE_MAP.get(route_activity_type, "other")
     activity_type_response = [{"typeKey": activity_type}]
-    httpretty.register_uri(
-        httpretty.GET,
+    responses.add(
+        responses.GET,
         garmin_api.URL_ACTIVITY_TYPES,
         body=json.dumps(activity_type_response),
         content_type="application/json",
     )
 
 
+@responses.activate
 def intercepted_garmin_upload_task(route, athlete):
     """
     helper method to upload a route to Garmin while blocking all external calls
     """
     garmin_activity_id = route.garmin_id or 654321
 
-    with httpretty.enabled():
-        block_garmin_authentication_urls()
-        block_garmin_upload_urls(garmin_activity_id, route.activity_type.name)
-        block_garmin_delete_urls(garmin_activity_id)
+    block_garmin_authentication_urls()
+    block_garmin_upload_urls(garmin_activity_id, route.activity_type.name)
+    block_garmin_delete_urls(garmin_activity_id)
 
-        return upload_route_to_garmin_task(route.pk, athlete.id)
+    return upload_route_to_garmin_task(route.pk, athlete.id)
 
 
 @override_settings(
@@ -296,15 +303,14 @@ class GPXTestCase(TestCase):
             response, message.format(route=route_str, url=garmin_activity_url)
         )
 
+    @responses.activate
     def test_garmin_upload_failure_cannot_signin(self):
         self.route.garmin_id = 1
         self.route.save(update_fields=["garmin_id"])
 
-        httpretty.enable(allow_net_connect=False)
-
         # fail auth quickly
-        httpretty.register_uri(
-            httpretty.GET,
+        responses.add(
+            responses.GET,
             garmin_api.URL_HOSTNAME,
             body="{}",
             content_type="application/json",
@@ -312,21 +318,17 @@ class GPXTestCase(TestCase):
         )
 
         response = upload_route_to_garmin_task(self.route.pk, self.athlete.id)
-        httpretty.disable()
 
         self.assertIn("Garmin API failure:", response)
 
+    @responses.activate
     def test_garmin_delete_failure(self):
         self.route.garmin_id = 123456
         self.route.save(update_fields=["garmin_id"])
-
-        httpretty.enable(allow_net_connect=False)
 
         block_garmin_authentication_urls()
         block_garmin_delete_urls(self.route.garmin_id, status=500)
 
         response = upload_route_to_garmin_task(self.route.pk, self.athlete.id)
-
-        httpretty.disable()
 
         self.assertIn("Failed to delete activity", response)

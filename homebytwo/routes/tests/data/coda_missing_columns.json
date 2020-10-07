@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "id": "c-column1_id",
+      "type": "column",
+      "name": "ID",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column1_id",
+      "format": {
+        "useThousandsSeparator": false,
+        "type": "number",
+        "isArray": false
+      }
+    },
+    {
+      "id": "c-column2_id",
+      "type": "column",
+      "name": "Date Joined",
+      "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns/c-column2_id",
+      "format": {
+        "dateFormat": "DD/MM/YYYY",
+        "timeFormat": "HH:mm:ss",
+        "type": "dateTime",
+        "isArray": false
+      }
+    }
+  ],
+  "href": "https://coda.io/apis/v1/docs/doc_id/tables/grid-table_id/columns?pageToken=token"
+}
