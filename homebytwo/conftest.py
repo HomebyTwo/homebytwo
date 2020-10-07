@@ -33,6 +33,7 @@ def athlete(db, client):
 def data_dir_path(request):
     return Path(request.module.__file__).parent.resolve()
 
+
 @fixture
 def open_file(data_dir_path):
     def _open_file(file, binary=False):
