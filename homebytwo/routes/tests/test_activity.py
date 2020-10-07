@@ -403,34 +403,37 @@ class ActivityTestCase(TestCase):
         assert activity.streams is None
         assert activity.skip_streams_import
 
-    @responses.activate
     @override_settings(
         STRAVA_VERIFY_TOKEN="RIGHT_TOKEN",
-        CELERY_TASK_ALWAYS_EAGER=True,
-        CELERY_TASK_EAGER_PROPAGATES=True,
     )
-    def test_strava_webhook_callback_url(self):
-
+    def test_strava_webhook_callback_url_token(self):
         # subscription validation successful
-        url = reverse("routes:strava_webhook")
+        webhook_url = reverse("routes:strava_webhook")
         data = {
             "hub.verify_token": "RIGHT_TOKEN",
             "hub.challenge": "challenge",
             "hub.mode": "subscribe",
         }
-        response = self.client.get(url, data)
+        response = self.client.get(webhook_url, data)
         self.assertContains(response, data["hub.challenge"])
 
         # subscription validation with wrong token
         data["hub.verify_token"] = "WRONG_TOKEN"
 
-        response = self.client.get(url, data)
+        response = self.client.get(webhook_url, data)
         self.assertEqual(response.status_code, 401)
 
+    @responses.activate
+    @override_settings(
+        celery_task_always_eager=True,
+        celery_task_eager_propagates=True,
+    )
+    def test_strava_webhook_callback_event(self):
+        webhook_url = reverse("routes:strava_webhook")
         activity_response = read_data("race_run_activity.json", dir_path=CURRENT_DIR)
         event_data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
 
-        # event posted by Strava
+        # intercept call triggered by the event to Strava API
         responses.add(
             responses.GET,
             ACTIVITY_URL.format(event_data["object_id"]),
@@ -438,7 +441,8 @@ class ActivityTestCase(TestCase):
             status=200,
         )
 
-        response = self.client.post(url, event_data, content_type="application/json")
+        # event posted by Strava
+        response = self.client.post(webhook_url, event_data, content_type="application/json")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookTransaction.objects.count(), 1)
