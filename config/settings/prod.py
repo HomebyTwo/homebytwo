@@ -25,6 +25,13 @@ LOGGING = {
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
+#####################
+# Improved Security #
+#####################
+
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
 #########################
 # File upload permission#
 #########################
@@ -45,7 +52,7 @@ sentry_sdk.init(
 # Force Celery Broker URL #
 ###########################
 
-CELERY_BROKER_URL = get_env_variable("CELERY_BROKER_URL")
+celery_broker_url = get_env_variable("CELERY_BROKER_URL")
 
 ###########################
 # Force Mailchimp API Key #
