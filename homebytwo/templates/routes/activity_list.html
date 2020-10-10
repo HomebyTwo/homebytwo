@@ -1,53 +1,14 @@
 {% extends "base.html" %}
-{% load static %}
-{% load humanize duration %}
+{% load render_table from django_tables2 %}
+{% load humanize duration static %}
 
 {% block title %}Home by Two - Strava Activities{% endblock %}
 
 {% block content %}
 <h1>Strava Activities</h1>
-<ul class="list-stacked list-stacked--tight mrgb">
-  {% for activity in strava_activities %}
-  <li class="mrgb-">
-    <div>
-      <a href="{{ activity.get_strava_url }}">
-        {{ activity.activity_type }}: {{ activity.name }}
-      </a>
-    </div>
-    <div>
-      {{ activity.start_date|naturalday}}
-      {% if activity.distance %}
-      - {{ activity.get_distance.km|floatformat:"01"|intcomma }}km
-      {% endif %}
-      {% if activity.total_elevation_gain %}
-      - {{ activity.get_total_elevation_gain.m|floatformat:"0"|intcomma }}m+
-      {% endif %}
-
-      {% if activity.moving_time %}
-      - {{ activity.moving_time|duration }}
-      {% endif %}
-      <div>
-  </li>
-  {% empty %}
-  <li>No activities yet.</li>
-  {% endfor %}
-</ul>
-
-<div class="pagination">
-  <span class="step-links">
-    {% if page_obj.has_previous %}
-    <a href="?page=1">&laquo; first</a>
-    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
-    {% endif %}
-
-    <span class="current">
-      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-    </span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}">next</a>
-    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
-    {% endif %}
-  </span>
-</div>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div>{% render_table table %}</div>
+  {% include "routes/_activitity_buttons.html" %}
+</form>
 {% endblock content %}

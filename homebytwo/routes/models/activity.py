@@ -183,6 +183,9 @@ class Activity(TimeStampedModel):
     # skip trying to import streams from Strava
     skip_streams_import = models.BooleanField(default=False)
 
+    # use this activity when retrieving data for training prediction models
+    use_for_prediction = models.BooleanField(default=True)
+
     # Workout Type as defined in Strava
     workout_type = models.SmallIntegerField(
         choices=WORKOUT_TYPE_CHOICES, blank=True, null=True

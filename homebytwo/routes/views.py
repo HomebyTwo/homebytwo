@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from io import BytesIO
 
+from django_tables2 import SingleTableView, LazyPaginator
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,6 +16,7 @@ from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 from pytz import utc
+from .tables import ActivityTable
 
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
@@ -333,10 +335,26 @@ class RouteUpdate(RouteEdit):
 
 
 @method_decorator(login_required, name="dispatch")
-@method_decorator(require_safe, name="dispatch")
-class ActivityList(ListView):
-    paginate_by = 50
-    context_object_name = "strava_activities"
+class ActivityList(SingleTableView):
+    model = Activity
+    table_class = ActivityTable
+    pagination_class = LazyPaginator
+    template_name = "routes/activity_list.html"
 
     def get_queryset(self):
         return Activity.objects.for_user(self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        activity_ids = request.POST.getlist("id")
+        use_for_predictions = request.POST.getlist("use_for_prediction")
+        use = set(
+            activity_id
+            for activity_id, use_for_prediction in zip(
+                activity_ids, use_for_predictions
+            )
+            if use_for_prediction
+        )
+        do_not_use = set(activity_ids) - use_for_predictions
+
+        Activity.objects.filter(pk__in=use).update(use_for_prediction=True)
+        Activity.objects.filter(pk__in=do_not_use).update(use_for_prediction=False)

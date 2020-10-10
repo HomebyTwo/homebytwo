@@ -6,6 +6,7 @@ dj-database-url
 django<2.3
 django-geojson
 django-leaflet
+django-tables2
 django-widget-tweaks
 easy_thumbnails
 flower
