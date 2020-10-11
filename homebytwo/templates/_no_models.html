@@ -1,9 +1,9 @@
 {% if user.is_authenticated and not user.athlete.activityperformance_set.count %}
-<div class="box box--tiny box--default alert warning">
-  <div class="text-small text-center">
-    We are currently importing data from Strava to create your prediction models.
-    Once they are ready, this message will disappear.
-    In the meantime, you can import a route from Strava or Switzerland Mobility.
+  <div class="box box--tiny box--default alert warning">
+    <div class="text-small text-center">
+      We are currently importing data from Strava to create your prediction models.
+      Once they are ready, this message will disappear.
+      In the meantime, you can import a route from Strava or Switzerland Mobility.
+    </div>
   </div>
-</div>
 {% endif %}
