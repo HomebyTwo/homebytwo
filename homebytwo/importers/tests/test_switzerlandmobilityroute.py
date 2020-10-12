@@ -6,10 +6,12 @@ from re import compile as re_compile
 from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.forms.models import model_to_dict
+from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 import responses
+from django.utils.http import urlencode
 from requests.exceptions import ConnectionError
 
 from ...routes.fields import DataFrameField
@@ -531,6 +533,22 @@ class SwitzerlandMobilityTestCase(TestCase):
         title = "<title>Home by Two - Import Haute Cime</title>"
         self.assertContains(response, title, html=True)
 
+    def test_switzerland_mobility_route_redirect_to_login_with_route_id(self):
+        session = self.client.session
+        del session["switzerland_mobility_cookies"]
+        session.save()
+
+        source_id = 123456789
+        response = self.get_import_route_response(
+            route_id=source_id,
+            response_file="403.json",
+            status=403,
+        )
+
+        params = urlencode({"route_id": source_id})
+        assert response.status_code == 302
+        assert params in response.url
+
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
         SwitzerlandMobilityRouteFactory(
@@ -610,7 +628,7 @@ class SwitzerlandMobilityTestCase(TestCase):
             place = PlaceFactory(
                 geom=Point(
                     *route.geom.coords[int(route.geom.num_coords * line_location)],
-                    srid=21781
+                    srid=21781,
                 )
             )
             checkpoints_data.append("_".join([str(place.id), str(line_location)]))
@@ -784,46 +802,96 @@ class SwitzerlandMobilityTestCase(TestCase):
         url = reverse("import_routes", kwargs={"data_source": "switzerland_mobility"})
         redirect_url = reverse("switzerland_mobility_login")
         response = self.client.get(url)
+        assert response.status_code == 302
+        assert response.url == redirect_url
 
-        self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, redirect_url)
 
     def test_switzerland_mobility_get_login_view(self):
         url = reverse("switzerland_mobility_login")
-        content = 'action="%s"' % url
+        content = '<form method="post">'
         response = self.client.get(url)
 
         self.assertContains(response, content)
 
     @responses.activate
     def test_switzerland_mobility_login_successful(self):
-        url = reverse("switzerland_mobility_login")
-        data = {"username": "test_user", "password": "test_password"}
-
-        # intercept call to map.wanderland.ch with responses
-        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
-        # successful login response
         json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
         adding_headers = {"Set-Cookie": "mf-chmobil=123"}
 
         responses.add(
             responses.POST,
-            login_url,
+            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
             content_type="application/json",
             body=json_response,
             status=200,
             adding_headers=adding_headers,
         )
+
+        url = reverse("switzerland_mobility_login")
+        data = {"username": "test_user", "password": "test_password"}
         response = self.client.post(url, data)
 
         mobility_cookies = self.client.session["switzerland_mobility_cookies"]
+        redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response.url,
-            reverse("import_routes", kwargs={"data_source": "switzerland_mobility"}),
+        assert response.status_code == 302
+        assert response.url == redirect_url
+        assert mobility_cookies["mf-chmobil"] == "123"
+
+    @responses.activate
+    def test_switzerland_mobility_login_successful_route_id(self):
+        json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
+        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
+
+        responses.add(
+            responses.POST,
+            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+            adding_headers=adding_headers,
         )
-        self.assertEqual(mobility_cookies["mf-chmobil"], "123")
+        source_id = 123456789
+        url = reverse("switzerland_mobility_login")
+        params = urlencode({"route_id": source_id})
+        data = {"username": "test_user", "password": "test_password"}
+        response = self.client.post(f"{url}?{params}", data)
+
+        mobility_cookies = self.client.session["switzerland_mobility_cookies"]
+        redirect_url = resolve_url(
+            "import_route", data_source="switzerland_mobility", source_id=source_id
+        )
+
+        assert response.status_code == 302
+        assert response.url == redirect_url
+        assert mobility_cookies["mf-chmobil"] == "123"
+
+    @responses.activate
+    def test_switzerland_mobility_login_successful_route_id_bad(self):
+        json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
+        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
+
+        responses.add(
+            responses.POST,
+            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+            adding_headers=adding_headers,
+        )
+
+        url = reverse("switzerland_mobility_login")
+        params = urlencode({"route_id": "bad_id"})
+        data = {"username": "test_user", "password": "test_password"}
+        response = self.client.post(f"{url}?{params}", data)
+
+        mobility_cookies = self.client.session["switzerland_mobility_cookies"]
+        redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
+
+        assert response.status_code == 302
+        assert response.url == redirect_url
+        assert mobility_cookies["mf-chmobil"] == "123"
 
     @responses.activate
     def test_switzerland_mobility_login_failed(self):

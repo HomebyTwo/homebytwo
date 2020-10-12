@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.urls import NoReverseMatch
 
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
@@ -123,7 +124,21 @@ def switzerland_mobility_login(request):
             if cookies:
                 # add cookies to the user session
                 request.session["switzerland_mobility_cookies"] = cookies
-                # redirect to the route list
+
+                # check if we can redirect to a route after login
+                route_id = request.POST.get("route_id", request.GET.get("route_id", ""))
+                if route_id:
+                    try:
+                        return redirect(
+                            "import_route",
+                            data_source="switzerland_mobility",
+                            source_id=route_id,
+                        )
+
+                    # someone messed up the query string
+                    except NoReverseMatch:
+                        pass
+
                 return redirect("import_routes", data_source="switzerland_mobility")
 
         # something went wrong, render the login page,
