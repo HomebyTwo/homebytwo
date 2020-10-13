@@ -21,7 +21,7 @@ from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import open_data, read_data
 from ..fields import DataFrameField
 from ..forms import RouteForm
-from ..models import ActivityPerformance
+from ..models import ActivityPerformance, Route
 from ..templatetags.duration import baseround, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
@@ -262,6 +262,30 @@ class RouteTestCase(TestCase):
 
         with self.assertRaises(NotImplementedError):
             route.get_route_data()
+
+    def test_get_or_stub_new(self):
+        source_id = 123456789
+        route, update = Route.get_or_stub(
+            source_id=source_id, athlete=self.athlete
+        )
+
+        assert route.data_source == "homebytwo"
+        assert route.source_id == source_id
+        assert route.athlete == self.athlete
+        assert not update
+        assert not route.pk
+
+    def test_get_or_stub_existing(self):
+        existing_route = RouteFactory(athlete=self.athlete)
+        retrieved_route, update = Route.get_or_stub(
+            source_id=existing_route.source_id, athlete=self.athlete
+        )
+
+        assert retrieved_route.data_source == "homebytwo"
+        assert retrieved_route.source_id == existing_route.source_id
+        assert retrieved_route.athlete == self.athlete
+        assert update
+        assert retrieved_route.pk
 
     #########
     # Views #

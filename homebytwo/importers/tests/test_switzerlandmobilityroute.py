@@ -59,6 +59,7 @@ class SwitzerlandMobilityTestCase(TestCase):
     def get_import_route_response(
         self,
         route_id,
+        follow=False,
         response_file="2191833_show.json",
         status=200,
         content_type="application/json",
@@ -83,9 +84,9 @@ class SwitzerlandMobilityTestCase(TestCase):
         )
 
         if method == "get":
-            return self.client.get(url)
+            return self.client.get(url, follow=follow)
         if method == "post":
-            return self.client.post(url, post_data)
+            return self.client.post(url, post_data, follow=follow)
 
     #########
     # Model #
@@ -403,30 +404,29 @@ class SwitzerlandMobilityTestCase(TestCase):
         with self.assertRaises(SwitzerlandMobilityError):
             route.get_route_details(cookies=None)
 
-    def test_refresh_from_db_if_exists(self):
-        route_stub = SwitzerlandMobilityRouteFactory.build()
-        route_stub, exists = route_stub.refresh_from_db_if_exists()
-        self.assertFalse(exists)
-
-        saved_route = SwitzerlandMobilityRouteFactory(
-            athlete=self.athlete,
-            data_source="switzerland_mobility",
-            source_id="123456",
+    def test_switzerland_mobility_get_or_stub_new(self):
+        source_id = 123456789
+        route, update = SwitzerlandMobilityRoute.get_or_stub(
+            source_id=source_id, athlete=self.athlete
         )
-        saved_route, exists = saved_route.refresh_from_db_if_exists()
-        self.assertTrue(exists)
 
-        stub_like_saved_route = SwitzerlandMobilityRouteFactory.build(
-            athlete=self.athlete,
-            data_source="switzerland_mobility",
-            source_id="123456",
+        assert route.data_source == "switzerland_mobility"
+        assert route.source_id == source_id
+        assert route.athlete == self.athlete
+        assert not update
+        assert not route.pk
+
+    def test_switzerland_mobility_get_or_stub_existing(self):
+        existing_route = SwitzerlandMobilityRouteFactory(athlete=self.athlete)
+        retrieved_route, update = SwitzerlandMobilityRoute.get_or_stub(
+            source_id=existing_route.source_id, athlete=self.athlete
         )
-        (
-            stub_like_saved_route,
-            exists,
-        ) = stub_like_saved_route.refresh_from_db_if_exists()
-        self.assertTrue(exists)
-        self.assertEqual(stub_like_saved_route, saved_route)
+
+        assert retrieved_route.data_source == "switzerland_mobility"
+        assert retrieved_route.source_id == existing_route.source_id
+        assert retrieved_route.athlete == self.athlete
+        assert update
+        assert retrieved_route.pk
 
     #########
     # Views #
@@ -556,11 +556,11 @@ class SwitzerlandMobilityTestCase(TestCase):
             athlete=self.athlete,
         )
 
-        content = "Already Imported"
         response = self.get_import_route_response(
             route_id=route_id, response_file="2733343_show.json"
         )
 
+        content = "Update"
         self.assertContains(response, content)
 
     def test_switzerland_mobility_route_server_error(self):
@@ -714,7 +714,7 @@ class SwitzerlandMobilityTestCase(TestCase):
         self.assertContains(response, required_field)
         self.assertContains(response, invalid_value)
 
-    def test_switzerland_mobility_route_post_integrity_error(self):
+    def test_switzerland_mobility_route_post_updated(self):
 
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory(
@@ -734,15 +734,14 @@ class SwitzerlandMobilityTestCase(TestCase):
             route_id=route_id,
             method="post",
             post_data=post_data,
+            follow=True,
         )
 
-        alert_box = '<li class="box mrgv- alert error" >'
-        integrity_error = (
-            "Integrity Error: duplicate key value violates unique constraint"
+        success_box = '<li class="box mrgv- alert success" >{message}</li>'.format(
+            message=f"Route updated successfully from {route.DATA_SOURCE_NAME}"
         )
-
-        self.assertContains(response, alert_box)
-        self.assertContains(response, integrity_error)
+        self.assertRedirects(response, route.get_absolute_url())
+        self.assertContains(response, success_box, html=True)
 
     @responses.activate
     def test_switzerland_mobility_routes_success(self):

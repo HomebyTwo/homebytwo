@@ -7,7 +7,7 @@ from django.urls import NoReverseMatch
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
 from .forms import SwitzerlandMobilityLogin
-from .utils import get_route_class_from_data_source, save_detail_forms, split_routes
+from .utils import get_proxy_class_from_data_source, save_detail_forms, split_routes
 
 
 @login_required
@@ -24,8 +24,8 @@ def import_routes(request, data_source):
 
     template = "importers/routes.html"
 
-    # retrieve route class from data source in url
-    route_class = get_route_class_from_data_source(data_source)
+    # retrieve proxy class from data source in url
+    route_class = get_proxy_class_from_data_source(data_source)
 
     # retrieve remote routes list
     remote_routes = route_class.objects.get_remote_routes_list(
@@ -65,35 +65,31 @@ def import_route(request, data_source, source_id):
 
     template = "routes/route_form.html"
 
-    # retrieve route class from data source in url
-    route_class = get_route_class_from_data_source(data_source)
-
-    # instantiate route stub with athlete and source_id from url
-    route = route_class(athlete=request.user.athlete, source_id=source_id)
+    # create stub or retrieve from db
+    route_class = get_proxy_class_from_data_source(data_source)
+    route, update = route_class.get_or_stub(source_id, request.user.athlete)
 
     # fetch route details from Remote API
     route.get_route_details(request.session.get("switzerland_mobility_cookies"))
     route.update_track_details_from_data()
 
     if request.method == "POST":
-        # populate checkpoints_formset with POST data
-        route_form = RouteForm(request.POST, instance=route)
+        # instantiate form with POST data
+        route_form = RouteForm(update=update, data=request.POST, instance=route)
 
         # validate forms and save the route and places
         new_route = save_detail_forms(request, route_form)
 
         # Success! redirect to the page of the newly imported route
         if new_route:
-            message = "Route imported successfully from {}".format(
-                route_class.DATA_SOURCE_NAME
-            )
-            messages.success(request, message)
+            message_action = "updated" if update else "imported"
+            message = "Route {} successfully from {}"
+            messages.success(request, message.format(message_action, route.DATA_SOURCE_NAME))
             return redirect("routes:route", pk=new_route.id)
 
     if request.method == "GET":
-
         # populate the route_form with route details
-        route_form = RouteForm(instance=route)
+        route_form = RouteForm(update=update, instance=route)
 
     context = {
         "object": route,

@@ -324,12 +324,15 @@ class RouteUpdate(RouteEdit):
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
 
-            # reset the checkpoints, the price of updating from remote
-            route.checkpoint_set.all().delete()
-
             return route.update_from_remote(
                 self.request.session.get("switzerland_mobility_cookies", None)
             )
+
+    def get_form_kwargs(self):
+        """Return the keyword arguments for instantiating the form."""
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"update": True})
+        return kwargs
 
 
 @method_decorator(login_required, name="dispatch")
