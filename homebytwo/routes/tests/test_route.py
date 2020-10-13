@@ -8,10 +8,10 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command, CommandError
+from django.core.management import CommandError, call_command
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
-from django.urls import reverse, resolve
+from django.urls import resolve, reverse
 from django.utils.six import StringIO
 
 import responses
@@ -22,7 +22,7 @@ from ...utils.tests import open_data, read_data
 from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import ActivityPerformance, Route
-from ..templatetags.duration import baseround, nice_repr
+from ..templatetags.duration import base_round, display_timedelta, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -234,28 +234,29 @@ class RouteTestCase(TestCase):
 
     def test_schedule_display(self):
         duration = timedelta(seconds=30, minutes=1, hours=6)
-        long_display = nice_repr(duration)
-        self.assertEqual(long_display, "6 hours 1 minute 30 seconds")
+        assert nice_repr(duration) == "6 hours 1 minute 30 seconds"
 
         duration = timedelta(seconds=0)
-        long_display = nice_repr(duration)
-        self.assertEqual(long_display, "0 seconds")
+        assert nice_repr(duration) == "0 seconds"
 
         duration = timedelta(seconds=30, minutes=2, hours=2)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "2 h 5 min")
+        assert nice_repr(duration, display_format="hike") == "2 h 5 min"
 
         duration = timedelta(seconds=45, minutes=57, hours=2)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "3 h")
+        assert nice_repr(duration, display_format="hike") == "3 h"
 
         duration = timedelta(seconds=30, minutes=2, hours=6)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "6 h")
+        assert nice_repr(duration, display_format="hike") == "6 h"
+
+    def test_display_timedelta(self):
+        assert display_timedelta(None) is None
+        assert display_timedelta(0) == "0 seconds"
+        with self.assertRaises(TypeError):
+            display_timedelta("bad_value")
 
     def test_base_round(self):
         values = [0, 3, 4.85, 12, -7]
-        rounded = [baseround(value) for value in values]
+        rounded = [base_round(value) for value in values]
 
         self.assertEqual(rounded, [0, 5, 5, 10, -5])
 
@@ -729,5 +730,3 @@ class RouteTestCase(TestCase):
 
         with self.assertRaises(CommandError):
             call_command("cleanup_hdf5_files", stdout=out)
-
-

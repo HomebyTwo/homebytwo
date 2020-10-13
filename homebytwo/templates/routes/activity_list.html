@@ -10,7 +10,7 @@
   {% for activity in strava_activities %}
   <li class="mrgb-">
     <div>
-      <a href="{{ activity.get_strava_url }}">
+      <a class="strava" href="{{ activity.get_strava_url }}">
         {{ activity.activity_type }}: {{ activity.name }}
       </a>
     </div>

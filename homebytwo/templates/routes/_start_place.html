@@ -1,0 +1,13 @@
+{% load humanize geojson_tags duration %}
+
+<li class="box box--default box--tight mrgv- mrgh0 pdg-"
+    {% if route.start_place %}data-geom="{{ route.start_place|geojsonfeature:'name' }}" {% endif %}>
+  <div class="grid grid--tight">
+    <div class="w-2/3 sm-w-4/5 grid__item place__name">{{ route.start_place.name|default:'Unknown Place' }},
+      {{ route.get_start_altitude.m|floatformat:0|intcomma }}m
+    </div>
+    <div class="w-1/3 sm-w-1/5 grid__item text-right">{{ 0|duration:'hike' }}</div>
+  </div>
+  <div class="text-small text-right">{{ route.start_place.get_place_type_display|default:'Unknown place' }} - 0.00km
+  </div>
+</li>

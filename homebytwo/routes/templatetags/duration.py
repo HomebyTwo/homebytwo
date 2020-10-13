@@ -1,4 +1,4 @@
-import datetime
+from datetime import timedelta
 
 from django import template
 
@@ -6,19 +6,19 @@ register = template.Library()
 
 
 @register.filter(name="duration")
-def timedelta(value, display_format="long"):
-    if value in (None, 0):
+def display_timedelta(value, display_format="long"):
+    if value is None:
         return value
     return nice_repr(value, display_format)
 
 
-def baseround(x, base=5):
+def base_round(x, base=5):
     return int(base * round(float(x) / base))
 
 
-def nice_repr(timedelta, display_format="long", sep=" "):
+def nice_repr(value, display_format="long", sep=" "):
     """
-    Turn a datetime.timedelta object into a human readable string
+    Turn a timedelta object into a human readable string
     available formats are long [default] or hike.
 
     the hike display_format follows the format displayed on hiking signs
@@ -36,18 +36,19 @@ def nice_repr(timedelta, display_format="long", sep=" "):
     >>> nice_repr(td(days=1, seconds=1), "hike")
     '1 day 2 h 5  min'
     """
-
-    assert isinstance(
-        timedelta, datetime.timedelta
-    ), "First argument must be a timedelta."
+    if not isinstance(value, timedelta):
+        try:
+            value = timedelta(seconds=value)
+        except TypeError:
+            raise TypeError("value should be a timedelta or a number")
 
     result = []
 
-    weeks = int(timedelta.days / 7)
-    days = timedelta.days % 7
-    hours = int(timedelta.seconds / 3600)
-    minutes = int((timedelta.seconds % 3600) / 60)
-    seconds = timedelta.seconds % 60
+    weeks = int(value.days / 7)
+    days = value.days % 7
+    hours = int(value.seconds / 3600)
+    minutes = int((value.seconds % 3600) / 60)
+    seconds = value.seconds % 60
 
     values = [weeks, days, hours, minutes]
 
@@ -57,7 +58,7 @@ def nice_repr(timedelta, display_format="long", sep=" "):
             minutes += 1
 
         # make minutes a multiple of 5
-        minutes = baseround(minutes)
+        minutes = base_round(minutes)
         if minutes == 60:
             hours += 1
             minutes = 0
