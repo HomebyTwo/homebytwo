@@ -2,7 +2,7 @@
 
 <form method="post">
   {% csrf_token %}
-  <div class="form-group grid grid--small grid--center">
+  <div class="form-group grid grid--small">
     {% for field in form %}
       <div class="grid__item sm-w-1/2 md-w-1/3 lg-w-1/4">
         {% render_field field class="field mrgt-" %}
