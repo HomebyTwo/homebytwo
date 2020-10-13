@@ -8,10 +8,10 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import call_command, CommandError
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.urls import reverse, resolve
 from django.utils.six import StringIO
 
 import responses
@@ -54,6 +54,25 @@ class RouteTestCase(TestCase):
         route = RouteFactory()
         self.assertEqual(route.display_url, route.get_absolute_url())
 
+        match = resolve(route.edit_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "edit"
+
+        match = resolve(route.update_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "update"
+
+        match = resolve(route.delete_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "delete"
+
+        match = resolve(route.gpx_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "gpx"
+
+        match = resolve(route.import_url)
+        assert match.url_name == "import_route"
+
     def test_get_total_distance(self):
         route = RouteFactory.build(total_distance=12345)
         total_distance = route.get_total_distance()
@@ -76,7 +95,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1234, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(
             data=data,
             total_distance=1000,
@@ -89,7 +111,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1000, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
@@ -182,7 +207,8 @@ class RouteTestCase(TestCase):
         )
 
         self.assertListEqual(
-            list(data.gradient), [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
+            list(data.gradient),
+            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -265,9 +291,7 @@ class RouteTestCase(TestCase):
 
     def test_get_or_stub_new(self):
         source_id = 123456789
-        route, update = Route.get_or_stub(
-            source_id=source_id, athlete=self.athlete
-        )
+        route, update = Route.get_or_stub(source_id=source_id, athlete=self.athlete)
 
         assert route.data_source == "homebytwo"
         assert route.source_id == source_id
@@ -325,8 +349,10 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
-            edit_url
+        edit_button = (
+            '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
+                edit_url
+            )
         )
 
         response = self.client.get(url)
@@ -686,3 +712,22 @@ class RouteTestCase(TestCase):
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
         self.assertIn("1 missing file(s):", out.getvalue())
+
+    def test_cleanup_hdf5_files_directory_as_file(self):
+        out = StringIO()
+
+        # 1 route
+        route = RouteFactory()
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        data_dir = Path(full_path).parent.resolve()
+
+        # add one random directory with .h5 extension
+        dirname = "dir.h5"
+        full_path = data_dir / dirname
+        Path(full_path).mkdir(parents=True, exist_ok=True)
+
+        with self.assertRaises(CommandError):
+            call_command("cleanup_hdf5_files", stdout=out)
+
+

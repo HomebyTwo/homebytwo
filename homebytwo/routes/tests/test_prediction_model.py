@@ -3,7 +3,13 @@ from django.urls import reverse
 from ..forms import ActivityPerformanceForm
 from ..models import ActivityType
 from ..prediction_model import PredictionModel
-from .factories import ActivityFactory, ActivityPerformanceFactory, ActivityTypeFactory, GearFactory, RouteFactory
+from .factories import (
+    ActivityFactory,
+    ActivityPerformanceFactory,
+    ActivityTypeFactory,
+    GearFactory,
+    RouteFactory,
+)
 
 
 def test_prediction_model_with_defaults():
@@ -136,9 +142,10 @@ def test_activity_performance_form_no_choices(athlete):
 
 def test_activity_performance_form(athlete):
     gears = GearFactory.create_batch(5)
+    gear_categories = [gear.strava_id for gear in gears] + ["None"]
     activity_performance = ActivityPerformanceFactory(
         athlete=athlete,
-        gear_categories=[gear.strava_id for gear in gears],
+        gear_categories=gear_categories,
         workout_type_categories=["None", "long run"],
     )
 
@@ -147,7 +154,7 @@ def test_activity_performance_form(athlete):
         athlete=athlete,
     )
 
-    assert len(form.fields["gear"].choices) == 5
+    assert len(form.fields["gear"].choices) == 6
     assert form.fields["workout_type"].choices == [
         ("None", "None"),
         ("long run", "long run"),
