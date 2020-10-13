@@ -26,8 +26,9 @@ defusedxml==0.6.0         # via python3-openid, social-auth-core
 dj-database-url==0.5.0    # via -r requirements/base.in
 django-geojson==3.0.0     # via -r requirements/base.in
 django-leaflet==0.27.1    # via -r requirements/base.in
+django-tables2==2.3.1     # via -r requirements/base.in
 django-widget-tweaks==1.4.8  # via -r requirements/base.in
-django==2.2.16            # via -r requirements/base.in, django-geojson, django-leaflet, easy-thumbnails
+django==2.2.16            # via -r requirements/base.in, django-geojson, django-leaflet, django-tables2, easy-thumbnails
 docopt==0.6.2             # via coveralls
 easy-thumbnails==2.7      # via -r requirements/base.in
 envparse==0.2.0           # via codaio

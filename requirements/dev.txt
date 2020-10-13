@@ -30,8 +30,9 @@ django-debug-toolbar==3.1.1  # via -r requirements/dev.in
 django-extensions==3.0.9  # via -r requirements/dev.in
 django-geojson==3.0.0     # via -r requirements/base.in
 django-leaflet==0.27.1    # via -r requirements/base.in
+django-tables2==2.3.1     # via -r requirements/base.in
 django-widget-tweaks==1.4.8  # via -r requirements/base.in
-django==2.2.16            # via -r requirements/base.in, django-appconf, django-debug-toolbar, django-geojson, django-leaflet, easy-thumbnails
+django==2.2.16            # via -r requirements/base.in, django-appconf, django-debug-toolbar, django-geojson, django-leaflet, django-tables2, easy-thumbnails
 easy-thumbnails==2.7      # via -r requirements/base.in
 envparse==0.2.0           # via codaio
 fabric3==1.14.post1       # via -r requirements/dev.in
@@ -43,7 +44,7 @@ gpxpy==1.4.2              # via -r requirements/base.in
 gunicorn==20.0.4          # via -r requirements/base.in
 humanize==3.0.1           # via flower
 idna==2.10                # via requests
-importlib-metadata==2.0.0  # via kombu, pluggy, tox, virtualenv
+importlib-metadata==1.7.0  # via kombu, pluggy, tox, virtualenv
 inflection==0.3.1         # via codaio
 ipython-genutils==0.2.0   # via traitlets
 ipython==7.18.1           # via -r requirements/dev.in

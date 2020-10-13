@@ -110,7 +110,7 @@ class RouteForm(ModelForm):
 
 class ActivityPerformanceForm(Form):
     """
-    Choose the activity perfomance parameters to apply to the pace prediction.
+    Choose the activity performance parameters to apply to the pace prediction.
 
     The form contains at least one field (activity_type) and at most three:
     the gear and workout_type fields are displayed if the athlete's performance profile
