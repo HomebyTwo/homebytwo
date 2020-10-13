@@ -13,7 +13,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
-from django.views.generic.list import ListView
 
 from pytz import utc
 from .tables import ActivityTable
