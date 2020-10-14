@@ -1,0 +1,17 @@
+<section id="schedule">
+  <h2 class="h3">Route Schedule</h2>
+  {% include "routes/route/_performance_box.html" %}
+  <ul class="list list--stacked">
+    {# start place #}
+    {% include "routes/route/_route_checkpoint.html" with type="Start" place=route.start_place altitude=route.get_start_altitude.m schedule=0 distance=0 elevation_gain=0 elevation_loss=0 %}
+    {# checkpoints #}
+    {% for checkpoint in checkpoints %}
+      {% include "routes/route/_route_checkpoint.html" with type="Checkpoint" place=checkpoint.place altitude=checkpoint.altitude_on_route.m schedule=checkpoint.schedule distance=checkpoint.distance_from_start.km elevation_gain=checkpoint.cumulative_elevation_gain.m elevation_loss=checkpoint.cumulative_elevation_loss.m %}
+    {% empty %}
+      <li class="box box--default box--tight mrgv- pdg- ">No checkpoint along the route.</li>
+    {% endfor %}
+    {# finish place #}
+    {% include "routes/route/_route_checkpoint.html" with type="Finish" place=route.end_place altitude=get_end_altitude.m schedule=route.get_total_duration distance=route.get_total_distance.km elevation_gain=route.get_total_elevation_gain.m elevation_loss=route.get_total_elevation_loss.m %}
+  </ul>
+  {% include "routes/route/_route_edit_button.html" %}
+</section>

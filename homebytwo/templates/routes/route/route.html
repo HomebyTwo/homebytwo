@@ -9,16 +9,14 @@
 {% endblock extralinks %}
 
 {% block header %}
-  {% include "routes/_performance_box.html" %}
-  {% include "routes/_route_title.html" %}
+  {% include "routes/route/_route_title.html" %}
 {% endblock header %}
 
 {% block content %}
-  {% include "routes/_course.html" %}
-  {% include "routes/_route_map.html" %}
-  {% include "routes/_route_owner_buttons.html" %}
-  {% include "routes/_route_source_link.html" %}
-  {% include "routes/_garmin_activity_buttons.html" %}
+  {% include "routes/route/_route_schedule.html" %}
+  {% include "routes/route/_route_map.html" %}
+  {% include "routes/route/_route_source_link.html" %}
+  {% include "routes/route/_route_garmin_upload.html" %}
 {% endblock content %}
 
 {% if route.geom %}
@@ -33,7 +31,7 @@
         const icon = L.divIcon({
           className: 'placeIcon placeIcon--default',
         });
-        const places = Array.from(document.querySelectorAll('.place--known'));
+        const places = Array.from(document.querySelectorAll('.place'));
         const markers = places.map(place => {
           L.geoJson(JSON.parse(place.dataset.geom), {
             pointToLayer: (feature, latlng) => L.marker(latlng, {

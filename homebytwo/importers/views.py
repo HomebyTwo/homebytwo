@@ -63,7 +63,7 @@ def import_route(request, data_source, source_id):
     to the route.
     """
 
-    template = "routes/route_form.html"
+    template = "routes/route/route_form.html"
 
     # create stub or retrieve from db
     route_class = get_proxy_class_from_data_source(data_source)

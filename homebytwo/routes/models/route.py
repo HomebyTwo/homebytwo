@@ -431,16 +431,9 @@ class Route(Track):
         compatible Garmin devices.
         """
 
-        # retrieve athlete to calculate an alternative schedule
+        # calculate schedule
         athlete = athlete or self.athlete
-
-        # calculate schedule if needed
-        if not athlete == self.athlete or "schedule" not in self.data.columns:
-            self.calculate_projected_time_schedule(athlete.user)
-
-            # adding schedule to old routes one-by-one, instead of migrating
-            if athlete == self.athlete:
-                self.save(update_fields=["data"])
+        self.calculate_projected_time_schedule(athlete.user)
 
         # instantiate API from garmin_uploader and authenticate
         garmin_api = GarminAPI()

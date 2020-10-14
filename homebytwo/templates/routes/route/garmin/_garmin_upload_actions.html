@@ -1,0 +1,27 @@
+<h2 class="mrgt0">Download this route to your Garmin device</h2>
+
+<p>If you own a compatible Garmin device, you can use the "Virtual Racer" feature to track your progress during
+  your activity.
+  Publish this route as an activity to the <em>Homebytwo</em> Garmin Connect account, download the route
+  schedule and race against it.</p>
+
+<div class="mrgt grid grid--multiline grid--center grid--small">
+  {% if route.garmin_activity_url %}
+    {# Butons if route is on Garmin Connect #}
+    {% include "routes/route/garmin/_garmin_upload_view_update_buttons.html" %}
+    {% include "routes/route/_route_gpx_button.html" with button_count=3 %}
+
+  {% elif route.garmin_id and not route.garmin_activity_url %}
+    {# Butons if route is uploading #}
+    {% include "routes/route/garmin/_garmin_upload_disabled_button.html" %}
+    {% include "routes/route/_route_gpx_button.html" with button_count=2 %}
+
+
+  {% else %}
+    {# Butons if route is not yet on Garmin Connect #}
+    {% include "routes/route/garmin/_garmin_upload_button.html" %}
+    {% include "routes/route/_route_gpx_button.html" with button_count=2 %}
+
+  {% endif %}
+</div>
+

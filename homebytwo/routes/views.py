@@ -51,7 +51,7 @@ def route_view(request, pk):
     is used.
 
     """
-    route = get_object_or_404(Route.objects.select_related(), id=pk)
+    route = get_object_or_404(Route, pk=pk)
 
     if request.method == "POST":
         performance_form = ActivityPerformanceForm(
@@ -117,20 +117,12 @@ def route_view(request, pk):
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
-    # enrich start and end place with schedule and altitude
-    if route.start_place_id:
-        route.start_place.schedule = route.get_time_data(0, "schedule")
-        route.start_place.altitude = route.get_distance_data(0, "altitude")
-    if route.end_place_id:
-        route.end_place.schedule = route.get_time_data(1, "schedule")
-        route.end_place.altitude = route.get_distance_data(1, "altitude")
-
     context = {
         "route": route,
         "checkpoints": checkpoints,
         "form": performance_form,
     }
-    return render(request, "routes/route.html", context)
+    return render(request, "routes/route/route.html", context)
 
 
 @require_safe
@@ -305,7 +297,7 @@ class RouteDelete(DeleteView):
 class RouteEdit(UpdateView):
     model = Route
     form_class = RouteForm
-    template_name = "routes/route_form.html"
+    template_name = "routes/route/route_form.html"
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.

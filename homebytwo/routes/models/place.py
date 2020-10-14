@@ -214,6 +214,18 @@ class Checkpoint(models.Model):
         return self.route.get_distance_data(self.line_location, "distance")
 
     @property
+    def cumulative_elevation_gain(self):
+        return self.route.get_distance_data(
+            self.line_location, "cumulative_elevation_gain"
+        )
+
+    @property
+    def cumulative_elevation_loss(self):
+        return self.route.get_distance_data(
+            self.line_location, "cumulative_elevation_loss", absolute=True
+        )
+
+    @property
     def field_value(self):
         """
         value used in the ModelForm to serialize checkpoints
@@ -223,7 +235,6 @@ class Checkpoint(models.Model):
     class Meta:
         ordering = ("line_location",)
 
-        # The pair 'data_source' and 'source_id' should be unique together.
         constraints = [
             models.UniqueConstraint(
                 name="unique checkpoint on route",

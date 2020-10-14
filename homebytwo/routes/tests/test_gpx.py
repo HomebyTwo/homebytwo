@@ -282,7 +282,6 @@ class GPXTestCase(TestCase):
         self.assertIn(
             response, message.format(route=route_str, url=garmin_activity_url)
         )
-        self.assertIn("schedule", self.route.data.columns)
 
     def test_garmin_upload_other_athlete(self):
         self.route.garmin_id = 1

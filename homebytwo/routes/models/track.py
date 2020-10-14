@@ -72,15 +72,15 @@ class Track(TimeStampedModel):
         usually replacing remote information received for the route
         """
         if not all(
-            column in ["total_elevation_gain", "total_elevation_loss"]
+            column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
             for column in self.data.columns
         ):
-            self.data = self.calculate_cummulative_elevation_differences(self.data)
+            self.data = self.calculate_cumulative_elevation_differences(self.data)
 
         # update total_distance, total_elevation_gain and total_elevation_loss from data
         self.total_distance = self.data.distance.max()
-        self.total_elevation_loss = abs(self.data.cummulative_elevation_loss.min())
-        self.total_elevation_gain = self.data.cummulative_elevation_gain.max()
+        self.total_elevation_loss = abs(self.data.cumulative_elevation_loss.min())
+        self.total_elevation_gain = self.data.cumulative_elevation_gain.max()
 
     def calculate_gradient(self, data):
         """
@@ -102,27 +102,27 @@ class Track(TimeStampedModel):
 
         return data
 
-    def calculate_cummulative_elevation_differences(self, data):
+    def calculate_cumulative_elevation_differences(self, data):
         """
-        Calculates two colums from the altitude data:
-        - cummulative_elevation_gain: cummulative sum of positive elevation data
-        - cummulative_elevation_loss: cummulative sum of negative elevation data
+        Calculates two columns from the altitude data:
+        - cumulative_elevation_gain: cumulative sum of positive elevation data
+        - cumulative_elevation_loss: cumulative sum of negative elevation data
         """
 
         # only consider entries where altitude difference is greater than 0
-        data["cummulative_elevation_gain"] = data.altitude.diff()[
+        data["cumulative_elevation_gain"] = data.altitude.diff()[
             data.altitude.diff() >= 0
         ].cumsum()
 
         # only consider entries where altitude difference is less than 0
-        data["cummulative_elevation_loss"] = data.altitude.diff()[
+        data["cumulative_elevation_loss"] = data.altitude.diff()[
             data.altitude.diff() <= 0
         ].cumsum()
 
         # Fill the NaNs with the last valid value of the series
-        # then, replace the remainng NaN (at the beginning) with 0
-        data[["cummulative_elevation_gain", "cummulative_elevation_loss"]] = (
-            data[["cummulative_elevation_gain", "cummulative_elevation_loss"]]
+        # then, replace the remaining NaN (at the beginning) with 0
+        data[["cumulative_elevation_gain", "cumulative_elevation_loss"]] = (
+            data[["cumulative_elevation_gain", "cumulative_elevation_loss"]]
             .fillna(method="ffill")
             .fillna(value=0)
         )
@@ -164,20 +164,21 @@ class Track(TimeStampedModel):
 
         data = self.data
 
-        # make sure we have cummulative elevation differences
+        # make sure we have cumulative elevation differences
         if not all(
-            column in ["total_elevation_gain", "total_elevation_loss"]
+            column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
             for column in data.columns
         ):
-            data = self.calculate_cummulative_elevation_differences(data)
+            data = self.calculate_cumulative_elevation_differences(data)
 
         # make sure we have elevation gain and distance data
         if not all(column in ["gradient", "step_distance"] for column in data.columns):
             data = self.calculate_gradient(data)
+            self.save(update_fields=["data"])
 
         # add route totals to every row
-        data["total_distance"] = max(data.distance)
-        data["total_elevation_gain"] = max(data.cummulative_elevation_gain)
+        data["total_distance"] = data.distance.max()
+        data["total_elevation_gain"] = data.cumulative_elevation_gain.max()
 
         # add gear and workout type to every row
         data["gear"] = gear or "None"
@@ -211,7 +212,7 @@ class Track(TimeStampedModel):
         # https://docs.scipy.org/doc/numpy/reference/generated/numpy.interp.html
         return interp(interp_x, self.data["distance"], self.data[data_column])
 
-    def get_distance_data(self, line_location, data_column):
+    def get_distance_data(self, line_location, data_column, absolute=False):
         """
         wrap around the get_data method
         to return a Distance object.
@@ -220,7 +221,7 @@ class Track(TimeStampedModel):
 
         # return distance object
         if distance_data is not None:
-            return D(m=distance_data)
+            return D(m=abs(distance_data)) if absolute else D(m=distance_data)
 
     def get_time_data(self, line_location, data_column):
         """
@@ -248,19 +249,19 @@ class Track(TimeStampedModel):
 
     def get_total_elevation_gain(self):
         """
-        returns cummalive altitude gain as a Distance object
+        returns total altitude gain as a Distance object
         """
         return D(m=self.total_elevation_gain)
 
     def get_total_elevation_loss(self):
         """
-        returns cummalive altitude loss as a Distance object
+        returns total altitude loss as a Distance object
         """
         return D(m=self.total_elevation_loss)
 
     def get_total_duration(self):
         """
-        returns cummalive altitude loss as a Distance object
+        returns total duration as a timedelta object
         """
         return self.get_time_data(1, "schedule")
 

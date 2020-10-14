@@ -164,7 +164,7 @@ class ActivityPerformanceForm(Form):
                     if value in athlete_activity_type_list
                 ]
                 # inform on the prediction model's reliability
-                help_text = "Your prediction score for this activity type is: {score:.1%}".format(
+                help_text = "Prediction score: {score:.1%}".format(
                     score=activity_performance.model_score
                 )
 
