@@ -1,4 +1,4 @@
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
@@ -25,7 +25,7 @@ class RouteForm(ModelForm):
 
     # override __init__ to provide initial data for the
     # 'start_place', 'end_place' and checkpoints field
-    def __init__(self, *args, **kwargs):
+    def __init__(self, update=False, *args, **kwargs):
 
         # parent class (ModelForm) __init__
         super().__init__(*args, **kwargs)
@@ -37,17 +37,25 @@ class RouteForm(ModelForm):
             self.fields["end_place"].queryset = self.instance.get_end_places()
 
             # retrieve checkpoints within range of the route
-            checkpoints = self.instance.find_possible_checkpoints()
+            checkpoints = self.instance.find_possible_checkpoints(updated_geom=update)
 
             # set choices to all possible checkpoints
             self.fields["checkpoints"].choices = [
                 (checkpoint, str(checkpoint)) for checkpoint in checkpoints
             ]
-
-            # set initial values the checkpoints already associated with the route
-            self.initial["checkpoints"] = [
-                checkpoint for checkpoint in checkpoints if checkpoint.id
-            ]
+            if update:
+                # select places that are among the existing checkpoints
+                self.initial["checkpoints"] = [
+                    checkpoint
+                    for checkpoint in checkpoints
+                    # new checkpoint place is among places in the former checkpoints
+                    if self.instance.checkpoint_set.filter(
+                        place=checkpoint.place
+                    ).exists()
+                ]
+            else:
+                # select checkpoints already associated with the route
+                self.initial["checkpoints"] = list(filter(lambda o: o.id, checkpoints))
 
     def save(self, commit=True):
         model = super().save(commit=False)
@@ -57,29 +65,21 @@ class RouteForm(ModelForm):
         old_checkpoints = model.checkpoint_set.all()
 
         if commit:
-            try:
-                with transaction.atomic():
-                    model.save()
+            with transaction.atomic():
+                model.save()
 
-                    # save form checkpoints
-                    for place_id, line_location in self.cleaned_data["checkpoints"]:
-                        checkpoint, created = Checkpoint.objects.get_or_create(
-                            route=model,
-                            place=Place.objects.get(pk=place_id),
-                            line_location=line_location,
-                        )
-
-                        checkpoints_saved.append(checkpoint)
-
-                    # delete places removed from the form
-                    checkpoints_to_delete = set(old_checkpoints) - set(
-                        checkpoints_saved
+                # save form checkpoints
+                for place_id, line_location in self.cleaned_data["checkpoints"]:
+                    checkpoint, created = Checkpoint.objects.get_or_create(
+                        route=model,
+                        place=Place.objects.get(pk=place_id),
+                        line_location=line_location,
                     )
-                    for checkpoint in checkpoints_to_delete:
-                        checkpoint.delete()
+                    checkpoints_saved.append(checkpoint)
 
-            except IntegrityError:
-                raise
+                # delete places that were removed from the form
+                saved_ids = [checkpoint.id for checkpoint in checkpoints_saved]
+                old_checkpoints.exclude(pk__in=saved_ids).delete()
 
         return model
 
@@ -164,7 +164,7 @@ class ActivityPerformanceForm(Form):
                     if value in athlete_activity_type_list
                 ]
                 # inform on the prediction model's reliability
-                help_text = "Your prediction score for this activity type is: {score:.1%}".format(
+                help_text = "Prediction score: {score:.1%}".format(
                     score=activity_performance.model_score
                 )
 

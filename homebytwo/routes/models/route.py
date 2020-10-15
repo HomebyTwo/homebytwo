@@ -201,20 +201,33 @@ class Route(Track):
         return apps.get_model(proxy_model) if proxy_model else None
 
     @property
-    def can_be_imported(self):
-        """
-        check if a route stub is already in the database.
-        """
-        if not self.pk:
-            return not Route.objects.filter(
-                data_source=self.data_source,
-                source_id=self.source_id,
-                athlete=self.athlete,
-            ).exists()
-
-    @property
     def gpx_filename(self):
         return "homebytwo_{}.gpx".format(self.pk)
+
+    @classmethod
+    def get_or_stub(cls, source_id, athlete):
+        """
+        return stub or existing object of the correct proxy class.
+        also return a boolean of whether exists.
+        """
+
+        try:
+            return (
+                cls.objects.get(
+                    source_id=source_id,
+                    athlete=athlete,
+                ),
+                True,
+            )
+
+        except cls.DoesNotExist:
+            return (
+                cls(
+                    source_id=source_id,
+                    athlete=athlete,
+                ),
+                False,
+            )
 
     def get_route_details(self, cookies=None):
         """
@@ -261,29 +274,18 @@ class Route(Track):
 
             return route
 
-    def refresh_from_db_if_exists(self):
+    def find_possible_checkpoints(self, max_distance=75, updated_geom=False):
         """
-        tries to refresh a stub route with DB data if it already exists.
-        returns True if found in DB.
-        """
-        try:
-            self = Route.objects.get(
-                data_source=self.data_source,
-                source_id=self.source_id,
-                athlete=self.athlete,
-            )
-            return self, True
+        return places as checkpoints based on the route geometry.
 
-        except Route.DoesNotExist:
-            return self, False
+        start from existing checkpoints by default. you can use update=True
+        to discard existing checkpoints if the geometry of the route has changed.
 
-    def find_possible_checkpoints(self, max_distance=75):
-        """
-        The recursive strategy creates a new line substrings between
-        the found checkpoints and runs the query on these line substrings again.
-        If a new place is found on the line substring. We look for other checkpoints
-        again on the newly created segments. If no new checkpoint is found,
-        the segment is discarded from the recursion.
+        A single place can be returned multiple times: the recursive strategy creates
+        a new line substrings between the found checkpoints and runs the query on these
+        line substrings again. If a new place is found on the line substring.
+        We look for other checkpoints again on the newly created segments.
+        If no new checkpoint is found, the segment is discarded from the recursion.
 
         For example, if the route passes through these checkpoints:
             Start---A---B---A---End
@@ -298,8 +300,8 @@ class Route(Track):
         4/  we check for further checkpoints in each subsegment
             and find no additional place.
         """
-        # Start with the checkpoints that have been saved before
-        checkpoints = list(self.checkpoint_set.all())
+        # Start with the checkpoints that have been saved before or not
+        checkpoints = list(self.checkpoint_set.all()) if not updated_geom else list()
         segments = deque(create_segments_from_checkpoints(checkpoints))
 
         while segments:
@@ -431,16 +433,9 @@ class Route(Track):
         compatible Garmin devices.
         """
 
-        # retrieve athlete to calculate an alternative schedule
+        # calculate schedule
         athlete = athlete or self.athlete
-
-        # calculate schedule if needed
-        if not athlete == self.athlete or "schedule" not in self.data.columns:
-            self.calculate_projected_time_schedule(athlete.user)
-
-            # adding schedule to old routes one-by-one, instead of migrating
-            if athlete == self.athlete:
-                self.save(update_fields=["data"])
+        self.calculate_projected_time_schedule(athlete.user)
 
         # instantiate API from garmin_uploader and authenticate
         garmin_api = GarminAPI()

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load leaflet_tags geojson_tags humanize %}
+
+{% block title %}Home by Two - {{ route.name }}{% endblock %}
+
+{% block extralinks %}
+  {% leaflet_js %}
+  {% leaflet_css %}
+{% endblock extralinks %}
+
+{% block header %}
+  {% include "routes/route/_route_title.html" %}
+{% endblock header %}
+
+{% block content %}
+  {% include "routes/route/_route_schedule.html" %}
+  {% include "routes/route/_route_map.html" %}
+  {% include "routes/route/_route_source_link.html" %}
+  {% include "routes/route/_route_garmin_upload.html" %}
+{% endblock content %}
+
+{% if route.geom %}
+  {% block extrajs %}
+    <script>
+      function route_map_init(map, options) {
+        const route = L.geoJson({{ route| geojsonfeature | safe }});
+        route.addTo(map);
+        map.fitBounds(route.getBounds());
+        map.dragging.disable();
+        map.scrollWheelZoom.disable();
+        const icon = L.divIcon({
+          className: 'placeIcon placeIcon--default',
+        });
+        const places = Array.from(document.querySelectorAll('.place'));
+        const markers = places.map(place => {
+          L.geoJson(JSON.parse(place.dataset.geom), {
+            pointToLayer: (feature, latlng) => L.marker(latlng, {
+              icon: icon,
+              title: feature.properties.name
+            }),
+            style: feature => ({color: '000000'}),
+            onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
+          }).addTo(map);
+        });
+      }
+    </script>
+  {% endblock extrajs %}
+{% endif %}

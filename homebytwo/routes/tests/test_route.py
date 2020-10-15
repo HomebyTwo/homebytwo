@@ -7,22 +7,21 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.six import StringIO
 
 import responses
 from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import open_data, read_data
+from ...utils.tests import read_data
 from ..fields import DataFrameField
 from ..forms import RouteForm
-from ..models import ActivityPerformance
-from ..templatetags.duration import baseround, nice_repr
+from ..models import ActivityPerformance, Route
+from ..templatetags.duration import base_round, display_timedelta, nice_repr
 from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -54,6 +53,25 @@ class RouteTestCase(TestCase):
         route = RouteFactory()
         self.assertEqual(route.display_url, route.get_absolute_url())
 
+        match = resolve(route.edit_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "edit"
+
+        match = resolve(route.update_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "update"
+
+        match = resolve(route.delete_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "delete"
+
+        match = resolve(route.gpx_url)
+        assert match.app_name == "routes"
+        assert match.url_name == "gpx"
+
+        match = resolve(route.import_url)
+        assert match.url_name == "import_route"
+
     def test_get_total_distance(self):
         route = RouteFactory.build(total_distance=12345)
         total_distance = route.get_total_distance()
@@ -76,7 +94,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(total_elevation_loss.m, 4321)
 
     def test_get_start_altitude(self):
-        data = DataFrame([[0, 0], [1234, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1234, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(
             data=data,
             total_distance=1000,
@@ -89,7 +110,10 @@ class RouteTestCase(TestCase):
         self.assertAlmostEqual(end_altitude.m, 1234)
 
     def test_get_distance_data(self):
-        data = DataFrame([[0, 0], [1000, 1000]], columns=["altitude", "distance"],)
+        data = DataFrame(
+            [[0, 0], [1000, 1000]],
+            columns=["altitude", "distance"],
+        )
         route = RouteFactory.build(data=data, total_distance=1000)
 
         # make the call
@@ -182,7 +206,8 @@ class RouteTestCase(TestCase):
         )
 
         self.assertListEqual(
-            list(data.gradient), [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
+            list(data.gradient),
+            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
         )
 
     def test_calculate_projected_time_schedule(self):
@@ -208,28 +233,29 @@ class RouteTestCase(TestCase):
 
     def test_schedule_display(self):
         duration = timedelta(seconds=30, minutes=1, hours=6)
-        long_display = nice_repr(duration)
-        self.assertEqual(long_display, "6 hours 1 minute 30 seconds")
+        assert nice_repr(duration) == "6 hours 1 minute 30 seconds"
 
         duration = timedelta(seconds=0)
-        long_display = nice_repr(duration)
-        self.assertEqual(long_display, "0 seconds")
+        assert nice_repr(duration) == "0 seconds"
 
         duration = timedelta(seconds=30, minutes=2, hours=2)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "2 h 5 min")
+        assert nice_repr(duration, display_format="hike") == "2 h 5 min"
 
         duration = timedelta(seconds=45, minutes=57, hours=2)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "3 h")
+        assert nice_repr(duration, display_format="hike") == "3 h"
 
         duration = timedelta(seconds=30, minutes=2, hours=6)
-        hike_display = nice_repr(duration, display_format="hike")
-        self.assertEqual(hike_display, "6 h")
+        assert nice_repr(duration, display_format="hike") == "6 h"
+
+    def test_display_timedelta(self):
+        assert display_timedelta(None) is None
+        assert display_timedelta(0) == "0 seconds"
+        with self.assertRaises(TypeError):
+            display_timedelta("bad_value")
 
     def test_base_round(self):
         values = [0, 3, 4.85, 12, -7]
-        rounded = [baseround(value) for value in values]
+        rounded = [base_round(value) for value in values]
 
         self.assertEqual(rounded, [0, 5, 5, 10, -5])
 
@@ -262,6 +288,28 @@ class RouteTestCase(TestCase):
 
         with self.assertRaises(NotImplementedError):
             route.get_route_data()
+
+    def test_get_or_stub_new(self):
+        source_id = 123456789
+        route, update = Route.get_or_stub(source_id=source_id, athlete=self.athlete)
+
+        assert route.data_source == "homebytwo"
+        assert route.source_id == source_id
+        assert route.athlete == self.athlete
+        assert not update
+        assert not route.pk
+
+    def test_get_or_stub_existing(self):
+        existing_route = RouteFactory(athlete=self.athlete)
+        retrieved_route, update = Route.get_or_stub(
+            source_id=existing_route.source_id, athlete=self.athlete
+        )
+
+        assert retrieved_route.data_source == "homebytwo"
+        assert retrieved_route.source_id == existing_route.source_id
+        assert retrieved_route.athlete == self.athlete
+        assert update
+        assert retrieved_route.pk
 
     #########
     # Views #
@@ -301,8 +349,10 @@ class RouteTestCase(TestCase):
         start_place_name = route.start_place.name
         end_place_name = route.end_place.name
         edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = '<a class="btn btn--secondary btn--block" href="{}">Edit Route</a>'.format(
-            edit_url
+        edit_button = (
+            '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'.format(
+                href=edit_url, text="Edit Route"
+            )
         )
 
         response = self.client.get(url)
@@ -392,48 +442,6 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=AthleteFactory())
         url = reverse("routes:delete", args=[route.id])
         post_data = {}
-        response = self.client.post(url, post_data)
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_get_route_image_form(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        response = self.client.get(url)
-
-        content = "<h3>Edit image for %s</h3>" % route.name
-        self.assertContains(response, content, html=True)
-
-    def test_get_route_image_form_not_logged(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        self.client.logout()
-
-        response = self.client.get(url)
-        redirect_url = "/login/?next=" + url
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_post_route_image(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {"image": SimpleUploadedFile(image.name, image.read())}
-
-        response = self.client.post(url, post_data)
-        redirect_url = reverse("routes:route", args=[route.id])
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    @skip  # until rules is implemented
-    def test_post_route_image_not_owner(self):
-        route = RouteFactory(athlete=AthleteFactory)
-        url = reverse("routes:image", args=[route.id])
-
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {"image": SimpleUploadedFile(image.name, image.read())}
-
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 401)
@@ -662,3 +670,20 @@ class RouteTestCase(TestCase):
         call_command("cleanup_hdf5_files", stdout=out)
         self.assertIn("Successfully deleted 1 files.", out.getvalue())
         self.assertIn("1 missing file(s):", out.getvalue())
+
+    def test_cleanup_hdf5_files_directory_as_file(self):
+        out = StringIO()
+
+        # 1 route
+        route = RouteFactory()
+        field = DataFrameField()
+        full_path = field.storage.path(route.data.filepath)
+        data_dir = Path(full_path).parent.resolve()
+
+        # add one random directory with .h5 extension
+        dirname = "dir.h5"
+        full_path = data_dir / dirname
+        Path(full_path).mkdir(parents=True, exist_ok=True)
+
+        with self.assertRaises(CommandError):
+            call_command("cleanup_hdf5_files", stdout=out)

@@ -185,6 +185,30 @@ class StravaTestCase(TestCase):
 
         self.assertEqual(route.activity_type_id, 1)
 
+    def test_strava_get_or_stub_new(self):
+        source_id = 123456789
+        route, update = StravaRoute.get_or_stub(
+            source_id=source_id, athlete=self.athlete
+        )
+
+        assert route.data_source == "strava"
+        assert route.source_id == source_id
+        assert route.athlete == self.athlete
+        assert not update
+        assert not route.pk
+
+    def test_strava_get_or_stub_existing(self):
+        existing_route = StravaRouteFactory(athlete=self.athlete)
+        retrieved_route, update = StravaRoute.get_or_stub(
+            source_id=existing_route.source_id, athlete=self.athlete
+        )
+
+        assert retrieved_route.data_source == "strava"
+        assert retrieved_route.source_id == existing_route.source_id
+        assert retrieved_route.athlete == self.athlete
+        assert update
+        assert retrieved_route.pk
+
     #########
     # views #
     #########
@@ -350,6 +374,5 @@ class StravaTestCase(TestCase):
         )
 
         response = self.client.get(url)
-
-        already_imported = "Already Imported"
-        self.assertContains(response, already_imported)
+        content = "Update"
+        self.assertContains(response, content)

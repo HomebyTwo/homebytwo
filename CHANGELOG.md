@@ -1,7 +1,12 @@
 # Change Log
+## [0.12.0] - 2020-10-15 Improve route update
+- Import page can update routes
+- Update forms tries to retain existing checkpoints
+- Redirect after Switzerland Mobility login
+- Improved route page structure and design and enforced Strava guidelines
+
 ## [0.11.0] - 2020-10-07 Import GPX files
 - Create new routes from GPX files 
-
 ## [0.10.4] - 2020-10-13 Slightly improve admin security
 - Move admin to another domain
 - Adopt increased security settings 

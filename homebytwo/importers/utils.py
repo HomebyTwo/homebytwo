@@ -1,5 +1,4 @@
 from django.contrib import messages
-from django.db import IntegrityError
 from django.http import Http404
 
 from requests import Session, codes
@@ -64,13 +63,7 @@ def save_detail_forms(request, route_form):
             messages.error(request, error)
         return False
 
-    try:
-        return route_form.save()
-
-    except IntegrityError as error:
-        message = "Integrity Error: {}. ".format(error)
-        messages.error(request, message)
-        return False
+    return route_form.save()
 
 
 def split_routes(remote_routes, local_routes):
@@ -105,9 +98,9 @@ def split_routes(remote_routes, local_routes):
     return new_routes, existing_routes, deleted_routes
 
 
-def get_route_class_from_data_source(data_source):
+def get_proxy_class_from_data_source(data_source):
     """
-    retrieve route class from "data source" value in the url or raise 404
+    retrieve route proxy class from "data source" value in the url or raise 404
     """
     route_class = Route(data_source=data_source).proxy_class
 

@@ -6,37 +6,31 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>{% block title %}Home by Two{% endblock %}</title>
+  <title>{% block title %}Homebytwo{% endblock %}</title>
 
   {% if gtm_container_id %}{% include "_gtm_script.html" %}{% endif %}
 
-  <link rel="stylesheet" href="{% static 'assets/main.css' %}" />
-  <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}" />
+  <link rel="stylesheet" href="{% static 'assets/main.css' %}"/>
+  <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}"/>
   <link href="https://fonts.googleapis.com/css?family=Open+Sans%7COpen+Sans+Condensed:700" rel="stylesheet">
 
-  {% block extralinks %}{% endblock extralinks%}
-
+  {% block extralinks %}{% endblock extralinks %}
 </head>
 
 <body>
-  {% if gtm_container_id %}{% include "_gtm_no_script.html" %}{% endif %}
+{% if gtm_container_id %}{% include "_gtm_no_script.html" %}{% endif %}
+{% block navigation %}{% include '_nav.html' %}{% endblock %}
+{% include '_no_models.html' %}
+{% block header %}{% endblock %}
 
-  {% include '_nav.html' %}
+<main class="container">
+  {% include "_messages.html" %}
+  {% block content %}{% endblock %}
+</main>
 
-  {% include '_no_models.html' %}
+{% include '_footer.html' %}
 
-  {% block header %}{% endblock %}
-
-  <main class="container">
-    {% include "_messages.html" %}
-    {% block content %}{% endblock %}
-  </main>
-
-  {% include '_footer.html' %}
-
-  <script src="{% static 'assets/main.js' %}"></script>
-  {% block extrajs %}{% endblock %}
-
+<script src="{% static 'assets/main.js' %}"></script>
+{% block extrajs %}{% endblock %}
 </body>
-
 </html>

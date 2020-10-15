@@ -1,13 +1,14 @@
 .box--secondary {
-    background-color: $alt-color-darker;
-    color: $white;
+  background-color: $alt-color-darker;
+  color: $white;
 }
 
 .box--primary, .box--secondary {
-    a:not(.btn) {
-        color: $white;
-    }
-    a:not(.btn):hover {
-        color: $alt-color-lighter;
+  a:not(.btn) {
+    color: $white;
+  }
+
+  a:not(.btn):hover {
+    color: $alt-color-lighter;
   }
 }

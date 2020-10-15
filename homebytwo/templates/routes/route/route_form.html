@@ -16,7 +16,7 @@
   {{ object.get_total_elevation_loss.m|floatformat:0|intcomma }}m-</div>
 
 {# map #}
-{% include "routes/_route_edit_map.html" %}
+{% include "routes/route/_route_edit_map.html" %}
 
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
@@ -25,7 +25,7 @@
   {% include "_kanbasu_form.html" with form=form %}
 
   {# buttons #}
-  {% include "routes/_save_buttons.html" %}
+  {% include "routes/route/_route_save_buttons.html" %}
 </form>
 
 {% endblock content %}

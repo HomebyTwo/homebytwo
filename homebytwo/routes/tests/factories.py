@@ -93,7 +93,7 @@ class RouteFactory(DjangoModelFactory):
 
     activity_type = SubFactory(ActivityTypeFactory)
     name = Faker("text", max_nb_chars=100)
-    source_id = Sequence(lambda n: "%d" % n)
+    source_id = Sequence(lambda n: 1000 + n)
     data_source = "homebytwo"
     description = Faker("bs")
     athlete = SubFactory(AthleteFactory)

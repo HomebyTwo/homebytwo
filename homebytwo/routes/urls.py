@@ -24,8 +24,6 @@ urlpatterns = [
                 path("edit/", views.RouteEdit.as_view(), name="edit"),
                 # update route with remote data: /routes/5/update/
                 path("update/", views.RouteUpdate.as_view(), name="update"),
-                # change the route image: /routes/5/image/
-                path("image/", views.ImageFormView.as_view(), name="image"),
                 # route delete: /routes/5/delete/
                 path("delete/", views.RouteDelete.as_view(), name="delete"),
                 # route as gpx: /routes/5/gpx/

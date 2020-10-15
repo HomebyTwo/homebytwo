@@ -51,7 +51,7 @@ def view_route(request, pk):
     is used.
 
     """
-    route = get_object_or_404(Route.objects.select_related(), id=pk)
+    route = get_object_or_404(Route, pk=pk)
 
     if request.method == "POST":
         performance_form = ActivityPerformanceForm(
@@ -117,37 +117,19 @@ def view_route(request, pk):
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
 
-    # enrich start and end place with schedule and altitude
-    if route.start_place_id:
-        route.start_place.schedule = route.get_time_data(0, "schedule")
-        route.start_place.altitude = route.get_distance_data(0, "altitude")
-    if route.end_place_id:
-        route.end_place.schedule = route.get_time_data(1, "schedule")
-        route.end_place.altitude = route.get_distance_data(1, "altitude")
-
     context = {
         "route": route,
         "checkpoints": checkpoints,
         "form": performance_form,
     }
-    return render(request, "routes/route.html", context)
-
-
-@method_decorator(login_required, name="dispatch")
-class RouteDelete(DeleteView):
-    """
-    Class based  views are not so bad after all.
-    """
-
-    model = Route
-    success_url = reverse_lazy("routes:routes")
+    return render(request, "routes/route/route.html", context)
 
 
 @method_decorator(login_required, name="dispatch")
 class RouteEdit(UpdateView):
     model = Route
     form_class = RouteForm
-    template_name = "routes/route_form.html"
+    template_name = "routes/route/route_form.html"
 
     def form_valid(self, form):
         # This method is called when valid form data has been POSTed.
@@ -166,12 +148,26 @@ class RouteUpdate(RouteEdit):
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
 
-            # reset the checkpoints, the price of updating from remote
-            route.checkpoint_set.all().delete()
-
             return route.update_from_remote(
                 self.request.session.get("switzerland_mobility_cookies", None)
             )
+
+    def get_form_kwargs(self):
+        """Return the keyword arguments for instantiating the form."""
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"update": True})
+        return kwargs
+
+
+@method_decorator(login_required, name="dispatch")
+class RouteDelete(DeleteView):
+    """
+    Class based views are not so bad after all.
+    """
+
+    model = Route
+    success_url = reverse_lazy("routes:routes")
+    template_name = "routes/route/route_confirm_delete.html"
 
 
 @require_safe
@@ -329,14 +325,3 @@ def strava_webhook(request):
 
     # Anything else
     return HttpResponse("Unauthorized", status=401)
-
-
-@method_decorator(login_required, name="dispatch")
-class ImageFormView(UpdateView):
-    """
-    Playing around with class based views.
-    """
-
-    model = Route
-    fields = ["image"]
-    template_name_suffix = "_image_form"
