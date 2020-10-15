@@ -1,11 +1,15 @@
 {% load static humanize %}
-{% static route.svg as svg %}
+{% if route.svg %}
+  {% static route.svg as svg %}
+{% endif %}
 
 <li>
   <a href="{{ route.display_url }}">
     <div class="media">
       <div class="media__left">
-        <img src="{{ route.image.thumb.url|default:svg }}" alt="" height="45" width="45"/>
+        {% if route.svg %}
+          <img src="{{ route.image.thumb.url|default:svg }}" alt="" height="45" width="45" />
+        {% endif %}
       </div>
       <div class="media__body relative-parent">
         <h4 class="mrgv0">{{ route.name }}</h4>

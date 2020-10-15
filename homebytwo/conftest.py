@@ -1,6 +1,8 @@
 from functools import partial
 from pathlib import Path
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 import responses
 from pytest import fixture
 from requests.exceptions import ConnectionError
@@ -96,11 +98,21 @@ def mock_call_response(mocked_responses):
 
 
 @fixture
+def uploaded_file(read_file):
+    def _uploaded_file(file):
+        return SimpleUploadedFile(
+            name=file,
+            content=read_file(file, binary=True),
+        )
+
+    return _uploaded_file
+
+
+@fixture
 def mock_call_json_response(read_file, mock_call_response):
     def _mock_call_json_response(
         call, url, response_json, method="get", status=200, *args, **kwargs
     ):
-
         return mock_call_response(
             call,
             url,

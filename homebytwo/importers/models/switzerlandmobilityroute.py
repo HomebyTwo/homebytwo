@@ -132,7 +132,7 @@ class SwitzerlandMobilityRoute(Route):
             )
 
             # create geom from lat, lng data columns
-            coords = [(lat, lng) for lat, lng in zip(data["lat"], data["lng"])]
+            coords = list(zip(data["lat"], data["lng"]))
             geom = LineString(coords, srid=21781)
 
             # remove redundant lat, lng columns in data

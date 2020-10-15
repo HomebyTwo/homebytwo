@@ -1,9 +1,15 @@
 # Change Log
-## [0.11.0] - 2020-10-15 Update routes from the import app
-- Update from the import form is now allowed
+## [0.12.0] - 2020-10-15 Improve route update
+- Import page can update routes
 - Update forms tries to retain existing checkpoints
-- Improved route page structure and design
-- Enforced Strava brand guidelines
+- Redirect after Switzerland Mobility login
+- Improved route page structure and design and enforced Strava guidelines
+
+## [0.11.0] - 2020-10-07 Import GPX files
+- Create new routes from GPX files 
+## [0.10.4] - 2020-10-13 Slightly improve admin security
+- Move admin to another domain
+- Adopt increased security settings 
 
 ## [0.10.3] - 2020-10-07 Report usage data to coda.io
 - Report athlete, routes and activities count on a daily basis 

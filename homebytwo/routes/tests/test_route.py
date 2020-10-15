@@ -342,7 +342,7 @@ class RouteTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
 
-    def test_route_view_success_owner(self):
+    def test_view_route_success_owner(self):
         route = RouteFactory(athlete=self.athlete)
         url = reverse("routes:route", args=[route.id])
         route_name = route.name
@@ -362,7 +362,7 @@ class RouteTestCase(TestCase):
         self.assertContains(response, end_place_name)
         self.assertContains(response, edit_button, html=True)
 
-    def test_route_view_success_not_owner(self):
+    def test_view_route_success_not_owner(self):
         route = RouteFactory()
         url = reverse("routes:route", args=[route.id])
         edit_url = reverse("routes:edit", args=[route.id])
@@ -373,7 +373,7 @@ class RouteTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(edit_url, response_content)
 
-    def test_route_view_success_not_logged_in(self):
+    def test_view_route_success_not_logged_in(self):
         route = RouteFactory()
         url = reverse("routes:route", args=[route.id])
         edit_url = reverse("routes:edit", args=[route.id])
@@ -386,7 +386,7 @@ class RouteTestCase(TestCase):
         self.assertContains(response, route_name)
         self.assertNotIn(edit_url, response_content)
 
-    def test_route_view_success_no_start_place(self):
+    def test_view_route_success_no_start_place(self):
         route = RouteFactory(start_place=None)
         url = reverse("routes:route", args=[route.id])
         route_name = route.name
@@ -397,7 +397,7 @@ class RouteTestCase(TestCase):
         self.assertContains(response, route_name)
         self.assertContains(response, end_place_name)
 
-    def test_route_view_success_no_end_place(self):
+    def test_view_route_success_no_end_place(self):
         route = RouteFactory(end_place=None)
         url = reverse("routes:route", args=[route.id])
         route_name = route.name

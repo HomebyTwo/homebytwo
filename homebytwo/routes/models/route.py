@@ -67,8 +67,9 @@ class Route(Track):
     # uuid field to generate unique file names
     uuid = models.UUIDField(default=uuid4, editable=False)
 
-    # source and unique id (at the source) that the route came from
-    source_id = models.BigIntegerField()
+    # source and unique id (at the source).
+    # Can be null for some sources such as GPX import
+    source_id = models.BigIntegerField(null=True, blank=True)
     data_source = models.CharField(
         "Where the route came from", default="homebytwo", max_length=50
     )
@@ -177,6 +178,7 @@ class Route(Track):
         data_source_svg = {
             "switzerland_mobility": "images/switzerland_mobility.svg",
             "strava": "images/strava.svg",
+            "homebytwo": "images/homebytwo.svg",
         }
 
         return data_source_svg.get(self.data_source)
