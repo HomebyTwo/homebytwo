@@ -1,8 +1,14 @@
 # Change Log
-## [0.10.3] - 20200-10-07 Report usage data to coda.io
+## [0.11.0] - 2020-10-15 Update routes from the import app
+- Update from the import form is now allowed
+- Update forms tries to retain existing checkpoints
+- Improved route page structure and design
+- Enforced Strava brand guidelines
+
+## [0.10.3] - 2020-10-07 Report usage data to coda.io
 - Report athlete, routes and activities count on a daily basis 
 
-## [0.10.2] - 20200-10-02 Do not import Strava activities on every login
+## [0.10.2] - 2020-10-02 Do not import Strava activities on every login
 - New flag to only import all athlete Strava activities once
 
 ## [0.10.1] - 2020-09-24 Replace Ridge Regression
