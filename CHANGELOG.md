@@ -1,4 +1,7 @@
 # Change Log
+## [0.10.4] - 20200-10-07 Slightly improve admin security
+- Move admin to another domain and adopt increased security settings 
+
 ## [0.10.3] - 20200-10-07 Report usage data to coda.io
 - Report athlete, routes and activities count on a daily basis 
 
