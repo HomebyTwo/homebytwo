@@ -7,7 +7,6 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import CommandError, call_command
 from django.forms.models import model_to_dict
 from django.test import TestCase, override_settings
@@ -18,7 +17,7 @@ import responses
 from pandas import DataFrame
 
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import open_data, read_data
+from ...utils.tests import read_data
 from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import ActivityPerformance, Route
@@ -443,48 +442,6 @@ class RouteTestCase(TestCase):
         route = RouteFactory(athlete=AthleteFactory())
         url = reverse("routes:delete", args=[route.id])
         post_data = {}
-        response = self.client.post(url, post_data)
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_get_route_image_form(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        response = self.client.get(url)
-
-        content = "<h3>Edit image for %s</h3>" % route.name
-        self.assertContains(response, content, html=True)
-
-    def test_get_route_image_form_not_logged(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        self.client.logout()
-
-        response = self.client.get(url)
-        redirect_url = "/login/?next=" + url
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_post_route_image(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:image", args=[route.id])
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {"image": SimpleUploadedFile(image.name, image.read())}
-
-        response = self.client.post(url, post_data)
-        redirect_url = reverse("routes:route", args=[route.id])
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    @skip  # until rules is implemented
-    def test_post_route_image_not_owner(self):
-        route = RouteFactory(athlete=AthleteFactory)
-        url = reverse("routes:image", args=[route.id])
-
-        with open_data("image.jpg", dir_path=CURRENT_DIR) as image:
-            post_data = {"image": SimpleUploadedFile(image.name, image.read())}
-
         response = self.client.post(url, post_data)
 
         self.assertEqual(response.status_code, 401)

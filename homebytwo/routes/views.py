@@ -273,24 +273,14 @@ def strava_webhook(request):
 
 
 @method_decorator(login_required, name="dispatch")
-class ImageFormView(UpdateView):
-    """
-    Playing around with class based views.
-    """
-
-    model = Route
-    fields = ["image"]
-    template_name_suffix = "_image_form"
-
-
-@method_decorator(login_required, name="dispatch")
 class RouteDelete(DeleteView):
     """
-    Class based  views are not so bad after all.
+    Class based views are not so bad after all.
     """
 
     model = Route
     success_url = reverse_lazy("routes:routes")
+    template_name = "routes/route/route_confirm_delete.html"
 
 
 @method_decorator(login_required, name="dispatch")
