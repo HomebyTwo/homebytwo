@@ -257,8 +257,8 @@ class ActivityTestCase(TestCase):
         activity.update_with_strava_data(strava_activity)
 
         self.assertEqual(activity.description, "Manual Description")
-
         activity_url = ACTIVITY_URL.format(activity.strava_id)
+
         changed_json = read_data("manual_activity_changed.json", dir_path=CURRENT_DIR)
 
         responses.replace(

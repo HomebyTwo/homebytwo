@@ -2,10 +2,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
-from .forms import SwitzerlandMobilityLogin
+from .forms import GpxUploadForm, SwitzerlandMobilityLogin
 from .utils import get_route_class_from_data_source, save_detail_forms, split_routes
 
 
@@ -57,7 +58,7 @@ def import_route(request, data_source, source_id):
     """
     import routes from external sources
 
-    There is a modelform for the route with custom __init__ ans save methods
+    There is a modelform for the route with custom __init__ and save methods
     to find available checkpoints and save the ones selected by the athlete
     to the route.
     """
@@ -100,6 +101,24 @@ def import_route(request, data_source, source_id):
     }
 
     return render(request, template, context)
+
+
+@login_required
+@require_POST
+def upload_gpx(request):
+    """
+    Create a new route from GPX information, save it, and redirect to the import route.
+    """
+    form = GpxUploadForm(request.POST, files=request.FILES)
+
+    if form.is_valid():
+        route = form.save(commit=False)
+        route.athlete = request.user.athlete
+        route.save()
+        return redirect("routes:edit", pk=route.pk)
+
+    template = "importers/index.html"
+    return render(request, template, {"gpx_upload_form": form})
 
 
 @login_required

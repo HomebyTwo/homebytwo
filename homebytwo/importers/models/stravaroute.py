@@ -115,8 +115,7 @@ class StravaRoute(Route):
         for key, stream in route_streams.items():
             # create route geom from latlng stream
             if key == "latlng":
-                coords = [(lng, lat) for lat, lng in stream.data]
-                geom = LineString(coords, srid=4326).transform(21781, clone=True)
+                geom = LineString(stream.data, srid=4326).transform(21781, clone=True)
 
             # import other streams
             else:
