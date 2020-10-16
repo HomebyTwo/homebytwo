@@ -11,7 +11,7 @@
       <li class="box box--default box--tight mrgv- pdg- ">No checkpoint along the route.</li>
     {% endfor %}
     {# finish place #}
-    {% include "routes/route/_route_checkpoint.html" with type="Finish" place=route.end_place altitude=get_end_altitude.m schedule=route.get_total_duration distance=route.get_total_distance.km elevation_gain=route.get_total_elevation_gain.m elevation_loss=route.get_total_elevation_loss.m %}
+    {% include "routes/route/_route_checkpoint.html" with type="Finish" place=route.end_place altitude=route.get_end_altitude.m schedule=route.get_total_duration distance=route.get_total_distance.km elevation_gain=route.get_total_elevation_gain.m elevation_loss=route.get_total_elevation_loss.m %}
   </ul>
   {% include "routes/route/_route_edit_button.html" %}
 </section>

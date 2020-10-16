@@ -5,8 +5,8 @@
   {% if type != "Checkpoint" %}<h3 class="mrgt-">{{ type }}</h3>{% endif %}
   <div class="grid grid--tight">
     <div class="w-2/3 sm-w-4/5 grid__item place__name">
-      {{ place.name|default:'Unknown place' }}
-      {% if place %}, {{ altitude|floatformat:0|intcomma }}m{% endif %}
+      {{ place.name|default:'Unknown place' }}{% if place %},
+      {{ altitude|floatformat:0|intcomma }}m{% endif %}
     </div>
     <div class="w-1/3 sm-w-1/5 grid__item text-right">
       {{ schedule|duration:'hike' }}
