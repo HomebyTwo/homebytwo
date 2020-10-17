@@ -70,7 +70,12 @@ def get_elevations_from_coords(
     and triggers the elevation lookups with a shared requests session.
     """
     session = requests.Session()
-    session.headers.update({"ELEVATION-API-KEY": settings.ELEVATION_API_KEY})
+    session.headers.update(
+        {
+            "ELEVATION-API-KEY": settings.ELEVATION_API_KEY,
+            "Referer": "https://www.homebytwo.ch",
+        }
+    )
 
     elevations = []
     for coords_subset in chunk(coords, MAX_NUMBER_OF_POINTS):
