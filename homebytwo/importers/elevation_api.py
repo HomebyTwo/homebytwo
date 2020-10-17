@@ -1,5 +1,5 @@
 import logging
-from typing import Iterator, List, Tuple, Dict, Optional
+from typing import Iterator, List, Tuple, Optional
 
 from django.conf import settings
 from django.contrib.gis.geos import LineString
@@ -7,7 +7,6 @@ from django.contrib.gis.geos import LineString
 import requests
 
 ELEVATION_API_ENDPOINT = "https://elevation-api.io/api/elevation"
-RESOLUTION = "30m-interpolated"
 MAX_NUMBER_OF_POINTS = 250
 
 logger = logging.getLogger(__name__)
@@ -26,9 +25,10 @@ def elevation_lookup(
     assert len(coords) <= MAX_NUMBER_OF_POINTS, message
 
     # POST request to the elevation API
+    resolution = settings.ELEVATION_API_RESOLUTION
     response = session.post(
         ELEVATION_API_ENDPOINT,
-        params={"resolution": RESOLUTION},
+        params={"resolution": resolution},
         json={"points": coords},
     )
 
@@ -40,7 +40,7 @@ def elevation_lookup(
     elevations = [point["elevation"] for point in response_json["elevations"]]
 
     # log error if wrong resolution is returned
-    if response_json["resolution"] != RESOLUTION:
+    if response_json["resolution"] != resolution:
         message = "Elevation API returned a bad resolution {}"
         logger.error(message.format(response_json["resolution"]))
         return
@@ -62,7 +62,9 @@ def chunk(list_of_items: List, max_number_of_items: int) -> Iterator[List]:
         end += max_number_of_items
 
 
-def get_elevations_from_coords(coords: List[Tuple[float, float]]) -> List[float]:
+def get_elevations_from_coords(
+    coords: List[Tuple[float, float]]
+) -> Optional[List[float]]:
     """
     splits up the number of coordinates in chunks of max number of points per request
     and triggers the elevation lookups with a shared requests session.
@@ -82,7 +84,7 @@ def get_elevations_from_coords(coords: List[Tuple[float, float]]) -> List[float]
     return elevations
 
 
-def get_elevations_from_geom(geom: LineString) -> List[float]:
+def get_elevations_from_geom(geom: LineString) -> Optional[List[float]]:
     # do not even try if the API key is missing
     if not settings.ELEVATION_API_KEY:
         message = "No key set for the Elevation API."

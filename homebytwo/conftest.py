@@ -9,8 +9,7 @@ import responses
 from pytest import fixture
 from requests.exceptions import ConnectionError
 
-from .importers.elevation_api import (ELEVATION_API_ENDPOINT, MAX_NUMBER_OF_POINTS,
-                                      RESOLUTION, chunk)
+from .importers.elevation_api import ELEVATION_API_ENDPOINT, MAX_NUMBER_OF_POINTS, chunk
 from .utils.factories import AthleteFactory
 from .utils.tests import open_data
 
@@ -165,7 +164,7 @@ def not_found(mock_call_json_response):
 
 @fixture
 def add_elevation_response(mocked_responses):
-    def _add_elevation_response(elevations, resolution=RESOLUTION):
+    def _add_elevation_response(elevations, resolution):
         mocked_responses.add(
             responses.POST,
             ELEVATION_API_ENDPOINT,
@@ -176,9 +175,13 @@ def add_elevation_response(mocked_responses):
 
 
 @fixture
-def add_elevation_responses(add_elevation_response):
+def add_elevation_responses(settings, add_elevation_response):
+    settings.ELEVATION_API_RESOLUTION = 90
+
     def _add_elevation_responses(
-        number_of_elevations, resolution="30m-interpolated", missing_value=False
+        number_of_elevations,
+        resolution=settings.ELEVATION_API_RESOLUTION,
+        missing_value=False,
     ):
         elevations = [
             {"lat": 0.0, "lon": 0.0, "elevation": x}
@@ -236,9 +239,7 @@ def import_route_response(mocked_responses, settings, read_file, client):
             )
 
         # call import url
-        url = resolve_url(
-            "import_route", data_source=data_source, source_id=source_id
-        )
+        url = resolve_url("import_route", data_source=data_source, source_id=source_id)
         if method == "get":
             return client.get(url, follow=follow_redirect)
         if method == "post":

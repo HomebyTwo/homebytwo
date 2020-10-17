@@ -1,4 +1,3 @@
-import json
 import logging
 
 import pytest
@@ -55,10 +54,6 @@ def test_chunk_bigger_than_max_number():
     assert next(lists) == list(range(10, 15))
     with pytest.raises(StopIteration):
         next(lists)
-
-
-def test_elevation_lookup_no_value():
-    assert not elevation_lookup([], Session())
 
 
 def test_elevation_lookup_success(add_elevation_responses):
@@ -127,13 +122,14 @@ def test_get_elevations_from_geom(settings, add_elevation_responses):
 def test_get_elevations_from_geom_no_key(settings, caplog):
     settings.ELEVATION_API_KEY = ""
     route = RouteFactory.build()
-    elevations = get_elevations_from_geom(route.geom)
     assert not get_elevations_from_geom(route.geom)
     message = "No key set for the Elevation API."
     assert message in caplog.text
 
 
-def test_get_elevation_from_geom_bad_response(settings, add_elevation_responses, caplog):
+def test_get_elevation_from_geom_bad_response(
+    settings, add_elevation_responses, caplog
+):
     settings.ELEVATION_API_KEY = "api-key"
     route = RouteFactory.build()
     add_elevation_responses(len(route.geom) - 1)
@@ -157,7 +153,9 @@ def test_update_route_elevation_data_task(settings, add_elevation_responses, cap
 
 
 @pytest.mark.django_db
-def test_update_route_elevation_data_task_fail(settings, add_elevation_responses, caplog):
+def test_update_route_elevation_data_task_fail(
+    settings, add_elevation_responses, caplog
+):
     settings.ELEVATION_API_KEY = "api-key"
     route = RouteFactory()
     add_elevation_responses(MAX_NUMBER_OF_POINTS, resolution="5000m")
