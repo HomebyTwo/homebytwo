@@ -1,12 +1,12 @@
 from datetime import timedelta
 
+from homebytwo.conftest import STRAVA_API_BASE_URL
 from homebytwo.routes.models import WebhookTransaction
 from homebytwo.routes.tasks import (import_strava_activities_streams_task, import_strava_activities_task,
                                     import_strava_activity_streams_task, process_strava_events,
                                     train_prediction_models_task)
 from homebytwo.routes.tests.factories import ActivityFactory, ActivityTypeFactory, WebhookTransactionFactory
 
-STRAVA_API_BASE_URL = "https://www.strava.com/api/v3/"
 STRAVA_STREAMS_URL = (
     STRAVA_API_BASE_URL + "activities/{}/streams/time,altitude,distance,moving"
 )

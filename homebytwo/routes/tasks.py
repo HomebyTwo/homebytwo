@@ -15,6 +15,7 @@ from stravalib.exc import Fault, RateLimitExceeded
 from ..celery import app as celery_app
 from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
 from .models.activity import is_activity_supported, update_user_activities_from_strava
+from ..importers.elevation_api import get_elevations_from_geom
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,25 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         return "Garmin API failure: {}".format(error)
 
     if uploaded:
-        return f"Route '{str(route)}' successfully uploaded to Garmin connect at {garmin_activity_url}."
+        message = "Route '{}' successfully uploaded to Garmin connect at {}."
+        return message.format(route, garmin_activity_url)
+
+
+@shared_task
+def update_route_elevation_data_task(route_id):
+    """
+    update route altitude data from elevation API
+    """
+    logger.info(f"retrieving elevation data for route with id: {route_id}.")
+    route = Route.objects.get(pk=route_id)
+    elevations = get_elevations_from_geom(route.geom)
+
+    if elevations:
+        route.data.altitude = elevations
+        route.save(update_fields=["data"])
+        return f"Elevation updated for route: {route}."
+    else:
+        return f"Error while retrieving elevation data for route with id: {route_id}."
 
 
 @shared_task

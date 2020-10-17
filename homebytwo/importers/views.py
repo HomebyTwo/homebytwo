@@ -9,6 +9,7 @@ from ..routes.forms import RouteForm
 from .decorators import remote_connection
 from .forms import GpxUploadForm, SwitzerlandMobilityLogin
 from .utils import get_proxy_class_from_data_source, save_detail_forms, split_routes
+from ..routes.tasks import update_route_elevation_data_task
 
 
 @login_required
@@ -83,10 +84,16 @@ def import_route(request, data_source, source_id):
 
         # Success! redirect to the page of the newly imported route
         if new_route:
+            # get better elevation data than the one from Strava
+            if new_route.data_source == "strava":
+                update_route_elevation_data_task.delay(new_route.pk)
+
             message_action = "updated" if update else "imported"
             message = "Route {} successfully from {}"
-            messages.success(request, message.format(message_action, route.DATA_SOURCE_NAME))
-            return redirect("routes:route", pk=new_route.id)
+            messages.success(
+                request, message.format(message_action, route.DATA_SOURCE_NAME)
+            )
+            return redirect("routes:route", pk=new_route.pk)
 
     if request.method == "GET":
         # populate the route_form with route details

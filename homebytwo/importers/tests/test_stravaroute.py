@@ -7,16 +7,16 @@ from django.utils.html import escape
 
 import responses
 from pandas import DataFrame
+from pytest_django.asserts import assertContains
 from requests.exceptions import ConnectionError
 from stravalib import Client as StravaClient
 
+from ...conftest import STRAVA_API_BASE_URL
 from ...routes.fields import DataFrameField
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import StravaRoute
 from .factories import StravaRouteFactory
-
-STRAVA_API_BASE_URL = "https://www.strava.com/api/v3/"
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -257,46 +257,6 @@ class StravaTestCase(TestCase):
         self.assertContains(response, total_elevation_gain)
 
     @responses.activate
-    def test_strava_route_success(self):
-        source_id = 2325453
-
-        # route details API call
-        route_detail_url = STRAVA_API_BASE_URL + "routes/%d" % source_id
-        route_detail_json = read_data("strava_route_detail.json", dir_path=CURRENT_DIR)
-
-        responses.add(
-            responses.GET,
-            route_detail_url,
-            content_type="application/json",
-            body=route_detail_json,
-            status=200,
-            match_querystring=False,
-        )
-
-        # route streams API call
-        route_streams_url = STRAVA_API_BASE_URL + "routes/%d/streams" % source_id
-        streams_json = read_data("strava_streams.json", dir_path=CURRENT_DIR)
-
-        responses.add(
-            responses.GET,
-            route_streams_url,
-            content_type="application/json",
-            body=streams_json,
-            status=200,
-            match_querystring=False,
-        )
-
-        url = reverse(
-            "import_route", kwargs={"data_source": "strava", "source_id": source_id}
-        )
-        response = self.client.get(url)
-
-        route_name = escape("Nom de Route")
-
-        assert response.status_code == 200
-        self.assertContains(response, route_name)
-
-    @responses.activate
     @override_settings(STRAVA_ROUTE_URL="https://example.com/routes/%d")
     def test_display_strava_route_missing_data(self):
         source_id = 4679628
@@ -376,3 +336,13 @@ class StravaTestCase(TestCase):
         response = self.client.get(url)
         content = "Update"
         self.assertContains(response, content)
+
+
+def test_strava_route_success(athlete, import_route_response):
+    source_id = 2325453
+
+    response = import_route_response("strava", source_id)
+    route_name = escape("Nom de Route")
+
+    assert response.status_code == 200
+    assertContains(response, route_name)
