@@ -1,22 +1,14 @@
 import logging
 
-import pytest
 from django.contrib.gis.geos import LineString
-from django.forms import model_to_dict
-from django.shortcuts import resolve_url
-from requests import Session
-from pytest_django.asserts import assertRedirects
 
-from homebytwo.importers.elevation_api import (
-    chunk,
-    elevation_lookup,
-    get_elevations_from_coords,
-    get_elevations_from_geom,
-    MAX_NUMBER_OF_POINTS,
-)
-from homebytwo.importers.tests.factories import StravaRouteFactory
-from homebytwo.routes.forms import RouteForm
-from homebytwo.routes.models import Route
+import pytest
+from requests import Session
+
+from homebytwo.importers.elevation_api import (MAX_NUMBER_OF_POINTS, chunk,
+                                               elevation_lookup,
+                                               get_elevations_from_coords,
+                                               get_elevations_from_geom)
 from homebytwo.routes.tasks import update_route_elevation_data_task
 from homebytwo.routes.tests.factories import RouteFactory
 
@@ -164,47 +156,3 @@ def test_update_route_elevation_data_task_fail(
     assert "Elevation API returned a bad resolution" in caplog.text
     content = f"Error while retrieving elevation data for route with id: {route.id}."
     assert response == content
-
-
-def test_import_strava_route(
-    athlete,
-    caplog,
-    celery,
-    client,
-    import_route_response,
-    mocker,
-    read_file,
-    settings,
-):
-    settings.STRAVA_ROUTE_URL = "https://example.com/routes/%d"
-    route = StravaRouteFactory.build(
-        athlete=athlete,
-        start_place=None,
-        end_place=None,
-    )
-
-    post_data = dict(
-        filter(
-            lambda item: item[0] in RouteForm.Meta.fields and item[1],
-            model_to_dict(route).items(),
-        )
-    )
-    post_data["activity_type"] = 1
-    response = import_route_response(
-        route.data_source,
-        route.source_id,
-        method="post",
-        post_data=post_data,
-    )
-
-    new_route = Route.objects.get(
-        athlete=athlete,
-        data_source=route.data_source,
-        source_id=route.source_id,
-    )
-
-    mock_elevation_task = mocker.patch(
-        "homebytwo.routes.tasks.update_route_elevation_data_task.run"
-    )
-    assert mock_elevation_task.called_with(route.id)
-    assertRedirects(response, resolve_url(new_route))

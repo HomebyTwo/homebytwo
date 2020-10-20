@@ -274,3 +274,7 @@ GARMIN_ACTIVITY_URL = get_env_variable("GARMIN_ACTIVITY_URL", "")
 ELEVATION_API_KEY = get_env_variable("ELEVATION_API_KEY", "")
 ELEVATION_API_RESOLUTION = get_env_variable("ELEVATION_API_RESOLUTION", "")
 
+# https://developers.google.com/maps/documentation/elevation/overview
+
+GOOGLE_API_KEY = get_env_variable("GOOGLE_API_KEY", "")
+

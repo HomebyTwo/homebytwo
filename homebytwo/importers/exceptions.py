@@ -21,3 +21,9 @@ class SwitzerlandMobilityMissingCredentials(Exception):
     """
 
     pass
+
+
+class ElevationAPIError(Exception):
+    """
+    the request to the elevation API returned bad results
+    """
