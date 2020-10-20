@@ -117,9 +117,8 @@ def get_elevations_from_coords(
 
 
 def get_elevations_from_geom(geom: LineString, provider: str) -> Optional[List[float]]:
-    if not has_provider_api_key(provider):
-        message = f"No key set for the Elevation API provider: {provider}."
-        raise ElevationAPIError(message)
+    # make sure we have an API key
+    check_provider_api_key(provider)
 
     # prepare coords in 4326 lat, lng
     linestring = geom.transform(4326, clone=True)
@@ -140,12 +139,13 @@ def get_elevations_from_geom(geom: LineString, provider: str) -> Optional[List[f
     return elevations
 
 
-def has_provider_api_key(provider: str) -> bool:
+def check_provider_api_key(provider: str) -> bool:
     if provider == "elevation_api" and settings.ELEVATION_API_KEY:
-        return True
+        return
     if provider == "google_elevation_api" and settings.GOOGLE_API_KEY:
-        return True
-    return False
+        return
+    message = f"No key set for the Elevation API provider: {provider}."
+    raise ElevationAPIError(message)
 
 
 def chunk(list_of_items: List, max_number_of_items: int) -> Iterator[List]:

@@ -180,6 +180,7 @@ def add_elevation_responses(settings, add_elevation_response):
 
     def _add_elevation_responses(
         number_of_elevations,
+        provider="elevation_api",
         resolution=settings.ELEVATION_API_RESOLUTION,
         missing_value=False,
     ):
@@ -190,7 +191,7 @@ def add_elevation_responses(settings, add_elevation_response):
         if missing_value:
             elevations[randint(0, number_of_elevations - 1)]["elevation"] = -9999.0
 
-        for elevations_subset in chunk(elevations, MAX_NUMBER_OF_POINTS):
+        for elevations_subset in chunk(elevations, MAX_NUMBER_OF_POINTS[provider]):
             add_elevation_response(elevations_subset, resolution=resolution)
 
     return _add_elevation_responses

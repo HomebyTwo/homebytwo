@@ -156,13 +156,13 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
 
 
 @shared_task
-def update_route_elevation_data_task(route_id):
+def update_route_elevation_data_task(route_id, provider="elevation_api"):
     """
     update route altitude data from elevation API
     """
     logger.info(f"retrieving elevation data for route with id: {route_id}.")
     route = Route.objects.get(pk=route_id)
-    elevations = get_elevations_from_geom(route.geom)
+    elevations = get_elevations_from_geom(route.geom, provider)
 
     if elevations:
         route.data.altitude = elevations
