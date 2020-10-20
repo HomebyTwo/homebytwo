@@ -13,9 +13,10 @@ from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
 from ..celery import app as celery_app
-from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
-from .models.activity import is_activity_supported, update_user_activities_from_strava
 from ..importers.elevation_api import get_elevations_from_geom
+from .models import (Activity, ActivityPerformance, ActivityType, Athlete, Route,
+                     WebhookTransaction)
+from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,10 @@ def import_strava_activities_task(athlete_id):
     try:
         activities = update_user_activities_from_strava(athlete)
     except (Fault, RateLimitExceeded) as error:
-        message = f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
+        message = "Activities for athlete_id: `{}` could not be retrieved from Strava."
+        message.format(athlete_id)
         message += f"Error was: {error}. "
-        logger.error(message)
+        logger.error(message, exc_info=True)
         return []
 
     # upon successful import, set the athlete's flag to True

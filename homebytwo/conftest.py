@@ -204,6 +204,7 @@ def import_route_response(mocked_responses, settings, read_file, client):
         api_response_json=None,
         api_response_status=200,
         api_response_content_type="application/json",
+        api_streams_json=None,
         method="get",
         post_data=None,
         follow_redirect=False,
@@ -230,11 +231,12 @@ def import_route_response(mocked_responses, settings, read_file, client):
 
         if data_source == "strava":
             # intercept Strava streams call
+            streams_json = api_streams_json or "strava_streams.json"
             mocked_responses.add(
                 responses.GET,
                 STRAVA_API_BASE_URL + "routes/%d/streams" % source_id,
                 content_type="application/json",
-                body=read_file("strava_streams.json"),
+                body=read_file(streams_json),
                 status=200,
             )
 

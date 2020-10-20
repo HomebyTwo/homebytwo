@@ -1,4 +1,3 @@
-from django.contrib import messages
 from django.http import Http404
 
 from requests import Session, codes
@@ -49,21 +48,6 @@ def request_json(url, cookies=None):
                 raise SwitzerlandMobilityError(
                     message.format(code=request.status_code, url=url)
                 )
-
-
-def save_detail_forms(request, route_form):
-    """
-    POST detail view: if the forms validate, try to save the routes
-    and route places.
-    """
-
-    # validate route form and return errors if any
-    if not route_form.is_valid():
-        for error in route_form.errors:
-            messages.error(request, error)
-        return False
-
-    return route_form.save()
 
 
 def split_routes(remote_routes, local_routes):

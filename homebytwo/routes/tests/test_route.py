@@ -13,16 +13,17 @@ from django.test import TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils.six import StringIO
 
+import pytest
 import responses
 from pandas import DataFrame
 
-from ...utils.factories import AthleteFactory, UserFactory
+from ...utils.factories import AthleteFactory
 from ...utils.tests import read_data
 from ..fields import DataFrameField
 from ..forms import RouteForm
-from ..models import ActivityPerformance, Route
+from ..models import Route
 from ..templatetags.duration import base_round, display_timedelta, nice_repr
-from .factories import ActivityTypeFactory, PlaceFactory, RouteFactory
+from .factories import ActivityPerformanceFactory, PlaceFactory, RouteFactory
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -187,78 +188,6 @@ class RouteTestCase(TestCase):
             self.assertNotEqual(checkpoint.line_location, 0)
             self.assertNotEqual(checkpoint.line_location, 1)
 
-    def test_calculate_gradient(self):
-        data = DataFrame(
-            {"altitude": [0, 2, 4, 6, 4, 2, 0], "distance": [0, 2, 4, 5, 6, 8, 10]}
-        )
-
-        route = RouteFactory(data=data)
-
-        data = route.calculate_gradient(data)
-
-        self.assertListEqual(
-            data.columns.tolist(),
-            ["altitude", "distance", "step_distance", "gradient"],
-        )
-
-        self.assertListEqual(
-            list(data.step_distance), [0.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0]
-        )
-
-        self.assertListEqual(
-            list(data.gradient),
-            [0.0, 100.0, 100.0, 200.0, -200.0, -100.0, -100.0],
-        )
-
-    def test_calculate_projected_time_schedule(self):
-        activity_type = ActivityTypeFactory()
-
-        route = RouteFactory(activity_type=activity_type)
-        user = UserFactory()
-
-        route.calculate_projected_time_schedule(user)
-        total_default_time = route.get_data(1, "schedule")
-
-        ActivityPerformance.objects.create(
-            athlete=user.athlete,
-            activity_type=activity_type,
-            regression_coefficients=activity_type.regression_coefficients / 2,
-            flat_parameter=activity_type.flat_parameter / 2,
-        )
-
-        route.calculate_projected_time_schedule(user)
-        total_user_time = route.get_data(1, "schedule")
-
-        self.assertTrue(total_default_time > total_user_time)
-
-    def test_schedule_display(self):
-        duration = timedelta(seconds=30, minutes=1, hours=6)
-        assert nice_repr(duration) == "6 hours 1 minute 30 seconds"
-
-        duration = timedelta(seconds=0)
-        assert nice_repr(duration) == "0 seconds"
-
-        duration = timedelta(seconds=30, minutes=2, hours=2)
-        assert nice_repr(duration, display_format="hike") == "2 h 5 min"
-
-        duration = timedelta(seconds=45, minutes=57, hours=2)
-        assert nice_repr(duration, display_format="hike") == "3 h"
-
-        duration = timedelta(seconds=30, minutes=2, hours=6)
-        assert nice_repr(duration, display_format="hike") == "6 h"
-
-    def test_display_timedelta(self):
-        assert display_timedelta(None) is None
-        assert display_timedelta(0) == "0 seconds"
-        with self.assertRaises(TypeError):
-            display_timedelta("bad_value")
-
-    def test_base_round(self):
-        values = [0, 3, 4.85, 12, -7]
-        rounded = [base_round(value) for value in values]
-
-        self.assertEqual(rounded, [0, 5, 5, 10, -5])
-
     @override_settings(
         STRAVA_ROUTE_URL="https://strava_route_url/%d",
         SWITZERLAND_MOBILITY_ROUTE_URL="https://switzerland_mobility_route_url/%d",
@@ -329,11 +258,6 @@ class RouteTestCase(TestCase):
 
     def test_route_edit_404(self):
         url = "routes/0/edit/"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_route_image_404(self):
-        url = "routes/0/image/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
 
@@ -687,3 +611,294 @@ class RouteTestCase(TestCase):
 
         with self.assertRaises(CommandError):
             call_command("cleanup_hdf5_files", stdout=out)
+
+
+def test_calculate_step_distances():
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 1, 0],
+            "distance": [0, 1, 2, 3, 4],
+        }
+    )
+    geom = LineString((0, 0), (0, 1), (0, 2), (0, 3), (0, 4))
+    route = RouteFactory.build(data=data, geom=geom)
+    route.calculate_step_distances(min_distance=1, commit=False)
+
+    assert route.data.columns.to_list() == ["altitude", "distance", "step_distance"]
+    step_distance = [0.0, 1.0, 1.0, 1.0, 1.0]
+    assert route.data.step_distance.to_list() == step_distance
+
+
+def test_calculate_step_distances_bad_values():
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 1, 0],
+            "distance": [0, 0.5, 1, 2, 3],
+        }
+    )
+    geom = LineString([(lng, 0) for lng in data.distance.to_list()])
+    route = RouteFactory.build(data=data, geom=geom)
+    route.calculate_step_distances(min_distance=1, commit=False)
+
+    step_distance = [0.0, 2.0, 1.0]
+    assert route.data.step_distance.to_list() == step_distance
+    assert len(route.data.step_distance) == len(route.geom)
+
+
+def test_calculate_step_distances_commit(athlete):
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 1, 0],
+            "distance": [0, 1, 2, 3, 4],
+        }
+    )
+    geom = LineString([(lng, 0) for lng in data.distance.to_list()])
+    route = RouteFactory(name="step_distance", data=data, geom=geom, athlete=athlete)
+    route.calculate_step_distances(min_distance=1, commit=True)
+
+    saved_route = Route.objects.get(name="step_distance", athlete=athlete)
+
+    step_distance = [0.0, 1.0, 1.0, 1.0, 1.0]
+    assert saved_route.data.step_distance.to_list() == step_distance
+    assert len(saved_route.data.step_distance) == len(saved_route.geom)
+
+
+def test_calculate_distances_impossible():
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 1, 0],
+            "distance": [0, 0.5, 1, 1.5, 2],
+        }
+    )
+    geom = LineString([(lng, 0) for lng in data.distance.to_list()])
+    route = RouteFactory.build(data=data, geom=geom)
+    with pytest.raises(ValueError):
+        route.calculate_step_distances(min_distance=1, commit=False)
+
+
+def test_calculate_gradients():
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 3, 2, 1, 0],
+            "distance": [0, 1, 2, 3, 4, 5, 6],
+        }
+    )
+    geom = LineString((0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6))
+    route = RouteFactory.build(data=data, geom=geom)
+    route.calculate_gradients(max_gradient=100, commit=False)
+
+    assert route.data.columns.to_list() == ["altitude", "distance", "gradient"]
+    gradients = [0.0, 100.0, 100.0, 100.0, -100.0, -100.0, -100.0]
+    assert route.data.gradient.to_list() == gradients
+
+
+def test_calculate_gradients_bad_values():
+    geom = LineString((0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6))
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 3, 3, 1, 1, 0],
+            "distance": [0, 1, 2, 3, 4, 5, 6],
+        }
+    )
+    route = RouteFactory.build(data=data, geom=geom)
+    route.calculate_gradients(max_gradient=100, commit=False)
+
+    gradients = [0.0, 100.0, 100.0, -100.0, -100.0]
+    assert route.data.gradient.to_list() == gradients
+    assert len(route.data.gradient) == len(route.geom)
+
+
+def test_calculate_gradients_commit(athlete):
+    geom = LineString((0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6))
+    data = DataFrame(
+        {
+            "altitude": [0, 1, 2, 3, 1, 1, 0],
+            "distance": [0, 1, 2, 3, 4, 5, 6],
+        }
+    )
+    route = RouteFactory(name="gradient", data=data, geom=geom, athlete=athlete)
+    route.calculate_gradients(max_gradient=100, commit=True)
+
+    gradients = [0.0, 100.0, 100.0, 100.0, -100.0, -100.0]
+    saved_route = Route.objects.get(name="gradient", athlete=athlete)
+    assert saved_route.data.gradient.to_list() == gradients
+    assert len(saved_route.data.gradient) == len(saved_route.geom)
+
+
+def test_calculate_gradients_impossible():
+    geom = LineString((0, 0), (0, 1), (0, 2), (0, 3), (0, 4))
+    data = DataFrame(
+        {
+            "altitude": [0, 2, 4, 6, 10],
+            "distance": [0, 1, 2, 3, 4],
+        }
+    )
+    route = RouteFactory.build(data=data, geom=geom)
+    with pytest.raises(ValueError):
+        route.calculate_gradients(max_gradient=100, commit=False)
+
+
+def test_add_distance_and_elevation_totals():
+    route = RouteFactory.build(total_distance=1000, total_elevation_gain=500)
+    route.add_distance_and_elevation_totals(commit=False)
+    assert route.data.total_distance.unique() == [route.total_distance]
+    assert route.data.total_elevation_gain.unique() == [route.total_elevation_gain]
+    assert route.data.columns.to_list() == [
+        "altitude",
+        "distance",
+        "total_distance",
+        "total_elevation_gain",
+    ]
+
+
+def test_add_distance_and_elevation_totals_commit(athlete):
+    route = RouteFactory(
+        name="totals", total_distance=1000, total_elevation_gain=500, athlete=athlete
+    )
+    route.add_distance_and_elevation_totals(commit=True)
+
+    saved_route = Route.objects.get(name="totals", athlete=athlete)
+    assert route.data.columns.to_list() == [
+        "altitude",
+        "distance",
+        "total_distance",
+        "total_elevation_gain",
+    ]
+    assert saved_route.data.total_distance.unique() == [saved_route.total_distance]
+    assert saved_route.data.total_elevation_gain.unique() == [
+        saved_route.total_elevation_gain
+    ]
+
+
+def test_calculate_cumulative_elevation_differences():
+    data = DataFrame(
+        {
+            "distance": list(range(10)),
+            "altitude": [0, 1, 2, 1, 2, 3, 2, 1, 0, 1],
+        }
+    )
+    route = RouteFactory.build(data=data)
+    route.calculate_cumulative_elevation_differences(commit=False)
+    cumulative_elevation_gain = [0, 1, 2, 2, 3, 4, 4, 4, 4, 5]
+    cumulative_elevation_loss = [0, 0, 0, -1, -1, -1, -2, -3, -4, -4]
+    assert route.data.columns.to_list() == [
+        "distance",
+        "altitude",
+        "cumulative_elevation_gain",
+        "cumulative_elevation_loss",
+    ]
+    assert route.data.cumulative_elevation_gain.to_list() == cumulative_elevation_gain
+    assert route.data.cumulative_elevation_loss.to_list() == cumulative_elevation_loss
+
+
+def test_calculate_cumulative_elevation_differences_commit(athlete):
+    data = DataFrame(
+        {
+            "distance": list(range(5)),
+            "altitude": [0, 1, 2, 1, 0],
+        }
+    )
+    route = RouteFactory(name="cumulative", data=data, athlete=athlete)
+    route.calculate_cumulative_elevation_differences(commit=True)
+
+    saved_route = Route.objects.get(name="cumulative", athlete=athlete)
+    assert saved_route.data.columns.to_list() == [
+        "distance",
+        "altitude",
+        "cumulative_elevation_gain",
+        "cumulative_elevation_loss",
+    ]
+    assert saved_route.data.cumulative_elevation_gain.to_list() == [0, 1, 2, 2, 2]
+    assert saved_route.data.cumulative_elevation_loss.to_list() == [0, 0, 0, -1, -2]
+
+
+def test_update_permanent_track_data(athlete):
+    data = DataFrame(
+        {
+            "distance": list(range(100)),
+            "altitude": list(range(100)),
+        }
+    )
+    geom = LineString([(lng, 0) for lng in data.distance.to_list()])
+    route = RouteFactory(name="permanent", athlete=athlete, data=data, geom=geom)
+    route.update_permanent_track_data(min_step_distance=1, max_gradient=100)
+
+    saved_route = Route.objects.get(name="permanent", athlete=athlete)
+
+    assert saved_route.data.columns.to_list() == [
+        "distance",
+        "altitude",
+        "step_distance",
+        "gradient",
+        "cumulative_elevation_gain",
+        "cumulative_elevation_loss",
+        "total_distance",
+        "total_elevation_gain",
+    ]
+
+    assert len(saved_route.data.distance) == len(saved_route.geom)
+
+
+def test_calculate_projected_time_schedule(athlete):
+    route = RouteFactory()
+    activity_performance = ActivityPerformanceFactory(
+        athlete=athlete, activity_type=route.activity_type
+    )
+
+    route.calculate_projected_time_schedule(
+        user=athlete.user,
+        gear=activity_performance.gear_categories[0],
+        workout_type=activity_performance.workout_type_categories[-1],
+    )
+
+    assert "gear" in route.data.columns and "workout_type" in route.data.columns
+    assert "pace" in route.data.columns and "schedule" in route.data.columns
+
+
+def test_calculate_projected_time_schedule_total_time(athlete):
+    route = RouteFactory()
+
+    route.calculate_projected_time_schedule(athlete.user)
+    default_total_time = route.get_data(1, "schedule")
+
+    ActivityPerformanceFactory(
+        athlete=athlete,
+        activity_type=route.activity_type,
+        flat_parameter=route.activity_type.flat_parameter / 2
+    )
+
+    route.calculate_projected_time_schedule(athlete.user)
+    athlete_total_time = route.get_data(1, "schedule")
+
+    assert default_total_time > athlete_total_time
+
+
+def test_schedule_display():
+    duration = timedelta(seconds=30, minutes=1, hours=6)
+    assert nice_repr(duration) == "6 hours 1 minute 30 seconds"
+
+    duration = timedelta(seconds=0)
+    assert nice_repr(duration) == "0 seconds"
+
+    duration = timedelta(seconds=30, minutes=2, hours=2)
+    assert nice_repr(duration, display_format="hike") == "2 h 5 min"
+
+    duration = timedelta(seconds=45, minutes=57, hours=2)
+    assert nice_repr(duration, display_format="hike") == "3 h"
+
+    duration = timedelta(seconds=30, minutes=2, hours=6)
+    assert nice_repr(duration, display_format="hike") == "6 h"
+
+
+def test_display_timedelta():
+    assert display_timedelta(None) is None
+    assert display_timedelta(0) == "0 seconds"
+    with pytest.raises(TypeError):
+        display_timedelta("bad_value")
+
+
+def test_base_round():
+    values = [0, 3, 4.85, 12, -7]
+    rounded = [base_round(value) for value in values]
+
+    assert rounded == [0, 5, 5, 10, -5]

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from django.contrib.gis.geos import LineString
+from django.forms import model_to_dict
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.html import escape
@@ -13,6 +14,7 @@ from stravalib import Client as StravaClient
 
 from ...conftest import STRAVA_API_BASE_URL
 from ...routes.fields import DataFrameField
+from ...routes.forms import RouteForm
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..models import StravaRoute
@@ -346,3 +348,35 @@ def test_strava_route_success(athlete, import_route_response):
 
     assert response.status_code == 200
     assertContains(response, route_name)
+
+
+def test_import_strava_route_bad_distance(
+    athlete,
+    client,
+    import_route_response,
+):
+    route = StravaRouteFactory.build(
+        athlete=athlete,
+        start_place=None,
+        end_place=None,
+    )
+
+    post_data = dict(
+        filter(
+            lambda item: item[0] in RouteForm.Meta.fields and item[1],
+            model_to_dict(route).items(),
+        )
+    )
+    post_data["activity_type"] = 1
+    response = import_route_response(
+        route.data_source,
+        route.source_id,
+        api_streams_json="bad_strava_streams.json",
+        method="post",
+        post_data=post_data,
+    )
+    error = "Cannot clean track data: invalid distance values."
+    message = f"Route cannot be imported: {error}."
+
+    assert response.status_code == 200
+    assertContains(response, message)
