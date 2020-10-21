@@ -13,14 +13,8 @@ from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
 from ..celery import app as celery_app
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Athlete,
-    Route,
-    WebhookTransaction,
-)
+from .models import (Activity, ActivityPerformance, ActivityType, Athlete, Route,
+                     WebhookTransaction)
 from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
