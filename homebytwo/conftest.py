@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 from pathlib import Path
 from random import randint
 
@@ -76,6 +76,25 @@ def coda(settings):
 def mocked_responses():
     with responses.RequestsMock() as response:
         yield response
+
+
+@fixture
+def mock_json_response(read_file, mocked_responses):
+    def _mock_json_response(
+        url,
+        response_json,
+        method="get",
+        status=200,
+    ):
+        mocked_responses.add(
+            METHODS.get(method),
+            url=url,
+            content_type="application/json",
+            body=read_file(response_json),
+            status=status,
+        )
+
+    return _mock_json_response
 
 
 @fixture
@@ -198,17 +217,32 @@ def add_elevation_responses(settings, add_elevation_response):
 
 
 @fixture
-def import_route_response(mocked_responses, settings, read_file, client):
-    def _get_import_route_response(
-        data_source,
+def mock_strava_streams_response(mock_json_response):
+    def _mock_strava_streams_response(
         source_id,
+        streams_json="strava_streams.json",
+        api_streams_status=200,
+    ):
+        mock_json_response(
+            STRAVA_API_BASE_URL + "routes/%d/streams" % source_id,
+            response_json=streams_json,
+            status=api_streams_status,
+        )
+
+    return _mock_strava_streams_response
+
+
+@fixture
+def mock_route_details_responses(
+    settings, mock_json_response, mock_strava_streams_response
+):
+    def _mock_route_details_responses(
+        data_source,
+        source_ids,
         api_response_json=None,
         api_response_status=200,
-        api_response_content_type="application/json",
-        api_streams_json=None,
-        method="get",
-        post_data=None,
-        follow_redirect=False,
+        api_streams_json="strava_streams.json",
+        api_streams_status=200,
     ):
 
         # intercept the API call
@@ -220,26 +254,54 @@ def import_route_response(mocked_responses, settings, read_file, client):
             "strava": "strava_route_detail.json",
             "switzerland_mobility": "2191833_show.json",
         }
+
         api_response_file = api_response_json or default_api_response_json[data_source]
 
-        mocked_responses.add(
-            method=responses.GET,
-            url=api_request_url[data_source] % source_id,
-            content_type=api_response_content_type,
-            body=read_file(api_response_file),
-            status=api_response_status,
-        )
-
-        if data_source == "strava":
-            # intercept Strava streams call
-            streams_json = api_streams_json or "strava_streams.json"
-            mocked_responses.add(
-                responses.GET,
-                STRAVA_API_BASE_URL + "routes/%d/streams" % source_id,
-                content_type="application/json",
-                body=read_file(streams_json),
-                status=200,
+        for source_id in source_ids:
+            print(mocked_responses)
+            mock_json_response(
+                url=api_request_url[data_source] % source_id,
+                response_json=api_response_file,
+                status=api_response_status,
             )
+
+            if data_source == "strava":
+                mock_strava_streams_response(
+                    source_id, api_streams_json, api_streams_status
+                )
+
+    return _mock_route_details_responses
+
+
+@fixture
+def mock_route_details_response(mock_route_details_responses):
+    def _mock_route_details_response(data_source, source_id, *args, **kwargs):
+        source_ids = [source_id]
+        return mock_route_details_responses(data_source, source_ids, *args, **kwargs)
+
+    return _mock_route_details_response
+
+
+@fixture
+def mock_import_route_response_call(mock_route_details_response, client):
+    def _mock_import_route_response_call(
+        data_source,
+        source_id,
+        api_response_json=None,
+        api_response_status=200,
+        api_streams_json="strava_streams.json",
+        method="get",
+        post_data=None,
+        follow_redirect=False,
+    ):
+
+        mock_route_details_response(
+            data_source,
+            source_id,
+            api_response_json=api_response_json,
+            api_response_status=api_response_status,
+            api_streams_json=api_streams_json,
+        )
 
         # call import url
         url = resolve_url("import_route", data_source=data_source, source_id=source_id)
@@ -248,4 +310,4 @@ def import_route_response(mocked_responses, settings, read_file, client):
         if method == "post":
             return client.post(url, post_data, follow=follow_redirect)
 
-    return _get_import_route_response
+    return _mock_import_route_response_call

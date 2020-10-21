@@ -147,7 +147,7 @@ class StravaTestCase(TestCase):
             status=200,
         )
 
-        strava_route = StravaRouteFactory()
+        strava_route = StravaRouteFactory(source_id=source_id)
         strava_route.geom, strava_route.data = strava_route.get_route_data()
         nb_rows, nb_columns = strava_route.data.shape
 
@@ -340,10 +340,10 @@ class StravaTestCase(TestCase):
         self.assertContains(response, content)
 
 
-def test_strava_route_success(athlete, import_route_response):
+def test_strava_route_success(athlete, mock_import_route_response_call):
     source_id = 2325453
 
-    response = import_route_response("strava", source_id)
+    response = mock_import_route_response_call("strava", source_id)
     route_name = escape("Nom de Route")
 
     assert response.status_code == 200
@@ -353,7 +353,7 @@ def test_strava_route_success(athlete, import_route_response):
 def test_import_strava_route_bad_distance(
     athlete,
     client,
-    import_route_response,
+    mock_import_route_response_call,
 ):
     route = StravaRouteFactory.build(
         athlete=athlete,
@@ -368,7 +368,7 @@ def test_import_strava_route_bad_distance(
         )
     )
     post_data["activity_type"] = 1
-    response = import_route_response(
+    response = mock_import_route_response_call(
         route.data_source,
         route.source_id,
         api_streams_json="bad_strava_streams.json",

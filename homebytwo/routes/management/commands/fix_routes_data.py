@@ -44,7 +44,7 @@ class Command(BaseCommand):
             try:
                 route.geom, route.data = route.get_route_data()
                 if verbosity > 1:
-                    print(f"Re-imported route: {route}.")
+                    print(f"Re-imported route: {route} from {route.data_source}.")
                 import_count += 1
             except (
                 SwitzerlandMobilityError,
@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 # fallback on existing route data
                 interpolate_from_existing_data(route)
                 if verbosity > 1:
-                    print(f"Restored route: {route} from existing data.")
+                    print(f"Restored route: {route} from {route.data_source} with existing data.")
                 restore_count += 1
 
             route.update_permanent_track_data(commit=False)
