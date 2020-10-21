@@ -1,19 +1,14 @@
 from io import StringIO
 
-import responses
 from django.core.management import call_command
 
 import pytest
 from pandas import DataFrame
 
-from homebytwo.conftest import STRAVA_API_BASE_URL
-from homebytwo.importers.tests.factories import (
-    StravaRouteFactory,
-    SwitzerlandMobilityRouteFactory,
-)
-from homebytwo.routes.management.commands.fix_routes_data import (
-    interpolate_from_existing_data,
-)
+from homebytwo.importers.tests.factories import (StravaRouteFactory,
+                                                 SwitzerlandMobilityRouteFactory)
+from homebytwo.routes.management.commands.fix_routes_data import \
+    interpolate_from_existing_data
 from homebytwo.routes.tests.factories import RouteFactory
 
 

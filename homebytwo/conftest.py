@@ -1,6 +1,5 @@
-from functools import partial, wraps
+from functools import partial
 from pathlib import Path
-from random import randint
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.shortcuts import resolve_url
@@ -9,7 +8,6 @@ import responses
 from pytest import fixture
 from requests.exceptions import ConnectionError
 
-from .importers.elevation_api import ELEVATION_API_ENDPOINT, MAX_NUMBER_OF_POINTS, chunk
 from .utils.factories import AthleteFactory
 from .utils.tests import open_data
 
@@ -179,41 +177,6 @@ def server_error(mock_call_json_response):
 @fixture
 def not_found(mock_call_json_response):
     return partial(mock_call_json_response, status=404)
-
-
-@fixture
-def add_elevation_response(mocked_responses):
-    def _add_elevation_response(elevations, resolution):
-        mocked_responses.add(
-            responses.POST,
-            ELEVATION_API_ENDPOINT,
-            json={"elevations": elevations, "resolution": resolution},
-        )
-
-    return _add_elevation_response
-
-
-@fixture
-def add_elevation_responses(settings, add_elevation_response):
-    settings.ELEVATION_API_RESOLUTION = 90
-
-    def _add_elevation_responses(
-        number_of_elevations,
-        provider="elevation_api",
-        resolution=settings.ELEVATION_API_RESOLUTION,
-        missing_value=False,
-    ):
-        elevations = [
-            {"lat": 0.0, "lon": 0.0, "elevation": x}
-            for x in range(number_of_elevations)
-        ]
-        if missing_value:
-            elevations[randint(0, number_of_elevations - 1)]["elevation"] = -9999.0
-
-        for elevations_subset in chunk(elevations, MAX_NUMBER_OF_POINTS[provider]):
-            add_elevation_response(elevations_subset, resolution=resolution)
-
-    return _add_elevation_responses
 
 
 @fixture
