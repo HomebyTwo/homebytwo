@@ -839,6 +839,19 @@ def test_update_permanent_track_data(athlete):
     assert len(saved_route.data.distance) == len(saved_route.geom)
 
 
+def test_update_permanent_track_data_bad_route():
+    data = DataFrame(
+        {
+            "distance": list(range(10)),
+            "altitude": list(range(10)),
+        }
+    )
+    geom = LineString([(lng, 0) for lng in range(20)])
+    route = RouteFactory.build(data=data, geom=geom)
+    with pytest.raises(ValueError):
+        route.update_permanent_track_data(commit=False)
+
+
 def test_calculate_projected_time_schedule(athlete):
     route = RouteFactory()
     activity_performance = ActivityPerformanceFactory(

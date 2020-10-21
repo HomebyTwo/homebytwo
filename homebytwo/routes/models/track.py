@@ -171,7 +171,18 @@ class Track(TimeStampedModel):
         self, min_step_distance=1, max_gradient=100, commit=True, force=False
     ):
         """
-        calculate unvarying data columns and save them
+        make sure all unvarying data columns required for schedule calculation
+        are available and calculate missing ones.
+
+        :param min_step_distance: minimum distance in m to keep between each point
+        :param max_gradient: maximum gradient to keep when cleaning rows
+        :param commit: save the instance to the database after update
+        :param force: recalculates columns even if they are already present
+
+        :returns: None
+        :raises ValueError: if the number of coords in the track geometry
+        is not equal to the number of rows in data or if the cleaned data columns
+        are left with only one row.
         """
         track_data_updated = False
 
