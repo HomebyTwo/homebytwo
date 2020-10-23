@@ -19,7 +19,7 @@ from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import read_data
+from ...utils.tests import read_data, create_checkpoints_from_geom, get_route_post_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
@@ -834,13 +834,13 @@ class SwitzerlandMobilityTestCase(TestCase):
 
 
 def test_switzerland_mobility_route_post_success_no_checkpoints(
-    athlete, client, get_route_post_data, mock_import_route_response_call
+    athlete, client, mock_import_route_call_response
 ):
     source_id = 2191833
     route = SwitzerlandMobilityRouteFactory.build(source_id=source_id)
 
     post_data = get_route_post_data(route)
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         route.data_source,
         route.source_id,
         method="post",
@@ -854,10 +854,8 @@ def test_switzerland_mobility_route_post_success_no_checkpoints(
 def test_get_import_switzerland_mobility_route_with_checkpoints(
     athlete,
     client,
-    get_route_post_data,
     switzerland_mobility_data_from_json,
-    create_checkpoints_from_geom,
-    mock_import_route_response_call,
+    mock_import_route_call_response,
 ):
     route_json = "switzerland_mobility_route.json"
     geom, _ = switzerland_mobility_data_from_json(route_json)
@@ -865,7 +863,7 @@ def test_get_import_switzerland_mobility_route_with_checkpoints(
     number_of_checkpoints = 5
     create_checkpoints_from_geom(geom, number_of_checkpoints)
 
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         data_source="switzerland_mobility",
         source_id=1234567,
         api_response_json=route_json,
@@ -879,10 +877,8 @@ def test_get_import_switzerland_mobility_route_with_checkpoints(
 def test_post_switzerland_mobility_route_with_checkpoints(
     athlete,
     client,
-    get_route_post_data,
     switzerland_mobility_data_from_json,
-    create_checkpoints_from_geom,
-    mock_import_route_response_call,
+    mock_import_route_call_response,
 ):
     route_json = "switzerland_mobility_route.json"
     geom, _ = switzerland_mobility_data_from_json(route_json)
@@ -892,7 +888,7 @@ def test_post_switzerland_mobility_route_with_checkpoints(
     post_data = get_route_post_data(route)
     post_data["checkpoints"] = create_checkpoints_from_geom(geom, number_of_checkpoints)
 
-    post_response = mock_import_route_response_call(
+    post_response = mock_import_route_call_response(
         data_source=route.data_source,
         source_id=route.source_id,
         api_response_json=route_json,
@@ -911,14 +907,14 @@ def test_post_switzerland_mobility_route_with_checkpoints(
 
 
 def test_switzerland_mobility_route_post_updated(
-    athlete, get_route_post_data, mock_import_route_response_call
+    athlete, mock_import_route_call_response
 ):
     route = SwitzerlandMobilityRouteFactory(
         source_id=2191833, athlete=athlete, start_place=None, end_place=None
     )
 
     post_data = get_route_post_data(route)
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         route.data_source,
         route.source_id,
         method="post",
@@ -927,7 +923,7 @@ def test_switzerland_mobility_route_post_updated(
     )
 
     success_box = '<li class="box mrgv- alert success" >{message}</li>'.format(
-        message=f"Route updated successfully from {route.DATA_SOURCE_NAME}"
+        message=f"Route successfully updated from {route.DATA_SOURCE_NAME}"
     )
     assertRedirects(response, route.get_absolute_url())
     assertContains(response, success_box, html=True)

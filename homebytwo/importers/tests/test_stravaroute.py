@@ -19,6 +19,7 @@ from ...routes.models import ActivityType
 from ...utils.factories import AthleteFactory
 from ..models import StravaRoute
 from .factories import StravaRouteFactory
+from ...utils.tests import get_route_post_data
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -174,10 +175,10 @@ def test_get_strava_routes_connection_error(athlete, client):
 #######################
 
 
-def test_get_import_strava_route(athlete, mock_import_route_response_call):
+def test_get_import_strava_route(athlete, mock_import_route_call_response):
     source_id = 2325453
 
-    response = mock_import_route_response_call("strava", source_id)
+    response = mock_import_route_call_response("strava", source_id)
     route_name = escape("Le Flon - Col de Verne")
 
     assert response.status_code == 200
@@ -185,14 +186,14 @@ def test_get_import_strava_route(athlete, mock_import_route_response_call):
 
 
 def test_get_import_strava_route_already_imported(
-    athlete, mock_import_route_response_call
+    athlete, mock_import_route_call_response
 ):
     route = StravaRouteFactory(
         source_id=22798494,
         athlete=athlete,
     )
 
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         data_source=route.data_source,
         source_id=route.source_id,
     )
@@ -202,14 +203,14 @@ def test_get_import_strava_route_already_imported(
 
 
 def test_post_import_strava_route_already_imported(
-    athlete, mock_import_route_response_call, get_route_post_data
+    athlete, mock_import_route_call_response
 ):
     route = StravaRouteFactory(
         source_id=22798494,
         athlete=athlete,
     )
 
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         data_source=route.data_source,
         source_id=route.source_id,
         method="post",
@@ -224,15 +225,14 @@ def test_post_import_strava_route_already_imported(
 
 def test_post_import_strava_route_bad_distance(
     athlete,
-    get_route_post_data,
-    mock_import_route_response_call,
+    mock_import_route_call_response,
 ):
     route = StravaRouteFactory.build(
         athlete=athlete,
     )
 
     post_data = get_route_post_data(route)
-    response = mock_import_route_response_call(
+    response = mock_import_route_call_response(
         route.data_source,
         route.source_id,
         api_streams_json="bad_strava_streams.json",

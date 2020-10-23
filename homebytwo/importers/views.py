@@ -1,4 +1,3 @@
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -80,29 +79,28 @@ def import_route(request, data_source, source_id):
         # instantiate form with POST data
         route_form = RouteForm(update=update, data=request.POST, instance=route)
 
-        # validate route form and display errors if any
+        # validate route form
         if route_form.is_valid():
             new_route = route_form.save()
+
+            # success! route could be saved: redirect to route page
             if new_route:
-                # display success message
-                message = "Route {} successfully from {}"
-                messages.success(
-                    request, message.format(message_action, route.DATA_SOURCE_NAME)
+                message = (
+                    f"Route successfully {message_action} "
+                    f"from {route.DATA_SOURCE_NAME}"
                 )
+                messages.success(request, message)
                 return redirect("routes:route", pk=new_route.pk)
 
-        message = "The route, could not be {}: see errors in the form below."
-        messages.error(request, message.format(message_action))
+        # invalid form
+        message = f"The route could not be {message_action}: see errors in the form."
+        messages.error(request, message)
 
     if request.method == "GET":
         # populate the route_form with route details
         route_form = RouteForm(update=update, instance=route)
 
-    context = {
-        "object": route,
-        "form": route_form,
-    }
-
+    context = {"object": route, "form": route_form}
     return render(request, template, context)
 
 

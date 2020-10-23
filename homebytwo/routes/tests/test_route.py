@@ -18,6 +18,7 @@ from pandas import DataFrame
 from pytest_django.asserts import assertContains, assertRedirects
 
 from ...utils.factories import AthleteFactory
+from ...utils.tests import create_checkpoints_from_geom
 from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import Route
@@ -886,7 +887,7 @@ def test_get_checkpoints_list_empty(athlete, client):
 
 
 def test_get_checkpoints_list(
-    athlete, client, create_checkpoints_from_geom, switzerland_mobility_data_from_json
+    athlete, client, switzerland_mobility_data_from_json
 ):
     number_of_checkpoints = 20
     geom = LineString([(x, 0) for x in range(number_of_checkpoints + 2)])

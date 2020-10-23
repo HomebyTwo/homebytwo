@@ -3,7 +3,6 @@ from functools import partial
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.forms import model_to_dict
 from django.shortcuts import resolve_url
 
 import responses
@@ -11,12 +10,10 @@ from pytest import fixture
 from requests.exceptions import ConnectionError
 
 from .importers.models.switzerlandmobilityroute import parse_route_data
-from .routes.forms import RouteForm
-from .routes.tests.factories import PlaceFactory
 from .utils.factories import AthleteFactory
 from .utils.tests import open_data
 
-METHODS = {
+HTTP_METHODS = {
     "get": responses.GET,
     "post": responses.POST,
     "delete": responses.DELETE,
@@ -35,6 +32,23 @@ def athlete(db, client):
     athlete = AthleteFactory(user__password="test_password")
     client.login(username=athlete.user.username, password="test_password")
     return athlete
+
+
+@fixture
+def celery(settings):
+    settings.celery_task_always_eager = True
+    settings.celery_task_eager_propagates = True
+
+
+@fixture
+def coda(settings):
+    settings.CODA_API_KEY = "coda_key"
+    settings.CODA_DOC_ID = "doc_id"
+    settings.CODA_TABLE_ID = "grid-table_id"
+    api_url = "https://coda.io/apis/v1"
+    doc_url = api_url + f"/docs/{settings.CODA_DOC_ID}/"
+    table_url = doc_url + f"tables/{settings.CODA_TABLE_ID}"
+    yield {"doc_url": doc_url, "table_url": table_url}
 
 
 @fixture
@@ -67,28 +81,22 @@ def read_json_file(read_file):
 
 
 @fixture
+def uploaded_file(read_file):
+    def _uploaded_file(file):
+        return SimpleUploadedFile(
+            name=file,
+            content=read_file(file, binary=True),
+        )
+
+    return _uploaded_file
+
+
+@fixture
 def switzerland_mobility_data_from_json(read_json_file):
     def _parse_data(file):
         return parse_route_data(read_json_file(file))
 
     return _parse_data
-
-
-@fixture
-def celery(settings):
-    settings.celery_task_always_eager = True
-    settings.celery_task_eager_propagates = True
-
-
-@fixture
-def coda(settings):
-    settings.CODA_API_KEY = "coda_key"
-    settings.CODA_DOC_ID = "doc_id"
-    settings.CODA_TABLE_ID = "grid-table_id"
-    api_url = "https://coda.io/apis/v1"
-    doc_url = api_url + f"/docs/{settings.CODA_DOC_ID}/"
-    table_url = doc_url + f"tables/{settings.CODA_TABLE_ID}"
-    yield {"doc_url": doc_url, "table_url": table_url}
 
 
 @fixture
@@ -106,7 +114,7 @@ def mock_json_response(read_file, mocked_responses):
         status=200,
     ):
         mocked_responses.add(
-            METHODS.get(method),
+            HTTP_METHODS.get(method),
             url=url,
             content_type="application/json",
             body=read_file(response_json),
@@ -114,112 +122,6 @@ def mock_json_response(read_file, mocked_responses):
         )
 
     return _mock_json_response
-
-
-@fixture
-def mock_call_response(mocked_responses):
-    def _mock_call_response(
-        call,
-        url,
-        method="get",
-        body=None,
-        content_type="application/json",
-        status=200,
-        *args,
-        **kwargs,
-    ):
-        mocked_responses.add(
-            method=METHODS[method],
-            url=url,
-            body=body,
-            content_type=content_type,
-            status=status,
-        )
-        return call(*args, **kwargs)
-
-    return _mock_call_response
-
-
-@fixture
-def uploaded_file(read_file):
-    def _uploaded_file(file):
-        return SimpleUploadedFile(
-            name=file,
-            content=read_file(file, binary=True),
-        )
-
-    return _uploaded_file
-
-
-@fixture
-def mock_call_json_response(read_file, mock_call_response):
-    def _mock_call_json_response(
-        call, url, response_json, method="get", status=200, *args, **kwargs
-    ):
-        return mock_call_response(
-            call,
-            url,
-            body=read_file(response_json),
-            method=method,
-            status=status,
-            *args,
-            **kwargs,
-        )
-
-    return _mock_call_json_response
-
-
-@fixture
-def mock_call_json_responses(read_file, mocked_responses):
-    def _mock_call_json_responses(call, response_mocks, *args, **kwargs):
-        for response in response_mocks:
-            mocked_responses.add(
-                METHODS.get(response.get("method")) or responses.GET,
-                response["url"],
-                body=read_file(response["response_json"]),
-                status=response.get("status") or 200,
-                content_type="application/json",
-            )
-        return call(*args, **kwargs)
-
-    return _mock_call_json_responses
-
-
-@fixture
-def connection_error(mock_call_response):
-    return partial(mock_call_response, body=ConnectionError("Connection error."))
-
-
-@fixture
-def server_error(mock_call_json_response):
-    return partial(mock_call_json_response, status=500)
-
-
-@fixture
-def not_found(mock_call_json_response):
-    return partial(mock_call_json_response, status=404)
-
-
-@fixture
-def mock_routes_response(settings, mock_json_response):
-    def _mock_routes_response(athlete, data_source, response_json=None, status=200):
-        response_jsons = {
-            "strava": "strava_route_list.json",
-            "switzerland_mobility": "tracks_list.json",
-        }
-        routes_urls = {
-            "strava": (STRAVA_API_BASE_URL + "athletes/%s/routes" % athlete.strava_id),
-            "switzerland_mobility": settings.SWITZERLAND_MOBILITY_LIST_URL
-            or "https://switzerland_mobility.org/tracks",
-        }
-        mock_json_response(
-            url=routes_urls[data_source],
-            response_json=response_json or response_jsons[data_source],
-            method="get",
-            status=status,
-        )
-
-    return _mock_routes_response
 
 
 @fixture
@@ -301,8 +203,88 @@ def mock_route_details_response(mock_route_details_responses):
 
 
 @fixture
-def mock_import_route_response_call(client, mock_route_details_response):
-    def _mock_import_route_response_call(
+def mock_routes_response(settings, mock_json_response):
+    def _mock_routes_response(athlete, data_source, response_json=None, status=200):
+        response_jsons = {
+            "strava": "strava_route_list.json",
+            "switzerland_mobility": "tracks_list.json",
+        }
+        routes_urls = {
+            "strava": (STRAVA_API_BASE_URL + "athletes/%s/routes" % athlete.strava_id),
+            "switzerland_mobility": settings.SWITZERLAND_MOBILITY_LIST_URL
+            or "https://switzerland_mobility.org/tracks",
+        }
+        mock_json_response(
+            url=routes_urls[data_source],
+            response_json=response_json or response_jsons[data_source],
+            method="get",
+            status=status,
+        )
+
+    return _mock_routes_response
+
+
+@fixture
+def mock_call_response(mocked_responses):
+    def _mock_call_response(
+        call,
+        url,
+        body,
+        method="get",
+        content_type="application/json",
+        status=200,
+        *args,
+        **kwargs,
+    ):
+        mocked_responses.add(
+            method=HTTP_METHODS[method],
+            url=url,
+            body=body,
+            content_type=content_type,
+            status=status,
+        )
+        return call(*args, **kwargs)
+
+    return _mock_call_response
+
+
+@fixture
+def mock_call_json_response(read_file, mock_call_response):
+    def _mock_call_json_response(
+        call, url, response_json, method="get", status=200, *args, **kwargs
+    ):
+        return mock_call_response(
+            call,
+            url,
+            body=read_file(response_json),
+            method=method,
+            status=status,
+            *args,
+            **kwargs,
+        )
+
+    return _mock_call_json_response
+
+
+@fixture
+def mock_call_json_responses(read_file, mocked_responses):
+    def _mock_call_json_responses(call, response_mocks, *args, **kwargs):
+        for response in response_mocks:
+            mocked_responses.add(
+                HTTP_METHODS.get(response.get("method")) or responses.GET,
+                response["url"],
+                body=read_file(response["response_json"]),
+                status=response.get("status") or 200,
+                content_type="application/json",
+            )
+        return call(*args, **kwargs)
+
+    return _mock_call_json_responses
+
+
+@fixture
+def mock_import_route_call_response(client, mock_route_details_response):
+    def _mock_import_route_call_response(
         data_source,
         source_id,
         method="get",
@@ -324,31 +306,19 @@ def mock_import_route_response_call(client, mock_route_details_response):
         if method == "post":
             return client.post(url, post_data, follow=follow_redirect)
 
-    return _mock_import_route_response_call
+    return _mock_import_route_call_response
 
 
 @fixture
-def get_route_post_data():
-    def _get_route_post_data(route, activity_type=1):
-        post_data = {"activity_type": activity_type}
-        for key, value in model_to_dict(route, fields=RouteForm.Meta.fields).items():
-            if value:
-                post_data[key] = value
-        return post_data
-
-    return _get_route_post_data
+def mock_connection_error(mock_call_response):
+    return partial(mock_call_response, body=ConnectionError("Connection error."))
 
 
 @fixture
-def create_checkpoints_from_geom():
-    def _create_checkpoints_from_geom(geom, number_of_checkpoints):
-        checkpoints_data = []
-        endpoint = number_of_checkpoints + 1
-        for index in range(1, endpoint):
-            line_location = index / endpoint
-            place = PlaceFactory(geom=geom.interpolate_normalized(line_location))
-            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
+def mock_server_error(mock_call_json_response):
+    return partial(mock_call_json_response, status=500)
 
-        return checkpoints_data
 
-    return _create_checkpoints_from_geom
+@fixture
+def mock_not_found_error(mock_call_json_response):
+    return partial(mock_call_json_response, status=404)

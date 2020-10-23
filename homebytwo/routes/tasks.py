@@ -32,9 +32,10 @@ def import_strava_activities_task(athlete_id):
     try:
         activities = update_user_activities_from_strava(athlete)
     except (Fault, RateLimitExceeded) as error:
-        message = "Activities for athlete_id: `{}` could not be retrieved from Strava."
-        message.format(athlete_id)
-        message += f"Error was: {error}. "
+        message = (
+            f"Activities for athlete_id: `{athlete_id}` "
+            f"could not be retrieved from Strava. Error was: {error}. "
+        )
         logger.error(message, exc_info=True)
         return []
 
@@ -236,7 +237,7 @@ def process_transaction(transaction):
             activity.update_with_strava_data(strava_activity)
             return True
 
-    # Activity is not supported by Homebytwo or the transaction `aspect_type` is `delete`
+    # activity not supported by Homebytwo or transaction `aspect_type` is `delete`
     if activity.id:
         activity.delete()
         logger.info(f"Strava activity: {object_id} was deleted from Homebytwo.")
