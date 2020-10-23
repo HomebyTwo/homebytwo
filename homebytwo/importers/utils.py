@@ -14,7 +14,7 @@ def request_json(url, cookies=None):
     """
     with Session() as session:
         try:
-            request = session.get(url, cookies=cookies)
+            response = session.get(url, cookies=cookies)
 
         # connection error and inform the user
         except ConnectionError:
@@ -23,30 +23,36 @@ def request_json(url, cookies=None):
 
         else:
             # if request is successful return json object
-            if request.status_code == codes.ok:
-                json = request.json()
+            if response.status_code == codes.ok:
+                json = response.json()
                 return json
 
             # client error: access denied
-            if request.status_code == 403:
-                message = "We could not import this route. \n"
+            if response.status_code == 403:
+                message = "We could not import this route. "
 
                 # athlete is logged-in to Switzerland Mobility
                 if cookies:
-                    message += "Ask the route creator to share it publicly on Switzerland Mobility."
+                    message += (
+                        "Ask the route creator to share it"
+                        "publicly on Switzerland Mobility. "
+                    )
                     raise SwitzerlandMobilityError(message)
 
                 # athlete is not logged-in to Switzerland Mobility
                 else:
-                    message += "If you are the route creator, try logging-in to Switzerland mobility. "
-                    message += "If the route is not yours, ask the creator to share it publicly."
+                    message += (
+                        "If you are the route creator, try logging-in to"
+                        "Switzerland mobility. If the route is not yours,"
+                        "ask the creator to share it publicly. "
+                    )
                     raise SwitzerlandMobilityMissingCredentials(message)
 
             # server error: display the status code
             else:
                 message = "Error {code}: could not retrieve information from {url}"
                 raise SwitzerlandMobilityError(
-                    message.format(code=request.status_code, url=url)
+                    message.format(code=response.status_code, url=url)
                 )
 
 

@@ -4,20 +4,20 @@ from pathlib import Path
 from re import compile as re_compile
 
 from django.conf import settings
-from django.contrib.gis.geos import LineString, Point
+from django.contrib.gis.geos import LineString
 from django.forms.models import model_to_dict
 from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.http import urlencode
 
 import responses
-from django.utils.http import urlencode
+from pytest_django.asserts import assertRedirects, assertContains
 from requests.exceptions import ConnectionError
 
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint
-from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import read_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
@@ -433,34 +433,6 @@ class SwitzerlandMobilityTestCase(TestCase):
     #########
 
     @responses.activate
-    def test_switzerland_mobility_display_route_deleted_data(self):
-        route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory(
-            source_id=route_id, athlete=self.athlete
-        )
-
-        # delete data file
-        field = DataFrameField()
-        file_path = field.storage.path(route.data.filepath)
-        Path(file_path).unlink()
-
-        details_url = settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL % route_id
-        details_json = read_data("2191833_show.json", dir_path=CURRENT_DIR)
-
-        responses.add(
-            responses.GET,
-            details_url,
-            content_type="application/json",
-            body=details_json,
-            status=200,
-        )
-
-        url = reverse("routes:route", kwargs={"pk": route.id})
-        response = self.client.get(url)
-
-        assert response.status_code == 200
-
-    @responses.activate
     def test_switzerland_mobility_display_route_deleted_data_not_owner(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory(
@@ -574,102 +546,6 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         self.assertRedirects(response, reverse("routes:routes"))
 
-    def test_switzerland_mobility_route_post_success_no_checkpoints(self):
-        route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
-
-        route.start_place.save()
-        route.end_place.save()
-
-        route_data = model_to_dict(route)
-        post_data = {
-            key: value
-            for key, value in route_data.items()
-            if key in RouteForm.Meta.fields
-        }
-
-        post_data.update(
-            {
-                "activity_type": 1,
-                "start_place": route.start_place.id,
-                "end_place": route.end_place.id,
-            }
-        )
-
-        response = self.get_import_route_response(
-            route_id=route_id,
-            method="post",
-            post_data=post_data,
-        )
-
-        route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        redirect_url = reverse("routes:route", args=[route.id])
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_switzerland_mobility_route_post_success_with_checkpoints(self):
-        # route to save
-        route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory.build(
-            source_id=route_id,
-        )
-
-        # save start and end place
-        route.start_place.save()
-        route.end_place.save()
-
-        # checkpoints
-        checkpoints_data = []
-        number_of_checkpoints = 5
-
-        for index in range(1, number_of_checkpoints + 1):
-            line_location = index / (number_of_checkpoints + 1)
-            place = PlaceFactory(
-                geom=Point(
-                    *route.geom.coords[int(route.geom.num_coords * line_location)],
-                    srid=21781,
-                )
-            )
-            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
-
-        route_data = model_to_dict(route)
-        post_data = {
-            key: value
-            for key, value in route_data.items()
-            if key in RouteForm.Meta.fields
-        }
-
-        post_data.update(
-            {
-                "activity_type": 1,
-                "start_place": route.start_place.id,
-                "end_place": route.end_place.id,
-                "checkpoints": checkpoints_data,
-            }
-        )
-
-        get_response = self.get_import_route_response(route_id=route_id)
-        post_response = self.get_import_route_response(
-            route_id=route_id,
-            method="post",
-            post_data=post_data,
-        )
-
-        checkpoint_choices = get_response.context["form"].fields["checkpoints"].choices
-
-        self.assertEqual(get_response.status_code, 200)
-        self.assertEqual(len(checkpoint_choices), number_of_checkpoints)
-
-        # a new route has been created with the post response
-        route = SwitzerlandMobilityRoute.objects.get(source_id=route_id)
-        checkpoints = Checkpoint.objects.filter(route=route.id)
-        self.assertEqual(checkpoints.count(), number_of_checkpoints)
-
-        # user is redirected
-        redirect_url = reverse("routes:route", args=[route.id])
-        self.assertRedirects(post_response, redirect_url)
-
     def test_switzerland_mobility_route_post_invalid_choice(self):
         route_id = 2191833
         route = SwitzerlandMobilityRouteFactory.build(source_id=route_id)
@@ -713,35 +589,6 @@ class SwitzerlandMobilityTestCase(TestCase):
         self.assertContains(response, alert_box)
         self.assertContains(response, required_field)
         self.assertContains(response, invalid_value)
-
-    def test_switzerland_mobility_route_post_updated(self):
-
-        route_id = 2191833
-        route = SwitzerlandMobilityRouteFactory(
-            source_id=route_id, athlete=self.athlete
-        )
-
-        route_data = model_to_dict(route)
-        post_data = {
-            key: value
-            for key, value in route_data.items()
-            if key in RouteForm.Meta.fields
-        }
-
-        post_data["activity_type"] = 1
-
-        response = self.get_import_route_response(
-            route_id=route_id,
-            method="post",
-            post_data=post_data,
-            follow=True,
-        )
-
-        success_box = '<li class="box mrgv- alert success" >{message}</li>'.format(
-            message=f"Route updated successfully from {route.DATA_SOURCE_NAME}"
-        )
-        self.assertRedirects(response, route.get_absolute_url())
-        self.assertContains(response, success_box, html=True)
 
     @responses.activate
     def test_switzerland_mobility_routes_success(self):
@@ -984,3 +831,121 @@ class SwitzerlandMobilityTestCase(TestCase):
         del route_data["activity_type"]
         form = RouteForm(data=route_data)
         self.assertFalse(form.is_valid())
+
+
+def test_switzerland_mobility_route_post_success_no_checkpoints(
+    athlete, client, get_route_post_data, mock_import_route_response_call
+):
+    source_id = 2191833
+    route = SwitzerlandMobilityRouteFactory.build(source_id=source_id)
+
+    post_data = get_route_post_data(route)
+    response = mock_import_route_response_call(
+        route.data_source,
+        route.source_id,
+        method="post",
+        post_data=post_data,
+    )
+
+    route = SwitzerlandMobilityRoute.objects.get(source_id=source_id)
+    assertRedirects(response, route.get_absolute_url())
+
+
+def test_get_import_switzerland_mobility_route_with_checkpoints(
+    athlete,
+    client,
+    get_route_post_data,
+    switzerland_mobility_data_from_json,
+    create_checkpoints_from_geom,
+    mock_import_route_response_call,
+):
+    route_json = "switzerland_mobility_route.json"
+    geom, _ = switzerland_mobility_data_from_json(route_json)
+
+    number_of_checkpoints = 5
+    create_checkpoints_from_geom(geom, number_of_checkpoints)
+
+    response = mock_import_route_response_call(
+        data_source="switzerland_mobility",
+        source_id=1234567,
+        api_response_json=route_json,
+        method="get",
+    )
+
+    checkpoint_choices = response.context["form"].fields["checkpoints"].choices
+    assert len(checkpoint_choices) == number_of_checkpoints
+
+
+def test_post_switzerland_mobility_route_with_checkpoints(
+    athlete,
+    client,
+    get_route_post_data,
+    switzerland_mobility_data_from_json,
+    create_checkpoints_from_geom,
+    mock_import_route_response_call,
+):
+    route_json = "switzerland_mobility_route.json"
+    geom, _ = switzerland_mobility_data_from_json(route_json)
+
+    number_of_checkpoints = 5
+    route = SwitzerlandMobilityRouteFactory.build()
+    post_data = get_route_post_data(route)
+    post_data["checkpoints"] = create_checkpoints_from_geom(geom, number_of_checkpoints)
+
+    post_response = mock_import_route_response_call(
+        data_source=route.data_source,
+        source_id=route.source_id,
+        api_response_json=route_json,
+        method="post",
+        post_data=post_data,
+        follow_redirect=True,
+    )
+
+    # a new route has been created with the post response
+    new_route = SwitzerlandMobilityRoute.objects.get(
+        data_source=route.data_source, source_id=route.source_id, athlete=athlete
+    )
+    checkpoints = Checkpoint.objects.filter(route=new_route.pk)
+    assert checkpoints.count() == number_of_checkpoints
+    assertRedirects(post_response, new_route.get_absolute_url())
+
+
+def test_switzerland_mobility_route_post_updated(
+    athlete, get_route_post_data, mock_import_route_response_call
+):
+    route = SwitzerlandMobilityRouteFactory(
+        source_id=2191833, athlete=athlete, start_place=None, end_place=None
+    )
+
+    post_data = get_route_post_data(route)
+    response = mock_import_route_response_call(
+        route.data_source,
+        route.source_id,
+        method="post",
+        post_data=post_data,
+        follow_redirect=True,
+    )
+
+    success_box = '<li class="box mrgv- alert success" >{message}</li>'.format(
+        message=f"Route updated successfully from {route.DATA_SOURCE_NAME}"
+    )
+    assertRedirects(response, route.get_absolute_url())
+    assertContains(response, success_box, html=True)
+
+
+def test_switzerland_mobility_display_route_deleted_data(
+    athlete, client, mock_route_details_response
+):
+    route_id = 2191833
+    route = SwitzerlandMobilityRouteFactory(source_id=route_id, athlete=athlete)
+
+    # delete data file
+    field = DataFrameField()
+    file_path = field.storage.path(route.data.filepath)
+    Path(file_path).unlink()
+
+    # mock route details response
+    mock_route_details_response(route.data_source, route.source_id)
+    response = client.get(route.get_absolute_url())
+
+    assert response.status_code == 200

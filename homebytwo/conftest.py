@@ -1,13 +1,18 @@
+import json
 from functools import partial
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.forms import model_to_dict
 from django.shortcuts import resolve_url
 
 import responses
 from pytest import fixture
 from requests.exceptions import ConnectionError
 
+from .importers.models.switzerlandmobilityroute import parse_route_data
+from .routes.forms import RouteForm
+from .routes.tests.factories import PlaceFactory
 from .utils.factories import AthleteFactory
 from .utils.tests import open_data
 
@@ -51,6 +56,22 @@ def read_file(open_file):
         return open_file(file, binary=binary).read()
 
     return _read_file
+
+
+@fixture
+def read_json_file(read_file):
+    def _read_json_file(file):
+        return json.loads(read_file(file))
+
+    return _read_json_file
+
+
+@fixture
+def switzerland_mobility_data_from_json(read_json_file):
+    def _parse_data(file):
+        return parse_route_data(read_json_file(file))
+
+    return _parse_data
 
 
 @fixture
@@ -180,10 +201,36 @@ def not_found(mock_call_json_response):
 
 
 @fixture
-def mock_strava_streams_response(mock_json_response):
+def mock_routes_response(settings, mock_json_response):
+    def _mock_routes_response(athlete, data_source, response_json=None, status=200):
+        response_jsons = {
+            "strava": "strava_route_list.json",
+            "switzerland_mobility": "tracks_list.json",
+        }
+        routes_urls = {
+            "strava": (STRAVA_API_BASE_URL + "athletes/%s/routes" % athlete.strava_id),
+            "switzerland_mobility": settings.SWITZERLAND_MOBILITY_LIST_URL
+            or "https://switzerland_mobility.org/tracks",
+        }
+        mock_json_response(
+            url=routes_urls[data_source],
+            response_json=response_json or response_jsons[data_source],
+            method="get",
+            status=status,
+        )
+
+    return _mock_routes_response
+
+
+@fixture
+def mock_strava_streams_response(settings, mock_json_response):
+    settings.STRAVA_ROUTE_URL = (
+        settings.STRAVA_ROUTE_URL or "https://strava.org/route/%d"
+    )
+
     def _mock_strava_streams_response(
         source_id,
-        streams_json="strava_streams.json",
+        streams_json="strava_streams_run.json",
         api_streams_status=200,
     ):
         mock_json_response(
@@ -199,12 +246,21 @@ def mock_strava_streams_response(mock_json_response):
 def mock_route_details_responses(
     settings, mock_json_response, mock_strava_streams_response
 ):
+    settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL = (
+        settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL
+        or "https://switzerland_mobility.org/route/%d/data"
+    )
+    settings.SWITZERLAND_MOBILITY_ROUTE_URL = (
+        settings.SWITZERLAND_MOBILITY_ROUTE_URL
+        or "https://switzerland_mobility.org/route/%d"
+    )
+
     def _mock_route_details_responses(
         data_source,
         source_ids,
         api_response_json=None,
         api_response_status=200,
-        api_streams_json="strava_streams.json",
+        api_streams_json="strava_streams_run.json",
         api_streams_status=200,
     ):
 
@@ -214,14 +270,13 @@ def mock_route_details_responses(
             "switzerland_mobility": settings.SWITZERLAND_MOBILITY_ROUTE_DATA_URL,
         }
         default_api_response_json = {
-            "strava": "strava_route_detail.json",
-            "switzerland_mobility": "2191833_show.json",
+            "strava": "strava_route_run.json",
+            "switzerland_mobility": "switzerland_mobility_route.json",
         }
 
         api_response_file = api_response_json or default_api_response_json[data_source]
 
         for source_id in source_ids:
-            print(mocked_responses)
             mock_json_response(
                 url=api_request_url[data_source] % source_id,
                 response_json=api_response_file,
@@ -246,27 +301,23 @@ def mock_route_details_response(mock_route_details_responses):
 
 
 @fixture
-def mock_import_route_response_call(mock_route_details_response, client):
+def mock_import_route_response_call(client, mock_route_details_response):
     def _mock_import_route_response_call(
         data_source,
         source_id,
-        api_response_json=None,
-        api_response_status=200,
-        api_streams_json="strava_streams.json",
         method="get",
         post_data=None,
         follow_redirect=False,
+        **kwargs,
     ):
 
         mock_route_details_response(
             data_source,
             source_id,
-            api_response_json=api_response_json,
-            api_response_status=api_response_status,
-            api_streams_json=api_streams_json,
+            **kwargs,
         )
 
-        # call import url
+        # call import_route url
         url = resolve_url("import_route", data_source=data_source, source_id=source_id)
         if method == "get":
             return client.get(url, follow=follow_redirect)
@@ -274,3 +325,30 @@ def mock_import_route_response_call(mock_route_details_response, client):
             return client.post(url, post_data, follow=follow_redirect)
 
     return _mock_import_route_response_call
+
+
+@fixture
+def get_route_post_data():
+    def _get_route_post_data(route, activity_type=1):
+        post_data = {"activity_type": activity_type}
+        for key, value in model_to_dict(route, fields=RouteForm.Meta.fields).items():
+            if value:
+                post_data[key] = value
+        return post_data
+
+    return _get_route_post_data
+
+
+@fixture
+def create_checkpoints_from_geom():
+    def _create_checkpoints_from_geom(geom, number_of_checkpoints):
+        checkpoints_data = []
+        endpoint = number_of_checkpoints + 1
+        for index in range(1, endpoint):
+            line_location = index / endpoint
+            place = PlaceFactory(geom=geom.interpolate_normalized(line_location))
+            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
+
+        return checkpoints_data
+
+    return _create_checkpoints_from_geom

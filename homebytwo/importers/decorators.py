@@ -82,8 +82,12 @@ def remote_connection(view_func):
             match = request.resolver_match
             if match.url_name == "import_route":
                 route_id = match.kwargs["source_id"]
-                params = urlencode({"route_id": route_id})
-                return redirect(f'{login_url}?{params}')
+                return redirect(
+                    "{login_url}?{params}".format(
+                        login_url=login_url,
+                        params=urlencode({"route_id": route_id}),
+                    )
+                )
             else:
                 return redirect(login_url)
 

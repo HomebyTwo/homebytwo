@@ -70,6 +70,7 @@ def import_route(request, data_source, source_id):
     # create stub or retrieve from db
     route_class = get_proxy_class_from_data_source(data_source)
     route, update = route_class.get_or_stub(source_id, request.user.athlete)
+    message_action = "updated" if update else "imported"
 
     # fetch route details from Remote API
     route.get_route_details(request.session.get("switzerland_mobility_cookies"))
@@ -84,16 +85,14 @@ def import_route(request, data_source, source_id):
             new_route = route_form.save()
             if new_route:
                 # display success message
-                message_action = "updated" if update else "imported"
                 message = "Route {} successfully from {}"
                 messages.success(
                     request, message.format(message_action, route.DATA_SOURCE_NAME)
                 )
                 return redirect("routes:route", pk=new_route.pk)
 
-        # display form errors
-        for error in route_form.errors:
-            messages.error(request, error)
+        message = "The route, could not be {}: see errors in the form below."
+        messages.error(request, message.format(message_action))
 
     if request.method == "GET":
         # populate the route_form with route details
