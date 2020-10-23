@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
 from .forms import GpxUploadForm, SwitzerlandMobilityLogin
-from .utils import get_proxy_class_from_data_source, save_detail_forms, split_routes
+from .utils import get_proxy_class_from_data_source, split_routes
 
 
 @login_required
@@ -69,34 +69,38 @@ def import_route(request, data_source, source_id):
     # create stub or retrieve from db
     route_class = get_proxy_class_from_data_source(data_source)
     route, update = route_class.get_or_stub(source_id, request.user.athlete)
+    message_action = "updated" if update else "imported"
 
     # fetch route details from Remote API
     route.get_route_details(request.session.get("switzerland_mobility_cookies"))
-    route.update_track_details_from_data()
+    route.update_track_details_from_data(commit=False)
 
     if request.method == "POST":
         # instantiate form with POST data
         route_form = RouteForm(update=update, data=request.POST, instance=route)
 
-        # validate forms and save the route and places
-        new_route = save_detail_forms(request, route_form)
+        # validate route form
+        if route_form.is_valid():
+            new_route = route_form.save()
 
-        # Success! redirect to the page of the newly imported route
-        if new_route:
-            message_action = "updated" if update else "imported"
-            message = "Route {} successfully from {}"
-            messages.success(request, message.format(message_action, route.DATA_SOURCE_NAME))
-            return redirect("routes:route", pk=new_route.id)
+            # success! route could be saved: redirect to route page
+            if new_route:
+                message = (
+                    f"Route successfully {message_action} "
+                    f"from {route.DATA_SOURCE_NAME}"
+                )
+                messages.success(request, message)
+                return redirect("routes:route", pk=new_route.pk)
+
+        # invalid form
+        message = f"The route could not be {message_action}: see errors in the form."
+        messages.error(request, message)
 
     if request.method == "GET":
         # populate the route_form with route details
         route_form = RouteForm(update=update, instance=route)
 
-    context = {
-        "object": route,
-        "form": route_form,
-    }
-
+    context = {"object": route, "form": route_form}
     return render(request, template, context)
 
 

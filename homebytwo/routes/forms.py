@@ -2,15 +2,8 @@ from django.db import transaction
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Checkpoint,
-    Gear,
-    Place,
-    Route,
-)
+from .models import (Activity, ActivityPerformance, ActivityType, Checkpoint, Gear,
+                     Place, Route)
 
 
 class RouteForm(ModelForm):
@@ -61,14 +54,27 @@ class RouteForm(ModelForm):
         model = super().save(commit=False)
 
         # checkpoints associated with the route in the database
-        checkpoints_saved = []
         old_checkpoints = model.checkpoint_set.all()
 
         if commit:
             with transaction.atomic():
+                try:
+                    # calculate permanent data columns
+                    model.update_permanent_track_data(
+                        min_step_distance=1,
+                        max_gradient=100,
+                        commit=False
+                    )
+                except ValueError as error:
+                    message = f"Route cannot be imported: {error}."
+                    self.add_error(None, message)
+                    return
+
+                model.update_track_details_from_data(commit=False)
                 model.save()
 
                 # save form checkpoints
+                checkpoints_saved = []
                 for place_id, line_location in self.cleaned_data["checkpoints"]:
                     checkpoint, created = Checkpoint.objects.get_or_create(
                         route=model,
@@ -110,7 +116,7 @@ class RouteForm(ModelForm):
 
 class ActivityPerformanceForm(Form):
     """
-    Choose the activity perfomance parameters to apply to the pace prediction.
+    Choose the activity performance parameters to apply to the pace prediction.
 
     The form contains at least one field (activity_type) and at most three:
     the gear and workout_type fields are displayed if the athlete's performance profile
@@ -119,7 +125,8 @@ class ActivityPerformanceForm(Form):
 
     def __init__(self, route, athlete=None, *args, **kwargs):
         """
-        set field choices according to the route's activity type and the athlete's ActivityPerformance objects.
+        set field choices according to the route's activity type and the athlete's
+        ActivityPerformance objects.
         """
         super().__init__(*args, **kwargs)
 
@@ -180,7 +187,7 @@ class ActivityPerformanceForm(Form):
         if not athlete or not activity_performance:
             return
 
-        # retrieve gear and workout type choices from the categories in the prediction model
+        # retrieve gear and workout type choices from the categories in the model
         gear_list = activity_performance.gear_categories
         workout_type_list = activity_performance.workout_type_categories
 

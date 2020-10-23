@@ -1,4 +1,7 @@
 # Change Log
+## [0.12.1] - 2020-10-23 Remove extreme gradient values from imported routes
+- Routes from Strava now have a much more realistic schedule
+
 ## [0.12.0] - 2020-10-15 Improve route update
 - Import page can update routes
 - Update forms tries to retain existing checkpoints

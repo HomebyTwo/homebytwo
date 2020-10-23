@@ -20,13 +20,9 @@ from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
-from .tasks import (
-    import_strava_activities_task,
-    import_strava_activity_streams_task,
-    process_strava_events,
-    train_prediction_models_task,
-    upload_route_to_garmin_task,
-)
+from .tasks import (import_strava_activities_task, import_strava_activity_streams_task,
+                    process_strava_events, train_prediction_models_task,
+                    upload_route_to_garmin_task)
 
 
 @login_required
@@ -100,6 +96,7 @@ def view_route(request, pk):
             raise Http404("Route information could not be found.")
 
         else:
+            route.update_permanent_track_data(min_step_distance=1, max_gradient=100)
             route.update_track_details_from_data()
 
     # calculate route schedule for display
@@ -130,14 +127,6 @@ class RouteEdit(UpdateView):
     model = Route
     form_class = RouteForm
     template_name = "routes/route/route_form.html"
-
-    def form_valid(self, form):
-        # This method is called when valid form data has been POSTed.
-        # if the activity_type has changed recalculate the route schedule
-        if "activity_type" in form.changed_data:
-            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
-
-        return super().form_valid(form)
 
 
 @method_decorator(login_required, name="dispatch")
@@ -195,11 +184,7 @@ def route_checkpoints_list(request, pk):
 def download_route_gpx(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    # calculate personalized schedule if necessary
-    if "schedule" not in route.data.columns:
-        # updating old routes one-by-one, migrating was difficult
-        route.calculate_projected_time_schedule(request.user)
-        route.save(update_fields=["data"])
+    route.calculate_projected_time_schedule(request.user)
 
     return FileResponse(
         BytesIO(bytes(route.get_gpx(), encoding="utf-8")),
@@ -212,12 +197,6 @@ def download_route_gpx(request, pk):
 @login_required
 def upload_route_to_garmin(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
-
-    # calculate personalized schedule if necessary
-    if "schedule" not in route.data.columns:
-        # updating old routes one-by-one, migrating was difficult
-        route.calculate_projected_time_schedule(request.user)
-        route.save(update_fields=["data"])
 
     # set garmin_id to 1 == upload requested
     route.garmin_id = 1
@@ -245,8 +224,8 @@ class ActivityList(ListView):
 @strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_activities(request):
     """
-    send a task to import the athlete's Strava activities and redirects to the activity list.
-    still work in progress
+    send a task to import the athlete's Strava activities and redirect
+    to the activity list. TODO: use websockets to monitor progress
     """
     import_strava_activities_task.delay(request.user.athlete.id)
     messages.success(request, "We are importing your Strava activities!")
@@ -257,7 +236,7 @@ def import_strava_activities(request):
 @strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_streams(request):
     """
-    trigger a task to import streams for activities without them.
+    trigger a task to import streams for activities without streams.
     """
     activities = request.user.athlete.activities
     activities = activities.filter(streams__isnull=True)

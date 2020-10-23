@@ -13,7 +13,8 @@ from requests.exceptions import ConnectionError
 from stravalib.exc import Fault, RateLimitExceeded
 
 from ..celery import app as celery_app
-from .models import Activity, ActivityPerformance, ActivityType, Athlete, Route, WebhookTransaction
+from .models import (Activity, ActivityPerformance, ActivityType, Athlete, Route,
+                     WebhookTransaction)
 from .models.activity import is_activity_supported, update_user_activities_from_strava
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,11 @@ def import_strava_activities_task(athlete_id):
     try:
         activities = update_user_activities_from_strava(athlete)
     except (Fault, RateLimitExceeded) as error:
-        message = f"Activities for athlete_id `{athlete_id}` could not be retrieved from Strava."
-        message += f"Error was: {error}. "
-        logger.error(message)
+        message = (
+            f"Activities for athlete_id: `{athlete_id}` "
+            f"could not be retrieved from Strava. Error was: {error}. "
+        )
+        logger.error(message, exc_info=True)
         return []
 
     # upon successful import, set the athlete's flag to True
@@ -148,7 +151,8 @@ def upload_route_to_garmin_task(route_id, athlete_id=None):
         return "Garmin API failure: {}".format(error)
 
     if uploaded:
-        return f"Route '{str(route)}' successfully uploaded to Garmin connect at {garmin_activity_url}."
+        message = "Route '{}' successfully uploaded to Garmin connect at {}."
+        return message.format(route, garmin_activity_url)
 
 
 @shared_task
@@ -233,7 +237,7 @@ def process_transaction(transaction):
             activity.update_with_strava_data(strava_activity)
             return True
 
-    # Activity is not supported by Homebytwo or the transaction `aspect_type` is `delete`
+    # activity not supported by Homebytwo or transaction `aspect_type` is `delete`
     if activity.id:
         activity.delete()
         logger.info(f"Strava activity: {object_id} was deleted from Homebytwo.")

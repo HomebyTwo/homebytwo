@@ -1,7 +1,9 @@
+import logging
 from datetime import timedelta
 from uuid import uuid4
 
 from django.contrib.gis.db import models
+from django.contrib.gis.geos import LineString
 from django.contrib.gis.measure import D
 
 from easy_thumbnails.fields import ThumbnailerImageField
@@ -12,6 +14,8 @@ from ..fields import DataFrameField
 from ..prediction_model import PredictionModel
 from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
+
+logger = logging.getLogger(__name__)
 
 
 def athlete_data_directory_path(instance, filename):
@@ -66,7 +70,159 @@ class Track(TimeStampedModel):
         null=True, upload_to=athlete_data_directory_path, unique_fields=["uuid"]
     )
 
-    def update_track_details_from_data(self):
+    def calculate_step_distances(self, min_distance: float, commit=True):
+        """
+        calculate distance between each row, removing steps where distance is too small.
+        """
+        data = self.data.copy()
+        data["geom"], srid = self.geom, self.geom.srid
+
+        data.drop(data[data.distance.diff() < min_distance].index, inplace=True)
+        data["step_distance"] = data.distance.diff()
+
+        try:
+            self.geom = LineString(data.geom.tolist(), srid=srid)
+        except ValueError:
+            message = "Cannot clean track data: invalid distance values."
+            logger.error(message, exc_info=True)
+            raise ValueError(message)
+        data.drop(columns=["geom"], inplace=True)
+        self.data = data.fillna(value=0)
+
+        if commit:
+            self.save(update_fields=["data", "geom"])
+
+    def calculate_gradients(self, max_gradient: float, commit=True):
+        """
+        calculate gradients in percents based on altitude and distance
+        while cleaning up bad values.
+        """
+        data = self.data.copy()
+        data["geom"], srid = self.geom, self.geom.srid
+
+        # calculate gradients
+        data["gradient"] = data.altitude.diff() / data.distance.diff() * 100
+
+        # find rows with offending gradients
+        bad_rows = data[
+            (data["gradient"] < -max_gradient) | (data["gradient"] > max_gradient)
+        ]
+
+        # drop bad rows and recalculate until all offending values have been removed
+        while not bad_rows.empty:
+            data.drop(bad_rows.index, inplace=True)
+            data["gradient"] = data.altitude.diff() / data.distance.diff() * 100
+            bad_rows = data[
+                (data["gradient"] < -max_gradient) | (data["gradient"] > max_gradient)
+            ]
+
+        # save the values back to the track object
+        try:
+            self.geom = LineString(data.geom.tolist(), srid=srid)
+        except ValueError:
+            message = "Cannot clean track data: invalid altitude values."
+            logger.error(message, exc_info=True)
+            raise ValueError(message)
+        data.drop(columns=["geom"], inplace=True)
+        self.data = data.fillna(value=0)
+
+        if commit:
+            self.save(update_fields=["data", "geom"])
+
+    def calculate_cumulative_elevation_differences(self, commit=True):
+        """
+        Calculates two columns from the altitude data:
+        - cumulative_elevation_gain: cumulative sum of positive elevation data
+        - cumulative_elevation_loss: cumulative sum of negative elevation data
+        """
+
+        # only consider entries where altitude difference is greater than 0
+        self.data["cumulative_elevation_gain"] = self.data.altitude.diff()[
+            self.data.altitude.diff() >= 0
+        ].cumsum()
+
+        # only consider entries where altitude difference is less than 0
+        self.data["cumulative_elevation_loss"] = self.data.altitude.diff()[
+            self.data.altitude.diff() <= 0
+        ].cumsum()
+
+        # Fill the NaNs with the last valid value of the series
+        # then, replace the remaining NaN (at the beginning) with 0
+        self.data[["cumulative_elevation_gain", "cumulative_elevation_loss"]] = (
+            self.data[["cumulative_elevation_gain", "cumulative_elevation_loss"]]
+            .fillna(method="ffill")
+            .fillna(value=0)
+        )
+
+        if commit:
+            self.save(update_fields=["data"])
+
+    def add_distance_and_elevation_totals(self, commit=True):
+        """
+        add total distance and total elevation gain to every row
+        """
+        self.data["total_distance"] = self.total_distance
+        self.data["total_elevation_gain"] = self.total_elevation_gain
+
+        if commit:
+            self.save(update_fields=["data"])
+
+    def update_permanent_track_data(
+        self, min_step_distance=1, max_gradient=100, commit=True, force=False
+    ):
+        """
+        make sure all unvarying data columns required for schedule calculation
+        are available and calculate missing ones.
+
+        :param min_step_distance: minimum distance in m to keep between each point
+        :param max_gradient: maximum gradient to keep when cleaning rows
+        :param commit: save the instance to the database after update
+        :param force: recalculates columns even if they are already present
+
+        :returns: None
+        :raises ValueError: if the number of coords in the track geometry
+        is not equal to the number of rows in data or if the cleaned data columns
+        are left with only one row.
+        """
+        track_data_updated = False
+
+        # make sure we have step distances
+        if "step_distance" not in self.data.columns or force:
+            track_data_updated = True
+            self.calculate_step_distances(min_distance=min_step_distance, commit=False)
+
+        # make sure we have step gradients
+        if "gradient" not in self.data.columns or force:
+            track_data_updated = True
+            self.calculate_gradients(max_gradient=max_gradient, commit=False)
+
+        # make sure we have cumulative elevation differences
+        if (
+            not all(
+                column in self.data.columns
+                for column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
+            )
+            or force
+        ):
+            track_data_updated = True
+            self.calculate_cumulative_elevation_differences(commit=False)
+
+        # make sure we have distance and elevation totals
+        if (
+            not all(
+                column in self.data.columns
+                for column in ["total_distance", "total_elevation_gain"]
+            )
+            or force
+        ):
+            track_data_updated = True
+            self.add_distance_and_elevation_totals(commit=False)
+
+        # commit changes to the database if any
+        if track_data_updated and commit:
+            self.save(update_fields=["data", "geom"])
+
+    def update_track_details_from_data(self, commit=True):
         """
         set track details from the track data,
         usually replacing remote information received for the route
@@ -75,59 +231,21 @@ class Track(TimeStampedModel):
             column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
             for column in self.data.columns
         ):
-            self.data = self.calculate_cumulative_elevation_differences(self.data)
+            self.calculate_cumulative_elevation_differences(commit=False)
 
         # update total_distance, total_elevation_gain and total_elevation_loss from data
         self.total_distance = self.data.distance.max()
         self.total_elevation_loss = abs(self.data.cumulative_elevation_loss.min())
         self.total_elevation_gain = self.data.cumulative_elevation_gain.max()
 
-    def calculate_gradient(self, data):
-        """
-        add gradient and distance between each point of the track data.
-        """
-
-        # ignore rows where step_distance is shorter than 1m
-        first_row = data.head(1)
-        filtered_rows = data[data["distance"].diff() >= 1]
-        data = first_row.append(filtered_rows)
-
-        # calculate distance between each point
-        data["step_distance"] = data.distance.diff().fillna(value=0)
-
-        # calculate slope percentage between each point
-        data["gradient"] = (data.altitude.diff() / data.step_distance * 100).fillna(
-            value=0
-        )
-
-        return data
-
-    def calculate_cumulative_elevation_differences(self, data):
-        """
-        Calculates two columns from the altitude data:
-        - cumulative_elevation_gain: cumulative sum of positive elevation data
-        - cumulative_elevation_loss: cumulative sum of negative elevation data
-        """
-
-        # only consider entries where altitude difference is greater than 0
-        data["cumulative_elevation_gain"] = data.altitude.diff()[
-            data.altitude.diff() >= 0
-        ].cumsum()
-
-        # only consider entries where altitude difference is less than 0
-        data["cumulative_elevation_loss"] = data.altitude.diff()[
-            data.altitude.diff() <= 0
-        ].cumsum()
-
-        # Fill the NaNs with the last valid value of the series
-        # then, replace the remaining NaN (at the beginning) with 0
-        data[["cumulative_elevation_gain", "cumulative_elevation_loss"]] = (
-            data[["cumulative_elevation_gain", "cumulative_elevation_loss"]]
-            .fillna(method="ffill")
-            .fillna(value=0)
-        )
-
-        return data
+        if commit:
+            self.save(
+                update_fields=[
+                    "total_distance",
+                    "total_elevation_loss",
+                    "total_elevation_gain",
+                ]
+            )
 
     def get_prediction_model(self, user):
         """
@@ -161,24 +279,11 @@ class Track(TimeStampedModel):
         Calculates route pace and route schedule based on the athlete's prediction model
         for the route's activity type.
         """
+        # make sure we have all required data columns
+        self.update_permanent_track_data(min_step_distance=1, max_gradient=100)
 
+        # add temporary columns useful to the schedule calculation
         data = self.data
-
-        # make sure we have cumulative elevation differences
-        if not all(
-            column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
-            for column in data.columns
-        ):
-            data = self.calculate_cumulative_elevation_differences(data)
-
-        # make sure we have elevation gain and distance data
-        if not all(column in ["gradient", "step_distance"] for column in data.columns):
-            data = self.calculate_gradient(data)
-            self.save(update_fields=["data"])
-
-        # add route totals to every row
-        data["total_distance"] = data.distance.max()
-        data["total_elevation_gain"] = data.cumulative_elevation_gain.max()
 
         # add gear and workout type to every row
         data["gear"] = gear or "None"
