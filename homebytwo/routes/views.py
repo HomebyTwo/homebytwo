@@ -171,7 +171,7 @@ def route_checkpoints_list(request, pk):
             "name": checkpoint.place.name,
             "field_value": checkpoint.field_value,
             "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
-            "place_type": checkpoint.place.get_place_type_display(),
+            "place_type": checkpoint.place.place_type.name,
             "checked": checkpoint in existing_checkpoints,
         }
         for checkpoint in possible_checkpoints

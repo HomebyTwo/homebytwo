@@ -278,7 +278,7 @@ class Route(Track):
         """
         return places as checkpoints based on the route geometry.
 
-        start from existing checkpoints by default. you can use update=True
+        start from existing checkpoints by default. you can use updated_geom=True
         to discard existing checkpoints if the geometry of the route has changed.
 
         A single place can be returned multiple times: the recursive strategy creates

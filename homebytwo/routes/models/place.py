@@ -12,7 +12,7 @@ class Place(TimeStampedModel):
     """
     Places are geographic points.
     They have a name, description and geom
-    Places are used to create segments from routes and
+    Places are used to create checkpoints on routes and
     and for public transport connection.
     """
 
@@ -127,14 +127,12 @@ class Place(TimeStampedModel):
             ),
         ),
     )
-
-    place_type = models.CharField(max_length=26, choices=PLACE_TYPE_CHOICES)
+    place_type = models.ForeignKey("PlaceType", on_delete="CASCADE")
     name = models.CharField(max_length=250)
     description = models.TextField(default="", blank=True)
     altitude = models.FloatField(null=True)
     data_source = models.CharField(default="homebytwo", max_length=50)
     source_id = models.CharField("ID at the data source", max_length=50)
-    public_transport = models.BooleanField(default=False)
     geom = models.PointField(srid=21781)
 
     class Meta:
@@ -149,7 +147,7 @@ class Place(TimeStampedModel):
     def __str__(self):
         return "{0} - {1}".format(
             self.name,
-            self.get_place_type_display(),
+            self.place_type.name,
         )
 
     def save(self, *args, **kwargs):
@@ -171,7 +169,7 @@ class Place(TimeStampedModel):
 
     def get_coords(self, srid=4326):
         """
-        returns a tupple with the place coords transformed to the requested srid
+        returns a tuple with the place coords transformed to the requested srid
         """
         return self.geom.transform(4326, clone=True).coords
 
@@ -192,13 +190,39 @@ class Place(TimeStampedModel):
             longitude=lng,
             latitude=lat,
             elevation=altitude_on_route,
-            type=self.get_place_type_display(),
+            type=self.place_type.name,
             time=time,
         )
 
 
+class PlaceType(models.Model):
+    """
+    Like places, place types are downloaded from geonames at
+    http://www.geonames.org/export/codes.html
+    """
+
+    FEATURE_CLASS_CHOICES = (
+        ("A", "country, state, region,..."),
+        ("H", "stream, lake,..."),
+        ("L", "parks,area,..."),
+        ("P", "city, village,..."),
+        ("R", "road, railroad"),
+        ("S", "spot, building, farm"),
+        ("U", "undersea"),
+        ("V", "forest,heath,..."),
+    )
+
+    feature_class = models.CharField(max_length=1, choices=FEATURE_CLASS_CHOICES)
+    code = models.CharField(max_length=10, primary_key=True)
+    name = models.CharField(max_length=256)
+    description = models.CharField(max_length=512)
+
+
 class Checkpoint(models.Model):
-    # Intermediate model for route - place
+    """
+    Intermediate model for route - place
+    """
+
     route = models.ForeignKey("Route", on_delete=models.CASCADE)
     place = models.ForeignKey("Place", on_delete=models.CASCADE)
 
@@ -246,7 +270,7 @@ class Checkpoint(models.Model):
         return "{0:.1f}km: {1} - {2}".format(
             self.distance_from_start.km,
             self.place.name,
-            self.place.get_place_type_display(),
+            self.place.place_type.name,
         )
 
     def get_gpx_waypoint(self, route=None, start_time=datetime.utcnow()):

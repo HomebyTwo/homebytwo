@@ -25,3 +25,4 @@ social-auth-core
 social-auth-app-django
 stravalib
 tables
+tqdm

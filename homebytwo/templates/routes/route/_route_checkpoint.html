@@ -12,7 +12,7 @@
       {{ schedule|duration:'hike' }}
     </div>
     <div class="w-1/2 grid__item text-small text-left">
-      {{ place.get_place_type_display|default:'Unknown type' }}
+      {{ place.place_type.name|default:'Unknown type' }}
     </div>
     <div class="w-1/2 grid__item text-small text-right">
       {{ distance|floatformat:1|intcomma }}km
