@@ -1,0 +1,200 @@
+2658099	Vorder-Grauspitz	Vorder-Grauspitz	Grauspitz	47.05272	9.58128	T	PK	LI	LI,CH					0	2600	2488	Europe/Vaduz	2019-02-16
+2660346	Hinter-Grauspitz	Hinter-Grauspitz	Grauspitz,Schwarzhorn	47.05481	9.58745	T	PK	LI	CH,LI					0	2574	2534	Europe/Vaduz	2019-02-16
+2768948	Pfälzer Hütte	Pfaelzer Huette		47.07132	9.61328	S	HTL	LI	LI					0	2108	2098	Europe/Vaduz	2010-07-18
+3042029	Vorderer Schellenberg	Vorderer Schellenberg	Vorder-Schellenberg,Vorderer Schellenberg,Vorderschellenberg	47.22802	9.53902	P	PPLX	LI		08				0		570	Europe/Vaduz	2015-07-03
+3042030	Vaduz	Vaduz	Bantouz,QVU,Vaduc,Vaducas,Vaduz,Vaduzo,fado~utsu,paducheu,vadutsi,wa dou zi,Βαντούζ,Вадуц,פאדוץ,ვადუცი,ፋዱጽ,ファドゥーツ,瓦都茲,파두츠	47.14151	9.52154	P	PPLC	LI		11				5197		465	Europe/Vaduz	2013-04-02
+3042031	Vaduz	Vaduz	Gemeinde Vaduz,Vaduz	47.14539	9.52655	A	ADM1	LI		11				5197		656	Europe/Vaduz	2014-03-05
+3042032	Under Riet	Under Riet	Under Riet,Unteres Riet	47.25357	9.54576	V	CULT	LI		00				0		431	Europe/Vaduz	2015-08-07
+3042033	Triesenberg	Triesenberg	Triesenberg,torizenberuku,トリーゼンベルク	47.11815	9.54197	P	PPLA	LI		10				2689		854	Europe/Vaduz	2013-04-02
+3042034	Triesenberg	Triesenberg	Gemeinde Triesenberg,Triesenberg,Triesenberg / Steg / Malbun	47.12663	9.55962	A	ADM1	LI		10				2689		1522	Europe/Vaduz	2014-03-05
+3042035	Triesen	Triesen	Triesen,Trizen,torizen,Тризен,トリーゼン	47.10752	9.52815	P	PPLA	LI		09				4701		500	Europe/Vaduz	2013-10-13
+3042036	Triesen	Triesen	Gemeinde Triesen,Triesen	47.08381	9.55517	A	ADM1	LI		09				4701		1462	Europe/Vaduz	2014-03-05
+3042037	Schellenberg	Schellenberg	Schellenberg,sherenberuku,シェレンベルク	47.23123	9.54678	P	PPLA	LI		08				1004		631	Europe/Vaduz	2013-04-02
+3042038	Schellenberg	Schellenberg	Gemeinde Schellenberg,Schellenberg	47.23431	9.55103	A	ADM1	LI		08				1004		652	Europe/Vaduz	2014-03-05
+3042039	Scheuakopf	Scheuakopf	Matlerkopf,Scheienkopf,Scheuenkopf	47.12807	9.63496	T	PK	LI	LI					0	2159	2119	Europe/Vaduz	2010-07-16
+3042040	Schaanwald	Schaanwald		47.21187	9.5624	P	PPL	LI		04				0		462	Europe/Vaduz	2013-04-02
+3042041	Schaan	Schaan	Schaan,Schan,Shaan,shan,Шаан,شان,シャーン	47.16498	9.50867	P	PPLA	LI		07				5748		453	Europe/Vaduz	2013-10-13
+3042042	Schaan	Schaan	Gemeinde Schaan,Schaan	47.17433	9.52401	A	ADM1	LI		07				5748		499	Europe/Vaduz	2014-03-05
+3042043	Sareiserjoch	Sareiserjoch	Sareiser Joch,Sareiserjoch	47.09521	9.62539	T	PASS	LI		10				0	1992	1996	Europe/Vaduz	2019-02-13
+3042044	Saminatal	Saminatal	Samina Thal	47.147	9.58145	T	VAL	LI	LI	00				0		1009	Europe/Vaduz	2010-07-14
+3042046	Ruggell	Ruggell	Rugell,Ruggell,Ruggell',ruggeru,Руггелль,ルッゲル	47.23799	9.5254	P	PPLA	LI		06				1862		434	Europe/Vaduz	2019-02-27
+3042047	Ruggell	Ruggell	Gemeinde Ruggell,Ruggell	47.24502	9.53323	A	ADM1	LI		06				1862		432	Europe/Vaduz	2014-03-05
+3042048	Rhätikon	Rhatikon	Raetikon,Rhaetikon,Rhatikon Mountains,Rhätikon Mountains,Rätikon	47.05562	9.60445	T	MTS	LI	LI	00				0		2180	Europe/Vaduz	2010-08-10
+3042049	Planken	Planken	Blanken,Planken,puranken,Планкен,プランケン	47.18516	9.54437	P	PPLA	LI		05				377		785	Europe/Vaduz	2013-04-02
+3042050	Planken	Planken	Gemeinde Planken,Planken	47.18015	9.55994	A	ADM1	LI		05				377		1257	Europe/Vaduz	2014-03-05
+3042051	Ochsenkopf	Ochsenkopf	Ochsenberg	47.11466	9.62466	T	PK	LI	LI	10				0	2285	2228	Europe/Vaduz	2019-02-13
+3042052	Nendeln	Nendeln		47.19846	9.543	P	PPL	LI		02				0		461	Europe/Vaduz	2013-04-02
+3042054	Mittlerer Schellenberg	Mittlerer Schellenberg	Mittler-Schellenberg,Mittlerer Schellenberg,Mittlerschellenberg	47.23148	9.54653	P	PPLX	LI		08				0		636	Europe/Vaduz	2015-07-03
+3042055	Mauren	Mauren	Mauern,Mauren,Mauren FL,mauren,マウレン	47.21805	9.5442	P	PPLA	LI		04				3626		452	Europe/Vaduz	2017-12-21
+3042056	Mauren	Mauren	Gemeinde Mauren,Maurehn,Mauren,Mauren-Schaanwald,Maurenas,mao lun,maulen,mauren,mawrn,mawyrn,mea rein,Маурен,Маўрэн,מאורן,ماؤرن,ماورن,ماویرن,เมาเริน,マウレン,毛伦,마우렌	47.21513	9.55898	A	ADM1	LI		04				3626		439	Europe/Vaduz	2014-03-05
+3042057	Mattajoch	Mattajoch	Matla Joch,Matlerjoch	47.13193	9.6256	T	PASS	LI	LI	00				0	1867	1861	Europe/Vaduz	2019-02-13
+3042058	Principality of Liechtenstein	Principality of Liechtenstein	Categoria:Liechtenstein,Furstentum Liechtenstein,Fürstentum Liechtenstein,Lekitenisaini,Lektenstaen,Lestenstin,Liachtnstoa,Licansitan,Lich-ten-xten,Lich-ten-xten (Liechtenstein),Lich-ten-xtên,Lich-ten-xtên (Liechtenstein),Lichtenstain,Lichtenstajnsko,Lichtenstayn,Lichtenstein,Lichtensteinas,Lichtenstejnsko,Lichtenstenum,Lichtenstàin,Lichtenštajnsko,Lichtenšteinas,Lichtenštejnsko,Lichtinstein,Lichtinstéin,Lichtènstayn,Licitensitayini,Liechtensteen,Liechtenstein,Liechtenstein ,Liechtestein,Liechtnsta,Liechtnstâ,Ligtaenstaen,Ligtänstän,Lihtenshtajn,Lihtenshtajni,Lihtenstajn,Lihtenstayn,Lihtensteina,Lihtenstejn,Lihtenstejno,Lihtenştayn,Lihtenštajn,Lihtenšteina,Lihtënshtajn,Likhtenshhajn,Likhtenshtajn,Likhtenshtejn,Liktenstein,Lincenstayn,Lishenteni,Lishuteni,Lishyitenshitayini,Lishɛteni,Listenstaina,Listenstein,Listinstayn,Lisɛnsitayini,Litsenstein nutome,Lixtenshteyn,Lixtensteyn,Lixtenşteyn,Liĥtenŝtejno,Luliilu,Lychtenstein,Lîştinştayn,Orileede Lesitenisiteni,Orílẹ́ède Lẹṣitẹnisiteni,Principality of Liechtenstein,Principato del Liechtenstein,i-Liechtenstein,laicatenste'ina,li'ekhatensta'ina,liccensteyn,licenaste'ina,licesti'anan,lie zhi dun shi deng,lie zhi dun si deng,lihitensyutain,lik tens tin,likatenstina,likhtensta'ina,liktesten,lincenasta'ina,listenasta'ina,liyaqtamstina,lykhtnshtayn,lyktnshtyn,lyktnstyn,lyktnstyyn,pra thes lik tens tin,rihitenshutain,rihitenshutain gong guo,Λιχτενστάιν,Лихтенштајн,Лихтенштейн,Лихтенщайн,Ліхтенштейн,Ліхтэнштайн,Ліхтэнштэйн,Լիխտենշտեյն,ליכטנשטיין,لىختېنشتېين,ليختنشتاين,لیختنشتاین,لیختن‌اشتاین,لیشٹنسٹائن,لیکتنستین,ܠܝܟܛܢܫܛܝܢ,लिंचेनस्टाइन,लिएखटेन्स्टाइन,लिकटेंस्टीन,लिख्टेंश्टाइन,लियक़्टँस्टीन,लीश्टेनस्टाईन,লিচেনস্টেইন,લૈચટેંસ્ટેઇન,ଲିଚେସ୍ତିଆନାନ୍,லிச்செண்ஸ்டெய்ன்,లిక్టెస్టేన్,ಲಿಚೆನ್‌ಸ್ಟೈನ್,ലൈച്ടെസ്റ്റിന്‍,ประเทศลิกเตนสไตน์,ลิกเตนสไตน์,ໄລເທນສະໄຕ,ལེག་ཏེན་ཚིན།,ლიხტენშტაინი,ლიხტენშტეინი,ሊችተንስታይን,លិចទេនស្តែន,リヒテンシュタイン,リヒテンシュタイン公国,列支敦士登,列支敦斯登,리히텐슈타인	47.16667	9.53333	A	PCLI	LI		00				37910		730	Europe/Vaduz	2020-03-29
+3042060	Hinterschellenberg	Hinterschellenberg	Hinter-Schellenberg,Hinterer Schellenberg	47.24102	9.55879	P	PPLX	LI	LI	08				0		613	Europe/Vaduz	2008-07-25
+3042062	Gamprin	Gamprin	Gambrin,Gamprin,Gamprin-Bendern,ganpurin,Гамприн,ガンプリン	47.22038	9.50935	P	PPLA	LI		03				1268		470	Europe/Vaduz	2019-10-22
+3042063	Gamprin	Gamprin	Gamprin,Gamprin-Bendern,Gemeinde Gamprin,Gemeinde Gamprin-Bendern	47.21986	9.50995	A	ADM1	LI		03				1268		476	Europe/Vaduz	2017-07-25
+3042064	Galinakopf	Galinakopf		47.15163	9.62055	T	PK	LI	LI					0	2198	2163	Europe/Vaduz	2019-02-13
+3042065	Fürstensteig	Fuerstensteig		47.14536	9.54783	T	MT	LI	LI	00				0		1655	Europe/Vaduz	2010-07-18
+3042068	Eschen	Eschen	Eschen,esshen,エッシェン	47.21071	9.52223	P	PPLA	LI		02				4008		446	Europe/Vaduz	2013-04-02
+3042069	Eschen	Eschen	Ehshehn,Ehshen,Eschen,Eschen / Nendeln,Eschen-Nedeln,Eschen-Nendeln,Esenas,Eshen,Ešenas,Gemeinde Eschen,Gemeinde Eschen-Nendeln,ai shen,ashn,ayshn,esshen,esyen,xeschein,Ешен,Эшен,Эшэн,אשן,اشن,ایشن,เอสเชิน,エッシェン,埃申,에셴	47.20178	9.53588	A	ADM1	LI		02				4008		437	Europe/Vaduz	2014-03-05
+3042070	Drei Schwestern	Drei Schwestern	Drey Schwestern,Drue-Schwoeschtra,Drü-Schwöschtra	47.17556	9.57287	T	PK	LI	LI	05				0	2052	1994	Europe/Vaduz	2019-02-13
+3042072	Bendern	Bendern		47.21199	9.50678	P	PPL	LI		03				0		446	Europe/Vaduz	2017-12-22
+3042073	Balzers	Balzers	Balzers,baruzasu,バルザース	47.06665	9.50251	P	PPLA	LI		01				4447		476	Europe/Vaduz	2019-02-26
+3042074	Balzers	Balzers	Balzers,Balzers / Mals,Balzers / Mäls,Gemeinde Balzers	47.0677	9.50408	A	ADM1	LI		01				4447		474	Europe/Vaduz	2014-03-05
+3315349	Mäls	Mals	Mals,Mäls	47.06105	9.49568	P	PPL	LI		01				0		477	Europe/Vaduz	2015-07-03
+3315350	Lawena	Lawena		47.06656	9.55853	T	VAL	LI	LI	00				0	1529	1520	Europe/Vaduz	2010-07-18
+3315351	Wangerberg	Wangerberg	Wangerbarg,Wangerbärg	47.10589	9.54463	P	PPL	LI	LI	10				0		866	Europe/Vaduz	2010-07-16
+3315352	Sücka	Suecka		47.11621	9.56547	S	HSE	LI		10				0		1407	Europe/Vaduz	2017-03-19
+3315353	Rotenboden	Rotenboden	Rotaboda	47.12972	9.53802	P	PPL	LI	LI	10				0		1006	Europe/Vaduz	2008-07-25
+3315354	Silum	Silum	Silum	47.13183	9.55377	P	PPL	LI		10				0		1481	Europe/Vaduz	2015-07-03
+3315355	Valüna	Valuna		47.07815	9.5913	T	VAL	LI		00				0		1500	Europe/Vaduz	2015-07-03
+3315356	Masescha	Masescha	Masescha	47.13271	9.54454	P	PPL	LI		10				0		1246	Europe/Vaduz	2015-07-03
+3315357	Gaflei	Gaflei	Gaflei	47.14345	9.54448	V	FRST	LI		10				0		1487	Europe/Vaduz	2015-07-03
+3315358	Möliholz	Moliholz	Moliholz,Muhleholz,Möliholz,Mühleholz	47.15569	9.51111	P	PPL	LI		11				0		471	Europe/Vaduz	2015-07-03
+3315359	Ebaholz	Ebaholz	Ebaholz,Ebenholz	47.1488	9.51287	P	PPLX	LI		11				0		480	Europe/Vaduz	2015-07-03
+6520526	Hotel Gorfion	HOTEL GORFION		47.1024	9.6085	S	HTL	LI						0		1604	Europe/Vaduz	2007-04-15
+6545409	Malbun	Malbun		47.10139	9.60986	P	PPL	LI		10				50	1600	1611	Europe/Vaduz	2015-02-06
+6545410	Steg	Steg		47.11266	9.57536	P	PPL	LI		10				50	1400	1300	Europe/Vaduz	2015-02-06
+6938744	Plasteikopf	Plasteikopf		47.06508	9.57726	T	PK	LI	LI					0	2355	2290	Europe/Vaduz	2019-02-13
+6938746	Mittlerspitz	Mittlerspitz		47.06513	9.53972	T	PK	LI	LI,CH					0	1899	1871	Europe/Vaduz	2019-02-13
+6938759	Mittagsspitz	Mittagsspitz	Triesner-Mittagspitz	47.06926	9.53409	T	PK	LI	LI					0	1857	1809	Europe/Vaduz	2019-02-16
+6938779	Hochspeler	Hochspeler	Hochspieler	47.07326	9.57145	T	PK	LI	LI					0	2225	2187	Europe/Vaduz	2019-02-13
+6938787	Rappenstein	Rappenstein		47.07617	9.56644	T	PK	LI						0	2221	2172	Europe/Vaduz	2010-07-16
+6938790	Rappastein	Rappastein	Rappenstein	47.0768	9.5659	T	PK	LI	LI					0	2221	2181	Europe/Vaduz	2019-02-13
+6938803	Langspitz	Langspitz		47.0794	9.55965	T	PK	LI	LI					0	2006	1965	Europe/Vaduz	2019-02-13
+6938805	Koraspitz	Koraspitz		47.07944	9.55676	T	PK	LI						0	1928	1841	Europe/Vaduz	2019-02-16
+6938814	Goldlochspitz	Goldlochspitz		47.0821	9.56746	T	PK	LI	LI					0	2110	2022	Europe/Vaduz	2019-02-13
+6938835	Spitz	Spitz		47.08651	9.62369	T	PK	LI						0	2187	2151	Europe/Vaduz	2019-02-16
+6938843	Kolme	Kolme	Kolmi	47.08758	9.57218	T	PK	LI	LI					0	1993	1969	Europe/Vaduz	2019-02-13
+6938851	Bödele	Boedele		47.09106	9.57068	T	PK	LI						0	1913	1883	Europe/Vaduz	2010-07-16
+6938856	Nospitz	Nospitz		47.09319	9.59827	T	PK	LI	LI					0	2090	2036	Europe/Vaduz	2019-02-13
+6938859	Heubühl	Heubuehl		47.09431	9.56883	T	PK	LI						0	1936	1901	Europe/Vaduz	2010-07-16
+6938866	Heubüal	Heubueal		47.09662	9.5668	T	PK	LI						0	1936	1913	Europe/Vaduz	2019-02-13
+6938902	Kirchlespitz	Kirchlespitz		47.10501	9.58761	T	PK	LI						0	1892	1866	Europe/Vaduz	2019-02-13
+6938905	Chrüppel	Chrueppel	Krueppel,Krüppel	47.10627	9.56569	T	PK	LI		10				0	1706	1694	Europe/Vaduz	2019-02-13
+6938920	Gamsgrat	Gamsgrat	Gamsgrad,Gamsgrat	47.108	9.62264	T	PK	LI	LI,AT					0	2246	2180	Europe/Vaduz	2017-02-19
+6938945	Kirchle	Kirchle		47.11956	9.59816	T	PK	LI						0	1914	1855	Europe/Vaduz	2010-07-16
+6938951	Bergle	Bergle		47.12086	9.58334	T	PK	LI						0	1929	1892	Europe/Vaduz	2009-03-19
+6938956	Stachlerkopf	Stachlerkopf		47.12213	9.59226	T	PK	LI						0	2071	2031	Europe/Vaduz	2019-02-14
+6938960	Drei Kapuziner	Drei Kapuziner		47.12453	9.58889	T	PK	LI						0	2085	2038	Europe/Vaduz	2019-02-14
+6938974	Schönberg	Schoenberg		47.13037	9.59301	T	PK	LI						0	2104	2082	Europe/Vaduz	2019-02-14
+6938981	Plattenspitz	Plattenspitz		47.13312	9.55851	T	PK	LI						0	1704	1671	Europe/Vaduz	2019-02-16
+6938994	Rucheck	Rucheck		47.13713	9.61385	T	PK	LI						0	1742	1711	Europe/Vaduz	2009-03-19
+6939018	Wurmtalkopf	Wurmtalkopf		47.14589	9.62583	T	PK	LI						0	2006	1984	Europe/Vaduz	2019-02-16
+6939034	Helwangspitz	Helwangspitz		47.14864	9.56183	T	PK	LI	LI					0	1999	1970	Europe/Vaduz	2019-02-13
+6939061	Hächlaköpfe	Haechlakoepfe	Hechlekopf	47.15346	9.60292	T	PK	LI	LI					0	1858	1827	Europe/Vaduz	2010-07-18
+6939093	Gafleispitz	Gafleispitz	Gafleichoepfli,Gafleichöpfli	47.15894	9.55496	T	PK	LI		10				0	1982	1957	Europe/Vaduz	2019-02-16
+6939115	Kuegrat	Kuegrat	Kuagrot,Kuhgrat	47.16653	9.56087	T	PK	LI		05				0	2123	2086	Europe/Vaduz	2019-02-13
+6939127	Garsellitürm	Garsellituerm		47.16998	9.56972	T	PK	LI		05				0	2050	1977	Europe/Vaduz	2019-02-16
+6939199	Saroja	Saroja	Sarojahoehe,Sarojahöhe,Saroya	47.19079	9.57256	T	PK	LI	LI,AT	05				0	1659	1642	Europe/Vaduz	2019-02-13
+7303639	Garsellikopf	Garsellikopf		47.17026	9.56462	T	PK	LI	LI	05				0	2105	2047	Europe/Vaduz	2019-02-13
+7303643	Alpspitz	Alpspitz	Vorder Alpspitz	47.14874	9.55378	T	PK	LI		10				0	1996	1913	Europe/Vaduz	2019-02-16
+7303644	Gafleisattel	Gafleisattel		47.15108	9.55266	T	PASS	LI	LI	10				0	1856	1666	Europe/Vaduz	2019-02-13
+7303716	Demmerahöhi	Demmerahoehi		47.05916	9.58413	T	PASS	LI	LI,CH					0	2243	2233	Europe/Vaduz	2019-02-13
+7303720	Hetabörgle	Hetaboergle		47.06046	9.51665	T	PT	LI	LI,CH	01				0	752	719	Europe/Vaduz	2010-07-18
+7303721	Kläusli	Klaeusli	Klaeusle,Kläusle,Sami Chlaus	47.05286	9.57988	T	PK	LI	LI,CH					0	2585	2469	Europe/Vaduz	2010-07-18
+7303727	Mazorahöhe	Mazorahoehe	Guschasattel	47.05502	9.55326	T	PASS	LI						0	2045	2027	Europe/Vaduz	2010-07-16
+7303728	Rappasteinsattel	Rappasteinsattel		47.07991	9.56537	T	PASS	LI	LI					0	2071	2053	Europe/Vaduz	2010-07-18
+7303730	Tälihöhi	Taelihoehi		47.08823	9.60036	T	PASS	LI	LI	11				0	2055	2047	Europe/Vaduz	2019-02-13
+7303736	Augstenberg	Augstenberg		47.0824	9.61005	T	PK	LI	LI	10				0	2359	2337	Europe/Vaduz	2019-02-13
+7303737	Hahnenspiel	Hahnenspiel		47.09774	9.58852	T	PK	LI		10				0	1851	1793	Europe/Vaduz	2010-07-16
+7303739	Silberhorn	Silberhorn	Hubel	47.0871	9.60553	T	PK	LI	LI,	10				0	2149	2116	Europe/Vaduz	2019-02-13
+7303740	Tuass	Tuass		47.07783	9.54452	T	PT	LI	LI	09				0	1434	1399	Europe/Vaduz	2010-07-18
+7670251	Lavadina	Lavadina		47.11459	9.55545	P	PPL	LI		10				0	1047	1111	Europe/Vaduz	2011-02-26
+8581505	Brandeggakopf	Brandeggakopf		47.12593	9.58849	T	PK	LI		10				0	2071	2040	Europe/Vaduz	2013-07-14
+8741479	Migros Im Rösle 2	Migros Im Roesle 2		47.1691	9.5037	S	RET	LI		07				0		449	Europe/Vaduz	2014-04-12
+9971086	Residence	Residence		47.1402	9.52242	S	HTL	LI		11				0		462	Europe/Vaduz	2015-01-23
+9971087	Park Sonnenhof	Park Sonnenhof		47.1469	9.5233	S	HTL	LI		11				0		538	Europe/Vaduz	2015-01-23
+9971088	Landhaus Am Giessen	Landhaus Am Giessen		47.13313	9.51957	S	HTL	LI		11				0		458	Europe/Vaduz	2015-01-23
+10120925	Parkhotel Sonnenhof	Parkhotel Sonnenhof		47.14715	9.52323	S	HTL	LI		11				0		550	Europe/Vaduz	2015-02-26
+10280529	Kunstmuseum Liechtenstein	Kunstmuseum Liechtenstein		47.13946	9.52195	S	MUS	LI		11				0		458	Europe/Vaduz	2015-05-17
+10280530	Liechtensteinisches Landesmuseum	Liechtensteinisches Landesmuseum		47.13816	9.52272	S	MUS	LI		11				0		467	Europe/Vaduz	2015-05-17
+10280531	Postmuseum des Fürstentums Liechtenstein	Postmuseum des Fuerstentums Liechtenstein		47.13902	9.52276	S	MUS	LI		11				0		463	Europe/Vaduz	2015-05-17
+10280532	Briefmarkenmuseum	Briefmarkenmuseum	Stamp Museum	47.13887	9.52269	S	MUS	LI		11				0		463	Europe/Vaduz	2015-05-17
+10280535	Restaurant Torkel	Restaurant Torkel		47.14428	9.51945	S	REST	LI		11				0		482	Europe/Vaduz	2015-05-17
+10280536	Red House	Red House		47.14475	9.52176	S	MNMT	LI		11				0		504	Europe/Vaduz	2015-05-17
+10280537	DoMus - Museum und Galerie der Gemeinde Schaan	DoMus - Museum und Galerie der Gemeinde Schaan		47.16605	9.50973	S	MUS	LI		07				0		458	Europe/Vaduz	2015-05-17
+10280538	Rechenmaschinen-Museum	Rechenmaschinen-Museum		47.16759	9.51263	S	MUS	LI		07				0		461	Europe/Vaduz	2015-05-17
+10280539	TAK Theater Liechtenstein	TAK Theater Liechtenstein		47.16731	9.51174	S	THTR	LI		07				0		458	Europe/Vaduz	2015-05-17
+10280540	Sportplatz Rheinwiese	Sportplatz Rheinwiese		47.1657	9.49271	S	ATHF	LI		07				0		453	Europe/Vaduz	2015-05-17
+10280543	Sportpark Eschen	Sportpark Eschen		47.20581	9.5378	S	ATHF	LI		02				0		439	Europe/Vaduz	2015-05-17
+10347324	Bangserfeld	Bangserfeld	Bangserfeld	47.26619	9.53362	V	CULT	LI		06				0		429	Europe/Vaduz	2016-03-11
+10347325	Bangserwesa	Bangserwesa	Bangserwesa	47.26305	9.53636	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347326	Lettagiessa	Lettagiessa	Lettagiessa	47.25986	9.5333	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347327	Evimeder	Evimeder	Evimeder	47.25845	9.54151	V	CULT	LI		06				0		431	Europe/Vaduz	2016-03-11
+10347329	Köbelesmeder	Kobelesmeder	Kobelesmeder,Köbelesmeder	47.24903	9.55689	V	CULT	LI		08				0		430	Europe/Vaduz	2016-03-11
+10347330	Schneggenäuele	Schneggenauele	Schneggenauele,Schneggenäuele	47.25641	9.53161	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347331	Bangshof	Bangshof		47.25201	9.53595	S	FRM	LI		06				0		430	Europe/Vaduz	2015-07-05
+10347332	Spiersbach	Spiersbach		47.24479	9.53928	H	STM	LI		06				0		431	Europe/Vaduz	2015-07-05
+10347351	Wolfert	Wolfert	Wolfert	47.25662	9.54555	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347352	Under Wesa	Under Wesa	Under Wesa	47.25014	9.5314	V	CULT	LI		06				0		433	Europe/Vaduz	2016-03-11
+10347353	Regelmeder	Regelmeder	Regelmeder	47.24813	9.53832	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347354	Heiligkrüz	Heiligkruz		47.24317	9.5255	P	PPLX	LI		06				0		434	Europe/Vaduz	2015-07-05
+10347355	Rotagass	Rotagass		47.24	9.5306	P	PPLX	LI		06				0		435	Europe/Vaduz	2015-07-05
+10347356	Spierswesa	Spierswesa	Spierswesa	47.24554	9.53483	V	CULT	LI		06				0		432	Europe/Vaduz	2016-03-11
+10347357	Tüfagraba	Tufagraba	Tufagraba,Tüfagraba	47.24284	9.53299	V	CULT	LI		06				0		432	Europe/Vaduz	2016-03-11
+10347358	Fuera	Fuera		47.24291	9.53155	P	PPLX	LI		06				0		433	Europe/Vaduz	2015-07-05
+10347373	Obrosa	Obrosa		47.2413	9.53222	P	PPLX	LI		06				0		431	Europe/Vaduz	2015-07-05
+10347374	Feschera	Feschera	Feschera	47.23023	9.51646	V	CULT	LI		03				0		434	Europe/Vaduz	2016-03-11
+10347375	Langammet	Langammet	Langammet	47.24992	9.53568	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347376	Bierkileteile	Bierkileteile	Bierkileteile,Birkileteile	47.24806	9.54432	V	CULT	LI		06				0		429	Europe/Vaduz	2015-08-08
+10347429	Flandera	Flandera	Flandera	47.24534	9.52553	V	CULT	LI		06				0		434	Europe/Vaduz	2016-03-11
+10347430	Brema	Brema	Brema	47.2434	9.54028	V	CULT	LI		06				0		431	Europe/Vaduz	2016-03-11
+10347431	Tüfmeder	Tufmeder	Tufmeder,Tüfmeder	47.23951	9.54114	V	CULT	LI		00				0		432	Europe/Vaduz	2016-03-11
+10347432	Halameder	Halameder	Halameder	47.23817	9.54426	V	CULT	LI		00				0		431	Europe/Vaduz	2016-03-11
+10347433	Ruine Alt Schellenberg	Ruine Alt Schellenberg	Burgruine Untere Schellenberg,Ruine Alt Schellenberg	47.23326	9.54243	S	RUIN	LI		08				0		588	Europe/Vaduz	2015-08-08
+10347434	Brüechliswald	Bruechliswald		47.23405	9.53386	V	FRST	LI		06				0		500	Europe/Vaduz	2015-08-08
+10347435	Limsa	Limsa		47.23605	9.53479	T	SLP	LI		06				0		443	Europe/Vaduz	2015-08-08
+10347436	Steinbroch	Steinbroch	Deponie Limseneck,Steinbroch	47.23595	9.5375	S	MNQR	LI		06				0		443	Europe/Vaduz	2015-07-05
+10347437	Kela	Kela	Kela	47.23528	9.53972	V	CULT	LI		06				0		436	Europe/Vaduz	2016-03-11
+10347438	Schlatt	Schlatt		47.23438	9.521	P	PPLX	LI		06				0		432	Europe/Vaduz	2015-08-08
+10347439	Betzi	Betzi		47.2343	9.52604	P	PPLX	LI		06				0		435	Europe/Vaduz	2015-07-05
+10347440	Geisszepfel	Geisszepfel		47.23351	9.52465	P	PPLX	LI		06				0		434	Europe/Vaduz	2015-07-05
+10347441	Tälewald	Talewald		47.23165	9.52671	V	FRST	LI		06				0		493	Europe/Vaduz	2015-07-05
+10347442	Studa	Studa		47.22983	9.52805	V	MDW	LI		06				0		532	Europe/Vaduz	2015-08-08
+10347443	Oberwiler	Oberwiler		47.2356	9.52452	P	PPLX	LI		06				0		435	Europe/Vaduz	2015-07-05
+10347444	Wüerle	Wuerle	Wuerle,Wüerle	47.23875	9.52102	V	CULT	LI		06				0		433	Europe/Vaduz	2016-03-11
+10347445	Rüttile	Ruttile	Ruttile,Rüttile	47.23874	9.52004	V	CULT	LI		06				0		433	Europe/Vaduz	2016-03-11
+10347446	Spiegel	Spiegel		47.2382	9.52262	P	PPLX	LI		06				0		436	Europe/Vaduz	2015-07-05
+10347447	Kellersfeld	Kellersfeld		47.24031	9.52683	P	PPLX	LI		06				0		434	Europe/Vaduz	2015-07-05
+10347448	Underdarf	Underdarf		47.24285	9.52952	P	PPLX	LI		06				0		433	Europe/Vaduz	2015-07-05
+10347449	Oberdarf	Oberdarf		47.24143	9.52642	P	PPLX	LI		06				0		435	Europe/Vaduz	2015-07-05
+10347450	Giessa	Giessa		47.24445	9.52711	P	PPLX	LI		06				0		433	Europe/Vaduz	2015-07-05
+10347451	Kolbafeld	Kolbafeld		47.23713	9.53044	P	PPLX	LI		06				0		433	Europe/Vaduz	2015-07-05
+10347452	Scherer	Scherer	Scherer	47.23853	9.53218	V	CULT	LI		06				0		430	Europe/Vaduz	2016-03-11
+10347453	Oksarietle	Oksarietle	Oksarietle	47.24441	9.54272	V	CULT	LI		00				0		431	Europe/Vaduz	2016-03-11
+10347454	Tuarbariet	Tuarbariet	Tuarbariet	47.24646	9.54342	V	CULT	LI		06				0		432	Europe/Vaduz	2016-03-11
+10347455	Lacha	Lacha		47.21732	9.54094	P	PPLX	LI		04				0		456	Europe/Vaduz	2015-07-05
+10347456	Steinbös	Steinbos		47.21877	9.53767	P	PPLX	LI		04				0		481	Europe/Vaduz	2015-07-05
+10347457	Purtscher	Purtscher		47.21897	9.54773	P	PPLX	LI		04				0		462	Europe/Vaduz	2015-07-05
+10347458	Herawingert	Herawingert		47.22198	9.54249	V	MDW	LI		04				0		498	Europe/Vaduz	2015-08-08
+10347459	Speckemad	Speckemad		47.22171	9.55127	P	PPLX	LI		04				0		453	Europe/Vaduz	2015-07-05
+10347460	Birkahof	Birkahof		47.21623	9.55053	S	FRM	LI		04				0		441	Europe/Vaduz	2015-07-05
+10347461	Gampalütz	Gampalutz		47.21996	9.5506	P	PPLX	LI		04				0		447	Europe/Vaduz	2015-07-05
+10347462	Bretscha	Bretscha		47.21477	9.54225	P	PPLX	LI		04				0		452	Europe/Vaduz	2015-07-05
+10347481	Krummenacker	Krummenacker		47.22357	9.54653	P	PPLX	LI		04				0		515	Europe/Vaduz	2015-08-08
+10347482	Oksner	Oksner		47.22519	9.54801	P	PPLX	LI		04				0		529	Europe/Vaduz	2015-08-08
+10347483	Hinderbüela	Hinderbuela		47.21673	9.54433	P	PPLX	LI		04				0		452	Europe/Vaduz	2015-08-08
+10347498	Sandgrueb	Sandgrueb		47.21576	9.53801	P	PPLX	LI		04				0		466	Europe/Vaduz	2015-07-05
+10347499	Popers	Popers		47.21476	9.53686	P	PPLX	LI		04				0		474	Europe/Vaduz	2015-07-05
+10347500	Delehala	Delehala		47.21402	9.53883	T	HLL	LI		04				0		465	Europe/Vaduz	2015-08-08
+10347501	Barietle	Barietle	Barietle	47.2149	9.54921	V	CULT	LI		04				0		442	Europe/Vaduz	2016-03-11
+10347502	Röfeteile	Rofeteile	Rofeteile,Röfeteile	47.21166	9.55531	V	CULT	LI		04				0		442	Europe/Vaduz	2016-03-11
+10347503	Birka	Birka	Birka	47.21495	9.55208	V	CULT	LI		04				0		441	Europe/Vaduz	2016-03-11
+10347504	Schmelzhof	Schmelzhof	Schmelzhof	47.21799	9.56749	V	CULT	LI		04				0		445	Europe/Vaduz	2016-03-11
+10347505	Binza	Binza		47.22361	9.55372	P	PPLX	LI		04				0		448	Europe/Vaduz	2015-07-05
+10347506	Freschböchel	Freschbochel		47.24487	9.56002	T	SLP	LI		08				0		509	Europe/Vaduz	2015-07-05
+10347507	Konza	Konza		47.24413	9.5631	L	FLD	LI		08				0		577	Europe/Vaduz	2015-07-05
+10347523	Hinderschloss	Hinderschloss		47.23234	9.55598	P	PPLX	LI		08				0		647	Europe/Vaduz	2015-07-05
+10347524	Haberwald	Haberwald		47.22655	9.54587	L	FLD	LI		08				0		597	Europe/Vaduz	2015-07-05
+10347525	Rennhof	Rennhof		47.22898	9.54991	T	SLP	LI		04				0		628	Europe/Vaduz	2015-08-08
+10347561	Fehraguet	Fehraguet		47.22786	9.55344	T	SLP	LI		04				0		540	Europe/Vaduz	2015-08-08
+10347562	Loch	Loch		47.22853	9.53413	P	PPL	LI		08				0		530	Europe/Vaduz	2015-07-05
+10347563	Rütte	Rutte		47.23834	9.55495	L	FLD	LI		08				0		639	Europe/Vaduz	2015-07-05
+10347564	Ober Burg	Ober Burg		47.2328	9.55416	S	RUIN	LI		08				0		659	Europe/Vaduz	2015-07-05
+10347565	Betsche	Betsche		47.22708	9.54814	P	PPL	LI		04				0		580	Europe/Vaduz	2015-08-08
+10347566	Lums	Lums		47.22541	9.52606	P	PPL	LI		03				0		569	Europe/Vaduz	2015-08-08
+10347567	Kratzera	Kratzera		47.22745	9.52113	V	FRST	LI		00				0		530	Europe/Vaduz	2015-07-05
+10347568	Auäcker	Auacker	Auacker,Auäcker	47.23503	9.51879	V	CULT	LI		06				0		433	Europe/Vaduz	2016-03-11
+10347569	Lotzagütle	Lotzagutle		47.22391	9.53141	V	FRST	LI		03				0		611	Europe/Vaduz	2015-07-05
+10347570	Breita	Breita		47.22599	9.51669	P	PPL	LI		03				0		487	Europe/Vaduz	2015-07-05
+10347571	Badäl	Badal		47.22944	9.51906	P	PPL	LI		03				0		468	Europe/Vaduz	2015-08-08

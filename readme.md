@@ -117,7 +117,7 @@ $ rm -rf data.zip swissNAMES3D_LV03.zip swissNAMES3D_LV03 && cd /vagrant/
 Run the importer command:
 
 ```sh
-$ ./manage.py importswissname3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
+$ ./manage.py importswissnames3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
 ```
 
 ## Managing Celery

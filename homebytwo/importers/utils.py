@@ -1,9 +1,18 @@
+import csv
+from io import BytesIO, TextIOWrapper
+from typing import Iterator
+from zipfile import ZipFile
+
+from django.contrib.gis.geos import Point
+from django.db import transaction
 from django.http import Http404
 
 from requests import Session, codes
 from requests.exceptions import ConnectionError
+from tqdm import tqdm
 
-from ..routes.models import Route
+from ..routes.models import Place, PlaceType, Route
+from ..routes.models.place import PlaceTuple
 from .exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 
 
@@ -98,3 +107,94 @@ def get_proxy_class_from_data_source(data_source):
         raise Http404("Data Source does not exist")
     else:
         return route_class
+
+
+def download_zip_file(url: str) -> ZipFile:
+    """
+    download zip file from remote url to bytes buffer
+    and wrap it in ZipFile
+    """
+
+    block_size = 1024
+    bytes_io = BytesIO()
+
+    with Session() as session:
+        response = session.get(url, stream=True)
+        response.raise_for_status()
+        file_size = int(response.headers["Content-Length"])
+
+        for data in tqdm(
+            response.iter_content(block_size),
+            total=int(file_size / block_size),
+            unit="B",
+            unit_scale=block_size,
+            desc=f"downloading from {url}",
+        ):
+            bytes_io.write(data)
+
+        return ZipFile(bytes_io)
+
+
+def get_csv_line_count(csv_file: TextIOWrapper, header: bool) -> int:
+    """
+    Get the number of features in the csv file
+    """
+    count = sum(1 for _ in csv.reader(csv_file))
+    csv_file.seek(0)  # return the pointer to the first line for reuse
+
+    return max(count - int(header), 0)
+
+
+def save_places_from_generator(data: Iterator[PlaceTuple], count: int) -> str:
+    """
+    Save places from csv parsers in geonames.py or swissnames3d.py
+    """
+    created_counter = updated_counter = 0
+
+    with transaction.atomic():
+        for remote_place in tqdm(
+            data,
+            total=count,
+            unit="places",
+            unit_scale=True,
+            desc="saving places",
+        ):
+
+            # prepare default values
+            try:
+                place_type = PlaceType.objects.get(code=remote_place.place_type)
+            except PlaceType.DoesNotExist:
+                print(f"Place type code: {remote_place.place_type} does not exist.")
+                continue
+
+            default_values = {
+                "name": remote_place.name,
+                "place_type": place_type,
+                "geom": Point(
+                    remote_place.longitude,
+                    remote_place.latitude,
+                    srid=remote_place.srid,
+                ),
+                "altitude": remote_place.altitude,
+            }
+
+            # get or create Place
+            local_place, created = Place.objects.get_or_create(
+                data_source=remote_place.data_source,
+                source_id=remote_place.source_id,
+                defaults=default_values,
+            )
+
+            if created:
+                created_counter += 1
+
+            # update existing place with default values
+            else:
+                for key, value in default_values.items():
+                    setattr(local_place, key, value)
+                local_place.save()
+                updated_counter += 1
+
+        return "Created {} new places and updated {} places. ".format(
+            created_counter, updated_counter
+        )

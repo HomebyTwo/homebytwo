@@ -52,14 +52,14 @@ def coda(settings):
 
 
 @fixture
-def data_dir_path(request):
+def current_dir_path(request):
     return Path(request.module.__file__).parent.resolve()
 
 
 @fixture
-def open_file(data_dir_path):
+def open_file(current_dir_path):
     def _open_file(file, binary=False):
-        return open_data(file, data_dir_path, binary)
+        return open_data(file, current_dir_path, binary)
 
     return _open_file
 
@@ -106,22 +106,61 @@ def mocked_responses():
 
 
 @fixture
-def mock_json_response(read_file, mocked_responses):
-    def _mock_json_response(
+def mock_file_response(mocked_responses, read_file):
+    def _mock_file_response(
         url,
-        response_json,
+        response_file,
+        binary=False,
         method="get",
         status=200,
+        content_type="text/html; charset=utf-8",
+        content_length="0",
+        replace=False,
     ):
+        kwargs = {
+            "method": HTTP_METHODS.get(method),
+            "url": url,
+            "content_type": content_type,
+            "body": read_file(response_file, binary=binary),
+            "status": status,
+            "headers": {"content-length": content_length},
+        }
+        if replace:
+            mocked_responses.replace(**kwargs)
+        else:
+            mocked_responses.add(**kwargs)
+
+    return _mock_file_response
+
+
+@fixture
+def mock_html_response(mock_file_response):
+    return partial(mock_file_response, content_type="text/html; charset=utf-8")
+
+
+@fixture
+def mock_html_not_found(mock_html_response):
+    return partial(mock_html_response, response_file="404.html", status=404)
+
+
+@fixture
+def mock_connection_error(mocked_responses):
+    def _mock_connection_error(url):
         mocked_responses.add(
-            HTTP_METHODS.get(method),
-            url=url,
-            content_type="application/json",
-            body=read_file(response_json),
-            status=status,
+            responses.GET, url, body=ConnectionError("Connection error. ")
         )
 
-    return _mock_json_response
+    return _mock_connection_error
+
+
+@fixture
+def mock_json_response(mock_file_response):
+    return partial(mock_file_response, content_type="application/json")
+
+
+@fixture
+def mock_zip_response(mock_file_response):
+    return partial(mock_file_response, content_type="application/zip", binary=True)
 
 
 @fixture
@@ -137,7 +176,7 @@ def mock_strava_streams_response(settings, mock_json_response):
     ):
         mock_json_response(
             STRAVA_API_BASE_URL + "routes/%d/streams" % source_id,
-            response_json=streams_json,
+            response_file=streams_json,
             status=api_streams_status,
         )
 
@@ -176,12 +215,12 @@ def mock_route_details_responses(
             "switzerland_mobility": "switzerland_mobility_route.json",
         }
 
-        api_response_file = api_response_json or default_api_response_json[data_source]
+        api_response_json = api_response_json or default_api_response_json[data_source]
 
         for source_id in source_ids:
             mock_json_response(
                 url=api_request_url[data_source] % source_id,
-                response_json=api_response_file,
+                response_file=api_response_json,
                 status=api_response_status,
             )
 
@@ -204,8 +243,8 @@ def mock_route_details_response(mock_route_details_responses):
 
 @fixture
 def mock_routes_response(settings, mock_json_response):
-    def _mock_routes_response(athlete, data_source, response_json=None, status=200):
-        response_jsons = {
+    def _mock_routes_response(athlete, data_source, response_file=None, status=200):
+        response_files = {
             "strava": "strava_route_list.json",
             "switzerland_mobility": "tracks_list.json",
         }
@@ -216,7 +255,7 @@ def mock_routes_response(settings, mock_json_response):
         }
         mock_json_response(
             url=routes_urls[data_source],
-            response_json=response_json or response_jsons[data_source],
+            response_file=response_file or response_files[data_source],
             method="get",
             status=status,
         )
@@ -251,12 +290,12 @@ def mock_call_response(mocked_responses):
 @fixture
 def mock_call_json_response(read_file, mock_call_response):
     def _mock_call_json_response(
-        call, url, response_json, method="get", status=200, *args, **kwargs
+        call, url, response_file, method="get", status=200, *args, **kwargs
     ):
         return mock_call_response(
             call,
             url,
-            body=read_file(response_json),
+            body=read_file(response_file),
             method=method,
             status=status,
             *args,
@@ -273,7 +312,7 @@ def mock_call_json_responses(read_file, mocked_responses):
             mocked_responses.add(
                 HTTP_METHODS.get(response.get("method")) or responses.GET,
                 response["url"],
-                body=read_file(response["response_json"]),
+                body=read_file(response["response_file"]),
                 status=response.get("status") or 200,
                 content_type="application/json",
             )
@@ -310,15 +349,15 @@ def mock_import_route_call_response(client, mock_route_details_response):
 
 
 @fixture
-def mock_connection_error(mock_call_response):
+def mock_call_connection_error(mock_call_response):
     return partial(mock_call_response, body=ConnectionError("Connection error."))
 
 
 @fixture
-def mock_server_error(mock_call_json_response):
+def mock_call_server_error(mock_call_json_response):
     return partial(mock_call_json_response, status=500)
 
 
 @fixture
-def mock_not_found_error(mock_call_json_response):
-    return partial(mock_call_json_response, status=404)
+def mock_call_not_found(mock_call_json_response):
+    return partial(mock_call_json_response, response_file="404.json", status=404)

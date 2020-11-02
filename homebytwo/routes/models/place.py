@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime
 
 from django.contrib.gis.db import models
@@ -6,6 +7,20 @@ from django.core.serializers import serialize
 from gpxpy.gpx import GPXWaypoint
 
 from ...core.models import TimeStampedModel
+
+PlaceTuple = namedtuple(
+    "PlaceTuple",
+    [
+        "data_source",
+        "source_id",
+        "name",
+        "latitude",
+        "longitude",
+        "place_type",
+        "altitude",
+        "srid",
+    ],
+)
 
 
 class Place(TimeStampedModel):
@@ -16,123 +31,52 @@ class Place(TimeStampedModel):
     and for public transport connection.
     """
 
-    PLACE = "PLA"
-    LOCAL_PLACE = "LPL"
-    SINGLE_BUILDING = "BDG"
-    OPEN_BUILDING = "OBG"
-    TOWER = "TWR"
-    SACRED_BUILDING = "SBG"
-    CHAPEL = "CPL"
-    WAYSIDE_SHRINE = "SHR"
-    MONUMENT = "MNT"
-    FOUNTAIN = "FTN"
-    SUMMIT = "SUM"
-    HILL = "HIL"
-    PASS = "PAS"
     BELAY = "BEL"
-    WATERFALL = "WTF"
-    CAVE = "CAV"
-    SOURCE = "SRC"
-    BOULDER = "BLD"
-    POINT_OF_VIEW = "POV"
-    BUS_STATION = "BUS"
-    TRAIN_STATION = "TRA"
-    OTHER_STATION = "OTH"
     BOAT_STATION = "BOA"
-    EXIT = "EXT"
-    ENTRY_AND_EXIT = "EAE"
-    ROAD_PASS = "RPS"
-    INTERCHANGE = "ICG"
-    LOADING_STATION = "LST"
-    PARKING = "PKG"
+    BOULDER = "BLD"
+    BUS_STATION = "BUS"
+    CAVE = "CAV"
+    CHAPEL = "CPL"
     CUSTOMHOUSE_24H = "C24"
     CUSTOMHOUSE_24H_LIMITED = "C24LT"
     CUSTOMHOUSE_LIMITED = "CLT"
-    LANDMARK = "LMK"
-    HOME = "HOM"
-    WORK = "WRK"
-    GYM = "GYM"
-    HOLIDAY_PLACE = "HOL"
+    ENTRY_AND_EXIT = "EAE"
+    EXIT = "EXT"
+    FOUNTAIN = "FTN"
     FRIENDS_PLACE = "FRD"
+    GYM = "GYM"
+    HILL = "HIL"
+    HOLIDAY_PLACE = "HOL"
+    HOME = "HOM"
+    INTERCHANGE = "ICG"
+    LANDMARK = "LMK"
+    LOADING_STATION = "LST"
+    LOCAL_PLACE = "LPL"
+    MONUMENT = "MNT"
+    OPEN_BUILDING = "OBG"
     OTHER_PLACE = "CST"
+    OTHER_STATION = "OTH"
+    PARKING = "PKG"
+    PASS = "PAS"
+    PLACE = "PLA"
+    POINT_OF_VIEW = "POV"
+    ROAD_PASS = "RPS"
+    SACRED_BUILDING = "SBG"
+    SINGLE_BUILDING = "BDG"
+    SOURCE = "SRC"
+    SUMMIT = "SUM"
+    TOWER = "TWR"
+    TRAIN_STATION = "TRA"
+    WATERFALL = "WTF"
+    WAYSIDE_SHRINE = "SHR"
+    WORK = "WRK"
 
-    PLACE_TYPE_CHOICES = (
-        (PLACE, "Place"),
-        (LOCAL_PLACE, "Local Place"),
-        (
-            "Constructions",
-            (
-                (SINGLE_BUILDING, "Single Building"),
-                (OPEN_BUILDING, "Open Building"),
-                (TOWER, "Tower"),
-                (SACRED_BUILDING, "Sacred Building"),
-                (CHAPEL, "Chapel"),
-                (WAYSIDE_SHRINE, "Wayside Shrine"),
-                (MONUMENT, "Monument"),
-                (FOUNTAIN, "Fountain"),
-            ),
-        ),
-        (
-            "Features",
-            (
-                (SUMMIT, "Summit"),
-                (HILL, "Hill"),
-                (PASS, "Pass"),
-                (BELAY, "Belay"),
-                (WATERFALL, "Waterfall"),
-                (CAVE, "Cave"),
-                (SOURCE, "Source"),
-                (BOULDER, "Boulder"),
-                (POINT_OF_VIEW, "Point of View"),
-            ),
-        ),
-        (
-            "Public Transport",
-            (
-                (BUS_STATION, "Bus Station"),
-                (TRAIN_STATION, "Train Station"),
-                (OTHER_STATION, "Other Station"),
-                (BOAT_STATION, "Boat Station"),
-            ),
-        ),
-        (
-            "Roads",
-            (
-                (EXIT, "Exit"),
-                (ENTRY_AND_EXIT, "Entry and Exit"),
-                (ROAD_PASS, "Road Pass"),
-                (INTERCHANGE, "Interchange"),
-                (LOADING_STATION, "Loading Station"),
-                (PARKING, "Parking"),
-            ),
-        ),
-        (
-            "Customs",
-            (
-                (CUSTOMHOUSE_24H, "Customhouse 24h"),
-                (CUSTOMHOUSE_24H_LIMITED, "Customhouse 24h limited"),
-                (CUSTOMHOUSE_LIMITED, "Customhouse limited"),
-                (LANDMARK, "Landmark"),
-            ),
-        ),
-        (
-            "Personal",
-            (
-                (HOME, "Home"),
-                (WORK, "Work"),
-                (GYM, "Gym"),
-                (HOLIDAY_PLACE, "Holiday Place"),
-                (FRIENDS_PLACE, "Friend's place"),
-                (OTHER_PLACE, "Other place"),
-            ),
-        ),
-    )
     place_type = models.ForeignKey("PlaceType", on_delete="CASCADE")
     name = models.CharField(max_length=250)
     description = models.TextField(default="", blank=True)
     altitude = models.FloatField(null=True)
     data_source = models.CharField(default="homebytwo", max_length=50)
-    source_id = models.CharField("ID at the data source", max_length=50)
+    source_id = models.CharField("ID at the data source", max_length=50, null=True)
     geom = models.PointField(srid=21781)
 
     class Meta:
@@ -150,30 +94,13 @@ class Place(TimeStampedModel):
             self.place_type.name,
         )
 
-    def save(self, *args, **kwargs):
-        """
-        Source_id references the id at the data source.
-        The pair 'data_source' and 'source_id' should be unique together.
-        Places created in Homebytwo directly should thus have a source_id
-        set.
-        In other cases, e.g. importers.Swissname3dPlaces,
-        the source_id will be set by the importer model.
-
-        """
-        super(Place, self).save(*args, **kwargs)
-
-        # in case of manual homebytwo entries, the source_id will be empty.
-        if self.source_id == "":
-            self.source_id = str(self.id)
-            self.save()
-
     def get_coords(self, srid=4326):
         """
         returns a tuple with the place coords transformed to the requested srid
         """
-        return self.geom.transform(4326, clone=True).coords
+        return self.geom.transform(srid, clone=True).coords
 
-    def get_geojson(self, fields=["name", "place_type"]):
+    def get_geojson(self, fields):
         return serialize("geojson", [self], geometry_field="geom", fields=fields)
 
     def get_gpx_waypoint(self, route, line_location, start_time):

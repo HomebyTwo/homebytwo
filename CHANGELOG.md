@@ -67,7 +67,7 @@
 - The Strava API now uses refresh tokens and does not discloses email addresses
 
 ## [0.5.1] - 2018-08-31 Distinguish local from more important places
-- SwissNAME3D has added a lot of unimportant local places. We want to filter them more efficiently, so we need to distinguish them from the real thing.
+- SwissNAMES3D has added a lot of unimportant local places. We want to filter them more efficiently, so we need to distinguish them from the real thing.
 
 ## [0.5.0] - 2018-08-30 Filter proposed checkpoints by type
 ### Added
@@ -126,9 +126,9 @@
 ### Added
 - Import routes from Strava and Switzerland Mobility Plus
 
-## [0.0.x] - 2018-07-04 Import places from SwissNAME3D
+## [0.0.x] - 2018-07-04 Import places from SwissNAMES3D
 ### Added
-- use a command to load places from SwissNAME3d shapefile
+- use a command to load places from SwissNAMES3d shapefile
 
 ## [0.0.1] - 2016-12-04 First blood
 

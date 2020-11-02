@@ -10,7 +10,7 @@ from pandas import DataFrame, read_json
 from pytz import utc
 
 from ...routes.models import (Activity, ActivityPerformance, ActivityType, Gear, Place,
-                              Route, WebhookTransaction)
+                              PlaceType, Route, WebhookTransaction)
 from ...utils.factories import AthleteFactory, get_field_choices
 
 
@@ -75,15 +75,13 @@ class PlaceFactory(DjangoModelFactory):
     class Meta:
         model = Place
 
-    place_type = Faker(
-        "random_element",
-        elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
-    )
+    place_type = Iterator(PlaceType.objects.all())
     name = Faker("city")
     description = Faker("bs")
     altitude = Faker("random_int", min=0, max=4808)
-    public_transport = Faker("boolean", chance_of_getting_true=10)
     geom = Faker("location")
+    data_source = Faker("random_element", elements=["geonames", "swissnames3d"])
+    source_id = Sequence(lambda n: 1000 + n)
 
 
 class RouteFactory(DjangoModelFactory):
@@ -128,7 +126,7 @@ class ActivityFactory(DjangoModelFactory):
         "random_element",
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
-    gear = SubFactory(GearFactory)
+    gear = SubFactory(GearFactory, athlete=athlete)
     streams = DataFrame(
         {stream["type"]: stream["data"] for stream in json.loads(streams_json)}
     )

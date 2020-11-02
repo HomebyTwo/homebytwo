@@ -25,20 +25,20 @@ def test_report_usage_to_coda_success(
     response_mocks = [
         {
             "url": coda["doc_url"],
-            "response_json": "coda_doc.json",
+            "response_file": "coda_doc.json",
         },
         {
             "url": coda["table_url"],
-            "response_json": "coda_table.json",
+            "response_file": "coda_table.json",
         },
         {
             "url": coda["table_url"] + "/columns",
-            "response_json": "coda_columns.json",
+            "response_file": "coda_columns.json",
         },
         {
             "url": coda["table_url"] + "/rows",
             "method": "post",
-            "response_json": "coda_request.json",
+            "response_file": "coda_request.json",
             "status": 202,
         },
     ]
@@ -55,15 +55,15 @@ def test_report_usage_to_coda_failure(athlete, mock_call_json_responses, coda):
     response_mocks = [
         {
             "url": coda["doc_url"],
-            "response_json": "coda_doc.json",
+            "response_file": "coda_doc.json",
         },
         {
             "url": coda["table_url"],
-            "response_json": "coda_table.json",
+            "response_file": "coda_table.json",
         },
         {
             "url": coda["table_url"] + "/columns",
-            "response_json": "coda_missing_columns.json",
+            "response_file": "coda_missing_columns.json",
         },
     ]
     with raises(ImproperlyConfigured):
