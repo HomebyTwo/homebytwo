@@ -1,5 +1,6 @@
 import csv
-from io import BytesIO, TextIOWrapper
+from tempfile import TemporaryFile
+from io import TextIOWrapper
 from typing import Iterator
 from zipfile import ZipFile
 
@@ -116,7 +117,7 @@ def download_zip_file(url: str) -> ZipFile:
     """
 
     block_size = 1024
-    bytes_io = BytesIO()
+    tmp_file = TemporaryFile()
 
     with Session() as session:
         response = session.get(url, stream=True)
@@ -130,9 +131,9 @@ def download_zip_file(url: str) -> ZipFile:
             unit_scale=block_size,
             desc=f"downloading from {url}",
         ):
-            bytes_io.write(data)
+            tmp_file.write(data)
 
-        return ZipFile(bytes_io)
+        return ZipFile(tmp_file)
 
 
 def get_csv_line_count(csv_file: TextIOWrapper, header: bool) -> int:

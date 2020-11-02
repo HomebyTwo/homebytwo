@@ -34,10 +34,11 @@ def import_places_from_geonames(
     except ConnectionError:
         return f"Error connecting to {PLACE_DATA_URL.format(scope=scope)}. "
 
-    count = get_csv_line_count(file, header=False)
-    data = parse_places_from_csv(file)
+    with file:
+        count = get_csv_line_count(file, header=False)
+        data = parse_places_from_csv(file)
 
-    return save_places_from_generator(data, count, update=update)
+        return save_places_from_generator(data, count, update=update)
 
 
 def get_geonames_remote_file(scope: str = "allCountries") -> TextIOWrapper:

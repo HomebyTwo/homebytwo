@@ -72,10 +72,11 @@ def import_places_from_swissnames3d(
     except ConnectionError:
         return f"Error connecting to {PLACE_DATA_URL}. "
 
-    count = get_csv_line_count(file, header=True)
-    data = parse_places_from_csv(file, projection=projection)
+    with file:
+        count = get_csv_line_count(file, header=True)
+        data = parse_places_from_csv(file, projection=projection)
 
-    return save_places_from_generator(data=data, count=count, update=update)
+        return save_places_from_generator(data=data, count=count, update=update)
 
 
 def get_swissnames3d_remote_file(projection: str = "LV95") -> TextIOWrapper:
