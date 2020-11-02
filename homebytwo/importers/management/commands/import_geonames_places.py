@@ -29,16 +29,26 @@ class Command(BaseCommand):
             help="Choose countries to import from, e.g. FR. ",
         )
 
+        # update existing places
+        parser.add_argument(
+            "-u",
+            "--update",
+            action="store_true",
+            default=False,
+            help="Update existing places with remote data. ",
+        )
+
     def handle(self, *args, **options):
+        update = options["update"]
 
         files = options["files"] or []
         for file in files:
-            msg = import_places_from_geonames(file=file)
+            msg = import_places_from_geonames(file=file, update=update)
             self.stdout.write(self.style.SUCCESS(msg))
 
         countries = options["countries"] or []
         for country in countries:
-            msg = import_places_from_geonames(scope=country)
+            msg = import_places_from_geonames(scope=country, update=update)
             self.stdout.write(self.style.SUCCESS(msg))
 
         if not files and not countries:

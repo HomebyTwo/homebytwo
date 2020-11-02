@@ -14,7 +14,9 @@ PLACE_DATA_URL = "https://download.geonames.org/export/dump/{scope}.zip"
 
 
 def import_places_from_geonames(
-    scope: str = "allCountries", file: Optional[TextIOWrapper] = None
+    scope: str = "allCountries",
+    file: Optional[TextIOWrapper] = None,
+    update: bool = False,
 ) -> str:
     """
     import places from https://www.geonames.org/
@@ -23,6 +25,7 @@ def import_places_from_geonames(
     see https://www.geonames.org/countries/), e.g. `CH` or `allCountries`
     :param file: path to local unzipped file. If provided, the `scope` parameter
     will be ignored and the local file will be used.
+    :param update: should existing places be updated with the downloaded data.
     """
     try:
         file = file or get_geonames_remote_file(scope)
@@ -34,7 +37,7 @@ def import_places_from_geonames(
     count = get_csv_line_count(file, header=False)
     data = parse_places_from_csv(file)
 
-    return save_places_from_generator(data, count)
+    return save_places_from_generator(data, count, update=update)
 
 
 def get_geonames_remote_file(scope: str = "allCountries") -> TextIOWrapper:
