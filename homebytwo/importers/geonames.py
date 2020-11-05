@@ -94,6 +94,7 @@ def parse_places_from_csv(file: IO) -> Iterator[PlaceTuple]:
                 data_source="geonames",
                 source_id=int(row[0]),
                 name=row[1],
+                country=row[8],
                 latitude=float(row[4]),
                 longitude=float(row[5]),
                 place_type=row[7],

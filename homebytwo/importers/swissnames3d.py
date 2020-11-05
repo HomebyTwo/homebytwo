@@ -139,6 +139,7 @@ def parse_places_from_csv(
                 data_source="swissnames3d",
                 source_id=row[0],
                 name=row[6],
+                country="CH",
                 longitude=float(row[11]),
                 latitude=float(row[12]),
                 place_type=PLACE_TYPE_TRANSLATIONS[row[1]],

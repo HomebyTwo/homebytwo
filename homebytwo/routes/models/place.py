@@ -14,6 +14,7 @@ PlaceTuple = namedtuple(
         "data_source",
         "source_id",
         "name",
+        "country",
         "latitude",
         "longitude",
         "place_type",
@@ -74,10 +75,11 @@ class Place(TimeStampedModel):
     place_type = models.ForeignKey("PlaceType", on_delete="CASCADE")
     name = models.CharField(max_length=250)
     description = models.TextField(default="", blank=True)
-    altitude = models.FloatField(null=True)
     data_source = models.CharField(default="homebytwo", max_length=50)
     source_id = models.CharField("ID at the data source", max_length=50, null=True)
+    country = models.CharField(default="CH", max_length=2)
     geom = models.PointField(srid=21781)
+    altitude = models.FloatField(null=True)
 
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.

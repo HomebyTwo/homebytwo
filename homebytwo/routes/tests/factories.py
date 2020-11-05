@@ -9,9 +9,19 @@ from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
-from ...routes.models import (Activity, ActivityPerformance, ActivityType, Gear, Place,
-                              PlaceType, Route, WebhookTransaction)
+from ...routes.models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Gear,
+    Place,
+    PlaceType,
+    Route,
+    WebhookTransaction,
+)
 from ...utils.factories import AthleteFactory, get_field_choices
+
+COUNTRIES = ["CH", "DE", "FR", "IT"]
 
 
 class DjangoGeoLocationProvider(BaseProvider):
@@ -19,15 +29,11 @@ class DjangoGeoLocationProvider(BaseProvider):
     https://stackoverflow.com/a/58783744/12427785
     """
 
-    countries = ["CH", "DE", "FR", "IT"]
-
     def location(self, country=None):
         """
         generate a GeoDjango Point object with a custom Faker provider
         """
-        country_code = (
-            country or Faker("random_element", elements=self.countries).generate()
-        )
+        country_code = country or Faker("random_element", elements=COUNTRIES).generate()
         faker = Faker("local_latlng", country_code=country_code, coords_only=True)
         coords = faker.generate()
         return Point(x=float(coords[1]), y=float(coords[0]), srid=4326)
@@ -78,8 +84,9 @@ class PlaceFactory(DjangoModelFactory):
     place_type = Iterator(PlaceType.objects.all())
     name = Faker("city")
     description = Faker("bs")
+    country = Faker("random_element", elements=COUNTRIES)
+    geom = Faker("location", country=country.generate())
     altitude = Faker("random_int", min=0, max=4808)
-    geom = Faker("location")
     data_source = Faker("random_element", elements=["geonames", "swissnames3d"])
     source_id = Sequence(lambda n: 1000 + n)
 
