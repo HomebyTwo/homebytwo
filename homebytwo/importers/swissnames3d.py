@@ -54,7 +54,7 @@ PLACE_TYPE_TRANSLATIONS = {
 
 
 def import_places_from_swissnames3d(
-    projection: str = "LV95", file: Optional[TextIOWrapper] = None, update: bool = False
+    projection: str = "LV95", file: Optional[TextIOWrapper] = None
 ) -> str:
     """
     import places from SwissNAMES3D
@@ -76,7 +76,7 @@ def import_places_from_swissnames3d(
         count = get_csv_line_count(file, header=True)
         data = parse_places_from_csv(file, projection=projection)
 
-        return save_places_from_generator(data=data, count=count, update=update)
+        return save_places_from_generator(data=data, count=count)
 
 
 def get_swissnames3d_remote_file(projection: str = "LV95") -> TextIOWrapper:

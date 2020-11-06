@@ -146,9 +146,7 @@ def get_csv_line_count(csv_file: TextIOWrapper, header: bool) -> int:
     return max(count - int(header), 0)
 
 
-def save_places_from_generator(
-    data: Iterator[PlaceTuple], count: int, update: bool
-) -> str:
+def save_places_from_generator(data: Iterator[PlaceTuple], count: int) -> str:
     """
     Save places from csv parsers in geonames.py or swissnames3d.py
     """
@@ -163,7 +161,7 @@ def save_places_from_generator(
             desc="saving places",
         ):
 
-            # prepare default values
+            # retrieve PlaceType from the database
             try:
                 place_type = PlaceType.objects.get(code=remote_place.place_type)
             except PlaceType.DoesNotExist:
@@ -181,22 +179,15 @@ def save_places_from_generator(
                 "altitude": remote_place.altitude,
             }
 
-            # get or create Place
-            local_place, created = Place.objects.get_or_create(
+            # create or update Place
+            _, created = Place.objects.update_or_create(
                 data_source=remote_place.data_source,
                 source_id=remote_place.source_id,
                 defaults=default_values,
             )
 
-            if created:
-                created_counter += 1
-
-            # update existing place with default values
-            elif update:
-                for key, value in default_values.items():
-                    setattr(local_place, key, value)
-                local_place.save()
-                updated_counter += 1
+            created_counter += int(created)
+            updated_counter += int(not created)
 
         return "Created {} new places and updated {} places. ".format(
             created_counter, updated_counter

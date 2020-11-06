@@ -30,18 +30,8 @@ class Command(BaseCommand):
             help="Choose a swiss projection LV95 (default) or LV03. ",
         )
 
-        # update existing places
-        parser.add_argument(
-            "-u",
-            "--update",
-            action="store_true",
-            default=False,
-            help="Update existing places with remote data. ",
-        )
-
     def handle(self, *args, **options):
         file = options["file"]
         projection = options["projection"]
-        update = options["update"]
-        msg = import_places_from_swissnames3d(projection, file, update)
+        msg = import_places_from_swissnames3d(projection, file)
         self.stdout.write(self.style.SUCCESS(msg))

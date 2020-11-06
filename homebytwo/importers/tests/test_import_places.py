@@ -78,7 +78,7 @@ def test_save_places_from_generator():
         for place in places
     )
     msg = "Created 20 new places and updated 5 places. "
-    assert save_places_from_generator(data, count=20, update=True) == msg
+    assert save_places_from_generator(data, count=20) == msg
     assert Place.objects.count() == 25
 
 
@@ -87,7 +87,7 @@ def test_save_places_from_generator_empty():
     places = []
     data = (place for place in places)
     msg = "Created 0 new places and updated 0 places. "
-    assert save_places_from_generator(data, count=0, update=False) == msg
+    assert save_places_from_generator(data, count=0) == msg
     assert Place.objects.count() == 0
 
 
@@ -111,7 +111,7 @@ def test_save_places_from_generator_bad_place_type(capsys):
         for place in [place]
     )
     msg = "Created 0 new places and updated 0 places. "
-    assert save_places_from_generator(data, count=1, update=True) == msg
+    assert save_places_from_generator(data, count=1) == msg
     captured = capsys.readouterr()
     assert "Place type code: BADCODE does not exist.\n" in captured.out
     assert Place.objects.count() == 0
@@ -160,11 +160,8 @@ def test_import_places_from_geonames_not_found(mock_html_not_found):
 @pytest.mark.django_db
 def test_update_place_types_from_geonames(mock_html_response):
     url = PLACE_TYPE_URL
-    assert PlaceType.objects.count() == 681
-    mock_html_response(url, "geonames_codes_one.html")
     mock_html_response(url, "geonames_codes.html")
-    update_place_types_from_geonames()
-    assert PlaceType.objects.count() == 1
+    PlaceType.objects.all().delete()
     update_place_types_from_geonames()
     assert PlaceType.objects.count() == 681
 
@@ -190,7 +187,7 @@ def test_unzip_swissnames3d_remote_file(open_file):
 @pytest.mark.django_db
 def test_import_places_from_swissnames3d(open_file):
     file = open_file("swissnames3d_LV03_test.csv")
-    msg = "Created 146 new places and updated 0 places. "
+    msg = "Created 146 new places and updated 46 places. "
     assert import_places_from_swissnames3d(projection="LV03", file=file) == msg
 
 
@@ -228,7 +225,6 @@ def test_import_geonames_places_multiple(
         "LI",
         "ZZ",
         "XX",
-        "--update",
         "-f",
         file_path.as_posix(),
         stdout=out,
@@ -261,7 +257,7 @@ def test_import_swissnames3d_places(mock_zip_response):
     out = StringIO()
     call_command("import_swissnames3d_places", stdout=out)
 
-    msg = "Created 146 new places and updated 0 places. "
+    msg = "Created 146 new places and updated 46 places. "
     assert msg in out.getvalue()
     assert Place.objects.filter(data_source="swissnames3d").count() == 146
 
@@ -274,7 +270,7 @@ def test_import_swissnames3d_places_projection(mock_zip_response):
     out = StringIO()
     call_command("import_swissnames3d_places", "-p", "LV03", stdout=out)
 
-    msg = "Created 146 new places and updated 0 places. "
+    msg = "Created 146 new places and updated 46 places. "
     assert msg in out.getvalue()
     assert Place.objects.filter(data_source="swissnames3d").count() == 146
 
@@ -283,7 +279,7 @@ def test_import_swissnames3d_places_projection(mock_zip_response):
 def test_import_swissnames3d_places_file(current_dir_path):
     file_path = current_dir_path / "data/swissnames3d_LV95_test.csv"
     out = StringIO()
-    call_command("import_swissnames3d_places", "-u", "-f", file_path.as_posix(), stdout=out)
+    call_command("import_swissnames3d_places", "-f", file_path.as_posix(), stdout=out)
 
     msg = "Created 146 new places and updated 46 places. "
     assert msg in out.getvalue()
