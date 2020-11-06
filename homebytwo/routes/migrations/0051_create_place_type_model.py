@@ -9,41 +9,6 @@ from homebytwo.importers.geonames import update_place_types_from_geonames
 
 PlaceTypeTuple = namedtuple("PlaceType", ["code", "place_class", "name", "description"])
 
-PLACE_TYPE_TRANSLATIONS = {
-    "BDG": "SBDG",
-    "BEL": "CLF",
-    "BLD": "RK",
-    "BOA": "BOSTP",
-    "BUS": "BUSTP",
-    "C24": "PSTB",
-    "C24LT": "PSTB",
-    "CAV": "CAVE",
-    "CLT": "PSTB",
-    "CPL": "CH",
-    "EAE": "RDJCT",
-    "EXT": "RDJCT",
-    "FTN": "WTRW",
-    "HIL": "HLL",
-    "ICG": "RDJCT",
-    "LMK": "BP",
-    "LPL": "PPLL",
-    "LST": "TRANT",
-    "MNT": "MNMT",
-    "OBG": "BLDG",
-    "OTH": "OSTP",
-    "PAS": "PASS",
-    "PLA": "PPL",
-    "POV": "PROM",
-    "RPS": "PASS",
-    "SBG": "CH",
-    "SHR": "SHRN",
-    "SRC": "SPNG",
-    "SUM": "PK",
-    "TRA": "RSTP",
-    "TWR": "TOWR",
-    "WTF": "FLLS",
-}
-
 
 def import_place_types_from_geonames(apps, schema_editor):
     update_place_types_from_geonames()
@@ -87,34 +52,61 @@ def import_place_types_for_swissnames3d(apps, schema_editor):
             "feature_class": place_type.place_class,
             "description": place_type.description,
         }
-        place, created = PlaceType.objects.get_or_create(
-            code=place_type.code, defaults=defaults
-        )
-        if not created:
-            for key, value in defaults.items():
-                place_type.setattr(key, value)
-                place_type.save()
+        PlaceType.objects.update_or_create(code=place_type.code, defaults=defaults)
 
 
 def migrate_place_types(apps, schema_editor):
+    place_type_translations = {
+        "BDG": "SBDG",
+        "BEL": "CLF",
+        "BLD": "RK",
+        "BOA": "BOSTP",
+        "BUS": "BUSTP",
+        "C24": "PSTB",
+        "C24LT": "PSTB",
+        "CAV": "CAVE",
+        "CLT": "PSTB",
+        "CPL": "CH",
+        "EAE": "RDJCT",
+        "EXT": "RDJCT",
+        "FTN": "WTRW",
+        "HIL": "HLL",
+        "ICG": "RDJCT",
+        "LMK": "BP",
+        "LPL": "PPLL",
+        "LST": "TRANT",
+        "MNT": "MNMT",
+        "OBG": "BLDG",
+        "OTH": "OSTP",
+        "PAS": "PASS",
+        "PLA": "PPL",
+        "POV": "PROM",
+        "RPS": "PASS",
+        "SBG": "CH",
+        "SHR": "SHRN",
+        "SRC": "SPNG",
+        "SUM": "PK",
+        "TRA": "RSTP",
+        "TWR": "TOWR",
+        "WTF": "FLLS",
+    }
     Place = apps.get_model("routes", "Place")
     PlaceType = apps.get_model("routes", "PlaceType")
 
-    for place in tqdm(
-        Place.objects.all(),
+    for old, new in tqdm(
+        place_type_translations.items(),
         desc="updating places to new place types",
-        unit="places",
+        unit="types",
         unit_scale=True,
-        total=Place.objects.count(),
+        total=len(place_type_translations),
     ):
-        new_place_code = PLACE_TYPE_TRANSLATIONS[place.old_place_type]
         try:
-            place_type = PlaceType.objects.get(code=new_place_code)
+            new_place_type = PlaceType.objects.get(code=new)
         except PlaceType.DoesNotExist:
-            print(f"Place type {place.old_place_type} does not exist")
-            place.delete()
-        place.place_type = place_type
-        place.save(update_fields=["place_type"])
+            print(f"Place type {new} does not exist")
+            Place.objects.filter(old_place_type=old).delete()
+
+        Place.objects.filter(old_place_type=old).update(place_type=new_place_type)
 
 
 class Migration(migrations.Migration):
