@@ -109,6 +109,12 @@ def migrate_place_types(apps, schema_editor):
         Place.objects.filter(old_place_type=old).update(place_type=new_place_type)
 
 
+def migrate_swissnames3d_data_source(apps, schema_editor):
+    print("updating data_source of swissnames3d places")
+    Place = apps.get_model("routes", "Place")
+    Place.objects.filter(data_source="swissname3d").update(data_source="swissnames3d")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -163,6 +169,9 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(
             migrate_place_types,
+        ),
+        migrations.RunPython(
+            migrate_swissnames3d_data_source,
         ),
         migrations.RemoveField(
             model_name="place",
