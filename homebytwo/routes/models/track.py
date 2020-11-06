@@ -51,7 +51,7 @@ class Track(TimeStampedModel):
     total_distance = models.FloatField("Total length of the track in m", default=0)
 
     # geographic information
-    geom = models.LineStringField("line geometry", srid=21781)
+    geom = models.LineStringField("line geometry", srid=3857)
 
     # Start and End-place
     start_place = models.ForeignKey(

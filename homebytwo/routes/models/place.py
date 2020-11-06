@@ -77,7 +77,6 @@ class Place(TimeStampedModel):
     description = models.TextField(default="", blank=True)
     data_source = models.CharField(default="homebytwo", max_length=50)
     source_id = models.CharField("ID at the data source", max_length=50, null=True)
-    geom = models.PointField(srid=21781)
     country = models.ForeignKey(
         "Country",
         null=True,
@@ -85,6 +84,7 @@ class Place(TimeStampedModel):
         related_name="places",
         on_delete="SET_NULL",
     )
+    geom = models.PointField(srid=3857)
     altitude = models.FloatField(null=True)
 
     class Meta:
