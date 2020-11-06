@@ -16,7 +16,6 @@ PLACE_DATA_URL = "https://download.geonames.org/export/dump/{scope}.zip"
 def import_places_from_geonames(
     scope: str = "allCountries",
     file: Optional[TextIOWrapper] = None,
-    update: bool = False,
 ) -> str:
     """
     import places from https://www.geonames.org/
@@ -38,7 +37,7 @@ def import_places_from_geonames(
         count = get_csv_line_count(file, header=False)
         data = parse_places_from_csv(file)
 
-        return save_places_from_generator(data, count, update=update)
+        return save_places_from_generator(data, count)
 
 
 def get_geonames_remote_file(scope: str = "allCountries") -> TextIOWrapper:
@@ -120,7 +119,6 @@ def update_place_types_from_geonames() -> None:
 
     # parse place types from table rows
     table_rows = feature_type_table.xpath(".//tr")
-    place_type_pks = []
     for row in table_rows:
 
         # header rows contain class information
@@ -134,12 +132,12 @@ def update_place_types_from_geonames() -> None:
             code, name, description = [
                 element.text_content() for element in row.xpath(".//td")
             ]
-            place_type, created = PlaceType.objects.get_or_create(
-                feature_class=current_feature_class,
+            defaults = {
+                "feature_class": current_feature_class,
+                "name": name,
+                "description": description,
+            }
+            PlaceType.objects.update_or_create(
                 code=code,
-                name=name,
-                description=description,
+                defaults=defaults,
             )
-            place_type_pks.append(place_type.pk)
-
-    PlaceType.objects.exclude(pk__in=place_type_pks).delete()

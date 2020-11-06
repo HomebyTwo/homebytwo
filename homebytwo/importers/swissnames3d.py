@@ -3,8 +3,10 @@ from io import TextIOWrapper
 from typing import Iterator, Optional
 from zipfile import ZipFile
 
+from django.contrib.gis.geos import Point
 from requests import ConnectionError, HTTPError
 
+from ..routes.models import Country
 from ..routes.models.place import PlaceTuple
 from .utils import download_zip_file, get_csv_line_count, save_places_from_generator
 
@@ -133,15 +135,24 @@ def parse_places_from_csv(
     # skip header row
     next(data_reader)
 
+    # get Liechtenstein and Switzerland to determine country
+    li, ch = Country.objects.filter(iso2__in=["LI", "CH"])
+
     for row in data_reader:
         if row[7] == "offiziell":
+            # get country information
+            longitude = float(row[11])
+            latitude = float(row[12])
+            geom = Point(x=longitude, y=latitude, srid=PROJECTION_SRID[projection])
+            country = li if geom.within(li.geom) else ch
+
             yield PlaceTuple(
                 data_source="swissnames3d",
                 source_id=row[0],
                 name=row[6],
-                country="CH",
-                longitude=float(row[11]),
-                latitude=float(row[12]),
+                country=country,
+                longitude=longitude,
+                latitude=latitude,
                 place_type=PLACE_TYPE_TRANSLATIONS[row[1]],
                 altitude=float(row[13]),
                 srid=PROJECTION_SRID[projection],

@@ -9,6 +9,7 @@ from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
+from ..models import Country
 from ...routes.models import (
     Activity,
     ActivityPerformance,
@@ -84,8 +85,8 @@ class PlaceFactory(DjangoModelFactory):
     place_type = Iterator(PlaceType.objects.all())
     name = Faker("city")
     description = Faker("bs")
-    country = Faker("random_element", elements=COUNTRIES)
-    geom = Faker("location", country=country.generate())
+    country = Iterator(Country.objects.filter(iso2__in=COUNTRIES))
+    geom = LazyAttribute(lambda o: Faker("location", country=o.country.iso2).generate())
     altitude = Faker("random_int", min=0, max=4808)
     data_source = Faker("random_element", elements=["geonames", "swissnames3d"])
     source_id = Sequence(lambda n: 1000 + n)

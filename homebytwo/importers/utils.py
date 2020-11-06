@@ -12,7 +12,7 @@ from requests import Session, codes
 from requests.exceptions import ConnectionError
 from tqdm import tqdm
 
-from ..routes.models import Place, PlaceType, Route
+from ..routes.models import Place, PlaceType, Route, Country
 from ..routes.models.place import PlaceTuple
 from .exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 
@@ -168,9 +168,19 @@ def save_places_from_generator(data: Iterator[PlaceTuple], count: int) -> str:
                 print(f"Place type code: {remote_place.place_type} does not exist.")
                 continue
 
+            # country can be str or Country instance
+            country = remote_place.country
+            if country and not isinstance(country, Country):
+                try:
+                    country = Country.objects.get(iso2=remote_place.country)
+                except Country.DoesNotExist:
+                    print(f"Country code: {remote_place.country} does not exist.")
+                    continue
+
             default_values = {
                 "name": remote_place.name,
                 "place_type": place_type,
+                "country": country,
                 "geom": Point(
                     remote_place.longitude,
                     remote_place.latitude,
