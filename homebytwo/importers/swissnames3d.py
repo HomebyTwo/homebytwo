@@ -4,6 +4,7 @@ from typing import Iterator, Optional
 from zipfile import ZipFile
 
 from django.contrib.gis.geos import Point
+
 from requests import ConnectionError, HTTPError
 
 from ..routes.models import Country

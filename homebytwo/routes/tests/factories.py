@@ -9,7 +9,6 @@ from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
-from ..models import Country
 from ...routes.models import (
     Activity,
     ActivityPerformance,
@@ -21,6 +20,7 @@ from ...routes.models import (
     WebhookTransaction,
 )
 from ...utils.factories import AthleteFactory, get_field_choices
+from ..models import Country
 
 COUNTRIES = ["CH", "DE", "FR", "IT"]
 

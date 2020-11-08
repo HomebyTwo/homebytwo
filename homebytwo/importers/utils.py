@@ -1,6 +1,6 @@
 import csv
-from tempfile import TemporaryFile
 from io import TextIOWrapper
+from tempfile import TemporaryFile
 from typing import Iterator
 from zipfile import ZipFile
 
@@ -12,7 +12,7 @@ from requests import Session, codes
 from requests.exceptions import ConnectionError
 from tqdm import tqdm
 
-from ..routes.models import Place, PlaceType, Route, Country
+from ..routes.models import Country, Place, PlaceType, Route
 from ..routes.models.place import PlaceTuple
 from .exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 
