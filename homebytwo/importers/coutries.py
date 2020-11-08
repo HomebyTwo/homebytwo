@@ -15,6 +15,7 @@ GEO_COUNTRIES_URL = (
 def import_country_geometries():
     print("importing country geometries...")
     response = requests.get(GEO_COUNTRIES_URL)
+    response.raise_for_status()
     geom_json = response.json()
     for country in geom_json["features"]:
         defaults = {

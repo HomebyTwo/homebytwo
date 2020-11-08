@@ -65,7 +65,7 @@ def parse_route_data(raw_route_json):
 
     # create geom from lat, lng data columns
     coords = list(zip(data["lat"], data["lng"]))
-    geom = LineString(coords, srid=21781)
+    geom = LineString(coords, srid=21781).transform(3857, clone=True)
 
     # remove redundant lat, lng columns in data
     data.drop(columns=["lat", "lng"], inplace=True)

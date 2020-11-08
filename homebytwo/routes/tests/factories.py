@@ -107,8 +107,8 @@ class RouteFactory(DjangoModelFactory):
     total_elevation_loss = Faker("random_int", min=0, max=5000)
     total_distance = Faker("random_int", min=1, max=5000)
     geom = fromfile(get_data_file_path("route.ewkb").as_posix())
-    start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0]))
-    end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1]))
+    start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0], srid=geom.srid))
+    end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1], srid=geom.srid))
     data = read_json(load_data("route_data.json"), orient="records")
 
 

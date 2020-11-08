@@ -102,7 +102,9 @@ class RouteTestCase(TestCase):
         route = RouteFactory.build(
             data=data,
             total_distance=1000,
-            geom=LineString(((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781),
+            geom=LineString(
+                ((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781
+            ).transform(3857, clone=True),
         )
         start_altitude = route.get_start_altitude()
         end_altitude = route.get_end_altitude()
@@ -126,16 +128,19 @@ class RouteTestCase(TestCase):
     def test_get_start_and_end_places(self):
         route = RouteFactory.build()
 
-        PlaceFactory(name="Start_Place", geom="POINT(%s %s)" % route.geom[0])
-        PlaceFactory(name="End_Place", geom="POINT(%s %s)" % route.geom[-1])
+        route.start_place.name = "Start Place"
+        route.start_place.save()
+        route.end_place.name = "End Place"
+        route.end_place.save()
+
         start_place = route.get_closest_places_along_line()[0]
         end_place = route.get_closest_places_along_line(1)[0]
 
         self.assertEqual(start_place.distance_from_line.m, 0)
-        self.assertEqual(start_place.name, "Start_Place")
+        self.assertEqual(start_place.name, "Start Place")
 
         self.assertEqual(end_place.distance_from_line.m, 0)
-        self.assertEqual(end_place.name, "End_Place")
+        self.assertEqual(end_place.name, "End Place")
 
     @override_settings(
         STRAVA_ROUTE_URL="https://strava_route_url/%d",
@@ -493,51 +498,33 @@ def test_find_additional_places(athlete, switzerland_mobility_data_from_json):
 
     PlaceFactory(
         name="Sur Frête",
-        geom=Point(x=565586.0225000009, y=112197.4462499991, srid=21781),
-    )
-    PlaceFactory(
-        name="Noudane Dessus",
-        geom=Point(x=565091.2349999994, y=111464.0387500003, srid=21781),
+        geom=Point(x=778472.6635249017, y=5806086.097085138, srid=3857),
     )
     PlaceFactory(
         name="Col du Jorat",
-        geom=Point(x=564989.3350000009, y=111080.0012499988, srid=21781),
-    )
-    PlaceFactory(
-        name="Saut Peca",
-        geom=Point(x=564026.3412499987, y=110762.4175000004, srid=21781),
+        geom=Point(x=777622.1292536028, y=5804465.781388815, srid=3857),
     )
     PlaceFactory(
         name="Haute Cime",
-        geom=Point(x=560188.0975000001, y=112309.0137500018, srid=21781),
+        geom=Point(x=770692.9180045408, y=5806199.473715298, srid=3857),
     )
     PlaceFactory(
         name="Col des Paresseux",
-        geom=Point(x=560211.875, y=112011.8737500012, srid=21781),
+        geom=Point(x=770730.0014088114, y=5805770.126578271, srid=3857),
     )
     PlaceFactory(
         name="Col de Susanfe",
-        geom=Point(x=559944.7375000007, y=110888.6424999982, srid=21781),
-    )
-    PlaceFactory(
-        name="Cabane de Susanfe CAS",
-        geom=Point(x=558230.2575000003, y=109914.8912499994, srid=21781),
-    )
-    PlaceFactory(
-        name="Pas d'Encel",
-        geom=Point(x=556894.5662500001, y=110045.9137500003, srid=21781),
-    )
-    PlaceFactory(
-        name="Refuge de Bonaveau",
-        geom=Point(x=555775.7837500013, y=111198.6625000015, srid=21781),
+        geom=Point(x=770355.7793282912, y=5804143.91778818, srid=3857),
     )
 
     checkpoints = route.find_possible_checkpoints(max_distance=100)
+    checkpoint_names = [checkpoint.place.name for checkpoint in checkpoints]
 
-    assert len(checkpoints) == 12
-    for checkpoint in checkpoints:
-        assert not checkpoint.line_location == 0
-        assert not checkpoint.line_location == 1
+    assert len(checkpoints) == 6
+    assert checkpoint_names.count("Col des Paresseux") == 2
+    assert "Haute Cime" in [checkpoint.place.name for checkpoint in checkpoints]
+    assert route.start_place.name not in checkpoint_names
+    assert route.end_place.name not in checkpoint_names
 
 
 def test_calculate_step_distances():
@@ -886,9 +873,7 @@ def test_get_checkpoints_list_empty(athlete, client):
     assert not response.json()["checkpoints"]
 
 
-def test_get_checkpoints_list(
-    athlete, client, switzerland_mobility_data_from_json
-):
+def test_get_checkpoints_list(athlete, client, switzerland_mobility_data_from_json):
     number_of_checkpoints = 20
     geom = LineString([(x, 0) for x in range(number_of_checkpoints + 2)])
     route = RouteFactory(athlete=athlete, start_place=None, end_place=None, geom=geom)

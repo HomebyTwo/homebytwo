@@ -3,7 +3,6 @@ from os.path import dirname, realpath
 from xml.dom import minidom
 
 from django.conf import settings
-from django.contrib.gis.geos import Point
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -12,9 +11,9 @@ from garmin_uploader import api as garmin_api
 from mock import patch
 
 from ...utils.factories import AthleteFactory
+from ...utils.tests import create_route_with_checkpoints
 from ..tasks import upload_route_to_garmin_task
 from ..utils import GARMIN_ACTIVITY_TYPE_MAP
-from .factories import PlaceFactory, RouteFactory
 
 CURRENT_DIR = dirname(realpath(__file__))
 
@@ -142,22 +141,9 @@ class GPXTestCase(TestCase):
     def setUp(self):
         self.athlete = AthleteFactory(user__password="testpassword")
         self.client.login(username=self.athlete.user.username, password="testpassword")
-        self.route = RouteFactory(athlete=self.athlete)
-
-        # add checkpoints to the route
-        number_of_checkpoints = 9
-        for index in range(1, number_of_checkpoints + 1):
-            line_location = index / (number_of_checkpoints + 1)
-            place = PlaceFactory(
-                geom=Point(
-                    *self.route.geom.coords[
-                        int(self.route.geom.num_coords * line_location)
-                    ]
-                )
-            )
-            self.route.places.add(
-                place, through_defaults={"line_location": line_location}
-            )
+        self.route = create_route_with_checkpoints(
+            number_of_checkpoints=9, athlete=self.athlete
+        )
 
     def test_gpx_no_start_no_end_no_checkpoints(self):
         self.route.calculate_projected_time_schedule(self.athlete.user)
@@ -180,26 +166,6 @@ class GPXTestCase(TestCase):
 
         self.assertEqual(len(waypoints), self.route.places.count() + 2)
         self.assertEqual(len(trackpoints), len(self.route.data.index))
-
-    def test_download_route_gpx_view(self):
-        wpt_xml = '<wpt lat="{1}" lon="{0}">'
-        xml_start_place = wpt_xml.format(*self.route.start_place.get_coords())
-        xml_end_place = wpt_xml.format(*self.route.end_place.get_coords())
-        xml_waypoints = [
-            wpt_xml.format(*place.get_coords()) for place in self.route.places.all()
-        ]
-        xml_segment_name = "<name>{}</name>".format(self.route.name)
-
-        url = reverse("routes:gpx", kwargs={"pk": self.route.pk})
-        response = self.client.get(url)
-        file_content = b"".join(response.streaming_content).decode("utf-8")
-
-        for xml_waypoint in xml_waypoints:
-            self.assertIn(xml_waypoint, file_content)
-
-        self.assertIn(xml_start_place, file_content)
-        self.assertIn(xml_end_place, file_content)
-        self.assertIn(xml_segment_name, file_content)
 
     def test_download_route_gpx_other_athlete_view(self):
         second_athlete = AthleteFactory(user__password="123456")
@@ -331,3 +297,19 @@ class GPXTestCase(TestCase):
         response = upload_route_to_garmin_task(self.route.pk, self.athlete.id)
 
         self.assertIn("Failed to delete activity", response)
+
+
+def test_download_route_gpx_view(athlete, client):
+    route = create_route_with_checkpoints(number_of_checkpoints=5, athlete=athlete)
+    wpt_xml = '<wpt lat="{1}" lon="{0}">'
+    xml_waypoints = [
+        wpt_xml.format(*place.get_coords()) for place in route.places.all()
+    ]
+    xml_segment_name = "<name>{}</name>".format(route.name)
+
+    url = route.get_absolute_url(action="gpx")
+    response = client.get(url)
+    file_content = b"".join(response.streaming_content).decode("utf-8")
+    assert xml_segment_name in file_content
+    for xml_waypoint in xml_waypoints:
+        assert xml_waypoint in file_content
