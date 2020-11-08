@@ -9,7 +9,7 @@ class Country(models.Model):
     iso3 = models.CharField(max_length=3, primary_key=True)
     iso2 = models.CharField(max_length=2)
     name = models.CharField(max_length=250)
-    geom = models.MultiPolygonField(srid=4326)
+    geom = models.MultiPolygonField()
 
     def __str__(self):
         return self.name

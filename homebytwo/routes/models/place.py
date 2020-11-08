@@ -85,7 +85,7 @@ class Place(TimeStampedModel):
         on_delete="SET_NULL",
     )
     geom = models.PointField(srid=3857)
-    altitude = models.FloatField(null=True)
+    altitude = models.FloatField(null=True, blank=True)
 
     class Meta:
         # The pair 'data_source' and 'source_id' should be unique together.
