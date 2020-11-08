@@ -1,4 +1,11 @@
 # Change Log
+## [0.13.0] - 2020-11-08 import places from geonames.org
+- Places can be imported from geonames.org for any country
+- Import SwissNAMES3D from CSV file instead of shapefile
+- Use a worldwide geometric projection SRID 3857
+- New country model to locate places and routes
+- Add a country field to places
+
 ## [0.12.1] - 2020-10-23 Remove extreme gradient values from imported routes
 - Routes from Strava now have a much more realistic schedule
 
