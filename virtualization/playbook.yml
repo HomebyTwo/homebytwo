@@ -12,7 +12,6 @@
     - { role: rabbitmq }
     - { role: webpack }
     - { role: homebytwo_env }
-    - { role: swissname3d }
 
   tasks:
     - name: Ensure celery service exists

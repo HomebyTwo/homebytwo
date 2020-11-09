@@ -3,7 +3,8 @@ from pathlib import Path
 from django.forms import model_to_dict
 
 from homebytwo.routes.forms import RouteForm
-from homebytwo.routes.tests.factories import PlaceFactory
+from homebytwo.routes.models import Place
+from homebytwo.routes.tests.factories import PlaceFactory, RouteFactory
 
 
 def open_data(file, dir_path, binary=True):
@@ -29,6 +30,18 @@ def create_checkpoints_from_geom(geom, number_of_checkpoints):
         checkpoints_data.append("_".join([str(place.id), str(line_location)]))
 
     return checkpoints_data
+
+
+def create_route_with_checkpoints(number_of_checkpoints, *args, **kwargs):
+    route = RouteFactory(*args, **kwargs)
+    checkpoints_data = create_checkpoints_from_geom(route.geom, number_of_checkpoints)
+    for checkpoint_data in checkpoints_data:
+        pk, line_location = checkpoint_data.split("_")
+        place = Place.objects.get(pk=pk)
+        route.places.add(
+            place, through_defaults={"line_location": line_location}
+        )
+    return route
 
 
 def get_route_post_data(route, activity_type=1):

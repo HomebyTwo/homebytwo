@@ -17,9 +17,9 @@ from ...conftest import STRAVA_API_BASE_URL
 from ...routes.fields import DataFrameField
 from ...routes.models import ActivityType
 from ...utils.factories import AthleteFactory
+from ...utils.tests import get_route_post_data
 from ..models import StravaRoute
 from .factories import StravaRouteFactory
-from ...utils.tests import get_route_post_data
 
 CURRENT_DIR = Path(__file__).resolve().parent
 
@@ -27,7 +27,7 @@ CURRENT_DIR = Path(__file__).resolve().parent
 @pytest.fixture
 def mock_get_athlete_response(mock_json_response):
     mock_json_response(
-        url=STRAVA_API_BASE_URL + "athlete", response_json="strava_athlete.json"
+        url=STRAVA_API_BASE_URL + "athlete", response_file="strava_athlete.json"
     )
 
 
@@ -142,7 +142,7 @@ def test_get_strava_routes(athlete, client, mock_routes_response):
 def test_get_strava_routes_unauthorized(client, athlete, mock_routes_response):
 
     mock_routes_response(
-        athlete, "strava", response_json="strava_unauthorized.json", status=401
+        athlete, "strava", response_file="strava_unauthorized.json", status=401
     )
 
     strava_routes_url = resolve_url("import_routes", data_source="strava")

@@ -369,7 +369,7 @@ def fetch_media():
     """
     sync local media folder with remote data
     """
-    # absolute media root on remote environement
+    # absolute media root on remote environment
     with cd(get_project_root()), quiet():
         remote_media_root = run("cat envdir/MEDIA_ROOT")
 
@@ -389,6 +389,24 @@ def fetch_media():
             target_directory=local_media_root,
         )
     )
+
+
+@task
+def import_geonames_places(*countries):
+    """
+    import places from the geonames.org database
+    """
+    with cd(get_project_root()):
+        run_python("manage.py import_geonames_places " + " ".join(countries))
+
+
+@task
+def import_swissnames3d_places():
+    """
+    import places from the SwissNAMES3D database
+    """
+    with cd(get_project_root()):
+        run_python("manage.py import_swissnames3d_places")
 
 
 def is_supported_db_engine(engine):

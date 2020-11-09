@@ -278,7 +278,7 @@ class Route(Track):
         """
         return places as checkpoints based on the route geometry.
 
-        start from existing checkpoints by default. you can use update=True
+        start from existing checkpoints by default. you can use updated_geom=True
         to discard existing checkpoints if the geometry of the route has changed.
 
         A single place can be returned multiple times: the recursive strategy creates
@@ -371,10 +371,9 @@ class Route(Track):
         # retrieve end_place GPX
         if self.end_place:
             gpx_end_place = self.end_place.get_gpx_waypoint(
-                route=self, line_location=0, start_time=start_time
+                route=self, line_location=1, start_time=start_time
             )
             gpx_waypoints.append(gpx_end_place)
-
         return gpx_waypoints
 
     def get_gpx_track(self, start_time):

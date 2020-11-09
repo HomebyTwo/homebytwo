@@ -14,10 +14,10 @@ def get_field_choices(choices):
     """
 
     # iterate over the unpacked choices assuming they are groups.
-    for groupname, group in choices:
+    for group_name, group in choices:
         # if the group value is a string, it is not a group, it is a choice
         if isinstance(group, str):
-            yield (groupname)
+            yield group_name
         else:
             for key, value in group:
                 yield key
