@@ -1,21 +1,21 @@
-.section--hero{
-    background-size: cover;
-    background-position: top;
-    background-repeat: no-repeat;
+.section--hero {
+  background-size: cover;
+  background-position: top;
+  background-repeat: no-repeat;
 }
 
-.hero__overlay{
-    background: rgb(0,0,0);
-    background: linear-gradient(0deg, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
+.hero__overlay {
+  background: rgb(0, 0, 0);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%);
 }
 
-.hero__body{
-    text-align: center;
-    top: 50%;
-    left: 50%;
-    position: absolute;
-    transform: translate(-50%, 0%);
-    color: white;
-    position: relative;
-    width: 50%;
+.hero__body {
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  position: absolute;
+  transform: translate(-50%, 0%);
+  color: white;
+  position: relative;
+  width: 50%;
 }

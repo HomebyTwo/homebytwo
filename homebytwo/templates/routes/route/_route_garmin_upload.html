@@ -1,0 +1,12 @@
+{% if user == route.athlete.user %}
+  <section class="mrgv" id="garmin">
+    <div class="grid grid--multiline grid--small">
+      <div class="grid__item sm-w-2/3 lg-w-3/4">
+        {% include "routes/route/garmin/_garmin_upload_actions.html" %}
+      </div>
+      <div class="grid__item sm-w-1/3 lg-w-1/4">
+        {% include "routes/route/garmin/_garmin_upload_instructions.html" %}
+      </div>
+    </div>
+  </section>
+{% endif %}

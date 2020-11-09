@@ -63,7 +63,7 @@ $ ./manage.py runserver
 
 Open Home by two in your browser:
 
-http://homebytwo.lo
+http://local.homebytwo.ch
 
 
 ## Create superuser
@@ -72,6 +72,23 @@ To create an initial user, you can user the create superuser function.
 
 ```
 $ ./manage.py createsuperuser
+```
+
+## Import Places from SwissNAMES3D or geonames.org
+
+In order to find places along routes, homebytwo requires places in the database.
+
+For Switzerland, places should be imported from [SwissNAMES3D](https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung).
+The import of more than 300.000 places takes about 30 minutes:
+
+```sh
+$ ./manage.py import_swissnames3d_places
+```
+
+Thanks to [geonames.org](https://www.geonames.org), you can also places from other countries:
+
+```sh
+$ ./manage.py import_geonames_places ES FR DE IT
 ```
 
 
@@ -87,38 +104,6 @@ $ tox
 Add the requirement to the `requirements/xxx.in` file, and then run `make requirements` (from inside the box) to update
 the `.txt` files and install the requirement(s) in the virtual environment.
 
-
-## Import Places from SwissNAMES3D
-
-Importing the SwissNAMES3D points database is now part of the provisioning script.
-If you need to, you can also do it manually:
-
-Dowload the shapefile from [opendata.swiss](https://opendata.swiss/en/dataset/swissnames3d-geografische-namen-der-landesvermessung), the file is about 390.21M:
-
-```sh
-$ vagrant ssh
-$ wget -O /tmp/data.zip http://data.geo.admin.ch/ch.swisstopo.swissnames3d/data.zip && cd /tmp
-```
-
-Unzip the data twice and move it to the media folder:
-
-```sh
-$ unzip data.zip swissNAMES3D_LV03.zip
-$ unzip swissNAMES3D_LV03.zip swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.*
-$ mkdir -p /vagrant/homebytwo/media/shapefiles && mv swissNAMES3D_LV03/shp_LV03_LN02/swissNAMES3D_PKT.* /vagrant/homebytwo/media/shapefiles/
-```
-
-Cleanup and go back to the project root:
-
-```
-$ rm -rf data.zip swissNAMES3D_LV03.zip swissNAMES3D_LV03 && cd /vagrant/
-```
-
-Run the importer command:
-
-```sh
-$ ./manage.py importswissname3d homebytwo/media/shapefiles/swissNAMES3D_PKT.shp
-```
 
 ## Managing Celery
 

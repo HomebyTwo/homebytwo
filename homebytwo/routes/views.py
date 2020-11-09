@@ -20,18 +20,14 @@ from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
-from .tasks import (
-    import_strava_activities_task,
-    import_strava_activity_streams_task,
-    train_prediction_models_task,
-    upload_route_to_garmin_task,
-    process_strava_events,
-)
+from .tasks import (import_strava_activities_task, import_strava_activity_streams_task,
+                    process_strava_events, train_prediction_models_task,
+                    upload_route_to_garmin_task)
 
 
 @login_required
 @require_safe
-def routes_view(request):
+def view_routes(request):
     routes = Route.objects.for_user(request.user)
     routes = routes.order_by("name")
     context = {"routes": routes}
@@ -39,7 +35,7 @@ def routes_view(request):
     return render(request, "routes/routes.html", context)
 
 
-def route_view(request, pk):
+def view_route(request, pk):
     """
     display route schedule based on the prediction model of the logged-in athlete
 
@@ -51,7 +47,7 @@ def route_view(request, pk):
     is used.
 
     """
-    route = get_object_or_404(Route.objects.select_related(), id=pk)
+    route = get_object_or_404(Route, pk=pk)
 
     if request.method == "POST":
         performance_form = ActivityPerformanceForm(
@@ -100,6 +96,7 @@ def route_view(request, pk):
             raise Http404("Route information could not be found.")
 
         else:
+            route.update_permanent_track_data(min_step_distance=1, max_gradient=100)
             route.update_track_details_from_data()
 
     # calculate route schedule for display
@@ -113,24 +110,53 @@ def route_view(request, pk):
     checkpoints = route.checkpoint_set.all()
     checkpoints = checkpoints.select_related("route", "place")
 
-    # schedule is not a calculated property on Checkpoint, because the schedule can change
+    # schedule is not a calculated property on Checkpoint: the schedule can change
     for checkpoint in checkpoints:
         checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
-
-    # enrich start and end place with schedule and altitude
-    if route.start_place_id:
-        route.start_place.schedule = route.get_time_data(0, "schedule")
-        route.start_place.altitude = route.get_distance_data(0, "altitude")
-    if route.end_place_id:
-        route.end_place.schedule = route.get_time_data(1, "schedule")
-        route.end_place.altitude = route.get_distance_data(1, "altitude")
 
     context = {
         "route": route,
         "checkpoints": checkpoints,
         "form": performance_form,
     }
-    return render(request, "routes/route.html", context)
+    return render(request, "routes/route/route.html", context)
+
+
+@method_decorator(login_required, name="dispatch")
+class RouteEdit(UpdateView):
+    model = Route
+    form_class = RouteForm
+    template_name = "routes/route/route_form.html"
+
+
+@method_decorator(login_required, name="dispatch")
+@method_decorator(remote_connection, name="dispatch")
+class RouteUpdate(RouteEdit):
+    def get_object(self, queryset=None):
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        if pk is not None:
+            route = get_object_or_404(Route, pk=pk)
+
+            return route.update_from_remote(
+                self.request.session.get("switzerland_mobility_cookies", None)
+            )
+
+    def get_form_kwargs(self):
+        """Return the keyword arguments for instantiating the form."""
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"update": True})
+        return kwargs
+
+
+@method_decorator(login_required, name="dispatch")
+class RouteDelete(DeleteView):
+    """
+    Class based views are not so bad after all.
+    """
+
+    model = Route
+    success_url = reverse_lazy("routes:routes")
+    template_name = "routes/route/route_confirm_delete.html"
 
 
 @require_safe
@@ -145,7 +171,7 @@ def route_checkpoints_list(request, pk):
             "name": checkpoint.place.name,
             "field_value": checkpoint.field_value,
             "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
-            "place_type": checkpoint.place.get_place_type_display(),
+            "place_type": checkpoint.place.place_type.name,
             "checked": checkpoint in existing_checkpoints,
         }
         for checkpoint in possible_checkpoints
@@ -158,11 +184,7 @@ def route_checkpoints_list(request, pk):
 def download_route_gpx(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    # calculate personalized schedule if necessary
-    if "schedule" not in route.data.columns:
-        # updating old routes one-by-one, migrating was difficult
-        route.calculate_projected_time_schedule(request.user)
-        route.save(update_fields=["data"])
+    route.calculate_projected_time_schedule(request.user)
 
     return FileResponse(
         BytesIO(bytes(route.get_gpx(), encoding="utf-8")),
@@ -176,12 +198,6 @@ def download_route_gpx(request, pk):
 def upload_route_to_garmin(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
 
-    # calculate personalized schedule if necessary
-    if "schedule" not in route.data.columns:
-        # updating old routes one-by-one, migrating was difficult
-        route.calculate_projected_time_schedule(request.user)
-        route.save(update_fields=["data"])
-
     # set garmin_id to 1 == upload requested
     route.garmin_id = 1
     route.save(update_fields=["garmin_id"])
@@ -194,12 +210,22 @@ def upload_route_to_garmin(request, pk):
     return redirect(route)
 
 
+@method_decorator(login_required, name="dispatch")
+@method_decorator(require_safe, name="dispatch")
+class ActivityList(ListView):
+    paginate_by = 50
+    context_object_name = "strava_activities"
+
+    def get_queryset(self):
+        return Activity.objects.for_user(self.request.user)
+
+
 @login_required
-@strava_required  # the superuser account is the only one that can be logged-in without Strava
+@strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_activities(request):
     """
-    send a task to import the athlete's Strava activities and redirects to the activity list.
-    still work in progress
+    send a task to import the athlete's Strava activities and redirect
+    to the activity list. TODO: use websockets to monitor progress
     """
     import_strava_activities_task.delay(request.user.athlete.id)
     messages.success(request, "We are importing your Strava activities!")
@@ -207,10 +233,10 @@ def import_strava_activities(request):
 
 
 @login_required
-@strava_required  # the superuser account is the only one that can be logged-in without Strava
+@strava_required  # only the superuser can be logged-in without a Strava account
 def import_strava_streams(request):
     """
-    trigger a task to import streams for activities without them.
+    trigger a task to import streams for activities without streams.
     """
     activities = request.user.athlete.activities
     activities = activities.filter(streams__isnull=True)
@@ -278,65 +304,3 @@ def strava_webhook(request):
 
     # Anything else
     return HttpResponse("Unauthorized", status=401)
-
-
-@method_decorator(login_required, name="dispatch")
-class ImageFormView(UpdateView):
-    """
-    Playing around with class based views.
-    """
-
-    model = Route
-    fields = ["image"]
-    template_name_suffix = "_image_form"
-
-
-@method_decorator(login_required, name="dispatch")
-class RouteDelete(DeleteView):
-    """
-    Class based  views are not so bad after all.
-    """
-
-    model = Route
-    success_url = reverse_lazy("routes:routes")
-
-
-@method_decorator(login_required, name="dispatch")
-class RouteEdit(UpdateView):
-    model = Route
-    form_class = RouteForm
-    template_name = "routes/route_form.html"
-
-    def form_valid(self, form):
-        # This method is called when valid form data has been POSTed.
-        # if the activity_type has changed recalculate the route schedule
-        if "activity_type" in form.changed_data:
-            form.instance.calculate_projected_time_schedule(form.instance.athlete.user)
-
-        return super().form_valid(form)
-
-
-@method_decorator(login_required, name="dispatch")
-@method_decorator(remote_connection, name="dispatch")
-class RouteUpdate(RouteEdit):
-    def get_object(self, queryset=None):
-        pk = self.kwargs.get(self.pk_url_kwarg)
-        if pk is not None:
-            route = get_object_or_404(Route, pk=pk)
-
-            # reset the checkpoints, the price of updating from remote
-            route.checkpoint_set.all().delete()
-
-            return route.update_from_remote(
-                self.request.session.get("switzerland_mobility_cookies", None)
-            )
-
-
-@method_decorator(login_required, name="dispatch")
-@method_decorator(require_safe, name="dispatch")
-class ActivityList(ListView):
-    paginate_by = 50
-    context_object_name = "strava_activities"
-
-    def get_queryset(self):
-        return Activity.objects.for_user(self.request.user)

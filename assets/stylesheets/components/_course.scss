@@ -1,21 +1,22 @@
-.place{
-    white-space: nowrap;
-    label {
-        overflow: auto;
-    }
+.place {
+  white-space: nowrap;
+
+  label {
+    overflow: auto;
+  }
 }
 
-.place__name{
-    font-family: 'Open Sans Condensed', sans-serif;
+.place__name {
+  font-family: 'Open Sans Condensed', sans-serif;
 }
 
-.placeIcon{
-    border-style: solid;
-    border-width: 2px;
-    border-radius: 6px;
+.placeIcon {
+  border-style: solid;
+  border-width: 2px;
+  border-radius: 6px;
 }
 
 .placeIcon--default{
-    border-color: $mountain-red;
-    background-color: $white;
+  border-color: $mountain-red;
+  background-color: $white;
 }

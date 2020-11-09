@@ -16,11 +16,6 @@ class PlaceTestCase(TestCase):
         place = PlaceFactory(name=name)
         self.assertTrue(name in str(place))
 
-    def test_save_homebytwo_place_sets_source_id(self):
-        place = PlaceFactory()
-        self.assertEqual(place.data_source, "homebytwo")
-        self.assertEqual(place.source_id, str(place.id))
-
     def test_get_places_within(self):
         point = GEOSGeometry("POINT(1 1)")
 

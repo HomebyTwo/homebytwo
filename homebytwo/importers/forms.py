@@ -3,8 +3,14 @@ from json import dumps as json_dumps
 from django import forms
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.gis.geos import LineString, Point
 
+import gpxpy
+from pandas import DataFrame
 from requests import Session, codes
+
+from homebytwo.routes.models import Route
+from homebytwo.routes.utils import get_distances
 
 
 class SwitzerlandMobilityLogin(forms.Form):
@@ -86,3 +92,68 @@ class SwitzerlandMobilityLogin(forms.Form):
                 )
                 messages.error(request, message)
                 return False
+
+
+class GpxUploadForm(forms.Form):
+    """
+    Athletes create a new route uploading a GPS exchange format file.
+    """
+
+    gpx = forms.FileField()
+
+    def clean_gpx(self):
+        gpx_file = self.cleaned_data["gpx"]
+        try:
+            gpx = gpxpy.parse(gpx_file)
+        except (
+            gpxpy.gpx.GPXXMLSyntaxException,
+            gpxpy.gpx.GPXException,
+            ValueError,  # namespace declaration error in Swisstopo app exports
+        ) as error:
+            raise forms.ValidationError(
+                "Your file does not appear to be a valid GPX file"
+                f'(error was: "{str(error)}") '
+            )
+
+        # check that we can create a lineString from the file
+        if len(list(gpx.walk(only_points=True))) > 1:
+            return gpx
+        else:
+            raise forms.ValidationError("Your file does not contain a valid route.")
+
+    def save(self, commit=True):
+        gpx = self.cleaned_data["gpx"]
+        route = Route(source_id=None)
+
+        # use the `name` in the GPX file as proposition for the route name
+        route.name = gpx.name if gpx.name else ""
+
+        # assume we want to use all points of all tracks in the GPX file
+        points = list(gpx.walk(only_points=True))
+
+        # create route geometry from coords
+        coords = [(point.longitude, point.latitude) for point in points]
+        route.geom = LineString(coords, srid=4326).transform(21781, clone=True)
+
+        # calculate total distance and elevation differences
+        route.total_distance = gpx.length_2d()
+        (
+            route.total_elevation_gain,
+            route.total_elevation_loss,
+        ) = gpx.get_uphill_downhill()
+
+        # create route DataFrame with distance and elevation
+        distances = get_distances([Point(p) for p in route.geom])
+        route_data = [
+            {
+                "distance": distance,
+                "altitude": point.elevation,
+            }
+            for point, distance in zip(points, distances)
+        ]
+        route.data = DataFrame(route_data, columns=["distance", "altitude"])
+
+        if commit:
+            route.save()
+
+        return route

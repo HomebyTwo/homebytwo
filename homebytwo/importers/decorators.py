@@ -3,6 +3,7 @@ from functools import wraps
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.http import urlencode
 
 from requests.exceptions import ConnectionError
 from social_django.models import UserSocialAuth
@@ -67,15 +68,26 @@ def remote_connection(view_func):
         except (StravaAccessUnauthorized, StravaMissingCredentials):
             message = "There was an issue connecting to Strava. Try again later!"
             messages.error(request, message)
-            return redirect(
-                "{login_url}?next={next}".format(
-                    login_url=reverse("login"), next=request.path
-                )
-            )
+            login_url = reverse("login")
+            redirect_to = request.path
+            return redirect(f"{login_url}?next={redirect_to}")
 
         except SwitzerlandMobilityMissingCredentials as error:
             messages.info(request, error)
-            return redirect("switzerland_mobility_login")
+
+            # redirect to Switzerland Mobility log-in page
+            login_url = reverse("switzerland_mobility_login")
+
+            # add route_id as a GET param if trying to import a route
+            match = request.resolver_match
+            if match.url_name == "import_route":
+                route_id = match.kwargs["source_id"]
+                params = urlencode({"route_id": route_id})
+                return redirect(f"{login_url}?{params}")
+            else:
+                return redirect(login_url)
+
+        # no exception, return the response from the decorated view
         else:
             return response
 

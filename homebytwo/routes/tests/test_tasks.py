@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from homebytwo.conftest import STRAVA_API_BASE_URL
 from homebytwo.routes.models import WebhookTransaction
 from homebytwo.routes.tasks import (
     import_strava_activities_streams_task,
@@ -14,29 +15,28 @@ from homebytwo.routes.tests.factories import (
     WebhookTransactionFactory,
 )
 
-STRAVA_API_BASE_URL = "https://www.strava.com/api/v3/"
 STRAVA_STREAMS_URL = (
     STRAVA_API_BASE_URL + "activities/{}/streams/time,altitude,distance,moving"
 )
 GARMIN_UPLOAD_URL = "https://connect.garmin.com/modern/proxy/upload-service/upload/gpx"
 
 
-def test_import_strava_activities_task(athlete, intercept):
+def test_import_strava_activities_task(athlete, mock_call_json_response):
     url = STRAVA_API_BASE_URL + "athlete/activities"
     call = import_strava_activities_task
     response_json = "activities.json"
 
-    intercept(call, url, response_json, athlete_id=athlete.id)
+    mock_call_json_response(call, url, response_json, athlete_id=athlete.id)
 
     assert athlete.activities.count() == 2
     assert athlete.activities_imported
 
 
-def test_import_strava_activities_task_server_error(athlete, server_error):
+def test_import_strava_activities_task_server_error(athlete, mock_call_server_error):
     url = STRAVA_API_BASE_URL + "athlete/activities"
     call = import_strava_activities_task
     response_json = "activities.json"
-    response = server_error(call, url, response_json, athlete_id=athlete.id)
+    response = mock_call_server_error(call, url, response_json, athlete_id=athlete.id)
     assert response == []
 
 
@@ -51,13 +51,13 @@ def test_import_strava_activities_streams_task(athlete, mocker):
     mock_task.assert_called
 
 
-def test_import_strava_activity_streams_task_success(athlete, intercept):
+def test_import_strava_activity_streams_task_success(athlete, mock_call_json_response):
     activity = ActivityFactory(athlete=athlete, streams=None)
     url = STRAVA_STREAMS_URL.format(activity.strava_id)
     expected = "Streams successfully imported for activity {}".format(
         activity.strava_id
     )
-    response = intercept(
+    response = mock_call_json_response(
         import_strava_activity_streams_task,
         url,
         "streams.json",
@@ -76,12 +76,12 @@ def test_update_activity_streams_from_strava_skip(athlete):
     assert expected in response
 
 
-def test_import_strava_activity_streams_task_missing(athlete, intercept):
+def test_import_strava_activity_streams_task_missing(athlete, mock_call_json_response):
     activity = ActivityFactory(athlete=athlete, streams=None)
     url = STRAVA_STREAMS_URL.format(str(activity.strava_id))
 
     expected = "Streams not imported for activity {}".format(activity.strava_id)
-    response = intercept(
+    response = mock_call_json_response(
         import_strava_activity_streams_task,
         url,
         "missing_streams.json",
@@ -100,13 +100,13 @@ def test_import_strava_activity_streams_task_deleted(athlete):
 
 
 def test_import_strava_activity_streams_task_connection_error(
-    athlete, connection_error
+    athlete, mock_call_connection_error
 ):
     activity = ActivityFactory(athlete=athlete, streams=None)
     call = import_strava_activity_streams_task
     url = STRAVA_STREAMS_URL.format(activity.strava_id)
 
-    response = connection_error(call, url, strava_id=activity.strava_id)
+    response = mock_call_connection_error(call, url, strava_id=activity.strava_id)
     expected = "Streams for activity {} could not be retrieved from Strava".format(
         activity.strava_id
     )
@@ -114,12 +114,16 @@ def test_import_strava_activity_streams_task_connection_error(
     assert expected in response
 
 
-def test_import_strava_activity_streams_task_server_error(athlete, server_error):
+def test_import_strava_activity_streams_task_server_error(
+    athlete, mock_call_server_error
+):
     activity = ActivityFactory(athlete=athlete, streams=None)
     call = import_strava_activity_streams_task
     url = STRAVA_STREAMS_URL.format(activity.strava_id)
 
-    response = server_error(call, url, "streams.json", strava_id=activity.strava_id)
+    response = mock_call_server_error(
+        call, url, "streams.json", strava_id=activity.strava_id
+    )
     expected = "Streams for activity {} could not be retrieved from Strava".format(
         activity.strava_id
     )
@@ -154,7 +158,7 @@ def test_train_prediction_models_task_no_activity(athlete):
     assert expected in response
 
 
-def test_process_strava_events_create_update_delete(athlete, intercept):
+def test_process_strava_events_create_update_delete(athlete, mock_call_json_response):
     activity_strava_id = 1234567890
     WebhookTransactionFactory(
         action="create",
@@ -164,7 +168,7 @@ def test_process_strava_events_create_update_delete(athlete, intercept):
     call = process_strava_events
     url = STRAVA_API_BASE_URL + "activities/" + str(activity_strava_id)
     response_json = "race_run_activity.json"
-    intercept(call, url, response_json)
+    mock_call_json_response(call, url, response_json)
 
     transactions = WebhookTransaction.objects.all()
     processed_transactions = transactions.filter(status=WebhookTransaction.PROCESSED)
@@ -178,7 +182,7 @@ def test_process_strava_events_create_update_delete(athlete, intercept):
         athlete_strava_id=athlete.strava_id,
         activity_strava_id=activity_strava_id,
     )
-    intercept(call, url, response_json)
+    process_strava_events()
     assert processed_transactions.count() == 2
     assert athlete.activities.count() == 1
 
@@ -187,7 +191,7 @@ def test_process_strava_events_create_update_delete(athlete, intercept):
         athlete_strava_id=athlete.strava_id,
         activity_strava_id=activity_strava_id,
     )
-    call()
+    process_strava_events()
     assert processed_transactions.count() == 3
     assert athlete.activities.count() == 0
 
@@ -212,18 +216,17 @@ def test_process_strava_events_duplicates(athlete):
     assert skipped_transactions.count() == 1
 
 
-def test_process_events_deleted_activity(athlete, not_found):
+def test_process_events_deleted_activity(athlete, mock_call_not_found):
     activity = ActivityFactory()
     WebhookTransactionFactory(
         athlete_strava_id=athlete.strava_id, activity_strava_id=activity.strava_id
     )
     call = process_strava_events
     url = STRAVA_API_BASE_URL + "activities/" + str(activity.strava_id)
-    response_json = "activity_not_found.json"
-    not_found(call, url, response_json)
+    mock_call_not_found(call, url)
 
 
-def test_process_strava_events_errors(athlete, connection_error):
+def test_process_strava_events_errors(athlete, mock_call_connection_error):
     WebhookTransactionFactory(athlete_strava_id=0)
     WebhookTransactionFactory(athlete_strava_id=athlete.strava_id, activity_strava_id=0)
     WebhookTransactionFactory(
@@ -231,7 +234,7 @@ def test_process_strava_events_errors(athlete, connection_error):
     )
     call = process_strava_events
     url = STRAVA_API_BASE_URL + "activities/0"
-    connection_error(call, url)
+    mock_call_connection_error(call, url)
 
     transactions = WebhookTransaction.objects.all()
     assert transactions.filter(status=WebhookTransaction.ERROR).count() == 2

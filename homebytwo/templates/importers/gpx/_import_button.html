@@ -1,0 +1,24 @@
+{% load widget_tweaks %}
+
+{# TODO hide the field and post using JS #}
+<form enctype="multipart/form-data" method="post" action="{% url 'import_routes' 'gpx' %}">
+  {% csrf_token %}
+  <div class="grid">
+    <div class="grid__item md-w-1/2">
+      <input type="file" name="gpx" class="field" required>
+    </div>
+    <div class="grid__item md-w-1/2">
+      <button class="btn btn--primary btn--block mrgt-- md-mrgt0" href="{% url 'import_routes' 'gpx' %}"
+              title="Import from GPX file">
+        Import from GPX file
+      </button>
+    </div>
+  </div>
+  {% if gpx_upload_form %}
+    {% for error in gpx_upload_form.gpx.errors %}
+      <div class="field-error">
+        {{ error }}
+      </div>
+    {% endfor %}
+  {% endif %}
+</form>

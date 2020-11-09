@@ -4,9 +4,9 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-import httpretty
+import responses
+from requests.exceptions import ConnectionError
 
-from ..utils.tests import raise_connection_error
 from .forms import EmailSubscriptionForm
 from .utils import get_mailchimp_post_url, get_mailchimp_search_url
 
@@ -80,25 +80,24 @@ class LandingpageTest(TestCase):
 
         self.assertContains(response, content)
 
+    @responses.activate
     def test_post_email_signup_view_success(self):
         email = "example@example.com"
         data = {"email": email, "list_id": settings.MAILCHIMP_LIST_ID}
         mailchimp_post_url = get_mailchimp_post_url()
         message = "Thank you! You are now subscribed with {email}.".format(email=email)
 
-        # Intercept request to MailChimp with httpretty
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(httpretty.POST, mailchimp_post_url, status=200)
+        # Intercept request to MailChimp
+        responses.add(responses.POST, mailchimp_post_url, status=200)
 
         url = reverse("email_signup")
         response = self.client.post(url, data)
         redirected_response = self.client.post(url, data, follow=True)
 
-        httpretty.disable()
-
         self.assertRedirects(response, "/")
         self.assertContains(redirected_response, message)
 
+    @responses.activate
     def test_post_email_signup_view_already_subscribed(self):
         email = "example@example.com"
         data = {"email": email, "list_id": settings.MAILCHIMP_LIST_ID}
@@ -111,21 +110,21 @@ class LandingpageTest(TestCase):
             email=email
         )
 
-        # Intercept request to MailChimp with httpretty
-        httpretty.enable(allow_net_connect=False)
+        # Intercept request to MailChimp
 
-        httpretty.register_uri(httpretty.POST, mailchimp_post_url, status=400)
-        httpretty.register_uri(httpretty.GET, mailchimp_search_url, body=json_response)
+        responses.add(
+            responses.POST, mailchimp_post_url, status=400, match_querystring=False
+        )
+        responses.add(responses.GET, mailchimp_search_url, body=json_response)
 
         url = reverse("email_signup")
         response = self.client.post(url, data)
         redirected_response = self.client.post(url, data, follow=True)
 
-        httpretty.disable()
-
         self.assertRedirects(response, "/")
         self.assertContains(redirected_response, message)
 
+    @responses.activate
     def test_post_email_signup_exists_but_not_subscribed(self):
         email = "example@example.com"
         data = {"email": email, "list_id": settings.MAILCHIMP_LIST_ID}
@@ -136,26 +135,27 @@ class LandingpageTest(TestCase):
         mailchimp_put_url = mailchimp_post_url + member_id
 
         json_response = json.dumps(
-            {"exact_matches": {"members": [{"id": member_id, "status": "unsubscribed"}]}}
+            {
+                "exact_matches": {
+                    "members": [{"id": member_id, "status": "unsubscribed"}]
+                }
+            }
         )
         message = "Thank you for signing up up again with {email}.".format(email=email)
 
-        # Intercept request to MailChimp with httpretty
-        httpretty.enable(allow_net_connect=False)
-
-        httpretty.register_uri(httpretty.POST, mailchimp_post_url, status=400)
-        httpretty.register_uri(httpretty.GET, mailchimp_search_url, body=json_response)
-        httpretty.register_uri(httpretty.PUT, mailchimp_put_url, status=200)
+        # Intercept request to MailChimp
+        responses.add(responses.POST, mailchimp_post_url, status=400, match_querystring=False)
+        responses.add(responses.GET, mailchimp_search_url, body=json_response)
+        responses.add(responses.PUT, mailchimp_put_url, status=200)
 
         url = reverse("email_signup")
         response = self.client.post(url, data)
         redirected_response = self.client.post(url, data, follow=True)
 
-        httpretty.disable()
-
         self.assertRedirects(response, "/")
         self.assertContains(redirected_response, message)
 
+    @responses.activate
     def test_post_email_signup_exists_but_not_subscribed_error(self):
         email = "example@example.com"
         data = {"email": email, "list_id": settings.MAILCHIMP_LIST_ID}
@@ -166,24 +166,25 @@ class LandingpageTest(TestCase):
         mailchimp_put_url = mailchimp_post_url + member_id
 
         json_response = json.dumps(
-            {"exact_matches": {"members": [{"id": member_id, "status": "unsubscribed"}]}}
+            {
+                "exact_matches": {
+                    "members": [{"id": member_id, "status": "unsubscribed"}]
+                }
+            }
         )
         message = "MailChimp Error: "
 
-        # Intercept request to MailChimp with httpretty
-        httpretty.enable(allow_net_connect=False)
-
-        httpretty.register_uri(httpretty.POST, mailchimp_post_url, status=400)
-        httpretty.register_uri(httpretty.GET, mailchimp_search_url, body=json_response)
-        httpretty.register_uri(httpretty.PUT, mailchimp_put_url, status=400)
+        # Intercept request to MailChimp
+        responses.add(responses.POST, mailchimp_post_url, status=400)
+        responses.add(responses.GET, mailchimp_search_url, body=json_response)
+        responses.add(responses.PUT, mailchimp_put_url, status=400)
 
         url = reverse("email_signup")
         response = self.client.post(url, data)
 
-        httpretty.disable()
-
         self.assertContains(response, message)
 
+    @responses.activate
     def test_post_email_signup_connection_error(self):
         mailchimp_post_url = get_mailchimp_post_url()
         data = {
@@ -192,16 +193,15 @@ class LandingpageTest(TestCase):
         }
         message = "MailChimp Error:"
 
-        # Intercept request to MailChimp with httpretty
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(
-            httpretty.POST, mailchimp_post_url, body=raise_connection_error
+        # Intercept request to MailChimp
+        responses.add(
+            responses.POST,
+            mailchimp_post_url,
+            body=ConnectionError("Connection error."),
         )
 
         url = reverse("email_signup")
-
         response = self.client.post(url, data)
-        httpretty.disable()
 
         self.assertContains(response, message)
 

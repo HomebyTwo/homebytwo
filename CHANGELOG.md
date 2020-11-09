@@ -1,5 +1,30 @@
 # Change Log
-## [0.10.2] - 20200-10-02 Do not import Strava activities on every login
+## [0.13.0] - 2020-11-08 import places from geonames.org
+- Places can be imported from geonames.org for any country
+- Import SwissNAMES3D from CSV file instead of shapefile
+- Use a worldwide geometric projection SRID 3857
+- New country model to locate places and routes
+- Add a country field to places
+
+## [0.12.1] - 2020-10-23 Remove extreme gradient values from imported routes
+- Routes from Strava now have a much more realistic schedule
+
+## [0.12.0] - 2020-10-15 Improve route update
+- Import page can update routes
+- Update forms tries to retain existing checkpoints
+- Redirect after Switzerland Mobility login
+- Improved route page structure and design and enforced Strava guidelines
+
+## [0.11.0] - 2020-10-07 Import GPX files
+- Create new routes from GPX files 
+## [0.10.4] - 2020-10-13 Slightly improve admin security
+- Move admin to another domain
+- Adopt increased security settings 
+
+## [0.10.3] - 2020-10-07 Report usage data to coda.io
+- Report athlete, routes and activities count on a daily basis 
+
+## [0.10.2] - 2020-10-02 Do not import Strava activities on every login
 - New flag to only import all athlete Strava activities once
 
 ## [0.10.1] - 2020-09-24 Replace Ridge Regression
@@ -49,7 +74,7 @@
 - The Strava API now uses refresh tokens and does not discloses email addresses
 
 ## [0.5.1] - 2018-08-31 Distinguish local from more important places
-- SwissNAME3D has added a lot of unimportant local places. We want to filter them more efficiently, so we need to distinguish them from the real thing.
+- SwissNAMES3D has added a lot of unimportant local places. We want to filter them more efficiently, so we need to distinguish them from the real thing.
 
 ## [0.5.0] - 2018-08-30 Filter proposed checkpoints by type
 ### Added
@@ -108,9 +133,9 @@
 ### Added
 - Import routes from Strava and Switzerland Mobility Plus
 
-## [0.0.x] - 2018-07-04 Import places from SwissNAME3D
+## [0.0.x] - 2018-07-04 Import places from SwissNAMES3D
 ### Added
-- use a command to load places from SwissNAME3d shapefile
+- use a command to load places from SwissNAMES3d shapefile
 
 ## [0.0.1] - 2016-12-04 First blood
 

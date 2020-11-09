@@ -5,7 +5,7 @@ from pathlib import Path
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-import httpretty
+import responses
 from mock import patch
 from pandas import DataFrame
 
@@ -47,21 +47,16 @@ class ActivityTestCase(TestCase):
 
         # intercept API call and return local json instead
         activity_url = ACTIVITY_URL.format(strava_activity_id)
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                activity_url,
-                content_type="application/json",
-                body=strava_activity_json,
-                status=200,
-            )
+        responses.add(
+            responses.GET,
+            activity_url,
+            content_type="application/json",
+            body=strava_activity_json,
+            status=200,
+        )
 
-            # intercepted call to the API
-            strava_activity = self.athlete.strava_client.get_activity(
-                strava_activity_id
-            )
-
-        return strava_activity
+        # intercepted call to the API
+        return self.athlete.strava_client.get_activity(strava_activity_id)
 
     def test_no_strava_token(self):
         """
@@ -89,18 +84,22 @@ class ActivityTestCase(TestCase):
         self.assertRedirects(response, login_url)
         self.assertContains(redirected_response, error)
 
+    @responses.activate
     def test_is_activity_supported_manual(self):
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")
         assert not is_activity_supported(strava_activity)
 
+    @responses.activate
     def test_is_activity_supported_unsupported_activity(self):
         strava_activity = self.load_strava_activity_from_json("swim_activity.json")
         assert not is_activity_supported(strava_activity)
 
+    @responses.activate
     def test_is_activity_supported(self):
         strava_activity = self.load_strava_activity_from_json("race_run_activity.json")
         assert is_activity_supported(strava_activity)
 
+    @responses.activate
     def test_save_strava_activity_new_manual_activity(self):
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")
         activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
@@ -116,6 +115,7 @@ class ActivityTestCase(TestCase):
             ),
         )
 
+    @responses.activate
     def test_save_strava_race_run(self):
         strava_activity = self.load_strava_activity_from_json("race_run_activity.json")
         activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
@@ -162,6 +162,7 @@ class ActivityTestCase(TestCase):
             str(gear), "{0} - {1}".format(activity.gear.brand_name, activity.gear.name)
         )
 
+    @responses.activate
     def test_save_strava_activity_add_new_gear(self):
 
         # create activity with no gear
@@ -184,18 +185,17 @@ class ActivityTestCase(TestCase):
         gear_json = read_data("gear.json", dir_path=CURRENT_DIR)
 
         # intercept Strava API call to get gear info from Strava
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                gear_url,
-                content_type="application/json",
-                body=gear_json,
-                status=200,
-            )
+        responses.add(
+            responses.GET,
+            gear_url,
+            content_type="application/json",
+            body=gear_json,
+            status=200,
+        )
 
-            # update the activity with strava data: because of the new gear,
-            # it will trigger an update with the Strava API
-            activity.update_with_strava_data(strava_activity)
+        # update the activity with strava data: because of the new gear,
+        # it will trigger an update with the Strava API
+        activity.update_with_strava_data(strava_activity)
 
         self.assertEqual(strava_activity.gear_id, activity.gear.strava_id)
         self.assertIsInstance(activity.gear, Gear)
@@ -225,6 +225,7 @@ class ActivityTestCase(TestCase):
         self.assertIsNone(activity.gear)
         self.assertEqual(Activity.objects.count(), 1)
 
+    @responses.activate
     def test_update_strava_activity_deleted(self):
 
         # create activity
@@ -235,155 +236,146 @@ class ActivityTestCase(TestCase):
 
         # API response will be a 404 because it was deleted or
         # the the privacy settings have changed
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                activity_url,
-                content_type="application/json",
-                body=not_found_json,
-                status=404,
-            )
+        responses.add(
+            responses.GET,
+            activity_url,
+            content_type="application/json",
+            body=not_found_json,
+            status=404,
+        )
 
-            # update the activity from strava data
-            activity.get_activity_from_strava()
+        # update the activity from strava data
+        activity.get_activity_from_strava()
 
         self.assertEqual(Activity.objects.count(), 0)
 
+    @responses.activate
     def test_update_strava_activity_changed(self):
-
         strava_activity = self.load_strava_activity_from_json("manual_activity.json")
         activity = Activity(athlete=self.athlete, strava_id=strava_activity.id)
-
         # save the manual strava activity
         activity.update_with_strava_data(strava_activity)
 
         self.assertEqual(activity.description, "Manual Description")
-
         activity_url = ACTIVITY_URL.format(activity.strava_id)
+
         changed_json = read_data("manual_activity_changed.json", dir_path=CURRENT_DIR)
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                activity_url,
-                content_type="application/json",
-                body=changed_json,
-                status=200,
-            )
-            strava_activity = activity.get_activity_from_strava()
-            activity.update_with_strava_data(strava_activity)
+        responses.replace(
+            responses.GET,
+            activity_url,
+            content_type="application/json",
+            body=changed_json,
+            status=200,
+        )
+        strava_activity = activity.get_activity_from_strava()
+        activity.update_with_strava_data(strava_activity)
 
-        self.assertEqual(Activity.objects.count(), 1)
-        self.assertEqual(activity.description, "")
+        assert activity.description == ""
+        assert Activity.objects.count() == 1
 
+    @responses.activate
     def test_import_strava_activities_task(self):
+        # update athlete activities: 2 received
+        responses.add(
+            responses.GET,
+            ACTIVITIES_URL,
+            content_type="application/json",
+            body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+        )
+        import_strava_activities_task(self.athlete.id)
+        assert Activity.objects.count() == 2
 
-        # get athlete activities: 2 retrieved
-        responses = [
-            # first call, content: two activities
-            httpretty.Response(
-                content_type="application/json",
-                body=read_data(
-                    "activities.json", dir_path=CURRENT_DIR
-                ),  # two activities
-            ),
-            # second call contains one activity
-            httpretty.Response(
-                content_type="application/json",
-                body=read_data(
-                    "activities_one.json", dir_path=CURRENT_DIR
-                ),  # one activity
-            ),
-            httpretty.Response(
-                content_type="application/json",
-                body=read_data(
-                    "activities.json", dir_path=CURRENT_DIR
-                ),  # two activities
-            ),
-            httpretty.Response(content_type="application/json", body="[]"),  # empty
-        ]
+        # update athlete activities: 1 received
+        responses.replace(
+            responses.GET,
+            ACTIVITIES_URL,
+            content_type="application/json",
+            body=read_data(
+                "activities_one.json", dir_path=CURRENT_DIR
+            ),  # one activities
+        )
+        import_strava_activities_task(self.athlete.id)
+        assert Activity.objects.count() == 1
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                ACTIVITIES_URL,
-                responses=responses,
-            )
+        # update athlete activities: 2 received
+        responses.replace(
+            responses.GET,
+            ACTIVITIES_URL,
+            content_type="application/json",
+            body=read_data("activities.json", dir_path=CURRENT_DIR),  # two activities
+        )
+        import_strava_activities_task(self.athlete.id)
+        assert Activity.objects.count() == 2
 
-            # update athlete activities: 2 received
-            import_strava_activities_task(self.athlete.id)
-            self.assertEqual(Activity.objects.count(), 2)
-            # update athlete activities: 1 received
-            import_strava_activities_task(self.athlete.id)
-            self.assertEqual(Activity.objects.count(), 1)
-            # update athlete activities: 2 received
-            import_strava_activities_task(self.athlete.id)
-            self.assertEqual(Activity.objects.count(), 2)
-            # update activities: 0 received
-            import_strava_activities_task(self.athlete.id)
-            self.assertEqual(Activity.objects.count(), 0)
+        # update activities: 0 received
+        responses.replace(
+            responses.GET, ACTIVITIES_URL, content_type="application/json", body="[]"
+        )
+        import_strava_activities_task(self.athlete.id)
+        assert Activity.objects.count() == 0
 
+    @responses.activate
     def test_are_streams_valid_missing_streams(self):
         activity = ActivityFactory(athlete=self.athlete)
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                STREAMS_URL.format(activity.strava_id),
-                content_type="application/json",
-                body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
-                status=200,
-            )
-            strava_streams = activity.get_streams_from_strava()
+        responses.add(
+            responses.GET,
+            STREAMS_URL.format(activity.strava_id),
+            content_type="application/json",
+            body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
+            status=200,
+        )
+        strava_streams = activity.get_streams_from_strava()
 
         assert not are_streams_valid(strava_streams)
 
+    @responses.activate
     def test_are_streams_valid_missing_values(self):
         activity = ActivityFactory(athlete=self.athlete)
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                STREAMS_URL.format(activity.strava_id),
-                content_type="application/json",
-                body=read_data("missing_values.json", dir_path=CURRENT_DIR),
-                status=200,
-            )
-            strava_streams = activity.get_streams_from_strava()
+        responses.add(
+            responses.GET,
+            STREAMS_URL.format(activity.strava_id),
+            content_type="application/json",
+            body=read_data("missing_values.json", dir_path=CURRENT_DIR),
+            status=200,
+        )
+        strava_streams = activity.get_streams_from_strava()
 
         assert not are_streams_valid(strava_streams)
 
+    @responses.activate
     def test_get_streams_from_strava_all_streams(self):
         activity = ActivityFactory(athlete=self.athlete)
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                STREAMS_URL.format(activity.strava_id),
-                content_type="application/json",
-                body=read_data("streams.json", dir_path=CURRENT_DIR),
-                status=200,
-                match_querystring=False,
-            )
-            strava_streams = activity.get_streams_from_strava()
+        responses.add(
+            responses.GET,
+            STREAMS_URL.format(activity.strava_id),
+            content_type="application/json",
+            body=read_data("streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
+        strava_streams = activity.get_streams_from_strava()
         assert len(strava_streams) == 4
         assert all(
             stream_type in activity.streams.columns for stream_type in STREAM_TYPES
         )
 
+    @responses.activate
     def test_update_activity_streams_from_strava(self):
         activity = ActivityFactory(athlete=self.athlete, streams=None)
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                STREAMS_URL.format(activity.strava_id),
-                content_type="application/json",
-                body=read_data("streams.json", dir_path=CURRENT_DIR),
-                status=200,
-                match_querystring=False,
-            )
+        responses.add(
+            responses.GET,
+            STREAMS_URL.format(activity.strava_id),
+            content_type="application/json",
+            body=read_data("streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
 
-            activity.update_activity_streams_from_strava()
+        activity.update_activity_streams_from_strava()
 
         field = DataFrameField()
         full_path = field.storage.path(activity.streams.filepath)
@@ -394,62 +386,63 @@ class ActivityTestCase(TestCase):
         )
         assert str(self.athlete.id) in full_path
 
+    @responses.activate
     def test_update_activity_streams_from_strava_missing_streams(self):
         activity = ActivityFactory(athlete=self.athlete, streams=None)
 
-        with httpretty.enabled(allow_net_connect=False):
-            httpretty.register_uri(
-                httpretty.GET,
-                STREAMS_URL.format(activity.strava_id),
-                content_type="application/json",
-                body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
-                status=200,
-                match_querystring=False,
-            )
-            activity.update_activity_streams_from_strava()
+        responses.add(
+            responses.GET,
+            STREAMS_URL.format(activity.strava_id),
+            content_type="application/json",
+            body=read_data("missing_streams.json", dir_path=CURRENT_DIR),
+            status=200,
+            match_querystring=False,
+        )
+        activity.update_activity_streams_from_strava()
 
         assert activity.streams is None
         assert activity.skip_streams_import
 
     @override_settings(
         STRAVA_VERIFY_TOKEN="RIGHT_TOKEN",
-        CELERY_TASK_ALWAYS_EAGER=True,
-        CELERY_TASK_EAGER_PROPAGATES=True,
     )
-    def test_strava_webhook_callback_url(self):
-
+    def test_strava_webhook_callback_url_token(self):
         # subscription validation successful
-        url = reverse("routes:strava_webhook")
+        webhook_url = reverse("routes:strava_webhook")
         data = {
             "hub.verify_token": "RIGHT_TOKEN",
             "hub.challenge": "challenge",
             "hub.mode": "subscribe",
         }
-        response = self.client.get(url, data)
+        response = self.client.get(webhook_url, data)
         self.assertContains(response, data["hub.challenge"])
 
         # subscription validation with wrong token
         data["hub.verify_token"] = "WRONG_TOKEN"
 
-        response = self.client.get(url, data)
+        response = self.client.get(webhook_url, data)
         self.assertEqual(response.status_code, 401)
 
+    @responses.activate
+    @override_settings(
+        celery_task_always_eager=True,
+        celery_task_eager_propagates=True,
+    )
+    def test_strava_webhook_callback_event(self):
+        webhook_url = reverse("routes:strava_webhook")
         activity_response = read_data("race_run_activity.json", dir_path=CURRENT_DIR)
         event_data = json.loads(read_data("event.json", dir_path=CURRENT_DIR))
 
+        # intercept call triggered by the event to Strava API
+        responses.add(
+            responses.GET,
+            ACTIVITY_URL.format(event_data["object_id"]),
+            body=activity_response,
+            status=200,
+        )
+
         # event posted by Strava
-        with httpretty.enabled(allow_net_connect=False):
-
-            httpretty.register_uri(
-                uri=ACTIVITY_URL.format(event_data["object_id"]),
-                method=httpretty.GET,
-                body=activity_response,
-                status=200,
-            )
-
-            response = self.client.post(
-                url, event_data, content_type="application/json"
-            )
+        response = self.client.post(webhook_url, event_data, content_type="application/json")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookTransaction.objects.count(), 1)

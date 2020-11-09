@@ -100,8 +100,10 @@ class StravaRoute(Route):
 
     def get_route_data(self, cookies=None):
         """
-        convert raw streams into the route geom and a pandas DataFrame
+        convert raw streams into the route LineString and a pandas DataFrame
         with columns for distance and altitude.
+
+        :param cookies: switzerland mobility cookies from the athlete session.
 
         the stravalib client creates a list of dicts:
         `[stream_type: <Stream object>, stream_type: <Stream object>, ...]`
@@ -115,8 +117,9 @@ class StravaRoute(Route):
         for key, stream in route_streams.items():
             # create route geom from latlng stream
             if key == "latlng":
-                coords = [(lng, lat) for lat, lng in stream.data]
-                geom = LineString(coords, srid=4326).transform(21781, clone=True)
+                geom = LineString(
+                    [(lng, lat) for lat, lng in stream.data], srid=4326
+                ).transform(21781, clone=True)
 
             # import other streams
             else:

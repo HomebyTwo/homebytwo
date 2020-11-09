@@ -17,7 +17,7 @@ urlpatterns = [
     # import/
     path("import/", include("homebytwo.importers.urls")),
     # admin/
-    path("admin/", admin.site.urls),
+    path("control/", admin.site.urls),
     path("", include("django.contrib.auth.urls")),
 ]
 

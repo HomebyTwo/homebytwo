@@ -1,21 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Homebytwo{% endblock %}
-
+{% block navigation %}{% include "_nav_no_login.html" %}{% endblock %}
 {% block header %}
-{% include "landingpage/_hero_landingpage.html" %}
+  {% include "landingpage/_hero_landingpage.html" %}
 {% endblock header %}
 
 {% block content %}
-{% include "landingpage/_pitch_boxes.html" %}
-{% include "landingpage/_how_it_works.html" %}
-{% include "landingpage/_testimony.html" %}
-<div class="grid grid--small grid--center grid--even">
-  <div class="sm-w-1/2 grid__item">
-    {% include "landingpage/_email_signup.html" %}
+  {% include "landingpage/_pitch_boxes.html" %}
+  {% include "landingpage/_how_it_works.html" %}
+  {% include "landingpage/_testimony.html" %}
+  <div class="grid grid--small grid--center grid--even">
+    <div class="sm-w-1/2 grid__item">
+      {% include "landingpage/_email_signup.html" %}
+    </div>
+    <div class="sm-w-1/2 grid__item">
+      {% include "landingpage/_github_issues.html" %}
+    </div>
   </div>
-  <div class="sm-w-1/2 grid__item">
-    {% include "landingpage/_github_issues.html" %}
-  </div>  
-</div>
 {% endblock content %}

@@ -4,13 +4,13 @@
 {% block title %}Home by Two - Available Routes{% endblock %}
 
 {% block content %}
-<h1>Select a Route</h1>
-{% for route in routes %}
-<ul class="routes list-stacked list-stacked--tight mrgb">
-  {% include "routes/_route_card.html" %}
-</ul>
-{% empty %}
-{% include 'routes/_no_routes.html' %}
-{% endfor %}
-{% include 'importers/_import.html' %}
+  <h1>Select a Route</h1>
+  {% for route in routes %}
+    <ul class="routes list-stacked list-stacked--tight mrgb">
+      {% include "routes/_route_card.html" %}
+    </ul>
+  {% empty %}
+    {% include 'routes/_no_routes.html' %}
+  {% endfor %}
+  {% include 'importers/_import.html' %}
 {% endblock content %}

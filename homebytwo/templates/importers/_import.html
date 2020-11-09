@@ -1,14 +1,17 @@
 <div class="box box--default">
   <ul class="list-stacked">
-    <li class="">
+    <li>
       <a class="btn btn--primary btn--block" href="{% url 'import_routes' 'strava' %}" title="Import from Strava">
       Import from Strava
       </a>
     </li>
-    <li class="">
+    <li>
       <a class="btn btn--primary btn--block" href="{% url 'import_routes' 'switzerland_mobility' %}" title="Import from Switzerland Mobility">
       Import from Switzerland Mobility
       </a>
+    </li>
+    <li>
+      {% include "importers/gpx/_import_button.html" %}
     </li>
   </ul>
 </div>

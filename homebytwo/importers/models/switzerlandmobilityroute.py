@@ -1,4 +1,4 @@
-from ast import literal_eval
+import json
 
 from django.conf import settings
 from django.contrib.gis.geos import LineString
@@ -55,6 +55,22 @@ class SwitzerlandMobilityRouteManager(RouteManager):
         # return empty list if no routes were found
         else:
             return []
+
+
+def parse_route_data(raw_route_json):
+    data = DataFrame(
+        json.loads(raw_route_json["properties"]["profile"]),
+        columns=["lat", "lng", "altitude", "distance"],
+    )
+
+    # create geom from lat, lng data columns
+    coords = list(zip(data["lat"], data["lng"]))
+    geom = LineString(coords, srid=21781).transform(3857, clone=True)
+
+    # remove redundant lat, lng columns in data
+    data.drop(columns=["lat", "lng"], inplace=True)
+
+    return geom, data
 
 
 class SwitzerlandMobilityRoute(Route):
@@ -126,16 +142,4 @@ class SwitzerlandMobilityRoute(Route):
             raw_route_json = request_json(self.route_data_url, cookies)
 
         if raw_route_json:
-            data = DataFrame(
-                literal_eval(raw_route_json["properties"]["profile"]),
-                columns=["lat", "lng", "altitude", "distance"],
-            )
-
-            # create geom from lat, lng data columns
-            coords = [(lat, lng) for lat, lng in zip(data["lat"], data["lng"])]
-            geom = LineString(coords, srid=21781)
-
-            # remove redundant lat, lng columns in data
-            data.drop(columns=["lat", "lng"], inplace=True)
-
-            return geom, data
+            return parse_route_data(raw_route_json)

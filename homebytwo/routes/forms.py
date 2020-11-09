@@ -1,16 +1,9 @@
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Checkpoint,
-    Gear,
-    Place,
-    Route,
-)
+from .models import (Activity, ActivityPerformance, ActivityType, Checkpoint, Gear,
+                     Place, Route)
 
 
 class RouteForm(ModelForm):
@@ -25,7 +18,7 @@ class RouteForm(ModelForm):
 
     # override __init__ to provide initial data for the
     # 'start_place', 'end_place' and checkpoints field
-    def __init__(self, *args, **kwargs):
+    def __init__(self, update=False, *args, **kwargs):
 
         # parent class (ModelForm) __init__
         super().__init__(*args, **kwargs)
@@ -37,49 +30,62 @@ class RouteForm(ModelForm):
             self.fields["end_place"].queryset = self.instance.get_end_places()
 
             # retrieve checkpoints within range of the route
-            checkpoints = self.instance.find_possible_checkpoints()
+            checkpoints = self.instance.find_possible_checkpoints(updated_geom=update)
 
             # set choices to all possible checkpoints
             self.fields["checkpoints"].choices = [
                 (checkpoint, str(checkpoint)) for checkpoint in checkpoints
             ]
-
-            # set initial values the checkpoints already associated with the route
-            self.initial["checkpoints"] = [
-                checkpoint for checkpoint in checkpoints if checkpoint.id
-            ]
+            if update:
+                # select places that are among the existing checkpoints
+                self.initial["checkpoints"] = [
+                    checkpoint
+                    for checkpoint in checkpoints
+                    # new checkpoint place is among places in the former checkpoints
+                    if self.instance.checkpoint_set.filter(
+                        place=checkpoint.place
+                    ).exists()
+                ]
+            else:
+                # select checkpoints already associated with the route
+                self.initial["checkpoints"] = list(filter(lambda o: o.id, checkpoints))
 
     def save(self, commit=True):
         model = super().save(commit=False)
 
         # checkpoints associated with the route in the database
-        checkpoints_saved = []
         old_checkpoints = model.checkpoint_set.all()
 
         if commit:
-            try:
-                with transaction.atomic():
-                    model.save()
-
-                    # save form checkpoints
-                    for place_id, line_location in self.cleaned_data["checkpoints"]:
-                        checkpoint, created = Checkpoint.objects.get_or_create(
-                            route=model,
-                            place=Place.objects.get(pk=place_id),
-                            line_location=line_location,
-                        )
-
-                        checkpoints_saved.append(checkpoint)
-
-                    # delete places removed from the form
-                    checkpoints_to_delete = set(old_checkpoints) - set(
-                        checkpoints_saved
+            with transaction.atomic():
+                try:
+                    # calculate permanent data columns
+                    model.update_permanent_track_data(
+                        min_step_distance=1,
+                        max_gradient=100,
+                        commit=False
                     )
-                    for checkpoint in checkpoints_to_delete:
-                        checkpoint.delete()
+                except ValueError as error:
+                    message = f"Route cannot be imported: {error}."
+                    self.add_error(None, message)
+                    return
 
-            except IntegrityError:
-                raise
+                model.update_track_details_from_data(commit=False)
+                model.save()
+
+                # save form checkpoints
+                checkpoints_saved = []
+                for place_id, line_location in self.cleaned_data["checkpoints"]:
+                    checkpoint, created = Checkpoint.objects.get_or_create(
+                        route=model,
+                        place=Place.objects.get(pk=place_id),
+                        line_location=line_location,
+                    )
+                    checkpoints_saved.append(checkpoint)
+
+                # delete places that were removed from the form
+                saved_ids = [checkpoint.id for checkpoint in checkpoints_saved]
+                old_checkpoints.exclude(pk__in=saved_ids).delete()
 
         return model
 
@@ -110,7 +116,7 @@ class RouteForm(ModelForm):
 
 class ActivityPerformanceForm(Form):
     """
-    Choose the activity perfomance parameters to apply to the pace prediction.
+    Choose the activity performance parameters to apply to the pace prediction.
 
     The form contains at least one field (activity_type) and at most three:
     the gear and workout_type fields are displayed if the athlete's performance profile
@@ -119,7 +125,8 @@ class ActivityPerformanceForm(Form):
 
     def __init__(self, route, athlete=None, *args, **kwargs):
         """
-        set field choices according to the route's activity type and the athlete's ActivityPerformance objects.
+        set field choices according to the route's activity type and the athlete's
+        ActivityPerformance objects.
         """
         super().__init__(*args, **kwargs)
 
@@ -164,7 +171,7 @@ class ActivityPerformanceForm(Form):
                     if value in athlete_activity_type_list
                 ]
                 # inform on the prediction model's reliability
-                help_text = "Your prediction score for this activity type is: {score:.1%}".format(
+                help_text = "Prediction score: {score:.1%}".format(
                     score=activity_performance.model_score
                 )
 
@@ -180,7 +187,7 @@ class ActivityPerformanceForm(Form):
         if not athlete or not activity_performance:
             return
 
-        # retrieve gear and workout type choices from the categories in the prediction model
+        # retrieve gear and workout type choices from the categories in the model
         gear_list = activity_performance.gear_categories
         workout_type_list = activity_performance.workout_type_categories
 

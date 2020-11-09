@@ -1,0 +1,17 @@
+{% load widget_tweaks %}
+
+<form method="post">
+  {% csrf_token %}
+  <div class="form-group grid grid--small grid--right">
+    {% for field in form %}
+      <div class="grid__item md-w-1/{{ form.visible_fields|length }}">
+        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+        {% render_field field class="field" %}
+        <p class="field-help">{{ field.help_text }}</p>
+      </div>
+    {% endfor %}
+    <div class="grid__item mrgt-">
+      <input class="btn btn--primary btn--medium btn--block" type="submit" value="Update Schedule">
+    </div>
+  </div>
+</form>

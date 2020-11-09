@@ -1,0 +1,19 @@
+{
+  "id": "doc_id",
+  "type": "doc",
+  "href": "https://coda.io/apis/v1/docs/doc_id",
+  "browserLink": "https://coda.io/d/_ddoc_id",
+  "name": "Homebytwo",
+  "owner": "info@homebytwo.ch",
+  "ownerName": "Homebytwo",
+  "createdAt": "2020-01-01T00:00:00.000Z",
+  "updatedAt": "2020-01-01T00:00:00.000Z",
+  "docSize": {
+    "totalRowCount": 87,
+    "tableAndViewCount": 7,
+    "pageCount": 4,
+    "overApiSizeLimit": false
+  },
+  "workspaceId": "ws-workspace_id",
+  "folderId": "fl-folder_id"
+}

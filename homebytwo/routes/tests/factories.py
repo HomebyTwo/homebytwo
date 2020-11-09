@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from django.contrib.gis.geos import GEOSGeometry, Point
+from django.contrib.gis.geos import Point, fromfile
 
 from factory import Faker, Iterator, LazyAttribute, Sequence, SubFactory
 from factory.django import DjangoModelFactory
@@ -9,8 +9,20 @@ from faker.providers import BaseProvider
 from pandas import DataFrame, read_json
 from pytz import utc
 
-from ...routes.models import Activity, ActivityPerformance, ActivityType, Gear, Place, Route, WebhookTransaction
+from ...routes.models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Gear,
+    Place,
+    PlaceType,
+    Route,
+    WebhookTransaction,
+)
 from ...utils.factories import AthleteFactory, get_field_choices
+from ..models import Country
+
+COUNTRIES = ["CH", "DE", "FR", "IT"]
 
 
 class DjangoGeoLocationProvider(BaseProvider):
@@ -18,15 +30,11 @@ class DjangoGeoLocationProvider(BaseProvider):
     https://stackoverflow.com/a/58783744/12427785
     """
 
-    countries = ["CH", "DE", "FR", "IT"]
-
     def location(self, country=None):
         """
         generate a GeoDjango Point object with a custom Faker provider
         """
-        country_code = (
-            country or Faker("random_element", elements=self.countries).generate()
-        )
+        country_code = country or Faker("random_element", elements=COUNTRIES).generate()
         faker = Faker("local_latlng", country_code=country_code, coords_only=True)
         coords = faker.generate()
         return Point(x=float(coords[1]), y=float(coords[0]), srid=4326)
@@ -35,11 +43,13 @@ class DjangoGeoLocationProvider(BaseProvider):
 Faker.add_provider(DjangoGeoLocationProvider)
 
 
-def load_data(file):
-    dir_path = Path(__file__).resolve().parent
-    json_path = dir_path / "data" / file
+def load_data(file_name):
+    return open(get_data_file_path(file_name)).read()
 
-    return open(json_path).read()
+
+def get_data_file_path(file_name):
+    dir_path = Path(__file__).resolve().parent
+    return dir_path / "data" / file_name
 
 
 class GearFactory(DjangoModelFactory):
@@ -72,28 +82,23 @@ class PlaceFactory(DjangoModelFactory):
     class Meta:
         model = Place
 
-    place_type = Faker(
-        "random_element",
-        elements=list(get_field_choices(Place.PLACE_TYPE_CHOICES)),
-    )
+    place_type = Iterator(PlaceType.objects.all())
     name = Faker("city")
     description = Faker("bs")
+    country = Iterator(Country.objects.filter(iso2__in=COUNTRIES))
+    geom = LazyAttribute(lambda o: Faker("location", country=o.country.iso2).generate())
     altitude = Faker("random_int", min=0, max=4808)
-    public_transport = Faker("boolean", chance_of_getting_true=10)
-    geom = Faker("location")
+    data_source = Faker("random_element", elements=["geonames", "swissnames3d"])
+    source_id = Sequence(lambda n: 1000 + n)
 
 
 class RouteFactory(DjangoModelFactory):
     class Meta:
         model = Route
-        exclude = ("route_geojson", "route_data_json")
-
-    route_geojson = load_data("route_geom.json")
-    route_data_json = load_data("route_data.json")
 
     activity_type = SubFactory(ActivityTypeFactory)
     name = Faker("text", max_nb_chars=100)
-    source_id = Sequence(lambda n: "%d" % n)
+    source_id = Sequence(lambda n: 1000 + n)
     data_source = "homebytwo"
     description = Faker("bs")
     athlete = SubFactory(AthleteFactory)
@@ -101,10 +106,10 @@ class RouteFactory(DjangoModelFactory):
     total_elevation_gain = Faker("random_int", min=0, max=5000)
     total_elevation_loss = Faker("random_int", min=0, max=5000)
     total_distance = Faker("random_int", min=1, max=5000)
-    geom = GEOSGeometry(route_geojson, srid=21781)
-    start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0]))
-    end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1]))
-    data = read_json(route_data_json, orient="records")
+    geom = fromfile(get_data_file_path("route.ewkb").as_posix())
+    start_place = SubFactory(PlaceFactory, geom=Point(geom.coords[0], srid=geom.srid))
+    end_place = SubFactory(PlaceFactory, geom=Point(geom.coords[-1], srid=geom.srid))
+    data = read_json(load_data("route_data.json"), orient="records")
 
 
 class ActivityFactory(DjangoModelFactory):
@@ -129,7 +134,7 @@ class ActivityFactory(DjangoModelFactory):
         "random_element",
         elements=list(get_field_choices(Activity.WORKOUT_TYPE_CHOICES)),
     )
-    gear = SubFactory(GearFactory)
+    gear = SubFactory(GearFactory, athlete=athlete)
     streams = DataFrame(
         {stream["type"]: stream["data"] for stream in json.loads(streams_json)}
     )

@@ -1,6 +1,7 @@
 -e git+git://github.com/JohanWieslander/garmin-uploader@master#egg=garmin-uploader
 
 celery
+codaio
 dj-database-url
 django<2.3
 django-geojson
@@ -24,3 +25,4 @@ social-auth-core
 social-auth-app-django
 stravalib
 tables
+tqdm

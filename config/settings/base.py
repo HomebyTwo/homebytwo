@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "homebytwo.routes",
     "homebytwo.importers",
     "homebytwo.landingpage",
-    "homebytwo.celery.CeleryConfig",
 ]
 
 MIDDLEWARE = [
@@ -143,10 +142,10 @@ THUMBNAIL_ALIASES = {
 # Celery #
 ##############
 
-CELERY_BROKER_URL = get_env_variable("CELERY_BROKER_URL", "amqp://localhost")
-CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TASK_SERIALIZER = "json"
+celery_broker_url = get_env_variable("celery_broker_url", "amqp://localhost")
+celery_accept_content = ["application/json"]
+celery_result_serializer = "json"
+celery_task_serializer = "json"
 
 #############
 # Mailchimp #
@@ -160,6 +159,14 @@ MAILCHIMP_LIST_ID = get_env_variable("MAILCHIMP_LIST_ID", "")
 ######################
 
 GTM_CONTAINER_ID = get_env_variable("GTM_CONTAINER_ID", "")
+
+###########
+# Coda.io #
+###########
+
+CODA_API_KEY = get_env_variable("CODA_API_KEY", "")
+CODA_DOC_ID = get_env_variable("CODA_DOC_ID", "")
+CODA_TABLE_ID = get_env_variable("CODA_TABLE_ID", "")
 
 ##########
 # Mapbox #
@@ -257,11 +264,3 @@ SWITZERLAND_MOBILITY_ROUTE_DATA_URL = get_env_variable(
 GARMIN_CONNECT_USERNAME = get_env_variable("GARMIN_CONNECT_USERNAME", "")
 GARMIN_CONNECT_PASSWORD = get_env_variable("GARMIN_CONNECT_PASSWORD", "")
 GARMIN_ACTIVITY_URL = get_env_variable("GARMIN_ACTIVITY_URL", "")
-
-##############################
-# Swiss public transport API #
-##############################
-
-# http://transport.opendata.ch/docs.html
-
-SWISS_PUBLIC_TRANSPORT_API_URL = get_env_variable("SWISS_PUBLIC_TRANSPORT_API_URL", "")

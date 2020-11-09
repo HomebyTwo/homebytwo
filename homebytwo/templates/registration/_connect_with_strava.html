@@ -7,7 +7,5 @@
   <li>Compare Strava activities with route schedules</li>
 </ul>
 <p>
-  <a href="{% url "social:begin" "strava" %}{% if next %}?next={{ next }}{% endif %}">
-    <img src="{% static 'images/strava_connect.svg' %}" alt="Connect with Strava" height="48px"/>
-  </a>
+  {% include "_strava_connect_button.html" %}
 </p>
