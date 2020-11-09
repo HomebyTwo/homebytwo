@@ -78,7 +78,7 @@ def test_save_places_from_generator():
         for place in places
     )
     msg = "Created 20 new places and updated 5 places. "
-    assert save_places_from_generator(data, count=20) == msg
+    assert save_places_from_generator(data, count=20, source_info="test_source") == msg
     assert Place.objects.count() == 25
 
 
@@ -87,7 +87,7 @@ def test_save_places_from_generator_empty():
     places = []
     data = (place for place in places)
     msg = "Created 0 new places and updated 0 places. "
-    assert save_places_from_generator(data, count=0) == msg
+    assert save_places_from_generator(data, count=0, source_info="test_source") == msg
     assert Place.objects.count() == 0
 
 
@@ -111,7 +111,7 @@ def test_save_places_from_generator_bad_place_type(capsys):
         for place in [place]
     )
     msg = "Created 0 new places and updated 0 places. "
-    assert save_places_from_generator(data, count=1) == msg
+    assert save_places_from_generator(data, count=1, source_info="test_source") == msg
     captured = capsys.readouterr()
     assert "Place type code: BADCODE does not exist.\n" in captured.out
     assert Place.objects.count() == 0

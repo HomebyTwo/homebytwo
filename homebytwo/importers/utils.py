@@ -146,7 +146,9 @@ def get_csv_line_count(csv_file: TextIOWrapper, header: bool) -> int:
     return max(count - int(header), 0)
 
 
-def save_places_from_generator(data: Iterator[PlaceTuple], count: int) -> str:
+def save_places_from_generator(
+    data: Iterator[PlaceTuple], count: int, source_info: str
+) -> str:
     """
     Save places from csv parsers in geonames.py or swissnames3d.py
     """
@@ -158,7 +160,7 @@ def save_places_from_generator(data: Iterator[PlaceTuple], count: int) -> str:
             total=count,
             unit="places",
             unit_scale=True,
-            desc="saving places",
+            desc=f"saving places from {source_info}",
         ):
 
             # retrieve PlaceType from the database

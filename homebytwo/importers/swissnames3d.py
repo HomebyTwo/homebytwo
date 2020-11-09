@@ -66,7 +66,6 @@ def import_places_from_swissnames3d(
     see http://mapref.org/CoordinateReferenceFrameChangeLV03.LV95.html#Zweig1098
     :param file: path to local unzipped file. if provided, the `projection`
     parameter will be ignored.
-    :param update: should existing places be updated with the downloaded data.
     """
     try:
         file = file or get_swissnames3d_remote_file(projection=projection)
@@ -78,8 +77,9 @@ def import_places_from_swissnames3d(
     with file:
         count = get_csv_line_count(file, header=True)
         data = parse_places_from_csv(file, projection=projection)
+        source_info = f"SwissNAMES3D {projection}"
 
-        return save_places_from_generator(data=data, count=count)
+        return save_places_from_generator(data, count, source_info)
 
 
 def get_swissnames3d_remote_file(projection: str = "LV95") -> TextIOWrapper:

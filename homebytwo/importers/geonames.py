@@ -24,7 +24,6 @@ def import_places_from_geonames(
     see https://www.geonames.org/countries/), e.g. `CH` or `allCountries`
     :param file: path to local unzipped file. If provided, the `scope` parameter
     will be ignored and the local file will be used.
-    :param update: should existing places be updated with the downloaded data.
     """
     try:
         file = file or get_geonames_remote_file(scope)
@@ -36,8 +35,9 @@ def import_places_from_geonames(
     with file:
         count = get_csv_line_count(file, header=False)
         data = parse_places_from_csv(file)
+        source_info = f"geonames.org {scope}"
 
-        return save_places_from_generator(data, count)
+        return save_places_from_generator(data, count, source_info)
 
 
 def get_geonames_remote_file(scope: str = "allCountries") -> TextIOWrapper:
