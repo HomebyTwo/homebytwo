@@ -119,7 +119,7 @@ class StravaRoute(Route):
             if key == "latlng":
                 geom = LineString(
                     [(lng, lat) for lat, lng in stream.data], srid=4326
-                ).transform(21781, clone=True)
+                ).transform(3857, clone=True)
 
             # import other streams
             else:

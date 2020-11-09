@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Point
 from django.shortcuts import resolve_url
 from django.urls import reverse
 from django.utils.html import escape
@@ -16,6 +16,7 @@ from stravalib import Client as StravaClient
 from ...conftest import STRAVA_API_BASE_URL
 from ...routes.fields import DataFrameField
 from ...routes.models import ActivityType
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory
 from ...utils.tests import get_route_post_data
 from ..models import StravaRoute
@@ -176,13 +177,21 @@ def test_get_strava_routes_connection_error(athlete, client):
 
 
 def test_get_import_strava_route(athlete, mock_import_route_call_response):
-    source_id = 2325453
 
-    response = mock_import_route_call_response("strava", source_id)
+    response = mock_import_route_call_response("strava")
     route_name = escape("Le Flon - Col de Verne")
 
     assert response.status_code == 200
     assertContains(response, route_name)
+
+
+def test_get_import_strava_route_with_checkpoints(
+    athlete, mock_import_route_call_response
+):
+    place = PlaceFactory(geom=Point(x=759599.4425849458, y=5833329.401508623))
+    response = mock_import_route_call_response("strava")
+
+    assertContains(response, place.name)
 
 
 def test_get_import_strava_route_already_imported(

@@ -4,7 +4,7 @@ from pathlib import Path
 from re import compile as re_compile
 
 from django.conf import settings
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Point
 from django.forms.models import model_to_dict
 from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
@@ -12,14 +12,15 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 import responses
-from pytest_django.asserts import assertRedirects, assertContains
+from pytest_django.asserts import assertContains, assertRedirects
 from requests.exceptions import ConnectionError
 
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import read_data, create_checkpoints_from_geom, get_route_post_data
+from ...utils.tests import create_checkpoints_from_geom, get_route_post_data, read_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
@@ -475,8 +476,11 @@ class SwitzerlandMobilityTestCase(TestCase):
         response = self.client.get(url)
         self.assertContains(response, content)
 
-    def test_switzerland_mobility_route_success(self):
+    def test_get_import_switzerland_mobility_route(self):
 
+        possible_checkpoint_place = PlaceFactory(
+            geom=Point(x=770627.7496480079, y=5804675.451271648)
+        )
         response = self.get_import_route_response(route_id=2823968)
 
         title = "<title>Home by Two - Import Haute Cime</title>"
@@ -485,10 +489,10 @@ class SwitzerlandMobilityTestCase(TestCase):
             'class="field"',
             'id="id_start_place"',
         ]
-
         map_data = '<div id="main" class="leaflet-container-default"></div>'
 
         self.assertContains(response, title, html=True)
+        self.assertContains(response, possible_checkpoint_place.name)
         for start_place_form_element in start_place_form_elements:
             self.assertContains(response, start_place_form_element)
         self.assertContains(response, map_data, html=True)

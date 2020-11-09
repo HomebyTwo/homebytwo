@@ -325,7 +325,7 @@ def mock_call_json_responses(read_file, mocked_responses):
 def mock_import_route_call_response(client, mock_route_details_response):
     def _mock_import_route_call_response(
         data_source,
-        source_id,
+        source_id=12345678,
         method="get",
         post_data=None,
         follow_redirect=False,
