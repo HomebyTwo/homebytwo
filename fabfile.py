@@ -369,7 +369,7 @@ def fetch_media():
     """
     sync local media folder with remote data
     """
-    # absolute media root on remote environement
+    # absolute media root on remote environment
     with cd(get_project_root()), quiet():
         remote_media_root = run("cat envdir/MEDIA_ROOT")
 
