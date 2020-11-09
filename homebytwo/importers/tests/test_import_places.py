@@ -117,6 +117,29 @@ def test_save_places_from_generator_bad_place_type(capsys):
     assert Place.objects.count() == 0
 
 
+@pytest.mark.django_db
+def test_save_places_from_generator_bad_country_type(capsys):
+    place = PlaceFactory.build(data_source="geonames")
+    data = (
+        PlaceTuple(
+            name=place.name,
+            place_type=place.place_type.code,
+            latitude=place.geom.y,
+            longitude=place.geom.x,
+            altitude=place.altitude,
+            country="ZZ",
+            source_id=place.source_id,
+            data_source=place.data_source,
+            srid=4326,
+        )
+        for place in [place]
+    )
+    msg = "Created 0 new places and updated 0 places. "
+    assert save_places_from_generator(data, count=1, source_info="test_source") == msg
+    captured = capsys.readouterr()
+    assert "Country code: ZZ could not be found.\n" in captured.out
+    assert Place.objects.count() == 0
+
 ###############
 # geonames.py #
 ###############

@@ -176,7 +176,7 @@ def save_places_from_generator(
                 try:
                     country = Country.objects.get(iso2=remote_place.country)
                 except Country.DoesNotExist:
-                    print(f"Country code: {remote_place.country} does not exist.")
+                    print(f"Country code: {remote_place.country} could not be found.")
                     continue
 
             default_values = {
