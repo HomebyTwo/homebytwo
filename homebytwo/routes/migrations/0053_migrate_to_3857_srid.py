@@ -11,10 +11,18 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            "SELECT UpdateGeometrySRID('routes_place','geom',3857);",
+            """
+            ALTER TABLE routes_place
+            ALTER COLUMN geom TYPE geometry(POINT, 3857)
+            USING ST_Transform(ST_SetSRID(geom, 21781), 3857);
+            """
         ),
         migrations.RunSQL(
-            "SELECT UpdateGeometrySRID('routes_route','geom',3857);",
+            """
+            ALTER TABLE routes_route
+            ALTER COLUMN geom TYPE geometry(LINESTRING, 3857)
+            USING ST_Transform(ST_SetSRID(geom, 21781), 3857);
+            """
         ),
         migrations.AlterField(
             model_name="route",
