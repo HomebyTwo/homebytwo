@@ -19,6 +19,7 @@ polyline
 psycopg2-binary
 rcssmin
 requests
+rules
 scikit-learn
 sentry-sdk
 social-auth-core
