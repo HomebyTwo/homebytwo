@@ -1,7 +1,6 @@
 from datetime import timedelta
 from os import urandom
 from pathlib import Path
-from unittest import skip
 from uuid import uuid4
 
 from django.conf import settings
@@ -9,6 +8,7 @@ from django.contrib.gis.geos import LineString, Point
 from django.contrib.gis.measure import Distance
 from django.core.management import CommandError, call_command
 from django.forms.models import model_to_dict
+from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils.six import StringIO
@@ -18,7 +18,7 @@ from pandas import DataFrame
 from pytest_django.asserts import assertContains, assertRedirects
 
 from ...utils.factories import AthleteFactory
-from ...utils.tests import create_checkpoints_from_geom
+from ...utils.tests import create_checkpoints_from_geom, create_route_with_checkpoints
 from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import Route
@@ -36,163 +36,6 @@ class RouteTestCase(TestCase):
     def setUp(self):
         self.athlete = AthleteFactory(user__password="test_password")
         self.client.login(username=self.athlete.user.username, password="test_password")
-
-    #########
-    # Model #
-    #########
-
-    def test_str(self):
-        route = RouteFactory()
-        self.assertEqual(
-            str(route),
-            "{activity_type}: {name}".format(
-                activity_type=str(route.activity_type), name=route.name
-            ),
-        )
-
-    def test_display_url(self):
-        route = RouteFactory()
-        self.assertEqual(route.display_url, route.get_absolute_url())
-
-        match = resolve(route.edit_url)
-        assert match.app_name == "routes"
-        assert match.url_name == "edit"
-
-        match = resolve(route.update_url)
-        assert match.app_name == "routes"
-        assert match.url_name == "update"
-
-        match = resolve(route.delete_url)
-        assert match.app_name == "routes"
-        assert match.url_name == "delete"
-
-        match = resolve(route.gpx_url)
-        assert match.app_name == "routes"
-        assert match.url_name == "gpx"
-
-        match = resolve(route.import_url)
-        assert match.url_name == "import_route"
-
-    def test_get_total_distance(self):
-        route = RouteFactory.build(total_distance=12345)
-        total_distance = route.get_total_distance()
-
-        self.assertTrue(isinstance(total_distance, Distance))
-        self.assertEqual(total_distance.km, 12.345)
-
-    def test_get_total_elevation_gain(self):
-        route = RouteFactory.build(total_elevation_gain=1234)
-        total_elevation_gain = route.get_total_elevation_gain()
-
-        self.assertTrue(isinstance(total_elevation_gain, Distance))
-        self.assertAlmostEqual(total_elevation_gain.ft, 4048.556430446194)
-
-    def test_get_total_elevation_loss(self):
-        route = RouteFactory.build(total_elevation_loss=4321)
-        total_elevation_loss = route.get_total_elevation_loss()
-
-        self.assertTrue(isinstance(total_elevation_loss, Distance))
-        self.assertAlmostEqual(total_elevation_loss.m, 4321)
-
-    def test_get_start_altitude(self):
-        data = DataFrame(
-            [[0, 0], [1234, 1000]],
-            columns=["altitude", "distance"],
-        )
-        route = RouteFactory.build(
-            data=data,
-            total_distance=1000,
-            geom=LineString(
-                ((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781
-            ).transform(3857, clone=True),
-        )
-        start_altitude = route.get_start_altitude()
-        end_altitude = route.get_end_altitude()
-
-        self.assertAlmostEqual(start_altitude.m, 0)
-        self.assertAlmostEqual(end_altitude.m, 1234)
-
-    def test_get_distance_data(self):
-        data = DataFrame(
-            [[0, 0], [1000, 1000]],
-            columns=["altitude", "distance"],
-        )
-        route = RouteFactory.build(data=data, total_distance=1000)
-
-        # make the call
-        point_altitude = route.get_distance_data(0.5, "altitude")
-
-        self.assertTrue(isinstance(point_altitude, Distance))
-        self.assertAlmostEqual(point_altitude.m, 500)
-
-    def test_get_start_and_end_places(self):
-        route = RouteFactory.build()
-
-        route.start_place.name = "Start Place"
-        route.start_place.save()
-        route.end_place.name = "End Place"
-        route.end_place.save()
-
-        start_place = route.get_closest_places_along_line()[0]
-        end_place = route.get_closest_places_along_line(1)[0]
-
-        self.assertEqual(start_place.distance_from_line.m, 0)
-        self.assertEqual(start_place.name, "Start Place")
-
-        self.assertEqual(end_place.distance_from_line.m, 0)
-        self.assertEqual(end_place.name, "End Place")
-
-    @override_settings(
-        STRAVA_ROUTE_URL="https://strava_route_url/%d",
-        SWITZERLAND_MOBILITY_ROUTE_URL="https://switzerland_mobility_route_url/%d",
-    )
-    def test_source_link(self):
-        route = RouteFactory(data_source="strava", source_id=777)
-        source_url = "https://strava_route_url/777"
-        self.assertEqual(route.source_link.url, source_url)
-        self.assertEqual(route.source_link.text, "Strava")
-
-        route = RouteFactory(data_source="switzerland_mobility", source_id=777)
-        source_url = "https://switzerland_mobility_route_url/777"
-        self.assertEqual(route.source_link.url, source_url)
-        self.assertEqual(route.source_link.text, "Switzerland Mobility Plus")
-
-        route = RouteFactory()
-        self.assertIsNone(route.source_link)
-
-    def test_get_route_details(self):
-        route = RouteFactory()
-
-        with self.assertRaises(NotImplementedError):
-            route.get_route_details()
-
-    def test_get_route_data(self):
-        route = RouteFactory()
-
-        with self.assertRaises(NotImplementedError):
-            route.get_route_data()
-
-    def test_get_or_stub_new(self):
-        source_id = 123456789
-        route, update = Route.get_or_stub(source_id=source_id, athlete=self.athlete)
-
-        assert route.data_source == "homebytwo"
-        assert route.source_id == source_id
-        assert route.athlete == self.athlete
-        assert not update
-        assert not route.pk
-
-    def test_get_or_stub_existing(self):
-        existing_route = RouteFactory(athlete=self.athlete)
-        retrieved_route, update = Route.get_or_stub(
-            source_id=existing_route.source_id, athlete=self.athlete
-        )
-
-        assert retrieved_route.data_source == "homebytwo"
-        assert retrieved_route.source_id == existing_route.source_id
-        assert retrieved_route.athlete == self.athlete
-        assert update
-        assert retrieved_route.pk
 
     #########
     # Views #
@@ -229,7 +72,7 @@ class RouteTestCase(TestCase):
         edit_url = reverse("routes:edit", args=[route.id])
         edit_button = (
             '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'.format(
-                href=edit_url, text="Edit Route"
+                href=edit_url, text="Add/Remove Checkpoints"
             )
         )
 
@@ -285,120 +128,6 @@ class RouteTestCase(TestCase):
 
         self.assertContains(response, route_name)
         self.assertContains(response, start_place_name)
-
-    def test_get_route_delete_view(self):
-        route = RouteFactory()
-        url = reverse("routes:delete", args=[route.id])
-        response = self.client.get(url)
-        content = "<h1>Delete %s</h1>" % route.name
-        self.assertContains(response, content, html=True)
-
-    def test_get_route_delete_not_logged(self):
-        route = RouteFactory()
-        url = reverse("routes:delete", args=[route.id])
-        self.client.logout()
-
-        response = self.client.get(url)
-        redirect_url = "/login/?next=" + url
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_post_route_delete_view(self):
-        route = RouteFactory()
-        url = reverse("routes:delete", args=[route.id])
-        post_data = {}
-        response = self.client.post(url, post_data)
-
-        redirect_url = reverse("routes:routes")
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    @skip  # until rules is implemented
-    def test_post_route_delete_not_owner(self):
-        route = RouteFactory(athlete=AthleteFactory())
-        url = reverse("routes:delete", args=[route.id])
-        post_data = {}
-        response = self.client.post(url, post_data)
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_get_route_edit_form(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:edit", args=[route.id])
-        response = self.client.get(url)
-        content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
-        self.assertContains(response, content, html=True)
-
-    def test_get_route_edit_form_not_logged(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:edit", args=[route.id])
-        self.client.logout()
-
-        response = self.client.get(url)
-        redirect_url = "/login/?next=" + url
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_post_route_edit_form(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:edit", args=[route.id])
-        post_data = {
-            "name": route.name,
-            "activity_type": 2,
-        }
-
-        response = self.client.post(url, post_data)
-        redirect_url = reverse("routes:route", args=[route.id])
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, redirect_url)
-
-    def test_post_route_remove_checkpoints(self):
-        route = RouteFactory(athlete=self.athlete)
-
-        # checkpoints
-        number_of_checkpoints = 20
-        checkpoints_data = []
-
-        for index in range(1, number_of_checkpoints + 1):
-            line_location = index / (number_of_checkpoints + 1)
-            place = PlaceFactory(
-                geom=Point(
-                    *route.geom.coords[int(route.geom.num_coords * line_location)]
-                )
-            )
-            route.places.add(place, through_defaults={"line_location": line_location})
-            checkpoints_data.append("_".join([str(place.id), str(line_location)]))
-
-        route_data = model_to_dict(route)
-        post_data = {
-            key: value
-            for key, value in route_data.items()
-            if key in RouteForm.Meta.fields
-        }
-
-        post_data["checkpoints"] = checkpoints_data[: number_of_checkpoints - 2]
-
-        # post
-        url = reverse("routes:edit", args=[route.id])
-        self.client.post(url, post_data)
-        self.assertEqual(route.checkpoint_set.count(), number_of_checkpoints - 2)
-
-    @skip  # until rules is implemented
-    def test_post_route_edit_not_owner(self):
-        route = RouteFactory(athlete=AthleteFactory())
-        url = reverse("routes:edit", args=[route.id])
-
-        post_data = {
-            "name": route.name,
-            "description": route.description,
-        }
-
-        response = self.client.post(url, post_data)
-
-        self.assertEqual(response.status_code, 401)
 
     #######################
     # Management Commands #
@@ -490,6 +219,172 @@ class RouteTestCase(TestCase):
 
         with self.assertRaises(CommandError):
             call_command("cleanup_hdf5_files", stdout=out)
+
+
+###############
+# model Route #
+###############
+
+
+def test_str():
+    route = RouteFactory.build()
+    assert str(route) == "{activity_type}: {name}".format(
+        activity_type=str(route.activity_type), name=route.name
+    )
+
+
+def test_display_url(athlete):
+    route = RouteFactory(athlete=athlete)
+    assert route.display_url == route.get_absolute_url()
+
+    match = resolve(route.edit_url)
+    assert match.app_name == "routes"
+    assert match.url_name == "edit"
+
+    match = resolve(route.update_url)
+    assert match.app_name == "routes"
+    assert match.url_name == "update"
+
+    match = resolve(route.delete_url)
+    assert match.app_name == "routes"
+    assert match.url_name == "delete"
+
+    match = resolve(route.gpx_url)
+    assert match.app_name == "routes"
+    assert match.url_name == "gpx"
+
+    match = resolve(route.import_url)
+    assert match.url_name == "import_route"
+
+
+def test_get_total_distance():
+    route = RouteFactory.build(total_distance=12345)
+    total_distance = route.get_total_distance()
+
+    assert isinstance(total_distance, Distance)
+    assert total_distance.km == 12.345
+
+
+def test_get_total_elevation_gain():
+    route = RouteFactory.build(total_elevation_gain=1234)
+    total_elevation_gain = route.get_total_elevation_gain()
+
+    assert isinstance(total_elevation_gain, Distance)
+    assert total_elevation_gain.ft == pytest.approx(4048.556430446194)
+
+
+def test_get_total_elevation_loss():
+    route = RouteFactory.build(total_elevation_loss=4321)
+    total_elevation_loss = route.get_total_elevation_loss()
+
+    assert isinstance(total_elevation_loss, Distance)
+    assert total_elevation_loss.m == 4321
+
+
+def test_get_start_altitude():
+    data = DataFrame(
+        [[0, 0], [1234, 1000]],
+        columns=["altitude", "distance"],
+    )
+    route = RouteFactory.build(
+        data=data,
+        total_distance=1000,
+        geom=LineString(
+            ((500000.0, 300000.0), (501000.0, 300000.0)), srid=21781
+        ).transform(3857, clone=True),
+    )
+    start_altitude = route.get_start_altitude()
+    end_altitude = route.get_end_altitude()
+
+    assert start_altitude.m == 0
+    assert end_altitude.m == 1234
+
+
+def test_get_distance_data():
+    data = DataFrame(
+        [[0, 0], [1000, 1000]],
+        columns=["altitude", "distance"],
+    )
+    route = RouteFactory.build(data=data, total_distance=1000)
+
+    # make the call
+    point_altitude = route.get_distance_data(0.5, "altitude")
+
+    assert isinstance(point_altitude, Distance)
+    assert point_altitude.m == 500
+
+
+def test_get_start_and_end_places(athlete):
+    route = RouteFactory.build(athlete=athlete)
+
+    route.start_place.name = "Start Place"
+    route.start_place.save()
+    route.end_place.name = "End Place"
+    route.end_place.save()
+
+    start_place = route.get_closest_places_along_line()[0]
+    end_place = route.get_closest_places_along_line(1)[0]
+
+    assert start_place.distance_from_line.m == 0
+    assert start_place.name == "Start Place"
+    assert end_place.distance_from_line.m == 0
+    assert end_place.name == "End Place"
+
+
+def test_source_link(athlete, settings):
+    settings.SWITZERLAND_MOBILITY_ROUTE_URL = (
+        "https://switzerland_mobility_route_url/%d"
+    )
+    settings.STRAVA_ROUTE_URL = "https://strava_route_url/%d"
+
+    route = RouteFactory(data_source="strava", source_id=777)
+    source_url = "https://strava_route_url/777"
+    assert route.source_link.url == source_url
+    assert route.source_link.text == "Strava"
+
+    route = RouteFactory(data_source="switzerland_mobility", source_id=777)
+    source_url = "https://switzerland_mobility_route_url/777"
+    assert route.source_link.url == source_url
+    assert route.source_link.text == "Switzerland Mobility Plus"
+
+    route = RouteFactory()
+    assert route.source_link is None
+
+
+def test_get_route_details(athlete):
+    route = RouteFactory(athlete=athlete)
+    with pytest.raises(NotImplementedError):
+        route.get_route_details()
+
+
+def test_get_route_data(athlete):
+    route = RouteFactory(athlete=athlete)
+    with pytest.raises(NotImplementedError):
+        route.get_route_data()
+
+
+def test_get_or_stub_new(athlete):
+    source_id = 123456789
+    route, update = Route.get_or_stub(source_id=source_id, athlete=athlete)
+
+    assert route.data_source == "homebytwo"
+    assert route.source_id == source_id
+    assert route.athlete == athlete
+    assert not update
+    assert not route.pk
+
+
+def test_get_or_stub_existing(athlete):
+    existing_route = RouteFactory(athlete=athlete)
+    retrieved_route, update = Route.get_or_stub(
+        source_id=existing_route.source_id, athlete=athlete
+    )
+
+    assert retrieved_route.data_source == "homebytwo"
+    assert retrieved_route.source_id == existing_route.source_id
+    assert retrieved_route.athlete == athlete
+    assert update
+    assert retrieved_route.pk
 
 
 def test_find_additional_places(athlete, switzerland_mobility_data_from_json):
@@ -800,6 +695,11 @@ def test_calculate_projected_time_schedule_total_time(athlete):
     assert default_total_time > athlete_total_time
 
 
+############################
+# template tag duration.py #
+############################
+
+
 def test_schedule_display():
     duration = timedelta(seconds=30, minutes=1, hours=6)
     assert nice_repr(duration) == "6 hours 1 minute 30 seconds"
@@ -834,7 +734,87 @@ def test_base_round():
     assert rounded == [0, 5, 5, 10, -5]
 
 
-def test_get_route_update_form(athlete, client, mock_route_details_response):
+####################
+# view routes:edit #
+####################
+
+
+def test_get_route_edit_form(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("edit")
+    response = client.get(url)
+    content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
+    assertContains(response, content, html=True)
+
+
+def test_get_route_edit_form_not_logged(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("edit")
+    client.logout()
+
+    response = client.get(url)
+    redirect_url = "/login/?next=" + url
+
+    assertRedirects(response, redirect_url)
+
+
+def test_post_route_edit_form(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("edit")
+    post_data = {
+        "name": route.name,
+        "activity_type": 2,
+    }
+
+    response = client.post(url, post_data)
+    redirect_url = route.get_absolute_url()
+
+    assertRedirects(response, redirect_url)
+
+
+def test_post_route_remove_checkpoints(
+    athlete,
+    client,
+):
+    number_of_checkpoints = 10
+    route = create_route_with_checkpoints(number_of_checkpoints, athlete=athlete)
+    route_data = model_to_dict(route)
+    post_data = {
+        key: value for key, value in route_data.items() if key in RouteForm.Meta.fields
+    }
+    checkpoints_data = [
+        "_".join([str(checkpoint.place.id), str(checkpoint.line_location)])
+        for checkpoint in route.checkpoint_set.all()
+    ]
+    post_data["checkpoints"] = checkpoints_data[: number_of_checkpoints - 3]
+    url = route.get_absolute_url("edit")
+    client.post(url, post_data)
+
+    assert route.checkpoint_set.count(), number_of_checkpoints - 3
+
+
+def test_get_route_edit_not_owner(athlete, client):
+    route = RouteFactory(athlete=AthleteFactory())
+    url = route.get_absolute_url("edit")
+    response = client.get(url)
+    assert response.status_code == 403
+
+
+def test_post_route_edit_not_owner(athlete, client):
+    route = RouteFactory(athlete=AthleteFactory())
+    url = route.get_absolute_url("edit")
+    post_data = {"name": route.name}
+    response = client.post(url, post_data)
+
+    assert response.status_code == 403
+
+
+######################
+# view routes:update #
+######################
+
+
+def test_get_route_update(athlete, client, mock_route_details_response):
     route = RouteFactory(athlete=athlete, data_source="switzerland_mobility")
     url = route.get_absolute_url("update")
 
@@ -850,7 +830,7 @@ def test_get_route_update_form(athlete, client, mock_route_details_response):
     assertContains(response, content, html=True)
 
 
-def test_post_route_update_form(athlete, client, mock_route_details_response):
+def test_post_route_update(athlete, client, mock_route_details_response):
     route = RouteFactory(athlete=athlete, data_source="switzerland_mobility")
     url = route.get_absolute_url("update")
     post_data = {
@@ -863,6 +843,84 @@ def test_post_route_update_form(athlete, client, mock_route_details_response):
     )
     response = client.post(url, post_data)
     assertRedirects(response, route.get_absolute_url())
+
+
+def test_get_route_update_not_owner(athlete, client, mock_route_details_response):
+    route = RouteFactory(athlete=AthleteFactory(), data_source="switzerland_mobility")
+    url = route.get_absolute_url("update")
+    post_data = {"name": route.name}
+    response = client.post(url, post_data)
+    assert response.status_code == 403
+
+
+def test_post_route_update_not_owner(athlete, client, mock_route_details_response):
+    route = RouteFactory(athlete=AthleteFactory(), data_source="switzerland_mobility")
+    url = route.get_absolute_url("update")
+    post_data = {"name": route.name}
+    response = client.post(url, post_data)
+    assert response.status_code == 403
+
+
+def test_get_route_update_404(athlete, client):
+    url = resolve_url("routes:update", pk=666)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+######################
+# view routes:delete #
+######################
+
+
+def test_get_route_delete_view(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("delete")
+
+    response = client.get(url)
+    content = "<h1>Delete %s</h1>" % route.name
+    assertContains(response, content, html=True)
+
+
+def test_get_route_delete_not_logged(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("delete")
+    client.logout()
+    response = client.get(url)
+
+    redirect_url = "/login/?next=" + url
+    assertRedirects(response, redirect_url)
+
+
+def test_post_route_delete_view(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url("delete")
+    post_data = {}
+    response = client.post(url, post_data)
+
+    redirect_url = reverse("routes:routes")
+    assertRedirects(response, redirect_url)
+
+
+def test_get_route_delete_not_owner(athlete, client):
+    route = RouteFactory(athlete=AthleteFactory())
+    url = route.get_absolute_url("delete")
+    response = client.get(url)
+
+    assert response.status_code == 403
+
+
+def test_post_route_delete_not_owner(athlete, client):
+    route = RouteFactory(athlete=AthleteFactory())
+    url = route.get_absolute_url("delete")
+    post_data = {}
+    response = client.post(url, post_data)
+
+    assert response.status_code == 403
+
+
+################################
+# view routes:checkpoints_list #
+################################
 
 
 def test_get_checkpoints_list_empty(athlete, client):

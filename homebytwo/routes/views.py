@@ -15,6 +15,7 @@ from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 from pytz import utc
+from rules.contrib.views import AutoPermissionRequiredMixin, PermissionRequiredMixin
 
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
@@ -123,8 +124,9 @@ def view_route(request, pk):
 
 
 @method_decorator(login_required, name="dispatch")
-class RouteEdit(UpdateView):
+class RouteEdit(PermissionRequiredMixin, UpdateView):
     model = Route
+    permission_required = 'routes.change_route'
     form_class = RouteForm
     template_name = "routes/route/route_form.html"
 
@@ -132,11 +134,20 @@ class RouteEdit(UpdateView):
 @method_decorator(login_required, name="dispatch")
 @method_decorator(remote_connection, name="dispatch")
 class RouteUpdate(RouteEdit):
+
+    permission_required = 'routes.update_route'
+
+    def get_permission_object(self):
+        """
+        do not hit the remote server to check permissions
+        """
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        return get_object_or_404(Route, pk=pk)
+
     def get_object(self, queryset=None):
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
-
             return route.update_from_remote(
                 self.request.session.get("switzerland_mobility_cookies", None)
             )
@@ -149,11 +160,10 @@ class RouteUpdate(RouteEdit):
 
 
 @method_decorator(login_required, name="dispatch")
-class RouteDelete(DeleteView):
+class RouteDelete(AutoPermissionRequiredMixin, DeleteView):
     """
     Class based views are not so bad after all.
     """
-
     model = Route
     success_url = reverse_lazy("routes:routes")
     template_name = "routes/route/route_confirm_delete.html"

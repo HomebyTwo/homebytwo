@@ -1,3 +1,5 @@
+import rules
+
 from collections import deque
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
@@ -13,6 +15,7 @@ import gpxpy.gpx
 from garmin_uploader.api import GarminAPI, GarminAPIException
 from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
+from rules.contrib.models import RulesModelMixin, RulesModelBase
 
 from ..models import Checkpoint, Track
 from ..utils import (
@@ -21,6 +24,11 @@ from ..utils import (
     create_segments_from_checkpoints,
     get_places_from_segment,
 )
+
+
+@rules.predicate
+def is_route_owner(user, route):
+    return route.athlete == user.athlete
 
 
 class RouteQuerySet(models.QuerySet):
@@ -50,7 +58,7 @@ def authenticate_on_garmin(garmin_api):
         raise GarminAPIException("Unable to sign-in: {}".format(e))
 
 
-class Route(Track):
+class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     """
     Subclass of track with source information and relations to checkpoints.
 
@@ -81,6 +89,11 @@ class Route(Track):
     garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
+        rules_permissions = {
+            "change": is_route_owner,
+            "update": is_route_owner,
+            "delete": is_route_owner,
+        }
         constraints = [
             models.UniqueConstraint(
                 name="unique route for athlete",
