@@ -9,7 +9,6 @@ from django.contrib.gis.measure import Distance
 from django.core.management import CommandError, call_command
 from django.forms.models import model_to_dict
 from django.shortcuts import resolve_url
-from django.test import TestCase, override_settings
 from django.urls import resolve, reverse
 from django.utils.six import StringIO
 
@@ -24,202 +23,6 @@ from ..forms import RouteForm
 from ..models import Route
 from ..templatetags.duration import base_round, display_timedelta, nice_repr
 from .factories import ActivityPerformanceFactory, PlaceFactory, RouteFactory
-
-CURRENT_DIR = Path(__file__).resolve().parent
-
-
-@override_settings(
-    SWITZERLAND_MOBILITY_ROUTE_DATA_URL="https://example.com/track/%d/show",
-    SWITZERLAND_MOBILITY_ROUTE_URL="https://example.com/?trackId=%d",
-)
-class RouteTestCase(TestCase):
-    def setUp(self):
-        self.athlete = AthleteFactory(user__password="test_password")
-        self.client.login(username=self.athlete.user.username, password="test_password")
-
-    #########
-    # Views #
-    #########
-
-    def test_import_routes_unknown_data_source(self):
-        unknown_data_source_routes_url = reverse(
-            "import_routes", kwargs={"data_source": "spam"}
-        )
-        response = self.client.get(unknown_data_source_routes_url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_route_404(self):
-        url = "routes/0/"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_route_edit_404(self):
-        url = "routes/0/edit/"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_route_delete_404(self):
-        url = "routes/0/delete/"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_view_route_success_owner(self):
-        route = RouteFactory(athlete=self.athlete)
-        url = reverse("routes:route", args=[route.id])
-        route_name = route.name
-        start_place_name = route.start_place.name
-        end_place_name = route.end_place.name
-        edit_url = reverse("routes:edit", args=[route.id])
-        edit_button = (
-            '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'.format(
-                href=edit_url, text="Add/Remove Checkpoints"
-            )
-        )
-
-        response = self.client.get(url)
-
-        self.assertContains(response, route_name)
-        self.assertContains(response, start_place_name)
-        self.assertContains(response, end_place_name)
-        self.assertContains(response, edit_button, html=True)
-
-    def test_view_route_success_not_owner(self):
-        route = RouteFactory()
-        url = reverse("routes:route", args=[route.id])
-        edit_url = reverse("routes:edit", args=[route.id])
-
-        response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn(edit_url, response_content)
-
-    def test_view_route_success_not_logged_in(self):
-        route = RouteFactory()
-        url = reverse("routes:route", args=[route.id])
-        edit_url = reverse("routes:edit", args=[route.id])
-        route_name = route.name
-
-        self.client.logout()
-        response = self.client.get(url)
-        response_content = response.content.decode("UTF-8")
-
-        self.assertContains(response, route_name)
-        self.assertNotIn(edit_url, response_content)
-
-    def test_view_route_success_no_start_place(self):
-        route = RouteFactory(start_place=None)
-        url = reverse("routes:route", args=[route.id])
-        route_name = route.name
-        end_place_name = route.end_place.name
-
-        response = self.client.get(url)
-
-        self.assertContains(response, route_name)
-        self.assertContains(response, end_place_name)
-
-    def test_view_route_success_no_end_place(self):
-        route = RouteFactory(end_place=None)
-        url = reverse("routes:route", args=[route.id])
-        route_name = route.name
-        start_place_name = route.start_place.name
-
-        response = self.client.get(url)
-
-        self.assertContains(response, route_name)
-        self.assertContains(response, start_place_name)
-
-    #######################
-    # Management Commands #
-    #######################
-
-    def test_cleanup_hdf5_files_no_data(self):
-        # No files in data directory
-        out = StringIO()
-
-        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
-        self.assertIn("No files to delete.", out.getvalue())
-
-        call_command("cleanup_hdf5_files", stdout=out)
-        self.assertIn("No files to delete.", out.getvalue())
-
-    def test_cleanup_hdf5_files_routes(self):
-        out = StringIO()
-
-        # five routes no extra files
-        RouteFactory.create_batch(5)
-
-        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
-        self.assertIn("No files to delete.", out.getvalue())
-
-        call_command("cleanup_hdf5_files", stdout=out)
-        self.assertIn("No files to delete.", out.getvalue())
-
-    def test_cleanup_hdf5_files_delete_trash(self):
-        out = StringIO()
-        data_dir = Path(settings.MEDIA_ROOT, "data")
-        data_dir.mkdir(parents=True, exist_ok=True)
-
-        for i in range(5):
-            filename = uuid4().hex + ".h5"
-            full_path = data_dir / filename
-            with full_path.open(mode="wb") as file_:
-                file_.write(urandom(64))
-
-        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
-        self.assertIn(
-            "Clean-up command would delete 5 and keep 0 files.", out.getvalue()
-        )
-
-        call_command("cleanup_hdf5_files", stdout=out)
-        self.assertIn("Successfully deleted 5 files.", out.getvalue())
-
-    def test_cleanup_hdf5_files_missing_route_file(self):
-        out = StringIO()
-
-        # 5 routes, include one to use the filepath
-        route, *_ = RouteFactory.create_batch(5)
-        field = DataFrameField()
-        full_path = field.storage.path(route.data.filepath)
-        data_dir = Path(full_path).parent.resolve()
-
-        # delete one route file
-        file_to_delete = list(data_dir.glob("*"))[0]
-        (data_dir / file_to_delete).unlink()
-
-        # add one random file
-        filename = uuid4().hex + ".h5"
-        full_path = data_dir / filename
-        with full_path.open(mode="wb") as file_:
-            file_.write(urandom(64))
-
-        call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
-        self.assertIn(
-            "Clean-up command would delete 1 and keep 4 files.", out.getvalue()
-        )
-        self.assertIn("1 missing file(s):", out.getvalue())
-
-        call_command("cleanup_hdf5_files", stdout=out)
-        self.assertIn("Successfully deleted 1 files.", out.getvalue())
-        self.assertIn("1 missing file(s):", out.getvalue())
-
-    def test_cleanup_hdf5_files_directory_as_file(self):
-        out = StringIO()
-
-        # 1 route
-        route = RouteFactory()
-        field = DataFrameField()
-        full_path = field.storage.path(route.data.filepath)
-        data_dir = Path(full_path).parent.resolve()
-
-        # add one random directory with .h5 extension
-        dirname = "dir.h5"
-        full_path = data_dir / dirname
-        Path(full_path).mkdir(parents=True, exist_ok=True)
-
-        with self.assertRaises(CommandError):
-            call_command("cleanup_hdf5_files", stdout=out)
-
 
 ###############
 # model Route #
@@ -734,6 +537,120 @@ def test_base_round():
     assert rounded == [0, 5, 5, 10, -5]
 
 
+######################
+# view routes:routes #
+######################
+
+
+def test_import_routes_unknown_data_source(athlete, client):
+    unknown_data_source_routes_url = reverse(
+        "import_routes", kwargs={"data_source": "spam"}
+    )
+    response = client.get(unknown_data_source_routes_url)
+    assert response.status_code == 404
+
+
+#####################
+# view routes:route #
+#####################
+
+
+def test_route_404(athlete, client):
+    url = resolve_url("routes:route", pk=0)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_route_edit_404(athlete, client):
+    url = resolve_url("routes:edit", pk=0)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_route_delete_404(athlete, client):
+    url = resolve_url("routes:delete", pk=0)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_view_route(athlete, client):
+    route = RouteFactory(athlete=athlete)
+    url = route.get_absolute_url()
+
+    button = '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'
+    edit_button = button.format(
+        href=route.get_absolute_url("edit"), text="Add/Remove Checkpoints"
+    )
+    update_button = button.format(
+        href=route.get_absolute_url("update"), text="Re-Import from Source"
+    )
+
+    response = client.get(url)
+    user = response.context["user"]
+
+    assert user.has_perm(route.get_perm("view"), route)
+    assert user.has_perm(route.get_perm("change"), route)
+
+    assertContains(response, route.name)
+    assertContains(response, route.start_place.name)
+    assertContains(response, route.end_place.name)
+    assertContains(response, update_button, html=True)
+    assertContains(response, edit_button, html=True)
+
+
+def test_view_route_success_not_owner(athlete, client):
+    route = RouteFactory()
+    url = route.get_absolute_url()
+    update_url = route.get_absolute_url("update")
+    edit_url = route.get_absolute_url("edit")
+    response = client.get(url)
+    response_content = response.content.decode("UTF-8")
+
+    assert response.status_code == 200
+    assert update_url not in response_content
+    assert edit_url not in response_content
+
+
+def test_view_route_success_not_logged_in(athlete, client):
+    route = RouteFactory()
+    url = route.get_absolute_url()
+    update_url = route.get_absolute_url("update")
+    edit_url = route.get_absolute_url("edit")
+    route_name = route.name
+
+    client.logout()
+    response = client.get(url)
+    response_content = response.content.decode("UTF-8")
+
+    assertContains(response, route_name)
+    assert edit_url not in response_content
+    assert update_url not in response_content
+
+
+def test_view_route_success_no_start_place(athlete, client):
+    route = RouteFactory(start_place=None)
+    url = route.get_absolute_url()
+    route_name = route.name
+    end_place_name = route.end_place.name
+
+    response = client.get(url)
+
+    assertContains(response, route_name)
+    assertContains(response, end_place_name)
+
+
+def test_view_route_success_no_end_place(athlete, client):
+    route = RouteFactory(end_place=None)
+    url = route.get_absolute_url()
+    route_name = route.name
+    start_place_name = route.start_place.name
+
+    response = client.get(url)
+
+    assertContains(response, route_name)
+    assertContains(response, start_place_name)
+
+
 ####################
 # view routes:edit #
 ####################
@@ -943,3 +860,102 @@ def test_get_checkpoints_list(athlete, client, switzerland_mobility_data_from_js
 
     assert response.status_code == 200
     assert len(response.json()["checkpoints"]) == number_of_checkpoints
+
+
+#######################
+# Management Commands #
+#######################
+
+
+@pytest.mark.django_db
+def test_cleanup_hdf5_files_no_data():
+    out = StringIO()
+
+    call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+    assert "No files to delete." in out.getvalue()
+
+    call_command("cleanup_hdf5_files", stdout=out)
+    assert "No files to delete." in out.getvalue()
+
+
+@pytest.mark.django_db
+def test_cleanup_hdf5_files_routes():
+    out = StringIO()
+
+    # five routes no extra files
+    RouteFactory.create_batch(5)
+
+    call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+    assert "No files to delete." in out.getvalue()
+
+    call_command("cleanup_hdf5_files", stdout=out)
+    assert "No files to delete." in out.getvalue()
+
+
+@pytest.mark.django_db
+def test_cleanup_hdf5_files_delete_trash():
+    out = StringIO()
+    data_dir = Path(settings.MEDIA_ROOT, "data")
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    for i in range(5):
+        filename = uuid4().hex + ".h5"
+        full_path = data_dir / filename
+        with full_path.open(mode="wb") as file_:
+            file_.write(urandom(64))
+
+    call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+    message = "Clean-up command would delete 5 and keep 0 files."
+    assert message in out.getvalue()
+
+    call_command("cleanup_hdf5_files", stdout=out)
+    assert "Successfully deleted 5 files." in out.getvalue()
+
+
+@pytest.mark.django_db
+def test_cleanup_hdf5_files_missing_route_file():
+    out = StringIO()
+
+    # 5 routes, include one to use the filepath
+    route, *_ = RouteFactory.create_batch(5)
+    field = DataFrameField()
+    full_path = field.storage.path(route.data.filepath)
+    data_dir = Path(full_path).parent.resolve()
+
+    # delete one route file
+    file_to_delete = list(data_dir.glob("*"))[0]
+    (data_dir / file_to_delete).unlink()
+
+    # add one random file
+    filename = uuid4().hex + ".h5"
+    full_path = data_dir / filename
+    with full_path.open(mode="wb") as file_:
+        file_.write(urandom(64))
+
+    call_command("cleanup_hdf5_files", "--dry-run", stdout=out)
+    message = "Clean-up command would delete 1 and keep 4 files."
+    assert message in out.getvalue()
+    assert "1 missing file(s):" in out.getvalue()
+
+    call_command("cleanup_hdf5_files", stdout=out)
+    assert "Successfully deleted 1 files." in out.getvalue()
+    assert "1 missing file(s):" in out.getvalue()
+
+
+@pytest.mark.django_db
+def test_cleanup_hdf5_files_directory_as_file():
+    out = StringIO()
+
+    # 1 route
+    route = RouteFactory()
+    field = DataFrameField()
+    full_path = field.storage.path(route.data.filepath)
+    data_dir = Path(full_path).parent.resolve()
+
+    # add one random directory with .h5 extension
+    dirname = "dir.h5"
+    full_path = data_dir / dirname
+    Path(full_path).mkdir(parents=True, exist_ok=True)
+
+    with pytest.raises(CommandError):
+        call_command("cleanup_hdf5_files", stdout=out)

@@ -1,5 +1,3 @@
-import rules
-
 from collections import deque
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
@@ -7,15 +5,17 @@ from uuid import uuid4
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.gis.db import models
 from django.urls import reverse
 
 import gpxpy
 import gpxpy.gpx
+import rules
 from garmin_uploader.api import GarminAPI, GarminAPIException
 from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
-from rules.contrib.models import RulesModelMixin, RulesModelBase
+from rules.contrib.models import RulesModelBase, RulesModelMixin
 
 from ..models import Checkpoint, Track
 from ..utils import (
@@ -28,6 +28,8 @@ from ..utils import (
 
 @rules.predicate
 def is_route_owner(user, route):
+    if not route or isinstance(user, AnonymousUser):
+        return False
     return route.athlete == user.athlete
 
 
@@ -90,9 +92,12 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
     class Meta:
         rules_permissions = {
+            "import": rules.always_allow,
+            "view": rules.always_allow,
             "change": is_route_owner,
-            "update": is_route_owner,
             "delete": is_route_owner,
+            "download": is_route_owner,
+            "garmin_upload": is_route_owner,
         }
         constraints = [
             models.UniqueConstraint(

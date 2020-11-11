@@ -1,12 +1,10 @@
-{% if user == route.athlete.user %}
-  <section id="edit_actions">
-    <div class="grid grid--multiline grid--center grid--small">
-      <div class="grid__item sm-w-1/2">
-        <a class="btn btn--secondary btn--block" href="{{ route.update_url }}">Re-Import from Source</a>
-      </div>
-      <div class="grid__item sm-w-1/2">
-        <a class="btn btn--secondary btn--block" href="{{ route.edit_url }}">Add/Remove Checkpoints</a>
-      </div>
+<section id="edit_actions">
+  <div class="grid grid--multiline grid--center grid--small">
+    <div class="grid__item sm-w-1/2">
+      <a class="btn btn--secondary btn--block" href="{{ route.update_url }}">Re-Import from Source</a>
     </div>
-  </section>
-{% endif %}
+    <div class="grid__item sm-w-1/2">
+      <a class="btn btn--secondary btn--block" href="{{ route.edit_url }}">Add/Remove Checkpoints</a>
+    </div>
+  </div>
+</section>

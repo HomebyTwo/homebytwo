@@ -5,6 +5,8 @@ from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch
 from django.views.decorators.http import require_POST
 
+from rules.contrib.views import permission_required
+
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
 from .forms import GpxUploadForm, SwitzerlandMobilityLogin
@@ -55,13 +57,13 @@ def import_routes(request, data_source):
 
 @login_required
 @remote_connection
+@permission_required("routes.import_route")
 def import_route(request, data_source, source_id):
     """
     import routes from external sources
 
     There is a modelform for the route with custom __init__ and save methods
-    to find available checkpoints and save the ones selected by the athlete
-    to the route.
+    to find available checkpoints and save the ones selected by the athlete.
     """
 
     template = "routes/route/route_form.html"

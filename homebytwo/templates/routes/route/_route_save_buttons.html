@@ -1,3 +1,7 @@
+{% load rules %}
+
+{% has_perm "routes.delete_route" user object as can_delete_route %}
+
 <div class="form-group grid grid--right">
   <div class="grid__item md-w-4/5 grid grid--tight">
     {# Edit or Update Route #}
@@ -9,9 +13,9 @@
       <input class="btn btn--primary btn--block mrgt-" type="submit" value="Import {{ object.name }}"/>
     {% endif %}
   </div>
-  <div class="grid__item md-w-4/5">
-    {% if object.pk %}
+  {% if object.pk and can_delete_route %}
+    <div class="grid__item md-w-4/5">
       <a href="{{ object.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ object.name }}</a>
-    {% endif %}
-  </div>
+    </div>
+  {% endif %}
 </div>
