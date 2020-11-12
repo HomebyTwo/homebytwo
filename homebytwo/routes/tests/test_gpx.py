@@ -281,6 +281,7 @@ def gpx_route(athlete, settings):
 ###############
 
 
+@pytest.mark.skip
 def test_get_route_gpx_download_url(athlete, client, gpx_route):
     response = client.get(gpx_route.get_absolute_url())
     user = response.context["user"]
@@ -288,6 +289,7 @@ def test_get_route_gpx_download_url(athlete, client, gpx_route):
     assertContains(response, gpx_route.gpx_url)
 
 
+@pytest.mark.skip
 def test_get_route_garmin_upload_url(athlete, client, gpx_route):
     response = client.get(gpx_route.get_absolute_url())
     user = response.context["user"]
@@ -295,6 +297,7 @@ def test_get_route_garmin_upload_url(athlete, client, gpx_route):
     assertContains(response, gpx_route.garmin_upload_url)
 
 
+@pytest.mark.skip
 def test_get_route_garmin_activity_url(athlete, client, gpx_route):
     gpx_route.garmin_id = 123456
     gpx_route.save(update_fields=["garmin_id"])
