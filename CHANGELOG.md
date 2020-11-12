@@ -1,4 +1,10 @@
 # Change Log
+## [0.14.0] - 2020-11-12 update routes from remote
+- Update route button from the route page
+- Redirect to route update after Switzerland Mobility login
+- Manage permissions for route update
+- Remove Garmin upload interface for now
+
 ## [0.13.0] - 2020-11-08 import places from geonames.org
 - Places can be imported from geonames.org for any country
 - Import SwissNAMES3D from CSV file instead of shapefile
