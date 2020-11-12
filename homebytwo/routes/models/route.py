@@ -304,7 +304,6 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         return route
 
-
     def find_possible_checkpoints(self, max_distance=75, updated_geom=False):
         """
         return places as checkpoints based on the route geometry.
