@@ -56,6 +56,10 @@ def test_display_url(athlete):
     assert match.app_name == "routes"
     assert match.url_name == "gpx"
 
+    match = resolve(route.garmin_upload_url)
+    assert match.app_name == "routes"
+    assert match.url_name == "garmin_upload"
+
     match = resolve(route.import_url)
     assert match.url_name == "import_route"
 

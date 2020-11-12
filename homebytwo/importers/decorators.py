@@ -87,7 +87,7 @@ def remote_connection(view_func):
                 return redirect(f"{login_url}?{params}")
 
             # the athlete wanted to update a route
-            if match.url_name == "update":
+            if match.app_name == "routes" and match.url_name == "update":
                 params = urlencode({"update": match.kwargs["pk"]})
                 return redirect(f"{login_url}?{params}")
 
