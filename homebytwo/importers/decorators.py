@@ -49,7 +49,7 @@ def remote_connection(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         try:
-            response = view_func(request, *args, **kwargs)
+            return view_func(request, *args, **kwargs)
 
         except ConnectionError as error:
             message = (
@@ -78,17 +78,20 @@ def remote_connection(view_func):
             # redirect to Switzerland Mobility log-in page
             login_url = reverse("switzerland_mobility_login")
 
-            # add route_id as a GET param if trying to import a route
+            # add GET param if the athlete wanted to to import or update a route
             match = request.resolver_match
-            if match.url_name == "import_route":
-                route_id = match.kwargs["source_id"]
-                params = urlencode({"route_id": route_id})
-                return redirect(f"{login_url}?{params}")
-            else:
-                return redirect(login_url)
 
-        # no exception, return the response from the decorated view
-        else:
-            return response
+            # the athlete wanted to import a route
+            if match.url_name == "import_route":
+                params = urlencode({"import": match.kwargs["source_id"]})
+                return redirect(f"{login_url}?{params}")
+
+            # the athlete wanted to update a route
+            if match.url_name == "update":
+                params = urlencode({"update": match.kwargs["pk"]})
+                return redirect(f"{login_url}?{params}")
+
+            # the athlete wanted something else
+            return redirect(login_url)
 
     return _wrapped_view
