@@ -240,7 +240,7 @@ class GPXTestCase(TestCase):
         )
 
     @responses.activate
-    def test_garmin_upload_failure_cannot_signin(self):
+    def test_garmin_upload_failure_cannot_sign_in(self):
         self.route.garmin_id = 1
         self.route.save(update_fields=["garmin_id"])
 
@@ -271,29 +271,43 @@ class GPXTestCase(TestCase):
 
 
 @pytest.fixture
-def gpx_route(athlete):
+def gpx_route(athlete, settings):
+    settings.GARMIN_ACTIVITY_URL = "https://example.com/garmin/{}"
     return create_route_with_checkpoints(number_of_checkpoints=5, athlete=athlete)
 
 
-def test_garmin_activity_url(athlete, client, gpx_route, settings):
-    settings.GARMIN_ACTIVITY_URL = "https://example.com/garmin/{}"
-    gpx_route.garmin_id = 123456
-    gpx_route.save(update_fields=["garmin_id"])
+###############
+# view: route #
+###############
+
+
+def test_get_route_gpx_download_url(athlete, client, gpx_route):
+    response = client.get(gpx_route.get_absolute_url())
+    user = response.context["user"]
+    assert user.has_perm(gpx_route.get_perm("download"), gpx_route)
+    assertContains(response, gpx_route.gpx_url)
+
+
+def test_get_route_garmin_upload_url(athlete, client, gpx_route):
     response = client.get(gpx_route.get_absolute_url())
     user = response.context["user"]
     assert user.has_perm(gpx_route.get_perm("garmin_upload"), gpx_route)
+    assertContains(response, gpx_route.garmin_upload_url)
+
+
+def test_get_route_garmin_activity_url(athlete, client, gpx_route):
+    gpx_route.garmin_id = 123456
+    gpx_route.save(update_fields=["garmin_id"])
+    response = client.get(gpx_route.get_absolute_url())
     assertContains(response, gpx_route.garmin_activity_url)
 
 
-def test_garmin_upload_not_owner(athlete, client, gpx_route):
-    gpx_route.athlete = AthleteFactory()
-    gpx_route.save(update_fields=["athlete"])
-    response = client.get(gpx_route.get_absolute_url("garmin_upload"))
-
-    assert response.status_code == 403
+#######################
+# view: garmin_upload #
+#######################
 
 
-def test_garmin_upload(athlete, client, gpx_route):
+def test_get_garmin_upload(athlete, client, gpx_route):
     upload_url = gpx_route.get_absolute_url("garmin_upload")
     route_url = gpx_route.get_absolute_url()
 
@@ -303,7 +317,19 @@ def test_garmin_upload(athlete, client, gpx_route):
         assert mock_task.called
 
 
-def test_download_route_gpx_view(athlete, client):
+def test_get_garmin_upload_not_owner(athlete, client, gpx_route):
+    gpx_route.athlete = AthleteFactory()
+    gpx_route.save(update_fields=["athlete"])
+    response = client.get(gpx_route.get_absolute_url("garmin_upload"))
+    assert response.status_code == 403
+
+
+####################
+# view: routes:gpx #
+####################
+
+
+def test_get_download_route_gpx_view(athlete, client):
     route = create_route_with_checkpoints(number_of_checkpoints=5, athlete=athlete)
     wpt_xml = '<wpt lat="{1}" lon="{0}">'
     xml_waypoints = [
