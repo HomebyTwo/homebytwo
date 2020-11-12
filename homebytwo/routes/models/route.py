@@ -33,6 +33,17 @@ def is_route_owner(user, route):
     return route.athlete == user.athlete
 
 
+@rules.predicate
+def route_can_be_updated(_, route):
+    """
+    only routes with a proxy_class to access a remote data_source can be updated,
+    e.g. routes that have been imported from a gpx file cannot.
+    """
+    if route.proxy_class:
+        return True
+    return False
+
+
 class RouteQuerySet(models.QuerySet):
     def for_user(self, user):
         """
@@ -95,6 +106,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
             "import": rules.always_allow,
             "view": rules.always_allow,
             "change": is_route_owner,
+            "update": is_route_owner & route_can_be_updated,
             "delete": is_route_owner,
             "download": is_route_owner,
             "garmin_upload": is_route_owner,
@@ -281,16 +293,17 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     def update_from_remote(self, cookies=None):
         """
         update an existing route with the data from the remote service.
+
+        get_route_details() raises NotImplementedError with Route
         """
-        route_class = self.proxy_class
+        route_class = self.proxy_class or Route
+        route = route_class.objects.get(pk=self.pk)
 
-        if route_class:
-            route = route_class.objects.get(pk=self.pk)
+        # overwrite route with remote info
+        route.get_route_details(cookies)
 
-            # overwrite route with remote info
-            route.get_route_details(cookies)
+        return route
 
-            return route
 
     def find_possible_checkpoints(self, max_distance=75, updated_geom=False):
         """

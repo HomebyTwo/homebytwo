@@ -577,8 +577,9 @@ def test_route_delete_404(athlete, client):
     assert response.status_code == 404
 
 
-def test_view_route(athlete, client):
-    route = RouteFactory(athlete=athlete)
+def test_view_route(athlete, client, settings):
+    settings.STRAVA_ROUTE_URL = "https://strava.route/%d"
+    route = RouteFactory(athlete=athlete, data_source="strava")
     url = route.get_absolute_url()
 
     button = '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'

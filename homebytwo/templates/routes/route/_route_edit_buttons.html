@@ -1,10 +1,19 @@
+{% load rules %}
+
+{% has_perm "routes.change_route" user route as can_change_route %}
+{% has_perm "routes.update_route" user route as can_update_route %}
+
 <section id="edit_actions">
   <div class="grid grid--multiline grid--center grid--small">
-    <div class="grid__item">
-      <a class="btn btn--secondary btn--block" href="{{ route.update_url }}">Re-Import from Source</a>
-    </div>
-    <div class="grid__item">
-      <a class="btn btn--secondary btn--block" href="{{ route.edit_url }}">Add/Remove Checkpoints</a>
-    </div>
+    {% if can_change_route %}
+      <div class="grid__item">
+        <a class="btn btn--secondary btn--block" href="{{ route.edit_url }}">Add/Remove Checkpoints</a>
+      </div>
+    {% endif %}
+    {% if can_update_route %}
+      <div class="grid__item">
+        <a class="btn btn--secondary btn--block" href="{{ route.update_url }}">Re-Import from Source</a>
+      </div>
+    {% endif %}
   </div>
 </section>

@@ -159,12 +159,20 @@ class RouteUpdate(RouteEdit):
         return get_object_or_404(Route, pk=pk)
 
     def get_object(self, queryset=None):
+        """
+        routes that do not have a data_source raise NotImplementedErrors
+        and trigger a 404.
+        """
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
-            return route.update_from_remote(
-                self.request.session.get("switzerland_mobility_cookies", None)
-            )
+
+            try:
+                return route.update_from_remote(
+                    self.request.session.get("switzerland_mobility_cookies", None)
+                )
+            except NotImplementedError:
+                raise Http404
 
     def get_form_kwargs(self):
         """Return the keyword arguments for instantiating the form."""
