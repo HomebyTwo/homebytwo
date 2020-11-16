@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% load leaflet_tags geojson_tags humanize %}
+{% load geojson_tags humanize leaflet_tags %}
+
 
 {% block title %}Home by Two - {{ route.name }}{% endblock %}
 
@@ -16,7 +17,6 @@
   {% include "routes/route/_route_schedule.html" %}
   {% include "routes/route/_route_map.html" %}
   {% include "routes/route/_route_source_link.html" %}
-  {% include "routes/route/_route_garmin_upload.html" %}
 {% endblock content %}
 
 {% if route.geom %}

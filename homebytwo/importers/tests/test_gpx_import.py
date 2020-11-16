@@ -3,9 +3,15 @@ from django.urls import reverse
 
 from pandas import DataFrame
 from pytest import approx
-from pytest_django.asserts import assertRedirects, assertTemplateUsed
+from pytest_django.asserts import (
+    assertContains,
+    assertNotContains,
+    assertRedirects,
+    assertTemplateUsed,
+)
 
 from ...routes.models import Route
+from ...routes.tests.factories import RouteFactory
 from ..forms import GpxUploadForm
 
 
@@ -69,3 +75,16 @@ def test_upload_gpx_view_empty(athlete, client, uploaded_file):
     url = reverse("upload_gpx")
     response = client.post(url, data={"gpx": gpx_file})
     assertTemplateUsed(response, "importers/index.html")
+
+
+def test_get_gpx_route_no_update_button(athlete, client):
+    route = RouteFactory(data_source="homebytwo", athlete=athlete)
+    response = client.get(route.get_absolute_url())
+    assertContains(response, route.edit_url)
+    assertNotContains(response, route.get_absolute_url("update"))
+
+
+def test_get_update_gpx_route(athlete, client):
+    route = RouteFactory(data_source="homebytwo", athlete=athlete)
+    response = client.get(route.update_url)
+    assert response.status_code == 404

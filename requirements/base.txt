@@ -55,6 +55,7 @@ pytz==2020.4              # via celery, django, flower, pandas, stravalib
 rcssmin==1.0.6            # via -r requirements/base.in
 requests-oauthlib==1.3.0  # via social-auth-core
 requests==2.24.0          # via -r requirements/base.in, codaio, garmin-uploader, requests-oauthlib, social-auth-core, stravalib
+rules==2.2                # via -r requirements/base.in
 scikit-learn==0.23.2      # via -r requirements/base.in
 scipy==1.5.3              # via scikit-learn
 sentry-sdk==0.19.1        # via -r requirements/base.in

@@ -1,13 +1,13 @@
-from json import dumps as json_dumps
-
+import requests
 from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.gis.geos import LineString, Point
 
 import gpxpy
+from django.http import HttpRequest
 from pandas import DataFrame
-from requests import Session, codes
+from requests import codes, HTTPError
 
 from homebytwo.routes.models import Route
 from homebytwo.routes.utils import get_distances
@@ -35,12 +35,11 @@ class SwitzerlandMobilityLogin(forms.Form):
         ),
     )
 
-    def retrieve_authorization_cookie(self, request):
+    def login_to_switzerland_mobility(self, request: HttpRequest) -> bool:
         """
-        Retrieves auth cookies from Switzerland Mobility
-        and returns cookies or False
-        The cookies are required to display a user's list of saved routes.
+        saves auth cookies from Switzerland Mobility
 
+        returns a boolean value for success
         Example response from the Switzerland Mobility login URL:
         {
           'loginErrorMsg': '',
@@ -64,34 +63,29 @@ class SwitzerlandMobilityLogin(forms.Form):
             "password": self.cleaned_data["password"],
         }
 
-        with Session() as session:
+        # Try to login to Switzerland Mobility
+        response = requests.post(login_url, data=credentials)
 
-            # Try to login to map.wanderland.ch
-            login_request = session.post(login_url, data=json_dumps(credentials))
+        # log-in successful, save cookies to the session
+        if response.status_code == 200 and response.json()["loginErrorCode"] == 200:
+            request.session["switzerland_mobility_cookies"] = dict(response.cookies)
+            message = "Successfully logged-in to Switzerland Mobility"
+            messages.success(request, message)
+            return True
 
-            if login_request.status_code == codes.ok:
+        # response ok, but login failed
+        if response.status_code == codes.ok:
+            message = response.json()["loginErrorMsg"]
+            messages.error(request, message)
+            return False
 
-                # log-in was successful, return cookies
-                if login_request.json()["loginErrorCode"] == 200:
-                    cookies = dict(login_request.cookies)
-                    message = "Successfully logged-in to Switzerland Mobility"
-                    messages.success(request, message)
-                    return cookies
-
-                # log-in failed
-                else:
-                    message = login_request.json()["loginErrorMsg"]
-                    messages.error(request, message)
-                    return False
-
-            # Some other server error
-            else:
-                message = (
-                    "Error %s: logging to Switzerland Mobility. "
-                    "Try again later" % login_request.status_code
-                )
-                messages.error(request, message)
-                return False
+        # Some other HTTP error
+        try:
+            response.raise_for_status()
+        except HTTPError as error:
+            message = f"Error while logging-in to Switzerland Mobility. {error}. "
+            messages.error(request, message)
+            return False
 
 
 class GpxUploadForm(forms.Form):
