@@ -224,7 +224,7 @@ def test_performance_form_on_route_page(athlete, client):
     data = {"activity_type": selected_activity_type}
     response = client.post(url, data=data)
 
-    athlete_activity_types = athlete.activityperformance_set.all()
+    athlete_activity_types = athlete.performances.all()
 
     selected = '<option value="{}" selected>{}</option>'.format(
         selected_activity_type.name, selected_activity_type.get_name_display()

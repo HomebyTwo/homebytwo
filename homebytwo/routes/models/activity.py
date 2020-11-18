@@ -513,29 +513,23 @@ class ActivityType(models.Model):
         return self.name
 
 
-class ActivityPerformance(TimeStampedModel):
+
+class ActivityPerformance(PredictedModel, TimeStampedModel):
     """
-    Intermediate model for athlete - activity type
-    The performance of an athlete is calculated using his Strava history.
+    Athlete prediction model for an activity type calculated from his Strava history.
 
-    The base assumption is that the pace of the athlete depends
-    on the *slope* of the travelled distance.
-
-    Based on the athlete's history on strava, we train a linear regression model
-    to predict the athlete's pace on a route.
+    Based on the athlete's past activities on strava, we train a linear regression model
+    to predict the athlete's pace on a route. The pace of the athlete depends on the
+    *slope* of the travelled segment.
     """
-
-    athlete = models.ForeignKey("Athlete", on_delete=models.CASCADE)
-    activity_type = models.ForeignKey("ActivityType", on_delete=models.PROTECT)
-
-    # gear categories saved by the one-hot encoder in the prediction pipeline
-    gear_categories = NumpyArrayField(
-        models.CharField(max_length=50),
-        default=get_default_category,
+    athlete = models.ForeignKey(
+        "Athlete", on_delete=models.CASCADE, related_name="performances"
     )
-
-    # workout_type categories saved by the one-hot encoder in the prediction pipeline
-    workout_type_categories = NumpyArrayField(
+    activity_type = models.ForeignKey(
+        "ActivityType", on_delete=models.PROTECT, related_name="performances"
+    )
+    # gear categories returned by the prediction model
+    gear_categories = NumpyArrayField(
         models.CharField(max_length=50),
         default=get_default_category,
     )

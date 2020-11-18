@@ -148,7 +148,7 @@ class ActivityPerformanceForm(Form):
 
         if athlete:
             # retrieve activity types for which the athlete has a prediction model.
-            athlete_activity_types = athlete.activityperformance_set.all()
+            athlete_activity_types = athlete.performances.all()
             athlete_activity_type_list = athlete_activity_types.values_list(
                 "activity_type__name", flat=True
             )

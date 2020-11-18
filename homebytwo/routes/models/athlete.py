@@ -12,11 +12,6 @@ class Athlete(models.Model):
     # Extend default user model
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    # activity types that the athlete practices with personal performance
-    activity_type = models.ManyToManyField(
-        "ActivityType", through="ActivityPerformance"
-    )
-
     # has the initial import of all Strava activities already taken place?
     activities_imported = models.BooleanField(default=False)
 
