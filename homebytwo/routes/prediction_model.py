@@ -112,9 +112,10 @@ class PredictionModel:
         self.model_score = self.pipeline.score(x_test, y_test)
         self.cv_scores = cross_val_score(self.pipeline, x_test, y_test, cv=5)
 
-        # save one-hot encoder categories
-        self.onehot_encoder_categories = (
-            self.pipeline.named_steps["columntransformer"]
-            .named_transformers_["onehotencoder"]
-            .categories_
-        )
+        # update onehot_encoder_categories attribute
+        if self.categorical_columns:
+            self.onehot_encoder_categories = (
+                self.pipeline.named_steps["columntransformer"]
+                .named_transformers_["onehotencoder"]
+                .categories_
+            )

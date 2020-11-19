@@ -1,5 +1,9 @@
+from abc import abstractmethod
+from typing import Optional, List
+
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
+from django.core.exceptions import FieldError
 
 from numpy import array
 from pandas import DataFrame
@@ -11,6 +15,7 @@ from ..fields import DataFrameField, NumpyArrayField
 from ..prediction_model import PredictionModel
 
 STREAM_TYPES = ["time", "altitude", "distance", "moving"]
+STRAVA_ACTIVITY_URL = "https://www.strava.com/activities/{}"
 
 
 def athlete_streams_directory_path(instance, filename):
@@ -39,12 +44,12 @@ def update_user_activities_from_strava(athlete, after=None, before=None, limit=1
     or set to private and returns all of the athlete's current activities.
 
     Parameters:
-    'after': start date is after specified value (UTC). datetime.datetime, str or None.
-    'before': start date is before specified value (UTC). datetime.datetime or str or None
+    'after': start date after specified value (UTC). datetime.datetime, str or None.
+    'before': start date before specified value (UTC). datetime.datetime or str or None
     'limit': maximum activities retrieved. Integer
 
-    See https://pythonhosted.org/stravalib/usage/activities.html#list-of-activities
-    and https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
+    See https://pythonhosted.org/stravalib/usage/activities.html#list-of-activities and
+    https://developers.strava.com/playground/#/Activities/getLoggedInAthleteActivities
     """
 
     # retrieve the athlete's activities on Strava
@@ -111,8 +116,7 @@ class ActivityManager(models.Manager):
 
 class Activity(TimeStampedModel):
     """
-    All activities published by the athletes on Strava.
-    User activities used to calculate performance by activity type.
+    An athlete's Strava activity used to train his prediction models
     """
 
     NONE = None
@@ -212,7 +216,7 @@ class Activity(TimeStampedModel):
 
     def get_strava_url(self):
         # return the absolute URL to the activity on Strava
-        return "https://www.strava.com/activities/{}".format(self.strava_id)
+        return STRAVA_ACTIVITY_URL.format(self.strava_id)
 
     def get_distance(self):
         # return the activity distance as a Distance object
@@ -338,7 +342,8 @@ class Activity(TimeStampedModel):
         # load activity streams as a DataFrame
         activity_data = self.streams
 
-        # calculate gradient in percents, pace in minutes/kilometer and cumulative elevation gain
+        # calculate gradient in percents, pace in minutes/kilometer and
+        # cumulative elevation gain
         activity_data["step_distance"] = activity_data.distance.diff()
         activity_data["gradient"] = (
             activity_data.altitude.diff() / activity_data.step_distance * 100
@@ -375,7 +380,186 @@ class Activity(TimeStampedModel):
         )
 
 
-class ActivityType(models.Model):
+class PredictedModel(models.Model):
+    """
+    base Model for training and persisting schedule prediction models
+
+    Subclassed by ActivityType and ActivityPerformance.
+    """
+
+    # list of regression coefficients as trained by the regression model
+    regression_coefficients = NumpyArrayField(
+        models.FloatField(), default=get_default_array
+    )
+
+    # flat pace in seconds per meter: the intercept of the regression
+    flat_parameter = models.FloatField(default=0.36)  # 6:00/km or 10km/h
+
+    # workout_type categories found by the prediction model
+    workout_type_categories = NumpyArrayField(
+        models.CharField(max_length=50),
+        default=get_default_category,
+    )
+
+    # reliability and cross_validation scores of the prediction model
+    # between 0.0 and 1.0
+    model_score = models.FloatField(default=0.0)
+    cv_scores = NumpyArrayField(models.FloatField(), default=get_default_array)
+
+    class Meta:
+        abstract = True
+
+    def __init__(self, *args, **kwargs):
+        """
+        set activity_type and adapt to the number of categorical columns.
+
+        self._activity_type is required to remove outliers in the training data based
+        on max and min speed and gradient.
+
+        categorical columns determines the shape of the regression_coefficients array
+        """
+        super().__init__(*args, **kwargs)
+
+        # set _activity_type to self or related Model
+        if hasattr(self, "activity_type"):
+            self._activity_type = self.activity_type
+        elif isinstance(self, ActivityType):
+            self._activity_type = self
+        else:
+            raise FieldError(f"Cannot find activity_type for {self}")
+
+        # set default value for regression_coefficients based on the number of
+        # categorical columns present in the Model
+        categorical_coefficients = [0.0] * len(self.get_categorical_columns())
+        numerical_coefficients = [0.0, 0.075, 0.0004, 0.0001, 0.0001]
+        coefficients = self._meta.get_field("regression_coefficients")
+        coefficients.default = array(categorical_coefficients + numerical_coefficients)
+
+    @abstractmethod
+    def get_training_activities(self, max_num_activities: Optional[int]):
+        """
+        retrieve activities to train the prediction model
+
+        must be implemented in the subclasses.
+        """
+        raise NotImplementedError
+
+    def get_training_data(self, limit_activities: Optional[int] = None) -> DataFrame:
+        """
+        retrieve training data for the prediction model
+
+        :param limit_activities: maximum number of Strava activities used to feed the
+        prediction model, defaults to `None`, i.e. all available activities
+        """
+        target_activities = self.get_training_activities(limit_activities)
+
+        # collect activity_data into a pandas DataFrame
+        observations = DataFrame()
+        for activity in target_activities:
+            observations = observations.append(
+                activity.get_training_data(), sort=True, ignore_index=True
+            )
+
+        return observations
+
+    def remove_outliers(self, observations):
+        """
+        remove speed and gradient outliers from training data based on ActivityType
+        """
+        return observations[
+            (observations.pace > self._activity_type.min_pace)
+            & (observations.pace < self._activity_type.max_pace)
+            & (observations.gradient > self._activity_type.min_gradient)
+            & (observations.gradient < self._activity_type.max_gradient)
+        ]
+
+    @classmethod
+    def get_categorical_columns(cls) -> List[str]:
+        """
+        determine columns to use for categorical data based on available Model fields
+
+        ActivityPerformance has two fields: gear_categories, workout_type_categories
+        ActivityType has one: workout_type_categories
+        """
+        possible_columns = ["gear", "workout_type"]
+        return list(filter(lambda c: hasattr(cls, f"{c}_categories"), possible_columns))
+
+    def train_prediction_model(self, limit_activities: int = 2000) -> str:
+        """
+        train prediction model for ActivityType or ActivityPerformance
+
+        :param limit_activities: max number of activities considered for training
+        :return: description of the training result
+        """
+
+        observations = self.get_training_data(limit_activities=limit_activities)
+        if observations.empty:
+            return (
+                f"No training data found for activity type: {self._activity_type.name}"
+            )
+
+        # remove outliers
+        data = self.remove_outliers(observations)
+
+        # determine categorical columns for model training
+        categorical_columns = self.get_categorical_columns()
+
+        # train prediction model
+        prediction_model = PredictionModel(categorical_columns=categorical_columns)
+        feature_columns = (
+            prediction_model.numerical_columns + prediction_model.categorical_columns
+        )
+        prediction_model.train(
+            y=data["pace"],
+            x=data[feature_columns].fillna(value="None"),
+        )
+
+        # save model score
+        self.model_score = prediction_model.model_score
+        self.cv_scores = prediction_model.cv_scores
+
+        # save coefficients and intercept
+        regression = prediction_model.pipeline.named_steps["linearregression"]
+        self.regression_coefficients = regression.coef_
+        self.flat_parameter = regression.intercept_
+
+        # save categories from categorical columns
+        for index, column in enumerate(prediction_model.categorical_columns):
+            setattr(
+                self,
+                f"{column}_categories",
+                prediction_model.onehot_encoder_categories[index],
+            )
+
+        self.save()
+
+        message = (
+            f"Model successfully trained with {data.shape[0]} observations. "
+            f"Model score: {self.model_score}, "
+            f"cross-validation score: {self.cv_scores}. "
+        )
+        return message
+
+    def get_prediction_model(self) -> PredictionModel:
+        """
+        restore the Prediction Model from the saved parameters
+        """
+
+        # retrieve categorical columns and values
+        categorical_columns = self.get_categorical_columns()
+        onehot_encoder_categories = []
+        for column in categorical_columns:
+            onehot_encoder_categories.append(getattr(self, column + "_categories"))
+
+        return PredictionModel(
+            regression_intercept=self.flat_parameter,
+            regression_coefficients=self.regression_coefficients,
+            categorical_columns=categorical_columns,
+            onehot_encoder_categories=onehot_encoder_categories,
+        )
+
+
+class ActivityType(PredictedModel):
     """
     ActivityType is used to define default performance values for each type of activity.
     The choice of available activities is limited to the ones available on Strava:
@@ -482,27 +666,6 @@ class ActivityType(models.Model):
 
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES, unique=True)
 
-    # fallback performance values when the athlete has no model trained for the activity type
-    # list of regression coefficients as trained by the regression model
-    regression_coefficients = NumpyArrayField(
-        models.FloatField(), default=get_default_array
-    )
-
-    # flat pace in seconds per meter, aka the intercept of the regression.
-    flat_parameter = models.FloatField(default=0.36)  # 6:00/km or 10km/h
-
-    # gear categories in the absence of a prediction model for the athlete
-    gear_categories = NumpyArrayField(
-        models.CharField(max_length=50),
-        default=get_default_category,
-    )
-
-    # workout_type categories in the absence of a prediction model for the athlete
-    workout_type_categories = NumpyArrayField(
-        models.CharField(max_length=50),
-        default=get_default_category,
-    )
-
     # min and max plausible gradient and speed to filter outliers in activity data.
     min_pace = models.FloatField(default=0.12)  # 2:00/km or 30km/h
     max_pace = models.FloatField(default=2.4)  # 40:00/km or 1.5 km/h
@@ -512,6 +675,11 @@ class ActivityType(models.Model):
     def __str__(self):
         return self.name
 
+    def get_training_activities(self, limit=None):
+        """
+        retrieve Strava activities to train the prediction model
+        """
+        return self.activities.filter(streams__isnull=False)[:limit]
 
 
 class ActivityPerformance(PredictedModel, TimeStampedModel):
@@ -522,6 +690,7 @@ class ActivityPerformance(PredictedModel, TimeStampedModel):
     to predict the athlete's pace on a route. The pace of the athlete depends on the
     *slope* of the travelled segment.
     """
+
     athlete = models.ForeignKey(
         "Athlete", on_delete=models.CASCADE, related_name="performances"
     )
@@ -534,104 +703,20 @@ class ActivityPerformance(PredictedModel, TimeStampedModel):
         default=get_default_category,
     )
 
-    # numpy array of regression coefficients as trained by the regression model
-    regression_coefficients = NumpyArrayField(
-        models.FloatField(), default=get_default_array
-    )
-
-    # intercept of the linear regression, which corresponds to pace in seconds per meter on flat terrain.
-    flat_parameter = models.FloatField(default=0.36)  # 10km/h
-
-    # reliability and cross_validation scores of the prediction model between 0.0 and 1.0
-    model_score = models.FloatField(default=0.0)
-    cv_scores = NumpyArrayField(models.FloatField(), default=get_default_array)
-
     def __str__(self):
         return "{} - {} - {:.2%}".format(
             self.athlete.user.username, self.activity_type.name, self.model_score
         )
 
-    def get_training_data(self, start_year=None):
+    def get_training_activities(self, limit: int = None):
         """
-        retrieve streams and information from selected activities to train the linear regression model.
+        return the activities that should feed the prediction model
+
+        :param limit: maximum number of activities considered
         """
-
-        target_activities = Activity.objects.filter(
-            athlete=self.athlete,
-            activity_type=self.activity_type,
-            streams__isnull=False,
-        )
-
-        if start_year:
-            target_activities = target_activities.filter(
-                start_date__year__gte=start_year
-            )
-
-        # collect activity_data into a pandas DataFrame
-        observations = DataFrame()
-        for activity in target_activities:
-            observations = observations.append(
-                activity.get_training_data(), sort=True, ignore_index=True
-            )
-
-        return observations
-
-    def remove_outliers(self, observations):
-        """
-        filter speed or gradient outliers from observation.
-        """
-
-        return observations[
-            (observations.pace > self.activity_type.min_pace)
-            & (observations.pace < self.activity_type.max_pace)
-            & (observations.gradient > self.activity_type.min_gradient)
-            & (observations.gradient < self.activity_type.max_gradient)
-        ]
-
-    def train_prediction_model(self, start_year=2017):
-        """
-        train prediction model with athlete data for the target activity.
-        exclude activities older than the `start_year` parameter.
-
-        """
-
-        # get activity data from hdf5 files
-        observations = self.get_training_data(start_year=start_year)
-        if observations.empty:
-            return (
-                f"No training data found for activity type: {self.activity_type.name}"
-            )
-
-        # remove outliers
-        data = self.remove_outliers(observations)
-
-        # train prediction model
-        prediction_model = PredictionModel()
-        feature_columns = (
-            prediction_model.numerical_columns + prediction_model.categorical_columns
-        )
-        prediction_model.train(
-            y=data["pace"],
-            x=data[feature_columns].fillna(value="None"),
-        )
-        # save model score, coefficients and intercept for future predictions
-        self.model_score = prediction_model.model_score
-        self.cv_scores = prediction_model.cv_scores
-
-        regression = prediction_model.pipeline.named_steps["linearregression"]
-        self.regression_coefficients = regression.coef_
-        self.flat_parameter = regression.intercept_
-
-        (
-            self.gear_categories,
-            self.workout_type_categories,
-        ) = prediction_model.onehot_encoder_categories
-
-        self.save()
-
-        message = f"Model successfully trained with {data.shape[0]} observations. "
-        message += f"Model score: {self.model_score}, cross-validation score: {self.cv_scores}. "
-        return message
+        return self.activity_type.activities.filter(
+            athlete=self.athlete, streams__isnull=False
+        )[:limit]
 
 
 class Gear(models.Model):

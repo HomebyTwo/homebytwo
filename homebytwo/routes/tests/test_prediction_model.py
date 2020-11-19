@@ -1,7 +1,10 @@
+import pytest
+from django.core.exceptions import FieldError
 from django.urls import reverse
 
 from ..forms import ActivityPerformanceForm
 from ..models import ActivityType
+from ..models.activity import PredictedModel, ActivityPerformance
 from ..prediction_model import PredictionModel
 from .factories import (
     ActivityFactory,
@@ -10,6 +13,53 @@ from .factories import (
     GearFactory,
     RouteFactory,
 )
+
+
+def test_predicted_model_init(athlete):
+    activity_type = ActivityType()
+    assert isinstance(activity_type, PredictedModel)
+    assert activity_type._activity_type is activity_type
+    assert len(activity_type.regression_coefficients) == 6
+
+    activity_performance = ActivityPerformance(
+        athlete=athlete, activity_type=ActivityTypeFactory()
+    )
+    assert isinstance(activity_performance, PredictedModel)
+    assert activity_performance._activity_type is activity_performance.activity_type
+    assert len(activity_performance.regression_coefficients) == 7
+
+
+def test_predicted_model_init_no_activity_type():
+    class BadModel(PredictedModel):
+        pass
+
+    with pytest.raises(FieldError):
+        BadModel()
+
+
+def test_get_training_data_activity_type(athlete):
+    limit = 5
+    activity_type = ActivityTypeFactory()
+    ActivityFactory.create_batch(10, athlete=athlete, activity_type=activity_type)
+
+    limited_activities = activity_type.get_training_activities(limit=limit)
+    assert limited_activities.count() == limit
+    assert list(activity_type.get_training_activities()) == list(activity_type.activities.all())
+
+
+def test_get_training_data_activity_performance(athlete):
+    limit = 5
+    activity_performance = ActivityPerformanceFactory(athlete=athlete)
+    ActivityFactory.create_batch(
+        10, athlete=athlete, activity_type=activity_performance.activity_type
+    )
+
+    limited_activities = activity_performance.get_training_activities(limit=limit)
+    assert limited_activities.count() == limit
+    assert (
+        list(activity_performance.get_training_activities())
+        == list(activity_performance.activity_type.activities.all())
+    )
 
 
 def test_prediction_model_with_defaults():
@@ -37,10 +87,25 @@ def test_prediction_model_with_custom_parameters():
     prediction_model = PredictionModel(
         categorical_columns=["gear", "workout_type"],
         numerical_columns=[],
+        polynomial_columns=[],
     )
 
     assert prediction_model.onehot_encoder_categories == "auto"
     assert prediction_model.numerical_columns == []
+    assert prediction_model.polynomial_columns == []
+
+
+def test_train_prediction_model(athlete):
+    activity_type = ActivityTypeFactory()
+    performance = ActivityPerformanceFactory(
+        athlete=athlete, activity_type=activity_type
+    )
+    activity = ActivityFactory(athlete=athlete, activity_type=activity_type)
+    result = performance.train_prediction_model()
+
+    assert "Model successfully trained" in result
+    assert performance.gear_categories == [activity.gear.strava_id]
+    assert performance.workout_type_categories == [activity.get_workout_type_display()]
 
 
 def test_train_prediction_model_data_no_data(athlete):
@@ -48,20 +113,6 @@ def test_train_prediction_model_data_no_data(athlete):
     activity_type = activity_performance.activity_type.name
     result = activity_performance.train_prediction_model()
     assert f"No training data found for activity type: {activity_type}" in result
-
-
-def test_train_prediction_model_data_success(athlete):
-    activity_performance = ActivityPerformanceFactory(athlete=athlete)
-    activity = ActivityFactory(
-        athlete=athlete, activity_type=activity_performance.activity_type
-    )
-    result = activity_performance.train_prediction_model()
-
-    assert "Model successfully trained" in result
-    assert activity_performance.gear_categories == [activity.gear.strava_id]
-    assert activity_performance.workout_type_categories == [
-        activity.get_workout_type_display()
-    ]
 
 
 def test_train_prediction_model_data_default_run(athlete):

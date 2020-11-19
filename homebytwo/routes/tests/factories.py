@@ -73,6 +73,7 @@ class ActivityTypeFactory(DjangoModelFactory):
 class ActivityPerformanceFactory(DjangoModelFactory):
     class Meta:
         model = ActivityPerformance
+        django_get_or_create = ("activity_type", "athlete")
 
     athlete = SubFactory(AthleteFactory)
     activity_type = SubFactory(ActivityTypeFactory)
