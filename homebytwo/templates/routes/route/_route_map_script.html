@@ -7,6 +7,7 @@
       routeGeoJson: {{ route | geojsonfeature | safe }},
       divIconClassName: 'placeIcon placeIcon--default',
       markersSelector: '[data-geom]',
+      mapBoxTileUrl: '{{ mapbox_tile_url }}'
     }, ['scrollWheelZoom']);
   });
 </script>
