@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "django.contrib.humanize",
     "social_django",
+    "rules",
     "widget_tweaks",
     "djgeojson",
     "leaflet",
@@ -220,6 +221,7 @@ SOCIAL_AUTH_URL_NAMESPACE = "social"
 
 AUTHENTICATION_BACKENDS = (
     "social_core.backends.strava.StravaOAuth",
+    "rules.permissions.ObjectPermissionBackend",
     "django.contrib.auth.backends.ModelBackend",
 )
 

@@ -1,10 +1,12 @@
+from functools import partial
 from json import loads as json_loads
 from os.path import dirname, realpath
 from pathlib import Path
 from re import compile as re_compile
 
+import pytest
 from django.conf import settings
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Point
 from django.forms.models import model_to_dict
 from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
@@ -12,14 +14,15 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 import responses
-from pytest_django.asserts import assertRedirects, assertContains
+from pytest_django.asserts import assertContains, assertRedirects
 from requests.exceptions import ConnectionError
 
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint
+from ...routes.tests.factories import PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import read_data, create_checkpoints_from_geom, get_route_post_data
+from ...utils.tests import create_checkpoints_from_geom, get_route_post_data, read_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
@@ -475,8 +478,11 @@ class SwitzerlandMobilityTestCase(TestCase):
         response = self.client.get(url)
         self.assertContains(response, content)
 
-    def test_switzerland_mobility_route_success(self):
+    def test_get_import_switzerland_mobility_route(self):
 
+        possible_checkpoint_place = PlaceFactory(
+            geom=Point(x=770627.7496480079, y=5804675.451271648)
+        )
         response = self.get_import_route_response(route_id=2823968)
 
         title = "<title>Home by Two - Import Haute Cime</title>"
@@ -485,10 +491,10 @@ class SwitzerlandMobilityTestCase(TestCase):
             'class="field"',
             'id="id_start_place"',
         ]
-
         map_data = '<div id="mapid"></div>'
 
         self.assertContains(response, title, html=True)
+        self.assertContains(response, possible_checkpoint_place.name)
         for start_place_form_element in start_place_form_elements:
             self.assertContains(response, start_place_form_element)
         self.assertContains(response, map_data, html=True)
@@ -504,22 +510,6 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         title = "<title>Home by Two - Import Haute Cime</title>"
         self.assertContains(response, title, html=True)
-
-    def test_switzerland_mobility_route_redirect_to_login_with_route_id(self):
-        session = self.client.session
-        del session["switzerland_mobility_cookies"]
-        session.save()
-
-        source_id = 123456789
-        response = self.get_import_route_response(
-            route_id=source_id,
-            response_file="403.json",
-            status=403,
-        )
-
-        params = urlencode({"route_id": source_id})
-        assert response.status_code == 302
-        assert params in response.url
 
     def test_switzerland_mobility_route_already_imported(self):
         route_id = 2733343
@@ -653,142 +643,6 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         self.assertEqual(response.url, redirect_url)
 
-    def test_switzerland_mobility_get_login_view(self):
-        url = reverse("switzerland_mobility_login")
-        content = '<form method="post">'
-        response = self.client.get(url)
-
-        self.assertContains(response, content)
-
-    @responses.activate
-    def test_switzerland_mobility_login_successful(self):
-        json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
-        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
-
-        responses.add(
-            responses.POST,
-            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
-            content_type="application/json",
-            body=json_response,
-            status=200,
-            adding_headers=adding_headers,
-        )
-
-        url = reverse("switzerland_mobility_login")
-        data = {"username": "test_user", "password": "test_password"}
-        response = self.client.post(url, data)
-
-        mobility_cookies = self.client.session["switzerland_mobility_cookies"]
-        redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
-
-        assert response.status_code == 302
-        assert response.url == redirect_url
-        assert mobility_cookies["mf-chmobil"] == "123"
-
-    @responses.activate
-    def test_switzerland_mobility_login_successful_route_id(self):
-        json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
-        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
-
-        responses.add(
-            responses.POST,
-            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
-            content_type="application/json",
-            body=json_response,
-            status=200,
-            adding_headers=adding_headers,
-        )
-        source_id = 123456789
-        url = reverse("switzerland_mobility_login")
-        params = urlencode({"route_id": source_id})
-        data = {"username": "test_user", "password": "test_password"}
-        response = self.client.post(f"{url}?{params}", data)
-
-        mobility_cookies = self.client.session["switzerland_mobility_cookies"]
-        redirect_url = resolve_url(
-            "import_route", data_source="switzerland_mobility", source_id=source_id
-        )
-
-        assert response.status_code == 302
-        assert response.url == redirect_url
-        assert mobility_cookies["mf-chmobil"] == "123"
-
-    @responses.activate
-    def test_switzerland_mobility_login_successful_route_id_bad(self):
-        json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
-        adding_headers = {"Set-Cookie": "mf-chmobil=123"}
-
-        responses.add(
-            responses.POST,
-            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
-            content_type="application/json",
-            body=json_response,
-            status=200,
-            adding_headers=adding_headers,
-        )
-
-        url = reverse("switzerland_mobility_login")
-        params = urlencode({"route_id": "bad_id"})
-        data = {"username": "test_user", "password": "test_password"}
-        response = self.client.post(f"{url}?{params}", data)
-
-        mobility_cookies = self.client.session["switzerland_mobility_cookies"]
-        redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
-
-        assert response.status_code == 302
-        assert response.url == redirect_url
-        assert mobility_cookies["mf-chmobil"] == "123"
-
-    @responses.activate
-    def test_switzerland_mobility_login_failed(self):
-        # remove switzerland mobility cookies
-        session = self.client.session
-        del session["switzerland_mobility_cookies"]
-        session.save()
-
-        url = reverse("switzerland_mobility_login")
-        data = {"username": "test_user", "password": "test_password"}
-
-        # intercept call to map.wanderland.ch with responses
-        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
-        # failed login response
-        json_response = (
-            '{"loginErrorMsg": "Incorrect login.", ' '"loginErrorCode": 500}'
-        )
-
-        responses.add(
-            responses.POST,
-            login_url,
-            content_type="application/json",
-            body=json_response,
-            status=200,
-        )
-        response = self.client.post(url, data)
-
-        self.assertContains(response, "Incorrect login.")
-        assert "switzerland_mobility_cookies" not in self.client.session
-
-    @responses.activate
-    def test_switzerland_mobility_login_server_error(self):
-        url = reverse("switzerland_mobility_login")
-        data = {"username": "test_user", "password": "test_password"}
-        content = "Error 500: logging to Switzerland Mobility."
-
-        # intercept call to map.wanderland.ch with responses
-        login_url = settings.SWITZERLAND_MOBILITY_LOGIN_URL
-        responses.add(responses.POST, login_url, status=500)
-
-        response = self.client.post(url, data)
-
-        self.assertContains(response, content)
-
-    def test_switzerland_mobility_login_method_not_allowed(self):
-        url = reverse("switzerland_mobility_login")
-        data = {"username": "test_user", "password": "test_password"}
-        response = self.client.put(url, data)
-
-        self.assertEqual(response.status_code, 405)
-
     #########
     # Forms #
     #########
@@ -833,22 +687,190 @@ class SwitzerlandMobilityTestCase(TestCase):
         self.assertFalse(form.is_valid())
 
 
-def test_switzerland_mobility_route_post_success_no_checkpoints(
-    athlete, client, mock_import_route_call_response
-):
-    source_id = 2191833
-    route = SwitzerlandMobilityRouteFactory.build(source_id=source_id)
+@pytest.fixture
+def mock_login_response(mocked_responses, settings):
+    settings.SWITZERLAND_MOBILITY_LOGIN_URL = "https://example.com/login"
+    json_response = '{"loginErrorMsg": "", "loginErrorCode": 200}'
+    adding_headers = {"Set-Cookie": "mf-chmobil=123"}
 
-    post_data = get_route_post_data(route)
-    response = mock_import_route_call_response(
-        route.data_source,
-        route.source_id,
-        method="post",
-        post_data=post_data,
+    def _mock_login_response():
+        mocked_responses.add(
+            responses.POST,
+            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
+            body=json_response,
+            adding_headers=adding_headers,
+            content_type="application/json",
+            status=200,
+        )
+
+    return _mock_login_response
+
+
+@pytest.fixture
+def mock_failed_login_response(mocked_responses, settings):
+    settings.SWITZERLAND_MOBILITY_LOGIN_URL = "https://example.com/login"
+    json_response = '{"loginErrorMsg": "Incorrect login.", ' '"loginErrorCode": 500}'
+
+    def _mock_failed_login_response():
+        mocked_responses.add(
+            responses.POST,
+            settings.SWITZERLAND_MOBILITY_LOGIN_URL,
+            content_type="application/json",
+            body=json_response,
+            status=200,
+        )
+
+    return _mock_failed_login_response
+
+
+@pytest.fixture
+def mock_sm_routes_response(mock_routes_response, settings):
+    settings.SWITZERLAND_MOBILITY_LIST_URL = (
+        settings.SWITZERLAND_MOBILITY_LIST_URL or "https://example.com/tracks"
+    )
+    return partial(mock_routes_response, data_source="switzerland_mobility")
+
+
+@pytest.fixture
+def mock_sm_route_response(mock_route_details_response):
+    return partial(mock_route_details_response, "switzerland_mobility")
+
+
+###################################
+# view switzerland_mobility_login #
+###################################
+
+
+def test_get_switzerland_mobility_login(athlete, client):
+    url = reverse("switzerland_mobility_login")
+    form_content = '<form method="post">'
+    text_content = "We do not store your Switzerland Mobility log-in details."
+    response = client.get(url)
+
+    assertContains(response, form_content)
+    assertContains(response, text_content)
+
+
+def test_post_switzerland_mobility_login(
+    athlete, client, mock_login_response, mock_sm_routes_response
+):
+
+    url = reverse("switzerland_mobility_login")
+    data = {"username": "test_user", "password": "test_password"}
+    mock_login_response()
+    mock_sm_routes_response(athlete=athlete)
+    response = client.post(url, data)
+
+    mobility_cookies = client.session["switzerland_mobility_cookies"]
+    redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
+
+    assertRedirects(response, redirect_url)
+    assert mobility_cookies["mf-chmobil"] == "123"
+
+
+def test_post_switzerland_mobility_login_import_id(
+    athlete, client, mock_login_response, mock_sm_route_response
+):
+    source_id = 1234567
+    url = reverse("switzerland_mobility_login")
+    params = urlencode({"import": source_id})
+    data = {"username": athlete.user.username, "password": "test_password"}
+    mock_login_response()
+    mock_sm_route_response(source_id=source_id)
+    response = client.post(f"{url}?{params}", data)
+
+    mobility_cookies = client.session["switzerland_mobility_cookies"]
+    redirect_url = resolve_url(
+        "import_route", data_source="switzerland_mobility", source_id=source_id
     )
 
-    route = SwitzerlandMobilityRoute.objects.get(source_id=source_id)
-    assertRedirects(response, route.get_absolute_url())
+    assertRedirects(response, redirect_url)
+    assert mobility_cookies["mf-chmobil"] == "123"
+
+
+def test_post_switzerland_mobility_login_import_id_bad(
+    athlete, client, mock_login_response, mock_sm_routes_response
+):
+    url = reverse("switzerland_mobility_login")
+    params = urlencode({"import": "bad_id"})
+    data = {"username": "test_user", "password": "test_password"}
+    mock_login_response()
+    mock_sm_routes_response(athlete=athlete)
+    response = client.post(f"{url}?{params}", data)
+
+    mobility_cookies = client.session["switzerland_mobility_cookies"]
+    redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
+
+    assertRedirects(response, redirect_url)
+    assert mobility_cookies["mf-chmobil"] == "123"
+
+
+def test_post_switzerland_mobility_login_update_id(
+    athlete, client, mock_login_response, mock_sm_route_response
+):
+    route = SwitzerlandMobilityRouteFactory(athlete=athlete)
+    url = reverse("switzerland_mobility_login")
+    params = urlencode({"update": route.id})
+    data = {"username": athlete.user.username, "password": "test_password"}
+    mock_login_response()
+    mock_sm_route_response(source_id=route.source_id)
+    response = client.post(f"{url}?{params}", data)
+
+    mobility_cookies = client.session["switzerland_mobility_cookies"]
+    redirect_url = route.get_absolute_url("update")
+
+    assertRedirects(response, redirect_url)
+    assert mobility_cookies["mf-chmobil"] == "123"
+
+
+def test_post_switzerland_mobility_login_update_id_bad(
+    athlete, client, mock_login_response, mock_sm_routes_response
+):
+    url = reverse("switzerland_mobility_login")
+    params = urlencode({"update": "bad_id"})
+    data = {"username": athlete.user.username, "password": "test_password"}
+    mock_login_response()
+    mock_sm_routes_response(athlete=athlete)
+    response = client.post(f"{url}?{params}", data)
+
+    mobility_cookies = client.session["switzerland_mobility_cookies"]
+    redirect_url = resolve_url("import_routes", data_source="switzerland_mobility")
+
+    assertRedirects(response, redirect_url)
+    assert mobility_cookies["mf-chmobil"] == "123"
+
+
+def test_post_switzerland_mobility_login_failed(
+    athlete, client, mock_failed_login_response
+):
+    url = reverse("switzerland_mobility_login")
+    data = {"username": "test_user", "password": "test_password"}
+    mock_failed_login_response()
+    response = client.post(url, data)
+
+    assertContains(response, "Incorrect login.")
+    assert "switzerland_mobility_cookies" not in client.session
+
+
+def test_post_switzerland_mobility_login_server_error(
+    athlete, client, mocked_responses, settings
+):
+    settings.SWITZERLAND_MOBILITY_LOGIN_URL = "https://example.com/login"
+    url = reverse("switzerland_mobility_login")
+    data = {"username": "test_user", "password": "test_password"}
+
+    mocked_responses.add(
+        responses.POST, settings.SWITZERLAND_MOBILITY_LOGIN_URL, status=500
+    )
+    response = client.post(url, data)
+
+    content = "Error while logging-in to Switzerland Mobility."
+    assertContains(response, content)
+
+
+#####################
+# view import_route #
+#####################
 
 
 def test_get_import_switzerland_mobility_route_with_checkpoints(
@@ -874,7 +896,41 @@ def test_get_import_switzerland_mobility_route_with_checkpoints(
     assert len(checkpoint_choices) == number_of_checkpoints
 
 
-def test_post_switzerland_mobility_route_with_checkpoints(
+def test_get_import_switzerland_mobility_route_redirect_to_login_with_import_id(
+    athlete, client, mock_import_route_call_response
+):
+    source_id = 123456789
+    response = mock_import_route_call_response(
+        data_source="switzerland_mobility",
+        source_id=source_id,
+        api_response_json="403.json",
+        api_response_status=403,
+    )
+
+    params = urlencode({"import": source_id})
+    redirect_url = reverse("switzerland_mobility_login") + "?" + params
+    assertRedirects(response, redirect_url)
+
+
+def test_post_import_switzerland_mobility_route_no_checkpoints(
+    athlete, client, mock_import_route_call_response
+):
+    source_id = 2191833
+    route = SwitzerlandMobilityRouteFactory.build(source_id=source_id)
+
+    post_data = get_route_post_data(route)
+    response = mock_import_route_call_response(
+        route.data_source,
+        route.source_id,
+        method="post",
+        post_data=post_data,
+    )
+
+    route = SwitzerlandMobilityRoute.objects.get(source_id=source_id)
+    assertRedirects(response, route.get_absolute_url())
+
+
+def test_post_import_switzerland_mobility_route_with_checkpoints(
     athlete,
     client,
     switzerland_mobility_data_from_json,
@@ -906,7 +962,7 @@ def test_post_switzerland_mobility_route_with_checkpoints(
     assertRedirects(post_response, new_route.get_absolute_url())
 
 
-def test_switzerland_mobility_route_post_updated(
+def test_post_import_switzerland_mobility_route_updated(
     athlete, mock_import_route_call_response
 ):
     route = SwitzerlandMobilityRouteFactory(
@@ -929,8 +985,13 @@ def test_switzerland_mobility_route_post_updated(
     assertContains(response, success_box, html=True)
 
 
-def test_switzerland_mobility_display_route_deleted_data(
-    athlete, client, mock_route_details_response
+#####################
+# view routes:route #
+#####################
+
+
+def test_get_switzerland_mobility_route_deleted_data(
+    athlete, client, mock_sm_route_response
 ):
     route_id = 2191833
     route = SwitzerlandMobilityRouteFactory(source_id=route_id, athlete=athlete)
@@ -941,7 +1002,29 @@ def test_switzerland_mobility_display_route_deleted_data(
     Path(file_path).unlink()
 
     # mock route details response
-    mock_route_details_response(route.data_source, route.source_id)
+    mock_sm_route_response(route.source_id)
     response = client.get(route.get_absolute_url())
 
     assert response.status_code == 200
+
+
+#####################
+# view routes:update #
+#####################
+
+
+def test_get_update_switzerland_mobility_route_redirect_to_login_with_update_id(
+    athlete, client, mock_sm_route_response
+):
+    route = SwitzerlandMobilityRouteFactory(athlete=athlete)
+    url = route.get_absolute_url("update")
+    mock_sm_route_response(
+        source_id=route.source_id,
+        api_response_json="403.json",
+        api_response_status=403,
+    )
+    response = client.get(url)
+
+    params = urlencode({"update": route.pk})
+    redirect_url = reverse("switzerland_mobility_login") + "?" + params
+    assertRedirects(response, redirect_url)

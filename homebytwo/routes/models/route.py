@@ -5,14 +5,17 @@ from uuid import uuid4
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.gis.db import models
 from django.urls import reverse
 
 import gpxpy
 import gpxpy.gpx
+import rules
 from garmin_uploader.api import GarminAPI, GarminAPIException
 from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
+from rules.contrib.models import RulesModelBase, RulesModelMixin
 
 from ..models import Checkpoint, Track
 from ..utils import (
@@ -21,6 +24,24 @@ from ..utils import (
     create_segments_from_checkpoints,
     get_places_from_segment,
 )
+
+
+@rules.predicate
+def is_route_owner(user, route):
+    if not route or isinstance(user, AnonymousUser):
+        return False
+    return route.athlete == user.athlete
+
+
+@rules.predicate
+def route_can_be_updated(_, route):
+    """
+    only routes with a proxy_class to access a remote data_source can be updated,
+    e.g. routes that have been imported from a gpx file cannot.
+    """
+    if route.proxy_class:
+        return True
+    return False
 
 
 class RouteQuerySet(models.QuerySet):
@@ -50,7 +71,7 @@ def authenticate_on_garmin(garmin_api):
         raise GarminAPIException("Unable to sign-in: {}".format(e))
 
 
-class Route(Track):
+class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     """
     Subclass of track with source information and relations to checkpoints.
 
@@ -81,6 +102,15 @@ class Route(Track):
     garmin_id = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
+        rules_permissions = {
+            "import": rules.always_allow,
+            "view": rules.always_allow,
+            "change": is_route_owner,
+            "update": is_route_owner & route_can_be_updated,
+            "delete": is_route_owner,
+            "download": is_route_owner,
+            "garmin_upload": is_route_owner,
+        }
         constraints = [
             models.UniqueConstraint(
                 name="unique route for athlete",
@@ -263,16 +293,16 @@ class Route(Track):
     def update_from_remote(self, cookies=None):
         """
         update an existing route with the data from the remote service.
+
+        get_route_details() raises NotImplementedError with Route
         """
-        route_class = self.proxy_class
+        route_class = self.proxy_class or Route
+        route = route_class.objects.get(pk=self.pk)
 
-        if route_class:
-            route = route_class.objects.get(pk=self.pk)
+        # overwrite route with remote info
+        route.get_route_details(cookies)
 
-            # overwrite route with remote info
-            route.get_route_details(cookies)
-
-            return route
+        return route
 
     def find_possible_checkpoints(self, max_distance=75, updated_geom=False):
         """

@@ -1,4 +1,8 @@
-{% if user == route.athlete.user %}
+{% load rules %}
+
+{% has_perm "routes.garmin_upload_route" user route as can_upload_to_garmin %}
+
+{% if can_upload_to_garmin %}
   <section class="mrgv" id="garmin">
     <div class="grid grid--multiline grid--small">
       <div class="grid__item sm-w-2/3 lg-w-3/4">

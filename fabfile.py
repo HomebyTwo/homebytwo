@@ -6,7 +6,7 @@ from pathlib import Path
 
 import dj_database_url
 from fabric.api import cd, env, execute, get, local, put, require, run, settings, shell_env, sudo, task
-from fabric.context_managers import quiet
+from fabric.context_managers import quiet, lcd
 from fabric.operations import prompt
 from gitric import api as gitric
 
@@ -235,6 +235,12 @@ def bootstrap():
 
 
 @task
+def check_migrations():
+    with lcd("/vagrant"):
+        local("./manage.py makemigrations --check --dry-run")
+
+
+@task
 def compile_assets():
     local("npm install")
     local("npm run build")
@@ -253,6 +259,7 @@ def compile_assets():
 def deploy(tag):
     require("root", "project_name")
 
+    execute(check_migrations)
     execute(git_push, commit="@")
     dump_db(get_backups_root())
     execute(install_requirements)

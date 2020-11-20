@@ -1,9 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch
 from django.views.decorators.http import require_POST
+
+from rules.contrib.views import permission_required
 
 from ..routes.forms import RouteForm
 from .decorators import remote_connection
@@ -55,13 +56,13 @@ def import_routes(request, data_source):
 
 @login_required
 @remote_connection
+@permission_required("routes.import_route")
 def import_route(request, data_source, source_id):
     """
     import routes from external sources
 
     There is a modelform for the route with custom __init__ and save methods
-    to find available checkpoints and save the ones selected by the athlete
-    to the route.
+    to find available checkpoints and save the ones selected by the athlete.
     """
 
     template = "routes/route/route_form.html"
@@ -125,49 +126,43 @@ def upload_gpx(request):
 @login_required
 @remote_connection
 def switzerland_mobility_login(request):
+    form = SwitzerlandMobilityLogin()
 
-    template = "importers/switzerland_mobility/login.html"
-
-    # POST request, validate and login
     if request.method == "POST":
 
         # instantiate login form and populate it with POST data:
         form = SwitzerlandMobilityLogin(request.POST)
 
-        # If the form validates,
-        # try to retrieve the Switzerland Mobility cookies
-        if form.is_valid():
-            cookies = form.retrieve_authorization_cookie(request)
+        # successfully logged-in to Switzerland Mobility
+        if form.is_valid() and form.login_to_switzerland_mobility(request):
 
-            # cookies retrieved successfully
-            if cookies:
-                # add cookies to the user session
-                request.session["switzerland_mobility_cookies"] = cookies
+            # check for a redirection parameter in the url
+            import_id = request.POST.get("import", request.GET.get("import", ""))
+            update_id = request.POST.get("update", request.GET.get("update", ""))
 
-                # check if we can redirect to a route after login
-                route_id = request.POST.get("route_id", request.GET.get("route_id", ""))
-                if route_id:
-                    try:
-                        return redirect(
-                            "import_route",
-                            data_source="switzerland_mobility",
-                            source_id=route_id,
-                        )
+            # redirect to route import form
+            if import_id:
+                try:
+                    return redirect(
+                        "import_route",
+                        data_source="switzerland_mobility",
+                        source_id=import_id,
+                    )
+                except NoReverseMatch:
+                    # tempered querystring: ignore
+                    pass
 
-                    # someone messed up the query string
-                    except NoReverseMatch:
-                        pass
+            # redirect to route update form
+            if update_id:
+                try:
+                    return redirect("routes:update", pk=update_id)
+                except NoReverseMatch:
+                    # tempered querystring: ignore
+                    pass
 
-                return redirect("import_routes", data_source="switzerland_mobility")
+            # no parameter, redirect athlete to import_routes
+            return redirect("import_routes", data_source="switzerland_mobility")
 
-        # something went wrong, render the login page,
-        context = {"form": form}
-        return render(request, template, context)
-
-    # print the form
-    elif request.method == "GET":
-        context = {"form": SwitzerlandMobilityLogin()}
-        return render(request, template, context)
-
-    else:
-        return HttpResponse("Method not allowed", status=405)
+    template = "importers/switzerland_mobility/login.html"
+    context = {"form": form}
+    return render(request, template, context)

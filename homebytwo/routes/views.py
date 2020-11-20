@@ -15,14 +15,23 @@ from django.views.generic.edit import DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 from pytz import utc
+from rules.contrib.views import (
+    PermissionRequiredMixin,
+    objectgetter,
+    permission_required,
+)
 
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
-from .tasks import (import_strava_activities_task, import_strava_activity_streams_task,
-                    process_strava_events, train_prediction_models_task,
-                    upload_route_to_garmin_task)
+from .tasks import (
+    import_strava_activities_task,
+    import_strava_activity_streams_task,
+    process_strava_events,
+    train_prediction_models_task,
+    upload_route_to_garmin_task,
+)
 
 
 @login_required
@@ -35,6 +44,7 @@ def view_routes(request):
     return render(request, "routes/routes.html", context)
 
 
+@permission_required("routes.view_route", fn=objectgetter(Route))
 def view_route(request, pk):
     """
     display route schedule based on the prediction model of the logged-in athlete
@@ -123,8 +133,13 @@ def view_route(request, pk):
 
 
 @method_decorator(login_required, name="dispatch")
-class RouteEdit(UpdateView):
+class RouteEdit(PermissionRequiredMixin, UpdateView):
+    """
+    edit route name, activity_type and checkpoints.
+    """
+
     model = Route
+    permission_required = "routes.change_route"
     form_class = RouteForm
     template_name = "routes/route/route_form.html"
 
@@ -132,14 +147,32 @@ class RouteEdit(UpdateView):
 @method_decorator(login_required, name="dispatch")
 @method_decorator(remote_connection, name="dispatch")
 class RouteUpdate(RouteEdit):
+    """
+    re-import route data from remote data-source keeping selected checkpoints by name.
+    """
+
+    def get_permission_object(self):
+        """
+        do not hit the remote server to check permissions
+        """
+        pk = self.kwargs.get(self.pk_url_kwarg)
+        return get_object_or_404(Route, pk=pk)
+
     def get_object(self, queryset=None):
+        """
+        routes that do not have a data_source raise NotImplementedErrors
+        and trigger a 404.
+        """
         pk = self.kwargs.get(self.pk_url_kwarg)
         if pk is not None:
             route = get_object_or_404(Route, pk=pk)
 
-            return route.update_from_remote(
-                self.request.session.get("switzerland_mobility_cookies", None)
-            )
+            try:
+                return route.update_from_remote(
+                    self.request.session.get("switzerland_mobility_cookies", None)
+                )
+            except NotImplementedError:
+                raise Http404
 
     def get_form_kwargs(self):
         """Return the keyword arguments for instantiating the form."""
@@ -149,12 +182,13 @@ class RouteUpdate(RouteEdit):
 
 
 @method_decorator(login_required, name="dispatch")
-class RouteDelete(DeleteView):
+class RouteDelete(PermissionRequiredMixin, DeleteView):
     """
     Class based views are not so bad after all.
     """
 
     model = Route
+    permission_required = "routes.delete_route"
     success_url = reverse_lazy("routes:routes")
     template_name = "routes/route/route_confirm_delete.html"
 
@@ -181,8 +215,11 @@ def route_checkpoints_list(request, pk):
 
 
 @login_required
+@permission_required(
+    "routes.download_route", fn=objectgetter(Route), raise_exception=True
+)
 def download_route_gpx(request, pk):
-    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+    route = get_object_or_404(Route, pk=pk)
 
     route.calculate_projected_time_schedule(request.user)
 
@@ -195,8 +232,11 @@ def download_route_gpx(request, pk):
 
 
 @login_required
+@permission_required(
+    "routes.garmin_upload_route", fn=objectgetter(Route), raise_exception=True
+)
 def upload_route_to_garmin(request, pk):
-    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+    route = get_object_or_404(Route, pk=pk)
 
     # set garmin_id to 1 == upload requested
     route.garmin_id = 1
