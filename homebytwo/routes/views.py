@@ -5,9 +5,10 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import BooleanField, Case, F, Value, When
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_safe
@@ -258,6 +259,39 @@ class ActivityList(ListView):
 
     def get_queryset(self):
         return Activity.objects.for_user(self.request.user)
+
+    def post(self, request):
+        self.object_list = self.get_queryset()
+        context_data = self.get_context_data()
+        page_activity_ids = context_data[
+            self.get_context_object_name(self.object_list)
+        ].values_list("pk", flat=True)
+
+        use_for_training_ids = request.POST.getlist("use_for_training")
+        Activity.objects.for_user(self.request.user).filter(
+            pk__in=page_activity_ids
+        ).annotate(
+            new_use_for_training=Case(
+                When(id__in=use_for_training_ids, then=True),
+                default=Value(False),
+                output_field=BooleanField(),
+            )
+        ).update(
+            use_for_training=F("new_use_for_training")
+        )
+
+        train_prediction_models_task.delay(request.user.athlete.id)
+
+        activities_url = reverse("routes:activities")
+        page_number = context_data["page_obj"].number
+
+        redirect_url = (
+            activities_url
+            if page_number == 1
+            else activities_url + f"?page={page_number}"
+        )
+
+        return redirect(redirect_url)
 
 
 @login_required

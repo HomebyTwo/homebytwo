@@ -200,6 +200,8 @@ class Activity(TimeStampedModel):
         related_name="activities",
     )
 
+    use_for_training = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["-start_date"]
         verbose_name_plural = "activities"
