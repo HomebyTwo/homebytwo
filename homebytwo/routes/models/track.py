@@ -30,7 +30,7 @@ class Track(TimeStampedModel):
     description = models.TextField(blank=True)
     image = ThumbnailerImageField(upload_to=get_image_path, blank=True, null=True)
 
-    # Main activity of the track: default=hike
+    # Main activity of the track
     activity_type = models.ForeignKey(
         ActivityType, default=1, on_delete=models.SET_DEFAULT
     )

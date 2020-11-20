@@ -1,10 +1,11 @@
-import pytest
 from django.core.exceptions import FieldError
 from django.urls import reverse
 
+import pytest
+
 from ..forms import ActivityPerformanceForm
 from ..models import ActivityType
-from ..models.activity import PredictedModel, ActivityPerformance
+from ..models.activity import ActivityPerformance, PredictedModel
 from ..prediction_model import PredictionModel
 from .factories import (
     ActivityFactory,
@@ -13,6 +14,13 @@ from .factories import (
     GearFactory,
     RouteFactory,
 )
+
+
+@pytest.fixture
+def predicted_activity_types(athlete):
+    ActivityFactory.create_batch(5, athlete=athlete)
+    for activity_type in ActivityType.objects.all():
+        activity_type.train_prediction_model()
 
 
 def test_predicted_model_init(athlete):
@@ -31,7 +39,8 @@ def test_predicted_model_init(athlete):
 
 def test_predicted_model_init_no_activity_type():
     class BadModel(PredictedModel):
-        pass
+        def get_training_activities(self, max_num_activities):
+            pass
 
     with pytest.raises(FieldError):
         BadModel()
@@ -44,7 +53,9 @@ def test_get_training_data_activity_type(athlete):
 
     limited_activities = activity_type.get_training_activities(limit=limit)
     assert limited_activities.count() == limit
-    assert list(activity_type.get_training_activities()) == list(activity_type.activities.all())
+    assert list(activity_type.get_training_activities()) == list(
+        activity_type.activities.all()
+    )
 
 
 def test_get_training_data_activity_performance(athlete):
@@ -56,9 +67,8 @@ def test_get_training_data_activity_performance(athlete):
 
     limited_activities = activity_performance.get_training_activities(limit=limit)
     assert limited_activities.count() == limit
-    assert (
-        list(activity_performance.get_training_activities())
-        == list(activity_performance.activity_type.activities.all())
+    assert list(activity_performance.get_training_activities()) == list(
+        activity_performance.activity_type.activities.all()
     )
 
 
@@ -212,17 +222,18 @@ def test_activity_performance_form(athlete):
     ]
 
 
-def test_activity_performance_form_no_activity_performance(athlete):
-    athlete_activity_type, other_activity_type = ActivityTypeFactory.create_batch(2)
+def test_activity_performance_form_no_performance(athlete, predicted_activity_types):
+    athlete_activity_type = ActivityType.objects.first()
+    other_activity_type = ActivityType.objects.last()
     route = RouteFactory(activity_type=other_activity_type)
     ActivityPerformanceFactory(
         athlete=athlete,
         activity_type=athlete_activity_type,
     )
     form = ActivityPerformanceForm(route=route, athlete=athlete)
-
-    assert len(form.fields["activity_type"].choices) == len(
-        ActivityType.SUPPORTED_ACTIVITY_TYPES
+    assert (
+        len(form.fields["activity_type"].choices)
+        == athlete.performances.all()
     )
     assert "gear" not in form.fields
     assert "workout_type" not in form.fields
@@ -231,8 +242,9 @@ def test_activity_performance_form_no_activity_performance(athlete):
 def test_activity_performance_form_not_logged_in(athlete):
     form = ActivityPerformanceForm(route=RouteFactory(), athlete=None)
 
-    assert len(form.fields["activity_type"].choices) == len(
-        ActivityType.SUPPORTED_ACTIVITY_TYPES
+    assert (
+        len(form.fields["activity_type"].choices)
+        == ActivityType.objects.predicted().count()
     )
     assert "gear" not in form.fields
     assert "workout_type" not in form.fields
@@ -268,7 +280,9 @@ def test_performance_form_on_route_page(athlete, client):
         activity_performance,
         other_activity_performance,
         *_,
-    ) = ActivityPerformanceFactory.create_batch(8, athlete=athlete)
+    ) = ActivityPerformanceFactory.create_batch(3, athlete=athlete)
+    for performance in ActivityPerformance.objects.all():
+        ActivityFactory(activity_type=performance.activity_type, athlete=athlete)
     route = RouteFactory(activity_type=activity_performance.activity_type)
     url = reverse("routes:route", kwargs={"pk": route.pk})
     selected_activity_type = other_activity_performance.activity_type

@@ -1,9 +1,17 @@
 from django.db import transaction
+from django.db.models import Count
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
-from .models import (Activity, ActivityPerformance, ActivityType, Checkpoint, Gear,
-                     Place, Route)
+from .models import (
+    Activity,
+    ActivityPerformance,
+    ActivityType,
+    Checkpoint,
+    Gear,
+    Place,
+    Route,
+)
 
 
 class RouteForm(ModelForm):
@@ -22,6 +30,7 @@ class RouteForm(ModelForm):
 
         # parent class (ModelForm) __init__
         super().__init__(*args, **kwargs)
+        self.fields["activity_type"].queryset = ActivityType.objects.for_athlete(self.instance.athlete)
 
         # make sure the route has a linestring, because "start_place", "end_place"
         # and "checkpoints" are based on it.
@@ -61,9 +70,7 @@ class RouteForm(ModelForm):
                 try:
                     # calculate permanent data columns
                     model.update_permanent_track_data(
-                        min_step_distance=1,
-                        max_gradient=100,
-                        commit=False
+                        min_step_distance=1, max_gradient=100, commit=False
                     )
                 except ValueError as error:
                     message = f"Route cannot be imported: {error}."
@@ -139,61 +146,46 @@ class ActivityPerformanceForm(Form):
             except ActivityType.DoesNotExist:
                 pass
 
-        # get generic activity type choices based on supported activities
-        activity_type_choices = [
-            (value, label)
-            for value, label in ActivityType.ACTIVITY_NAME_CHOICES
-            if value in ActivityType.SUPPORTED_ACTIVITY_TYPES
-        ]
+        # get activity types available for prediction
+        activity_types = ActivityType.objects.predicted()
+        prediction_model = route.activity_type
 
         if athlete:
-            # retrieve activity types for which the athlete has a prediction model.
-            athlete_activity_types = athlete.performances.all()
-            athlete_activity_type_list = athlete_activity_types.values_list(
-                "activity_type__name", flat=True
-            )
+            # filter activity types for the athlete
+            activity_types = activity_types.filter(performances__athlete=athlete)
 
             # try to get the athlete's prediction model for the route's activity type
             try:
-                activity_performance = athlete_activity_types.get(
-                    activity_type=route.activity_type
+                prediction_model = route.activity_type.performances.get(athlete=athlete)
+                help_text = "Prediction score: {score:.1%}".format(
+                    score=prediction_model.model_score
                 )
 
             except ActivityPerformance.DoesNotExist:
-                activity_performance = None
-                help_text = "You have no prediction model for this activity type."
-
-            else:
-                # limit activity type choices to athlete's existing prediction models
-                activity_type_choices = [
-                    (value, label)
-                    for value, label in activity_type_choices
-                    if value in athlete_activity_type_list
-                ]
-                # inform on the prediction model's reliability
-                help_text = "Prediction score: {score:.1%}".format(
-                    score=activity_performance.model_score
+                help_text = (
+                    "You have no prediction model for this route's activity type."
                 )
 
         else:
-            help_text = "Log-in or sign-up to see your personalized schedule."
+            help_text = (
+                "Using data from homebytwo athlete data for predictions. "
+                "Log-in or sign-up to see your personalized schedule."
+            )
 
+        # construct activity_type choices
+        activity_type_choices = [
+            (activity_type.name, activity_type.get_name_display())
+            for activity_type in activity_types
+        ]
         self.fields["activity_type"] = ChoiceField(
             choices=activity_type_choices, help_text=help_text
         )
 
-        # only try to create gear_list and workout_type fields
-        # for athletes with a prediction model for the route activity type
-        if not athlete or not activity_performance:
-            return
-
-        # retrieve gear and workout type choices from the categories in the model
-        gear_list = activity_performance.gear_categories
-        workout_type_list = activity_performance.workout_type_categories
-
         # construct gear choices and configure choice field
-        if not all(gear_list == ["None"]):
+        gear_list = getattr(prediction_model, "gear_categories", None)
+        if gear_list is not None and not all(gear_list == ["None"]):
             gears = Gear.objects.filter(strava_id__in=gear_list)
+            gears = gears.order_by("name")
             gear_choices = [(gear.strava_id, gear.name) for gear in gears]
 
             # add None if necessary
@@ -204,7 +196,8 @@ class ActivityPerformanceForm(Form):
 
         # construct workout_type_choices and configure choice field
         # we use the display values because the one-hot encoder hates integers.
-        if not all(workout_type_list == ["None"]):
+        workout_type_list = getattr(prediction_model, "workout_type_categories", None)
+        if workout_type_list is not None and not all(workout_type_list == ["None"]):
             workout_type_choices = [
                 (choice_name, choice_name)
                 for choice, choice_name in Activity.WORKOUT_TYPE_CHOICES

@@ -1,9 +1,10 @@
 from abc import abstractmethod
-from typing import Optional, List
+from typing import List, Optional
 
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 from django.core.exceptions import FieldError
+from django.db.models import Count
 
 from numpy import array
 from pandas import DataFrame
@@ -257,7 +258,9 @@ class Activity(TimeStampedModel):
     def update_with_strava_data(self, strava_activity, commit=True):
         """
         update an activity based on information received from Strava.
-        `strava_activity` is the activity object returned by the Strava API client.
+
+        :param strava_activity: the activity object returned by the Strava API client.
+        :param commit: save Strava activity to the database
         """
 
         # fields from the Strava API object mapped to the Activity Model
@@ -559,6 +562,23 @@ class PredictedModel(models.Model):
         )
 
 
+class ActivityTypeQuerySet(models.QuerySet):
+    def predicted(self):
+        """
+        retrieve athlete activity_type choices available for schedule prediction
+        """
+        activity_types = self.filter(name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES)
+        activity_types = activity_types.exclude(activities=None)
+        activity_types = activity_types.annotate(num_activities=Count("activities"))
+        return activity_types.order_by("-num_activities")
+
+    def for_athlete(self, athlete):
+        """
+        retrieve activity_type choices available for schedule prediction
+        """
+        return self.predicted().filter(activities__athlete=athlete)
+
+
 class ActivityType(PredictedModel):
     """
     ActivityType is used to define default performance values for each type of activity.
@@ -671,6 +691,8 @@ class ActivityType(PredictedModel):
     max_pace = models.FloatField(default=2.4)  # 40:00/km or 1.5 km/h
     min_gradient = models.FloatField(default=-100.0)  # 100% or -45°
     max_gradient = models.FloatField(default=100.0)  # 100% or 45°
+
+    objects = ActivityTypeQuerySet.as_manager()
 
     def __str__(self):
         return self.name
