@@ -487,7 +487,7 @@ class PredictedModel(models.Model):
         possible_columns = ["gear", "workout_type"]
         return list(filter(lambda c: hasattr(cls, f"{c}_categories"), possible_columns))
 
-    def train_prediction_model(self, limit_activities: int = 2000) -> str:
+    def train_prediction_model(self, limit_activities: Optional[int] = None) -> str:
         """
         train prediction model for ActivityType or ActivityPerformance
 
@@ -537,7 +537,7 @@ class PredictedModel(models.Model):
         self.save()
 
         message = (
-            f"Model successfully trained with {data.shape[0]} observations. "
+            f"{self} successfully trained with {data.shape[0]} observations. "
             f"Model score: {self.model_score}, "
             f"cross-validation score: {self.cv_scores}. "
         )
@@ -687,7 +687,7 @@ class ActivityType(PredictedModel):
     name = models.CharField(max_length=24, choices=ACTIVITY_NAME_CHOICES, unique=True)
 
     # min and max plausible gradient and speed to filter outliers in activity data.
-    min_pace = models.FloatField(default=0.12)  # 2:00/km or 30km/h
+    min_pace = models.FloatField(default=0.1)  # 1:40/km or 36 km/h
     max_pace = models.FloatField(default=2.4)  # 40:00/km or 1.5 km/h
     min_gradient = models.FloatField(default=-100.0)  # 100% or -45°
     max_gradient = models.FloatField(default=100.0)  # 100% or 45°
