@@ -25,7 +25,7 @@ def train_activity_types_prediction_models(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("routes", "0057_refactor_prediction_model_fields"),
+        ("routes", "0058_adapt_max_min_pace_for_activity_types"),
     ]
 
     operations = [

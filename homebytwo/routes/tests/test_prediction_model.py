@@ -37,6 +37,15 @@ def test_predicted_model_init(athlete):
     assert len(activity_performance.regression_coefficients) == 7
 
 
+@pytest.mark.django_db
+def test_predicted_model_defaults():
+    activity_type = ActivityTypeFactory(name=ActivityType.ROLLERSKI)
+    activity_performance = ActivityPerformanceFactory()
+
+    assert len(activity_type.regression_coefficients) == 6
+    assert len(activity_performance.regression_coefficients) == 7
+
+
 def test_predicted_model_init_no_activity_type():
     class BadModel(PredictedModel):
         def get_training_activities(self, max_num_activities):
@@ -113,7 +122,7 @@ def test_train_prediction_model(athlete):
     activity = ActivityFactory(athlete=athlete, activity_type=activity_type)
     result = performance.train_prediction_model()
 
-    assert "Model successfully trained" in result
+    assert "successfully trained" in result
     assert performance.gear_categories == [activity.gear.strava_id]
     assert performance.workout_type_categories == [activity.get_workout_type_display()]
 
@@ -134,7 +143,7 @@ def test_train_prediction_model_data_default_run(athlete):
     )
     result = activity_performance.train_prediction_model()
 
-    assert "Model successfully trained" in result
+    assert "successfully trained" in result
     assert activity_performance.gear_categories == [activity.gear.strava_id]
     assert activity_performance.workout_type_categories == [
         activity.get_workout_type_display()
@@ -150,7 +159,7 @@ def test_train_prediction_model_data_success_no_gear_no_workout_type(athlete):
         workout_type=None,
     )
     result = activity_performance.train_prediction_model()
-    assert "Model successfully trained" in result
+    assert "successfully trained" in result
     assert activity_performance.gear_categories == ["None"]
     assert activity_performance.workout_type_categories == ["None"]
 
@@ -226,17 +235,16 @@ def test_activity_performance_form_no_performance(athlete, predicted_activity_ty
     athlete_activity_type = ActivityType.objects.first()
     other_activity_type = ActivityType.objects.last()
     route = RouteFactory(activity_type=other_activity_type)
+    ActivityFactory(athlete=athlete, activity_type=athlete_activity_type)
     ActivityPerformanceFactory(
         athlete=athlete,
         activity_type=athlete_activity_type,
     )
     form = ActivityPerformanceForm(route=route, athlete=athlete)
     assert (
-        len(form.fields["activity_type"].choices)
-        == athlete.performances.all()
+        len(form.fields["activity_type"].choices) == athlete.performances.all().count()
     )
     assert "gear" not in form.fields
-    assert "workout_type" not in form.fields
 
 
 def test_activity_performance_form_not_logged_in(athlete):

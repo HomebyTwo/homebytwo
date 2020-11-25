@@ -22,7 +22,13 @@ from ..fields import DataFrameField
 from ..forms import RouteForm
 from ..models import Route
 from ..templatetags.duration import base_round, display_timedelta, nice_repr
-from .factories import ActivityPerformanceFactory, PlaceFactory, RouteFactory
+from .factories import (
+    ActivityFactory,
+    ActivityPerformanceFactory,
+    ActivityTypeFactory,
+    PlaceFactory,
+    RouteFactory,
+)
 
 ###############
 # model Route #
@@ -681,11 +687,12 @@ def test_get_route_edit_form_not_logged(athlete, client):
 
 
 def test_post_route_edit_form(athlete, client):
-    route = RouteFactory(athlete=athlete)
+    route = RouteFactory(athlete=athlete, activity_type=ActivityTypeFactory())
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
     url = route.get_absolute_url("edit")
     post_data = {
         "name": route.name,
-        "activity_type": 2,
+        "activity_type": route.activity_type.id,
     }
 
     response = client.post(url, post_data)
@@ -753,7 +760,12 @@ def test_get_route_update(athlete, client, mock_route_details_response):
 
 
 def test_post_route_update(athlete, client, mock_route_details_response):
-    route = RouteFactory(athlete=athlete, data_source="switzerland_mobility")
+    route = RouteFactory(
+        athlete=athlete,
+        data_source="switzerland_mobility",
+        activity_type=ActivityTypeFactory(),
+    )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
     url = route.get_absolute_url("update")
     post_data = {
         "name": route.name,

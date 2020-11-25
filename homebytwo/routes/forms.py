@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.db.models import Count
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
@@ -30,7 +29,9 @@ class RouteForm(ModelForm):
 
         # parent class (ModelForm) __init__
         super().__init__(*args, **kwargs)
-        self.fields["activity_type"].queryset = ActivityType.objects.for_athlete(self.instance.athlete)
+        self.fields["activity_type"].queryset = ActivityType.objects.for_athlete(
+            self.instance.athlete
+        )
 
         # make sure the route has a linestring, because "start_place", "end_place"
         # and "checkpoints" are based on it.

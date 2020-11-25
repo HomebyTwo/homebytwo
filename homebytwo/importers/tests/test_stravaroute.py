@@ -16,7 +16,7 @@ from stravalib import Client as StravaClient
 from ...conftest import STRAVA_API_BASE_URL
 from ...routes.fields import DataFrameField
 from ...routes.models import ActivityType
-from ...routes.tests.factories import PlaceFactory
+from ...routes.tests.factories import PlaceFactory, ActivityFactory, ActivityTypeFactory
 from ...utils.factories import AthleteFactory
 from ...utils.tests import get_route_post_data
 from ..models import StravaRoute
@@ -214,10 +214,9 @@ def test_get_import_strava_route_already_imported(
 def test_post_import_strava_route_already_imported(
     athlete, mock_import_route_call_response
 ):
-    route = StravaRouteFactory(
-        source_id=22798494,
-        athlete=athlete,
-    )
+    run = ActivityType.objects.get(name="Run")
+    ActivityFactory(athlete=athlete, activity_type=run)
+    route = StravaRouteFactory(source_id=22798494, athlete=athlete, activity_type=run)
 
     response = mock_import_route_call_response(
         data_source=route.data_source,
@@ -237,9 +236,9 @@ def test_post_import_strava_route_bad_distance(
     mock_import_route_call_response,
 ):
     route = StravaRouteFactory.build(
-        athlete=athlete,
+        athlete=athlete, activity_type=ActivityTypeFactory()
     )
-
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
     post_data = get_route_post_data(route)
     response = mock_import_route_call_response(
         route.data_source,
