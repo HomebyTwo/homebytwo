@@ -76,6 +76,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "homebytwo.context_processor.gtm_context_processor",
+                "homebytwo.context_processor.mapbox_context_processor",
             ],
         },
     },

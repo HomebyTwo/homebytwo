@@ -1,60 +1,22 @@
 {% extends "base.html" %}
-{% load leaflet_tags geojson_tags humanize %}
 
+{% block title %}Homebytwo - {% if route.pk %}Update{% else %}Import{% endif %} {{ route.name }}{% endblock %}
 
-{% block title %}Home by Two - {% if object.pk %}Update{% else %}Import{% endif %} {{ object.name }}{% endblock %}
-
-{% block extralinks %}
-{% leaflet_js %}
-{% leaflet_css %}
-{% endblock extralinks %}
+{% block header %}
+  {% include "routes/route/_route_title.html" %}
+{% endblock header %}
 
 {% block content %}
-<h2 class="text-center mrgb0">{{ object.name }}</h2>
-<div class="h3 text-center mrgt0">{{ object.get_total_distance.km|floatformat:1|intcomma }}km -
-  {{ object.get_total_elevation_gain.m|floatformat:0|intcomma }}m+ -
-  {{ object.get_total_elevation_loss.m|floatformat:0|intcomma }}m-</div>
-
-{# map #}
-{% include "routes/route/_route_edit_map.html" %}
-
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-
-  {# form fields #}
-  {% include "_kanbasu_form.html" with form=form %}
-
-  {# buttons #}
-  {% include "routes/route/_route_save_buttons.html" %}
-</form>
-
+  {% include "routes/route/_route_edit_map.html" %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% include "_kanbasu_form.html" %}
+    {% include "routes/route/_route_save_buttons.html" %}
+  </form>
 {% endblock content %}
 
-{% if object.geom %}
-{% block extrajs %}
-<script>
-  function route_map_init(map, options) {
-    const route = L.geoJson({{ object | geojsonfeature | safe }});
-  route.addTo(map);
-  map.fitBounds(route.getBounds());
-  map.scrollWheelZoom.disable();
-  map.touchZoom.disable();
-  map.boxZoom.disable();
-  const icon = L.divIcon({
-    className: 'placeIcon placeIcon--default',
-  });
-  const checkpoints = Array.from(document.querySelectorAll('[data-geom]'));
-  const markers = checkpoints.map(checkpoint => {
-    L.geoJson(JSON.parse(checkpoint.dataset.geom), {
-      pointToLayer: (feature, latlng) => L.marker(latlng, {
-        icon: icon,
-        title: feature.properties.name
-      }),
-      style: feature => ({ color: '000000' }),
-      onEachFeature: (feature, layer) => layer.bindPopup(feature.properties.name)
-    }).addTo(map);
-  });
-      }
-</script>
-{% endblock extrajs %}
+{% if route.geom %}
+  {% block extrajs %}
+    {% include "routes/route/_route_map_script.html" %}
+  {% endblock extrajs %}
 {% endif %}

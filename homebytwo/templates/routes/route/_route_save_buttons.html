@@ -1,21 +1,21 @@
 {% load rules %}
 
-{% has_perm "routes.delete_route" user object as can_delete_route %}
+{% has_perm "routes.delete_route" user route as can_delete_route %}
 
 <div class="form-group grid grid--right">
   <div class="grid__item lg-w-4/5 grid grid--tight">
     {# Edit or Update Route #}
-    {% if object.pk %}
-      <a href="{{ object.display_url }}" class="btn btn--default btn--block mrgt-">Cancel</a>
-      <input class="btn btn--primary btn--block mrgt-" type="submit" value="Update {{ object.name }}"/>
+    {% if route.pk %}
+      <a href="{{ route.display_url }}" class="btn btn--default btn--block mrgt-">Cancel</a>
+      <input class="btn btn--primary btn--block mrgt-" type="submit" value="Update {{ route.name }}"/>
       {# Import Route #}
     {% else %}
-      <input class="btn btn--primary btn--block mrgt-" type="submit" value="Import {{ object.name }}"/>
+      <input class="btn btn--primary btn--block mrgt-" type="submit" value="Import {{ route.name }}"/>
     {% endif %}
   </div>
-  {% if object.pk and can_delete_route %}
+  {% if route.pk and can_delete_route %}
     <div class="grid__item lg-w-4/5">
-      <a href="{{ object.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ object.name }}</a>
+      <a href="{{ route.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ route.name }}</a>
     </div>
   {% endif %}
 </div>

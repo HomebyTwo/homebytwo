@@ -586,7 +586,12 @@ def test_route_delete_404(athlete, client):
 def test_view_route(athlete, client, settings):
     settings.STRAVA_ROUTE_URL = "https://strava.route/%d"
     route = RouteFactory(athlete=athlete, data_source="strava")
+    route.calculate_projected_time_schedule(athlete.user)
     url = route.get_absolute_url()
+
+    title_distance = f"{route.get_total_distance().km:.1f}"
+    title_elevation_gain = f"{route.get_total_elevation_gain().m:.0f}"
+    title_schedule = f"{nice_repr(route.get_total_duration(), 'hike')}"
 
     button = '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'
     edit_button = button.format(
@@ -603,6 +608,9 @@ def test_view_route(athlete, client, settings):
     assert user.has_perm(route.get_perm("change"), route)
 
     assertContains(response, route.name)
+    assertContains(response, title_distance)
+    assertContains(response, title_elevation_gain)
+    assertContains(response, title_schedule)
     assertContains(response, route.start_place.name)
     assertContains(response, route.end_place.name)
     assertContains(response, update_button, html=True)
@@ -671,7 +679,7 @@ def test_get_route_edit_form(athlete, client):
     route = RouteFactory(athlete=athlete)
     url = route.get_absolute_url("edit")
     response = client.get(url)
-    content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
+    content = f'<h1 class="h2 mrgv0">{route.name}</h1>'
     assertContains(response, content, html=True)
 
 
@@ -755,7 +763,8 @@ def test_get_route_update(athlete, client, mock_route_details_response):
     response = client.get(url)
 
     remote_route_name = "Haute Cime"
-    content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
+    content = f'<h1 class="h2 mrgv0">{remote_route_name}</h1>'
+
     assertContains(response, content, html=True)
 
 
