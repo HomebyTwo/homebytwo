@@ -665,7 +665,7 @@ def test_get_route_edit_form(athlete, client):
     route = RouteFactory(athlete=athlete)
     url = route.get_absolute_url("edit")
     response = client.get(url)
-    content = '<h2 class="text-center mrgb0">{}</h2>'.format(route.name)
+    content = f'<h1 class="h2 mrgv0">{route.name}</h1>'
     assertContains(response, content, html=True)
 
 
@@ -748,7 +748,8 @@ def test_get_route_update(athlete, client, mock_route_details_response):
     response = client.get(url)
 
     remote_route_name = "Haute Cime"
-    content = '<h2 class="text-center mrgb0">{}</h2>'.format(remote_route_name)
+    content = f'<h1 class="h2 mrgv0">{remote_route_name}</h1>'
+
     assertContains(response, content, html=True)
 
 

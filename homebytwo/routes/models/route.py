@@ -237,8 +237,8 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     @classmethod
     def get_or_stub(cls, source_id, athlete):
         """
-        return stub or existing object of the correct proxy class.
-        also return a boolean of whether exists.
+        return stub or existing object of the correct proxy class and
+        a boolean of whether it exists.
         """
 
         try:
