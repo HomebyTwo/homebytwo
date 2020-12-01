@@ -139,6 +139,7 @@ class RouteEdit(PermissionRequiredMixin, UpdateView):
     """
 
     model = Route
+    context_object_name = "route"
     permission_required = "routes.change_route"
     form_class = RouteForm
     template_name = "routes/route/route_form.html"
@@ -188,6 +189,7 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
     """
 
     model = Route
+    context_object_name = "route"
     permission_required = "routes.delete_route"
     success_url = reverse_lazy("routes:routes")
     template_name = "routes/route/route_confirm_delete.html"

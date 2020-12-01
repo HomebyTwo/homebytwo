@@ -3,20 +3,20 @@
 {% block title %}Homebytwo - {% if route.pk %}Update{% else %}Import{% endif %} {{ route.name }}{% endblock %}
 
 {% block header %}
-  {% include "routes/route/_route_title.html" with route=object %}
+  {% include "routes/route/_route_title.html" %}
 {% endblock header %}
 
 {% block content %}
   {% include "routes/route/_route_edit_map.html" %}
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {% include "_kanbasu_form.html" with form=form %}
+    {% include "_kanbasu_form.html" %}
     {% include "routes/route/_route_save_buttons.html" %}
   </form>
 {% endblock content %}
 
-{% if object.geom %}
+{% if route.geom %}
   {% block extrajs %}
-    {% include "routes/route/_route_map_script.html" with route=object %}
+    {% include "routes/route/_route_map_script.html" %}
   {% endblock extrajs %}
 {% endif %}
