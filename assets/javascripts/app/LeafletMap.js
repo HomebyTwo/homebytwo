@@ -20,11 +20,11 @@ export default class LeafletMap {
 
     if (LeafletMap.getSwissMapBoundingBox(leaflet).contains(route.getBounds())) {
       map.options.crs = leaflet.CRS.EPSG2056;
-      const greyTopoLayer = leaflet.tileLayer.swiss({layer: 'ch.swisstopo.pixelkarte-grau'}).addTo(map);
-      const colorTopoLayer = leaflet.tileLayer.swiss();
+      const greyTopoLayer = leaflet.tileLayer.swiss({layer: 'ch.swisstopo.pixelkarte-grau'});
+      const colorTopoLayer = leaflet.tileLayer.swiss().addTo(map);
       const baseMaps = {
-        'Grey': greyTopoLayer,
-        'Color': colorTopoLayer,
+        'Swiss Map': colorTopoLayer,
+        'Swiss Map in grey': greyTopoLayer,
       };
       leaflet.control.layers(baseMaps, {}).addTo(map);
     } else {
