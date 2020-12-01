@@ -1,6 +1,7 @@
 # Change Log
-## [0.16.0] - 2020-12-01 Fix schedule display in route title
-- Display schedule in route title section when available
+## [0.16.0] - 2020-12-01 Calculate prediction models for activity types
+- Use athlete data to train prediction models by activity type
+- Only propose activity types for which the user has a trained prediction model
 
 ## [0.15.1] - 2020-12-01 Fix schedule display in route title
 - Display schedule in route title section when available
