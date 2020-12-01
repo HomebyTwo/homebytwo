@@ -69,7 +69,8 @@ module.exports = {
             loader: 'file-loader',
             options: {
               name: '[name].[ext]',
-              outputPath: 'homebytwo/static/images',
+              outputPath: '../images',
+              publicPath: '/static/images/',
             },
           },
         ],
