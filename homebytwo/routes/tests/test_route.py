@@ -868,7 +868,7 @@ def test_post_route_delete_not_owner(athlete, client):
 
 def test_get_checkpoints_list_empty(athlete, client):
     route = RouteFactory(athlete=athlete)
-    url = reverse("routes:checkpoints_list", args=[route.pk])
+    url = route.get_absolute_url("checkpoint")
     response = client.get(url)
     assert response.status_code == 200
     assert not response.json()["checkpoints"]
@@ -881,7 +881,7 @@ def test_get_checkpoints_list(athlete, client, switzerland_mobility_data_from_js
 
     # checkpoints
     create_checkpoints_from_geom(route.geom, number_of_checkpoints)
-    url = reverse("routes:checkpoints_list", args=[route.pk])
+    url = route.get_absolute_url("checkpoints")
     response = client.get(url)
 
     assert response.status_code == 200

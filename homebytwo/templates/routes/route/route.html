@@ -15,5 +15,11 @@
 {% if route.geom %}
   {% block extrajs %}
     {% include "routes/route/_route_map_script.html" %}
+    <script>
+      HomeByTwo.Elm.Main.init({
+        node: document.getElementById('elm-checkpoints'),
+        flags: '{{ route.checkpoints_url }}'
+      });
+    </script>
   {% endblock extrajs %}
 {% endif %}

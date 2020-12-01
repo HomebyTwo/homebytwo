@@ -3,10 +3,12 @@ from datetime import datetime
 
 from django.contrib.gis.db import models
 from django.core.serializers import serialize
+from django.utils.functional import lazy
 
 from gpxpy.gpx import GPXWaypoint
 
 from ...core.models import TimeStampedModel
+from ..templatetags.duration import nice_repr
 
 PlaceTuple = namedtuple(
     "PlaceTuple",
@@ -183,6 +185,12 @@ class Checkpoint(models.Model):
         return self.route.get_distance_data(
             self.line_location, "cumulative_elevation_loss", absolute=True
         )
+
+    @property
+    @lazy
+    def schedule(self):
+        value = self.route.get_time_data(self.line_location, "schedule")
+        return nice_repr(value, "hike")
 
     @property
     def field_value(self):

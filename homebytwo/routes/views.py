@@ -114,17 +114,8 @@ def view_route(request, pk):
         workout_type=workout_type,
     )
 
-    # retrieve checkpoints along the way
-    checkpoints = route.checkpoint_set.all()
-    checkpoints = checkpoints.select_related("route", "place")
-
-    # schedule is not a calculated property on Checkpoint: the schedule can change
-    for checkpoint in checkpoints:
-        checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
-
     context = {
         "route": route,
-        "checkpoints": checkpoints,
         "form": performance_form,
     }
     return render(request, "routes/route/route.html", context)
@@ -196,19 +187,21 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
 @require_safe
 def route_checkpoints_list(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
-
-    possible_checkpoints = route.find_possible_checkpoints()
+    route.calculate_projected_time_schedule(request.user)
     existing_checkpoints = route.checkpoint_set.all()
 
     checkpoints_dicts = [
         {
             "name": checkpoint.place.name,
-            "field_value": checkpoint.field_value,
-            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
             "place_type": checkpoint.place.place_type.name,
-            "checked": checkpoint in existing_checkpoints,
+            "altitude": checkpoint.altitude_on_route.m,
+            "schedule": checkpoint.schedule,
+            "distance": checkpoint.distance_from_start.km,
+            "elevation_gain": checkpoint.cumulative_elevation_gain.m,
+            "elevation_loss": checkpoint.cumulative_elevation_loss.m,
+            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
         }
-        for checkpoint in possible_checkpoints
+        for checkpoint in existing_checkpoints
     ]
 
     return JsonResponse({"checkpoints": checkpoints_dicts})

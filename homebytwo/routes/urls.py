@@ -18,7 +18,7 @@ urlpatterns = [
                 path(
                     "checkpoints/",
                     views.route_checkpoints_list,
-                    name="checkpoints_list",
+                    name="checkpoints",
                 ),
                 # edit route: /routes/5/edit/
                 path("edit/", views.RouteEdit.as_view(), name="edit"),
