@@ -169,7 +169,7 @@ class ActivityPerformanceForm(Form):
 
         else:
             help_text = (
-                "Using data from homebytwo athlete data for predictions. "
+                "Using generic data for predictions. "
                 "Log-in or sign-up to see your personalized schedule."
             )
 
