@@ -1,7 +1,7 @@
-# Home by Two  [![Build Status](https://travis-ci.org/HomebyTwo/homebytwo.svg?branch=master)](https://travis-ci.org/HomebyTwo/homebytwo) [![Coverage Status](https://coveralls.io/repos/github/HomebyTwo/homebytwo/badge.svg?branch=master)](https://coveralls.io/github/HomebyTwo/homebytwo?branch=master)
+# Homebytwo  [![Build Status](https://travis-ci.org/HomebyTwo/homebytwo.svg?branch=master)](https://travis-ci.org/HomebyTwo/homebytwo) [![Coverage Status](https://coveralls.io/repos/github/HomebyTwo/homebytwo/badge.svg?branch=master)](https://coveralls.io/github/HomebyTwo/homebytwo?branch=master)
 
 This repository contains the Django source code for http://homebytwo.ch.
-Home by two is a hobby project to plan the schedule of hiking, running and cycling outings, in order to reliably tell what time I will be back.
+Homebytwo is a hobby project to plan the schedule of hiking, running and cycling outings, in order to reliably tell what time I will be back.
 
 It would be great if other young fathers with a similar motivation could contribute to the vision.
 
@@ -61,7 +61,7 @@ $ vagrant ssh
 $ ./manage.py runserver
 ```
 
-Open Home by two in your browser:
+Open homebytwo in your browser:
 
 http://local.homebytwo.ch
 
