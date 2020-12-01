@@ -1,4 +1,9 @@
 # Change Log
+## [0.15.0] - 2020-12-01 Swisstopo maps
+- Display maps from Swisstopo for Switzerland
+- Choose between color and grey map
+- Keep mapbox when Swisstopo map is unavailable
+
 ## [0.14.0] - 2020-11-12 update routes from remote
 - Update route button from the route page
 - Redirect to route update after Switzerland Mobility login
