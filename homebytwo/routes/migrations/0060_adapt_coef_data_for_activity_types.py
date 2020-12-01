@@ -25,7 +25,7 @@ def train_activity_types_prediction_models(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("routes", "0058_adapt_max_min_pace_for_activity_types"),
+        ("routes", "0059_change_min_pace_default_on_activity_type"),
     ]
 
     operations = [
