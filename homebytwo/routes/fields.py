@@ -9,7 +9,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core import checks
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.files.storage import default_storage
-from django.db import connection
+from django.db import connection as db_connection
 from django.forms import MultipleChoiceField
 from django.forms.widgets import CheckboxSelectMultiple
 from django.utils.translation import gettext_lazy as _
@@ -29,7 +29,7 @@ def LineSubstring(line, start_location, end_location):
         "ST_GeomFromText(%(line)s, %(srid)s), %(start)s, %(end)s));"
     )
 
-    with connection.cursor() as cursor:
+    with db_connection.cursor() as cursor:
         cursor.execute(
             sql,
             {
@@ -225,7 +225,8 @@ class DataFrameField(models.CharField):
 
     def generate_filepath(self, instance):
         """
-        return a filepath based on the model's class name, dataframe_field and unique fields
+        return a filepath based on the model's class name
+        dataframe_field and unique fields
         """
 
         # create filename based on instance and field name
@@ -270,6 +271,8 @@ class NumpyArrayField(ArrayField):
         """
         convert NumPy array to a list.
         """
+        if value is None:
+            return value
         return list(value)
 
     def get_db_prep_value(self, value, connection, prepared=False):
@@ -284,6 +287,8 @@ class NumpyArrayField(ArrayField):
         """
         convert the list value to a NumPy array.
         """
+        if value is None:
+            return value
         return array(value)
 
     def from_db_value(self, value, *args, **kwargs):

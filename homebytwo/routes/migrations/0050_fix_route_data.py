@@ -5,7 +5,15 @@ from django.db import migrations
 
 
 def fix_routes_data(apps, schema_editor):
+    """
+    This migration has been editing, because a good friend told me
+    never to launch management commands from migrations. The commands
+    eventually go out of sync with the model at the time of the migration
+    and the whole world collapses. So this has been removed:
+
     call_command('fix_routes_data')
+    """
+    pass
 
 
 class Migration(migrations.Migration):

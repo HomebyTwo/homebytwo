@@ -11,7 +11,6 @@ from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
-from ..prediction_model import PredictionModel
 from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
 
@@ -31,7 +30,7 @@ class Track(TimeStampedModel):
     description = models.TextField(blank=True)
     image = ThumbnailerImageField(upload_to=get_image_path, blank=True, null=True)
 
-    # Main activity of the track: default=hike
+    # Main activity of the track
     activity_type = models.ForeignKey(
         ActivityType, default=1, on_delete=models.SET_DEFAULT
     )
@@ -171,8 +170,8 @@ class Track(TimeStampedModel):
         self, min_step_distance=1, max_gradient=100, commit=True, force=False
     ):
         """
-        make sure all unvarying data columns required for schedule calculation
-        are available and calculate missing ones.
+        make sure all unvarying data columns required for
+        schedule calculation are available.
 
         :param min_step_distance: minimum distance in m to keep between each point
         :param max_gradient: maximum gradient to keep when cleaning rows
@@ -184,6 +183,7 @@ class Track(TimeStampedModel):
         is not equal to the number of rows in data or if the cleaned data columns
         are left with only one row.
         """
+        # flag if any of the data columns have been updated
         track_data_updated = False
 
         # make sure we have step distances
@@ -249,30 +249,21 @@ class Track(TimeStampedModel):
 
     def get_prediction_model(self, user):
         """
-        retrieve performance parameters for user and activity type,
-        fallback on activity type if missing and return prediction model.
+        get the prediction model from the Model instance containing prediction values
+
+        Use an instance of ActivityPerformance if it exists for the athlete and
+        activity type. Fallback on ActivityType otherwise.
         """
         if user.is_authenticated:
-            performance = ActivityPerformance.objects
-            performance = performance.filter(athlete=user.athlete)
-            performance = performance.filter(activity_type=self.activity_type)
+            try:
+                performance = user.athlete.performances
+                performance = performance.filter(activity_type=self.activity_type).get()
+                return performance.get_prediction_model()
+            except ActivityPerformance.DoesNotExist:
+                pass
 
-        if user.is_authenticated and performance.exists():
-            # we have performance values for this athlete and activity
-            performance = performance.get()
-
-        else:
-            # no user performance: fallback on activity_type defaults
-            performance = self.activity_type
-
-        return PredictionModel(
-            regression_coefficients=performance.regression_coefficients,
-            regression_intercept=performance.flat_parameter,
-            onehot_encoder_categories=[
-                performance.gear_categories,
-                performance.workout_type_categories,
-            ],
-        )
+        # no ActivityPerformance for the user, fallback on ActivityType
+        return self.activity_type.get_prediction_model()
 
     def calculate_projected_time_schedule(self, user, workout_type=None, gear=None):
         """
@@ -280,7 +271,7 @@ class Track(TimeStampedModel):
         for the route's activity type.
         """
         # make sure we have all required data columns
-        self.update_permanent_track_data(min_step_distance=1, max_gradient=100)
+        self.update_permanent_track_data()
 
         # add temporary columns useful to the schedule calculation
         data = self.data
@@ -298,6 +289,7 @@ class Track(TimeStampedModel):
         categorical_columns = prediction_model.categorical_columns
         feature_columns = numerical_columns + categorical_columns
 
+        # calculate pace and schedule columns for the route
         data["pace"] = pipeline.predict(data[feature_columns])
         data["schedule"] = (data.pace * data.step_distance).cumsum().fillna(value=0)
 

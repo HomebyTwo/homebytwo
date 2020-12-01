@@ -1,4 +1,7 @@
 # Change Log
+## [0.16.0] - 2020-12-01 Fix schedule display in route title
+- Display schedule in route title section when available
+
 ## [0.15.1] - 2020-12-01 Fix schedule display in route title
 - Display schedule in route title section when available
 

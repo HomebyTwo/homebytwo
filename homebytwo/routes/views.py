@@ -70,9 +70,7 @@ def view_route(request, pk):
             activity_type_name = performance_form.cleaned_data["activity_type"]
             workout_type = performance_form.cleaned_data.get("workout_type")
             gear_id = performance_form.cleaned_data.get("gear")
-            route.activity_type, created = ActivityType.objects.get_or_create(
-                name=activity_type_name
-            )
+            route.activity_type = ActivityType.objects.get(name=activity_type_name)
 
     # invalid form: the activity type was changed in the form,
     # we reinitialize the form to get gear and workout type

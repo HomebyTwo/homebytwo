@@ -4,7 +4,6 @@ from os.path import dirname, realpath
 from pathlib import Path
 from re import compile as re_compile
 
-import pytest
 from django.conf import settings
 from django.contrib.gis.geos import LineString, Point
 from django.forms.models import model_to_dict
@@ -13,6 +12,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.http import urlencode
 
+import pytest
 import responses
 from pytest_django.asserts import assertContains, assertRedirects
 from requests.exceptions import ConnectionError
@@ -20,7 +20,7 @@ from requests.exceptions import ConnectionError
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
 from ...routes.models import Checkpoint
-from ...routes.tests.factories import PlaceFactory
+from ...routes.tests.factories import ActivityFactory, ActivityTypeFactory, PlaceFactory
 from ...utils.factories import AthleteFactory, UserFactory
 from ...utils.tests import create_checkpoints_from_geom, get_route_post_data, read_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
@@ -643,49 +643,6 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         self.assertEqual(response.url, redirect_url)
 
-    #########
-    # Forms #
-    #########
-
-    def test_switzerland_mobility_valid_login_form(self):
-        username = "test@test.com"
-        password = "123456"
-        data = {"username": username, "password": password}
-        form = SwitzerlandMobilityLogin(data=data)
-
-        self.assertTrue(form.is_valid())
-
-    def test_switzerland_mobility_invalid_login_form(self):
-        username = ""
-        password = ""
-        data = {"username": username, "password": password}
-        form = SwitzerlandMobilityLogin(data=data)
-
-        self.assertFalse(form.is_valid())
-
-    def test_switzerland_mobility_valid_route_form(self):
-        route = SwitzerlandMobilityRouteFactory.build()
-        route_data = model_to_dict(route)
-        route_data.update(
-            {
-                "activity_type": 1,
-                "start_place": route.start_place.id,
-                "end_place": route.end_place.id,
-            }
-        )
-        form = RouteForm(data=route_data)
-        self.assertTrue(form.is_valid())
-
-    def test_switzerland_mobility_invalid_route_form(self):
-        route = SwitzerlandMobilityRouteFactory.build()
-        route_data = model_to_dict(route)
-        route_data.update(
-            {"start_place": route.start_place.id, "end_place": route.end_place.id}
-        )
-        del route_data["activity_type"]
-        form = RouteForm(data=route_data)
-        self.assertFalse(form.is_valid())
-
 
 @pytest.fixture
 def mock_login_response(mocked_responses, settings):
@@ -916,7 +873,10 @@ def test_post_import_switzerland_mobility_route_no_checkpoints(
     athlete, client, mock_import_route_call_response
 ):
     source_id = 2191833
-    route = SwitzerlandMobilityRouteFactory.build(source_id=source_id)
+    route = SwitzerlandMobilityRouteFactory.build(
+        source_id=source_id, athlete=athlete, activity_type=ActivityTypeFactory()
+    )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
 
     post_data = get_route_post_data(route)
     response = mock_import_route_call_response(
@@ -940,7 +900,11 @@ def test_post_import_switzerland_mobility_route_with_checkpoints(
     geom, _ = switzerland_mobility_data_from_json(route_json)
 
     number_of_checkpoints = 5
-    route = SwitzerlandMobilityRouteFactory.build()
+    route = SwitzerlandMobilityRouteFactory.build(
+        athlete=athlete, activity_type=ActivityTypeFactory(name="Run")
+    )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
+
     post_data = get_route_post_data(route)
     post_data["checkpoints"] = create_checkpoints_from_geom(geom, number_of_checkpoints)
 
@@ -966,8 +930,9 @@ def test_post_import_switzerland_mobility_route_updated(
     athlete, mock_import_route_call_response
 ):
     route = SwitzerlandMobilityRouteFactory(
-        source_id=2191833, athlete=athlete, start_place=None, end_place=None
+        source_id=2191833, athlete=athlete, activity_type=ActivityTypeFactory()
     )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
 
     post_data = get_route_post_data(route)
     response = mock_import_route_call_response(
@@ -1008,9 +973,9 @@ def test_get_switzerland_mobility_route_deleted_data(
     assert response.status_code == 200
 
 
-#####################
+######################
 # view routes:update #
-#####################
+######################
 
 
 def test_get_update_switzerland_mobility_route_redirect_to_login_with_update_id(
@@ -1028,3 +993,59 @@ def test_get_update_switzerland_mobility_route_redirect_to_login_with_update_id(
     params = urlencode({"update": route.pk})
     redirect_url = reverse("switzerland_mobility_login") + "?" + params
     assertRedirects(response, redirect_url)
+
+
+#########
+# Forms #
+#########
+
+
+def test_switzerland_mobility_login_form(athlete):
+    username = "test@test.com"
+    password = "123456"
+    data = {"username": username, "password": password}
+    form = SwitzerlandMobilityLogin(data=data)
+
+    assert form.is_valid()
+
+
+def test_switzerland_mobility_login_form_invalid(athlete):
+    username = ""
+    password = ""
+    data = {"username": username, "password": password}
+    form = SwitzerlandMobilityLogin(data=data)
+
+    assert not form.is_valid()
+
+
+def test_switzerland_mobility_route_form(athlete):
+    route = SwitzerlandMobilityRouteFactory.build(
+        athlete=athlete, activity_type=ActivityTypeFactory()
+    )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
+    route_data = model_to_dict(route)
+    route_data.update(
+        {
+            "activity_type": route.activity_type.id,
+            "start_place": route.start_place.id,
+            "end_place": route.end_place.id,
+        }
+    )
+    form = RouteForm(instance=route, data=route_data)
+
+    assert form.is_valid()
+
+
+def test_switzerland_mobility_route_form_invalid(athlete):
+    route = SwitzerlandMobilityRouteFactory.build(
+        athlete=athlete, activity_type=ActivityTypeFactory()
+    )
+    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
+    route_data = model_to_dict(route)
+    route_data.update(
+        {"start_place": route.start_place.id, "end_place": route.end_place.id}
+    )
+    del route_data["activity_type"]
+    form = RouteForm(instance=route, data=route_data)
+
+    assert not form.is_valid()

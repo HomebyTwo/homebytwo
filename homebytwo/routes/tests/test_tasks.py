@@ -146,7 +146,7 @@ def test_train_prediction_models_task(athlete):
     expected = f"Prediction models trained for athlete: {athlete}."
     assert expected in response
 
-    athlete_prediction_models = athlete.activityperformance_set
+    athlete_prediction_models = athlete.performances
     assert athlete_prediction_models.count() == 3
     for model in athlete_prediction_models.all():
         assert not model.model_score == 0.0
