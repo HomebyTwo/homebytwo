@@ -101,7 +101,7 @@ def import_route(request, data_source, source_id):
         # populate the route_form with route details
         route_form = RouteForm(update=update, instance=route)
 
-    context = {"object": route, "form": route_form}
+    context = {"route": route, "form": route_form}
     return render(request, template, context)
 
 

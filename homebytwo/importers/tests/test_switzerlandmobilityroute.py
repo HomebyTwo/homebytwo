@@ -485,13 +485,13 @@ class SwitzerlandMobilityTestCase(TestCase):
         )
         response = self.get_import_route_response(route_id=2823968)
 
-        title = "<title>Home by Two - Import Haute Cime</title>"
+        title = "<title>Homebytwo - Import Haute Cime</title>"
         start_place_form_elements = [
             'name="start_place"',
             'class="field"',
             'id="id_start_place"',
         ]
-        map_data = '<div id="main" class="leaflet-container-default"></div>'
+        map_data = '<div id="mapid"></div>'
 
         self.assertContains(response, title, html=True)
         self.assertContains(response, possible_checkpoint_place.name)
@@ -508,7 +508,7 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         response = self.get_import_route_response(route_id=2823968)
 
-        title = "<title>Home by Two - Import Haute Cime</title>"
+        title = "<title>Homebytwo - Import Haute Cime</title>"
         self.assertContains(response, title, html=True)
 
     def test_switzerland_mobility_route_already_imported(self):
