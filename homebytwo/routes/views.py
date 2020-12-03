@@ -192,6 +192,7 @@ def route_checkpoints_list(request, pk):
 
     checkpoints_dicts = [
         {
+            "field_value": checkpoint.field_value,
             "name": checkpoint.place.name,
             "place_type": checkpoint.place.place_type.name,
             "altitude": checkpoint.altitude_on_route.m,

@@ -19,6 +19,6 @@ HomeByTwo.LeafletMap = LeafletMap;
 
 Object.assign(window, {HomeByTwo});
 
-import {Elm} from '../elm/src/Main.elm';
+import {Elm} from '../elm/src/Checkpoints.elm';
 
 HomeByTwo.Elm = Elm;
