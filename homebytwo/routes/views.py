@@ -188,7 +188,7 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
 def route_checkpoints_list(request, pk):
     route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
     route.calculate_projected_time_schedule(request.user)
-    existing_checkpoints = route.checkpoint_set.all()
+    existing_checkpoints = route.checkpoints.all()
 
     checkpoints_dicts = [
         {

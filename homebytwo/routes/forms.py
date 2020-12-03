@@ -52,7 +52,7 @@ class RouteForm(ModelForm):
                     checkpoint
                     for checkpoint in checkpoints
                     # new checkpoint place is among places in the former checkpoints
-                    if self.instance.checkpoint_set.filter(
+                    if self.instance.checkpoints.filter(
                         place=checkpoint.place
                     ).exists()
                 ]
@@ -64,7 +64,7 @@ class RouteForm(ModelForm):
         model = super().save(commit=False)
 
         # checkpoints associated with the route in the database
-        old_checkpoints = model.checkpoint_set.all()
+        old_checkpoints = model.checkpoints.all()
 
         if commit:
             with transaction.atomic():

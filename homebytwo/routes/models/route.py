@@ -336,7 +336,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
             and find no additional place.
         """
         # Start with the checkpoints that have been saved before or not
-        checkpoints = list(self.checkpoint_set.all()) if not updated_geom else list()
+        checkpoints = list(self.checkpoints.all()) if not updated_geom else list()
         segments = deque(create_segments_from_checkpoints(checkpoints))
 
         while segments:
@@ -392,7 +392,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         # get GPX from checkpoints
         gpx_checkpoints = [
             checkpoint.get_gpx_waypoint(route=self, start_time=start_time)
-            for checkpoint in self.checkpoint_set.all()
+            for checkpoint in self.checkpoints.all()
         ]
         gpx_waypoints = deque(gpx_checkpoints)
 

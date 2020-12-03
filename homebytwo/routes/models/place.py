@@ -160,8 +160,12 @@ class Checkpoint(models.Model):
     Intermediate model for route - place
     """
 
-    route = models.ForeignKey("Route", on_delete=models.CASCADE)
-    place = models.ForeignKey("Place", on_delete=models.CASCADE)
+    route = models.ForeignKey(
+        "Route", on_delete=models.CASCADE, related_name="checkpoints"
+    )
+    place = models.ForeignKey(
+        "Place", on_delete=models.CASCADE, related_name="checkpoints"
+    )
 
     # location on the route normalized 0=start 1=end
     line_location = models.FloatField(default=0)

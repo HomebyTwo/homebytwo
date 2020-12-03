@@ -721,13 +721,13 @@ def test_post_route_remove_checkpoints(
     }
     checkpoints_data = [
         "_".join([str(checkpoint.place.id), str(checkpoint.line_location)])
-        for checkpoint in route.checkpoint_set.all()
+        for checkpoint in route.checkpoints.all()
     ]
     post_data["checkpoints"] = checkpoints_data[: number_of_checkpoints - 3]
     url = route.get_absolute_url("edit")
     client.post(url, post_data)
 
-    assert route.checkpoint_set.count(), number_of_checkpoints - 3
+    assert route.checkpoints.count(), number_of_checkpoints - 3
 
 
 def test_get_route_edit_not_owner(athlete, client):

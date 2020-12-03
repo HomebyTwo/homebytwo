@@ -148,7 +148,7 @@ class GPXTestCase(TestCase):
 
     def test_gpx_no_start_no_end_no_checkpoints(self):
         self.route.calculate_projected_time_schedule(self.athlete.user)
-        self.route.checkpoint_set.all().delete()
+        self.route.checkpoints.all().delete()
         self.route.start_place = None
         self.route.end_place = None
 
