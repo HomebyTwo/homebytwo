@@ -103,7 +103,8 @@ def train_prediction_models_task(athlete_id):
 
     athlete = Athlete.objects.get(id=athlete_id)
     activities = athlete.activities.filter(
-        activity_type__name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES
+        activity_type__name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES,
+        use_for_training=True,
     )
     activities = activities.order_by("activity_type")
     activities = activities.distinct("activity_type")

@@ -1,37 +1,51 @@
 {% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 {% load humanize duration %}
 
 {% block title %}Homebytwo - Strava Activities{% endblock %}
 
 {% block content %}
   <h1>Strava Activities</h1>
-  <ul class="list-stacked list-stacked--tight mrgb">
-    {% for activity in strava_activities %}
-      <li class="mrgb-">
-        <div>
-          <a class="strava" href="{{ activity.get_strava_url }}">
-            {{ activity.activity_type }}: {{ activity.name }}
-          </a>
-        </div>
-        <div>
-          {{ activity.start_date|naturalday }}
-          {% if activity.distance %}
-            - {{ activity.get_distance.km|floatformat:"01"|intcomma }}km
-          {% endif %}
-          {% if activity.total_elevation_gain %}
-            - {{ activity.get_total_elevation_gain.m|floatformat:"0"|intcomma }}m+
-          {% endif %}
 
-          {% if activity.moving_time %}
-            - {{ activity.moving_time|duration }}
-          {% endif %}
-          <div>
-      </li>
-    {% empty %}
-      <li>No activities yet.</li>
-    {% endfor %}
-  </ul>
+  <form method="post">
+    {% csrf_token %}
+    <ul class="list-stacked list-stacked--tight mrgb">
+      {% for activity in strava_activities %}
+        <li class="mrgb-">
+          <div class="flex">
+            <div class="flex-shrink mrgr-">
+              <input name="use_for_training" type="checkbox" value="{{ activity.pk }}"{% if activity.use_for_training %} checked{% endif %}>
+            </div>
+            <div class="flex-grow">
+              <div>
+                <a class="strava" href="{{ activity.get_strava_url }}">
+                  {{ activity.activity_type }}: {{ activity.name }}
+                </a>
+              </div>
+              <div>
+                {{ activity.start_date|naturalday }}
+                {% if activity.distance %}
+                  - {{ activity.get_distance.km|floatformat:"01"|intcomma }}km
+                {% endif %}
+                {% if activity.total_elevation_gain %}
+                  - {{ activity.get_total_elevation_gain.m|floatformat:"0"|intcomma }}m+
+                {% endif %}
+
+                {% if activity.moving_time %}
+                  - {{ activity.moving_time|duration }}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </li>
+      {% empty %}
+        <li>No activities yet.</li>
+      {% endfor %}
+    </ul>
+
+    <button class="btn btn--primary">{% trans "Include (checked) / exclude (unchecked) activities from training model" %}</button>
+  </form>
 
   <div class="pagination">
   <span class="step-links">
