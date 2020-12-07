@@ -9,7 +9,7 @@ import GeoJson exposing (GeoJson)
 import Html exposing (..)
 import Html.Attributes exposing (attribute, checked, class, classList, for, id, name, type_, value, width)
 import Html.Events exposing (onClick)
-import Http
+import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import Json.Encode exposing (Value)
@@ -32,12 +32,30 @@ main =
 
 init : Value -> ( Model, Cmd Msg )
 init flags =
-    case Decode.decodeValue configDecoder flags of
+    let
+        flags_result =
+            Decode.decodeValue configDecoder flags
+    in
+    case flags_result of
         Ok config ->
-            ( Model config LoadingExistingCheckpoints, getCheckpoints config.displayUrl GotExistingCheckpoints )
+            let
+                url =
+                    config.displayUrl
+
+                cmd =
+                    getCheckpoints url GotExistingCheckpoints
+            in
+            ( Model config LoadingExistingCheckpoints, cmd )
 
         Err error ->
-            ( Model (Config "" "" "" False) (Failure (Decode.errorToString error)), Cmd.none )
+            let
+                config =
+                    Config "" "" "" False
+
+                errorString =
+                    Decode.errorToString error
+            in
+            ( Model config (Failure errorString), Cmd.none )
 
 
 
@@ -77,7 +95,11 @@ type Status
 
 
 type alias CheckpointSelection =
-    { checkpoints : List Checkpoint, selected : Set String }
+    { checkpoints : List Checkpoint, selected : Set FieldValue }
+
+
+type alias FieldValue =
+    String
 
 
 type alias Checkpoint =
@@ -89,7 +111,7 @@ type alias Checkpoint =
     , elevationGain : Float
     , elevationLoss : Float
     , geom : GeoJson.GeoJson
-    , fieldValue : String
+    , fieldValue : FieldValue
     , saved : Bool
     }
 
@@ -118,7 +140,6 @@ type Msg
     | GotPossibleCheckpoints (Result Http.Error (List Checkpoint))
     | ClickedEditCheckpoints
     | ClickedSaveCheckpoints
-    | SavedCheckpoints (Result Http.Error (List Checkpoint))
     | SelectedCheckpoint String
     | DeselectedCheckpoint String
 
@@ -138,16 +159,17 @@ update msg model =
         GotPossibleCheckpoints (Err error) ->
             ( { model | status = Failure (errorToString error) }, Cmd.none )
 
-        SavedCheckpoints (Ok checkpoints) ->
-            ( { model | status = Display checkpoints }, Cmd.none )
-
-        SavedCheckpoints (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
-
         ClickedEditCheckpoints ->
             case model.status of
                 Display checkpoints ->
-                    ( { model | status = LoadingPossibleCheckpoints checkpoints }, getCheckpoints model.config.editUrl GotPossibleCheckpoints )
+                    let
+                        url =
+                            model.config.editUrl
+
+                        cmd =
+                            getCheckpoints url GotPossibleCheckpoints
+                    in
+                    ( { model | status = LoadingPossibleCheckpoints checkpoints }, cmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -155,7 +177,17 @@ update msg model =
         ClickedSaveCheckpoints ->
             case model.status of
                 Edit checkpointSelection ->
-                    ( { model | status = Saving }, postCheckpoints model.config.editUrl model.config.csrfToken checkpointSelection.selected )
+                    let
+                        url =
+                            model.config.editUrl
+
+                        csrfToken =
+                            model.config.csrfToken
+
+                        cmd =
+                            postCheckpoints url csrfToken checkpointSelection.selected
+                    in
+                    ( { model | status = Saving }, cmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -163,7 +195,11 @@ update msg model =
         SelectedCheckpoint fieldValue ->
             case model.status of
                 Edit { checkpoints, selected } ->
-                    ( { model | status = Edit (CheckpointSelection checkpoints (Set.insert fieldValue selected)) }, Cmd.none )
+                    let
+                        new_selected =
+                            Set.insert fieldValue selected
+                    in
+                    ( { model | status = Edit (CheckpointSelection checkpoints new_selected) }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -171,16 +207,20 @@ update msg model =
         DeselectedCheckpoint fieldValue ->
             case model.status of
                 Edit { checkpoints, selected } ->
-                    ( { model | status = Edit (CheckpointSelection checkpoints (Set.remove fieldValue selected)) }, Cmd.none )
+                    let
+                        new_selected =
+                            Set.remove fieldValue selected
+                    in
+                    ( { model | status = Edit (CheckpointSelection checkpoints new_selected) }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
 
-setFromCheckpointList : List Checkpoint -> Set String
+setFromCheckpointList : List Checkpoint -> Set FieldValue
 setFromCheckpointList checkpoints =
-    List.filter (\checkpoint -> checkpoint.saved) checkpoints
-        |> List.map (\checkpoint -> checkpoint.fieldValue)
+    List.filter .saved checkpoints
+        |> List.map .fieldValue
         |> Set.fromList
 
 
@@ -271,7 +311,7 @@ viewEditCheckpoints checkpointSelection =
         List.map (viewEditCheckpoint checkpointSelection.selected) checkpointSelection.checkpoints
 
 
-viewEditCheckpoint : Set String -> Checkpoint -> Html Msg
+viewEditCheckpoint : Set FieldValue -> Checkpoint -> Html Msg
 viewEditCheckpoint selected checkpoint =
     let
         isChecked =
@@ -302,6 +342,19 @@ viewEditCheckpoint selected checkpoint =
         ]
 
 
+viewCheckpointCheckbox : Msg -> Bool -> Checkpoint -> Html Msg
+viewCheckpointCheckbox message isChecked checkpoint =
+    input
+        [ id checkpoint.fieldValue
+        , type_ "checkbox"
+        , class "checkbox"
+        , value checkpoint.fieldValue
+        , checked isChecked
+        , onClick message
+        ]
+        []
+
+
 viewCheckpointInfo : Checkpoint -> Html Msg
 viewCheckpointInfo checkpoint =
     div [ class "grid grid--tight" ]
@@ -319,19 +372,6 @@ viewCheckpointName name altitude =
         [ text <| name ++ ", "
         , text <| format "0,0" altitude ++ "m"
         ]
-
-
-viewCheckpointCheckbox : Msg -> Bool -> Checkpoint -> Html Msg
-viewCheckpointCheckbox message isChecked checkpoint =
-    input
-        [ id checkpoint.fieldValue
-        , type_ "checkbox"
-        , class "checkbox"
-        , value checkpoint.fieldValue
-        , checked isChecked
-        , onClick message
-        ]
-        []
 
 
 viewCheckpointSchedule : String -> Html Msg
@@ -362,6 +402,7 @@ viewElevationAndDistance distance elevationGain elevationLoss =
 -- HTTP
 
 
+getCheckpoints : String -> (Result Error (List Checkpoint) -> Msg) -> Cmd Msg
 getCheckpoints url msg =
     Http.get
         { url = url
@@ -369,12 +410,12 @@ getCheckpoints url msg =
         }
 
 
-postCheckpoints : String -> String -> Set String -> Cmd Msg
+postCheckpoints : String -> String -> Set FieldValue -> Cmd Msg
 postCheckpoints url csrftoken selected =
     let
         body =
-            [ Http.stringPart "csrfmiddlewaretoken" csrftoken ]
-                ++ List.map (Http.stringPart "checkpoints") (Set.toList selected)
+            Http.stringPart "csrfmiddlewaretoken" csrftoken
+                :: List.map (Http.stringPart "checkpoints") (Set.toList selected)
                 |> Http.multipartBody
     in
     Http.post
