@@ -136,6 +136,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         action_reverse = {
             "display": ("routes:route", route_kwargs),
             "checkpoints": ("routes:checkpoints", route_kwargs),
+            "edit_checkpoints": ("routes:edit_checkpoints", route_kwargs),
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
@@ -153,6 +154,10 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     @property
     def checkpoints_url(self):
         return self.get_absolute_url("checkpoints")
+
+    @property
+    def edit_checkpoints_url(self):
+        return self.get_absolute_url("edit_checkpoints")
 
     @property
     def edit_url(self):

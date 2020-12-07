@@ -17,8 +17,17 @@ urlpatterns = [
                 # retrieve possible checkpoints as json: routes/5/checkpoints/
                 path(
                     "checkpoints/",
-                    views.route_checkpoints_list,
-                    name="checkpoints",
+                    include(
+                        [
+                            path("", views.route_checkpoints_list, name="checkpoints"),
+                            path(
+                                "edit/",
+                                views.route_checkpoints_list,
+                                kwargs={"edit": True},
+                                name="edit_checkpoints",
+                            ),
+                        ]
+                    ),
                 ),
                 # edit route: /routes/5/edit/
                 path("edit/", views.RouteEdit.as_view(), name="edit"),

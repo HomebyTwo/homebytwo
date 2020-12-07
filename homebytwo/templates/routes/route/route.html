@@ -16,10 +16,13 @@
   {% block extrajs %}
     {% include "routes/route/_route_map_script.html" %}
     <script>
-      HomeByTwo.Elm.Checkpoints.init({
-        node: document.getElementById('elm-checkpoints'),
-        flags: '{{ route.checkpoints_url }}'
+      document.addEventListener('DOMContentLoaded', () => {
+        HomeByTwo.Elm.Checkpoints.init({
+          node: document.getElementById('elm-checkpoints'),
+          flags: JSON.parse(document.getElementById('checkpoints-config').textContent)
+        });
       });
     </script>
+    {{ checkpoints_config|json_script:"checkpoints-config" }}
   {% endblock extrajs %}
 {% endif %}
