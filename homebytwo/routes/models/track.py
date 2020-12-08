@@ -11,6 +11,7 @@ from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from ..templatetags.duration import nice_repr
 from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
 
@@ -370,6 +371,12 @@ class Track(TimeStampedModel):
         returns total duration as a timedelta object
         """
         return self.get_time_data(1, "schedule")
+
+    def get_total_schedule(self):
+        """
+        returns string of formatted total duration for schedule display
+        """
+        return nice_repr(self.get_total_duration(), "hike")
 
     def get_closest_places_along_line(self, line_location=0, max_distance=200):
         """

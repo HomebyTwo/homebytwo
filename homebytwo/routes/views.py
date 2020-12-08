@@ -26,7 +26,14 @@ from rules.contrib.views import (
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm
-from .models import Activity, ActivityType, Checkpoint, Place, Route, WebhookTransaction
+from .models import (
+    Activity,
+    ActivityType,
+    Place,
+    Route,
+    WebhookTransaction,
+    PlaceType,
+)
 from .tasks import (
     import_strava_activities_task,
     import_strava_activity_streams_task,
@@ -128,10 +135,10 @@ def view_route(request, pk):
         "route": route,
         "form": performance_form,
         "checkpoints_config": {
-            "display_url": display_url,
-            "edit_url": edit_url,
-            "can_edit": request.user.has_perm("routes.change_route", route),
-            "csrf_token": get_token(request),
+            "displayUrl": display_url,
+            "editUrl": edit_url,
+            "canEdit": request.user.has_perm("routes.change_route", route),
+            "csrfToken": get_token(request),
         },
     }
     return render(request, "routes/route/route.html", context)
@@ -211,7 +218,8 @@ def route_checkpoints_list(request, pk, edit=False):
     # retrieve route
     route = get_object_or_404(Route, pk=pk)
 
-    # check permission to display checkpoints
+    # check permission to edit and display checkpoints
+    can_edit = request.user.has_perm("routes.change_route", route)
     if not request.user.has_perm("routes.view_route", route):
         raise Http404
 
@@ -238,7 +246,7 @@ def route_checkpoints_list(request, pk, edit=False):
     if request.method == "POST":
         # validate submitted checkpoints with a form
         form = CheckpointsForm(data=request.POST)
-        if form.is_valid():
+        if form.is_valid() and can_edit:
             save_form_checkpoints(
                 route,
                 existing_checkpoints,
@@ -246,11 +254,9 @@ def route_checkpoints_list(request, pk, edit=False):
             )
             edit = False
             existing_checkpoints = route.checkpoints.all()
-        else:
-            messages.error("Error in the checkpoints.")
 
     # check if edit was requested and user has permission
-    if edit and request.user.has_perm("routes.change_route", route):
+    if edit and can_edit:
         checkpoints = route.find_possible_checkpoints()
     else:
         checkpoints = existing_checkpoints
@@ -272,7 +278,46 @@ def route_checkpoints_list(request, pk, edit=False):
         for checkpoint in checkpoints
     ]
 
-    return JsonResponse({"checkpoints": checkpoint_dicts})
+    # start place
+    start_place = route.start_place or Place(
+        name="Unknown start place",
+        place_type=PlaceType.objects.get(code="ll"),
+        geom=route.geom.interpolate_normalized(0),
+    )
+
+    start_place_dict = {
+        "name": start_place.name,
+        "place_type": start_place.place_type.name,
+        "altitude": route.get_start_altitude().m,
+        "schedule": "0 min",
+        "distance": 0.0,
+        "elevation_gain": 0.0,
+        "elevation_loss": 0.0,
+        "geom": json.loads(start_place.get_geojson(fields=["name"])),
+    }
+
+    end_place = route.end_place or Place(
+        name="Unknown finish place",
+        place_type=PlaceType.objects.get(code="ll"),
+        geom=route.geom.interpolate_normalized(1),
+    )
+    end_place_dict = {
+        "name": end_place.name,
+        "place_type": end_place.place_type.name,
+        "altitude": route.get_end_altitude().m,
+        "schedule": route.get_total_schedule(),
+        "distance": route.get_total_distance().km,
+        "elevation_gain": route.get_total_elevation_gain().m,
+        "elevation_loss": route.get_total_elevation_loss().m,
+        "geom": json.loads(end_place.get_geojson(fields=["name"])),
+    }
+    return JsonResponse(
+        {
+            "checkpoints": checkpoint_dicts,
+            "start": start_place_dict,
+            "finish": end_place_dict,
+        }
+    )
 
 
 @login_required

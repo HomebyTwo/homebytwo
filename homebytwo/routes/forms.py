@@ -1,17 +1,7 @@
-from django.db import transaction
 from django.forms import ChoiceField, Form, ModelChoiceField, ModelForm
 
 from .fields import CheckpointsChoiceField
-from .models import (
-    Activity,
-    ActivityPerformance,
-    ActivityType,
-    Checkpoint,
-    Gear,
-    Place,
-    Route,
-)
-from .utils import save_form_checkpoints
+from .models import Activity, ActivityPerformance, ActivityType, Gear, Place, Route
 
 
 class RouteForm(ModelForm):
@@ -34,57 +24,28 @@ class RouteForm(ModelForm):
             self.instance.athlete
         )
 
-        # make sure the route has a linestring, because "start_place", "end_place"
-        # and "checkpoints" are based on it.
+        # make sure the route has a linestring,
+        # because "start_place" and "end_place" are based on it.
         if self.instance.geom:
             self.fields["start_place"].queryset = self.instance.get_start_places()
             self.fields["end_place"].queryset = self.instance.get_end_places()
-
-            # retrieve checkpoints within range of the route
-            checkpoints = self.instance.find_possible_checkpoints(updated_geom=update)
-
-            # set choices to all possible checkpoints
-            self.fields["checkpoints"].choices = [
-                (checkpoint, str(checkpoint)) for checkpoint in checkpoints
-            ]
-            if update:
-                # select places that are among the existing checkpoints
-                self.initial["checkpoints"] = [
-                    checkpoint
-                    for checkpoint in checkpoints
-                    # new checkpoint place is among places in the former checkpoints
-                    if self.instance.checkpoints.filter(place=checkpoint.place).exists()
-                ]
-            else:
-                # select checkpoints already associated with the route
-                self.initial["checkpoints"] = list(filter(lambda o: o.id, checkpoints))
 
     def save(self, commit=True):
         route = super().save(commit=False)
 
         if commit:
-            with transaction.atomic():
-                # save the route first
-                try:
-                    # calculate permanent data columns
-                    route.update_permanent_track_data(
-                        min_step_distance=1, max_gradient=100, commit=False
-                    )
-                except ValueError as error:
-                    message = f"Route cannot be imported: {error}."
-                    self.add_error(None, message)
-                    return
-
-                route.update_track_details_from_data(commit=False)
-                route.save()
-
-                # save form checkpoints
-                save_form_checkpoints(
-                    route,
-                    existing_checkpoints=route.checkpoints.all(),
-                    checkpoints_data=self.cleaned_data["checkpoints"],
+            try:
+                # calculate permanent data columns
+                route.update_permanent_track_data(
+                    min_step_distance=1, max_gradient=100, commit=False
                 )
+            except ValueError as error:
+                message = f"Route cannot be imported: {error}."
+                self.add_error(None, message)
+                return
 
+            route.update_track_details_from_data(commit=False)
+            route.save()
         return route
 
     class Meta:
@@ -93,7 +54,6 @@ class RouteForm(ModelForm):
             "name",
             "activity_type",
             "start_place",
-            "checkpoints",
             "end_place",
         ]
 
@@ -109,13 +69,12 @@ class RouteForm(ModelForm):
         required=False,
     )
 
-    checkpoints = CheckpointsChoiceField(required=False)
-
 
 class CheckpointsForm(Form):
     """
     validate checkpoints from AJAX Post request application
     """
+
     checkpoints = CheckpointsChoiceField(required=False)
 
 

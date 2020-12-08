@@ -11,8 +11,7 @@ import Html.Attributes exposing (attribute, checked, class, classList, for, id, 
 import Html.Events exposing (onClick)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (required)
-import Json.Encode exposing (Value)
+import Json.Decode.Pipeline exposing (custom, required)
 import Numeral exposing (format)
 import Set exposing (Set)
 
@@ -30,32 +29,19 @@ main =
         }
 
 
-init : Value -> ( Model, Cmd Msg )
-init flags =
+init : Config -> ( Model, Cmd Msg )
+init config =
     let
-        flags_result =
-            Decode.decodeValue configDecoder flags
+        url =
+            config.displayUrl
+
+        cmd =
+            getSchedule url GotSchedule
+
+        model =
+            { config = config, status = LoadingSchedule }
     in
-    case flags_result of
-        Ok config ->
-            let
-                url =
-                    config.displayUrl
-
-                cmd =
-                    getCheckpoints url GotExistingCheckpoints
-            in
-            ( Model config LoadingExistingCheckpoints, cmd )
-
-        Err error ->
-            let
-                config =
-                    Config "" "" "" False
-
-                errorString =
-                    Decode.errorToString error
-            in
-            ( Model config (Failure errorString), Cmd.none )
+    ( model, cmd )
 
 
 
@@ -76,49 +62,76 @@ type alias Config =
     }
 
 
-configDecoder : Decoder Config
-configDecoder =
-    Decode.succeed Config
-        |> required "display_url" Decode.string
-        |> required "edit_url" Decode.string
-        |> required "csrf_token" Decode.string
-        |> required "can_edit" Decode.bool
-
-
 type Status
     = Failure String
-    | LoadingExistingCheckpoints
-    | Display (List Checkpoint)
-    | LoadingPossibleCheckpoints (List Checkpoint)
-    | Edit CheckpointSelection
-    | Saving
+    | LoadingSchedule
+    | DisplaySchedule Schedule
+    | LoadingPossibleSchedule Schedule
+    | EditCheckpoints PossibleSchedule
+    | SavingCheckpoints Schedule
 
 
-type alias CheckpointSelection =
-    { checkpoints : List Checkpoint, selected : Set FieldValue }
+type alias Schedule =
+    { checkpoints : List CheckpointPlace, start : Place, finish : Place }
+
+
+scheduleDecoder : Decoder Schedule
+scheduleDecoder =
+    Decode.succeed Schedule
+        |> required "checkpoints" (Decode.list checkpointDecoder)
+        |> required "start" placeDecoder
+        |> required "finish" placeDecoder
+
+
+type alias PossibleSchedule =
+    { checkpoints : List CheckpointPlace, selected : Set FieldValue, start : Place, finish : Place }
+
+
+type alias CheckpointPlace =
+    { place : Place, fieldValue : FieldValue, saved : Bool }
 
 
 type alias FieldValue =
     String
 
 
-type alias Checkpoint =
+checkpointDecoder : Decoder CheckpointPlace
+checkpointDecoder =
+    Decode.succeed CheckpointPlace
+        |> custom placeDecoder
+        |> required "field_value" Decode.string
+        |> required "saved" Decode.bool
+
+
+type alias Place =
     { name : String
-    , place_type : String
+    , placeType : String
     , altitude : Float
     , schedule : String
     , distance : Float
     , elevationGain : Float
     , elevationLoss : Float
     , geom : GeoJson.GeoJson
-    , fieldValue : FieldValue
-    , saved : Bool
     }
 
 
-checkpointDecoder : Decoder Checkpoint
-checkpointDecoder =
-    Decode.succeed Checkpoint
+type PlaceType
+    = Start
+    | Finish
+    | Checkpoint
+
+
+type alias Start =
+    Place
+
+
+type alias Finish =
+    Place
+
+
+placeDecoder : Decoder Place
+placeDecoder =
+    Decode.succeed Place
         |> required "name" Decode.string
         |> required "place_type" Decode.string
         |> required "altitude" Decode.float
@@ -127,8 +140,6 @@ checkpointDecoder =
         |> required "elevation_gain" Decode.float
         |> required "elevation_loss" Decode.float
         |> required "geom" GeoJson.decoder
-        |> required "field_value" Decode.string
-        |> required "saved" Decode.bool
 
 
 
@@ -136,8 +147,9 @@ checkpointDecoder =
 
 
 type Msg
-    = GotExistingCheckpoints (Result Http.Error (List Checkpoint))
-    | GotPossibleCheckpoints (Result Http.Error (List Checkpoint))
+    = ClickedRetry
+    | GotSchedule (Result Http.Error Schedule)
+    | GotPossibleSchedule (Result Http.Error Schedule)
     | ClickedEditCheckpoints
     | ClickedSaveCheckpoints
     | SelectedCheckpoint String
@@ -147,36 +159,46 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotExistingCheckpoints (Ok checkpoints) ->
-            ( { model | status = Display checkpoints }, Cmd.none )
+        ClickedRetry ->
+            ( { model | status = LoadingSchedule }, getSchedule model.config.displayUrl GotSchedule )
 
-        GotExistingCheckpoints (Err error) ->
+        GotSchedule (Ok schedule) ->
+            ( { model | status = DisplaySchedule schedule }, Cmd.none )
+
+        GotSchedule (Err error) ->
             ( { model | status = Failure (errorToString error) }, Cmd.none )
 
-        GotPossibleCheckpoints (Ok checkpoints) ->
-            ( { model | status = Edit { checkpoints = checkpoints, selected = setFromCheckpointList checkpoints } }, Cmd.none )
+        GotPossibleSchedule (Ok { checkpoints, start, finish }) ->
+            let
+                selected =
+                    setFromCheckpointList checkpoints
 
-        GotPossibleCheckpoints (Err error) ->
+                possibleSchedule =
+                    PossibleSchedule checkpoints selected start finish
+            in
+            ( { model | status = EditCheckpoints possibleSchedule }, Cmd.none )
+
+        GotPossibleSchedule (Err error) ->
             ( { model | status = Failure (errorToString error) }, Cmd.none )
 
         ClickedEditCheckpoints ->
             case model.status of
-                Display checkpoints ->
+                DisplaySchedule schedule ->
                     let
                         url =
                             model.config.editUrl
 
                         cmd =
-                            getCheckpoints url GotPossibleCheckpoints
+                            getSchedule url GotPossibleSchedule
                     in
-                    ( { model | status = LoadingPossibleCheckpoints checkpoints }, cmd )
+                    ( { model | status = LoadingPossibleSchedule schedule }, cmd )
 
                 _ ->
                     ( model, Cmd.none )
 
         ClickedSaveCheckpoints ->
             case model.status of
-                Edit checkpointSelection ->
+                EditCheckpoints { checkpoints, selected, start, finish } ->
                     let
                         url =
                             model.config.editUrl
@@ -185,43 +207,60 @@ update msg model =
                             model.config.csrfToken
 
                         cmd =
-                            postCheckpoints url csrfToken checkpointSelection.selected
+                            postCheckpoints url csrfToken selected
+
+                        selected_checkpoints =
+                            List.filter (isSelected selected) checkpoints
+
+                        schedule =
+                            Schedule selected_checkpoints start finish
                     in
-                    ( { model | status = Saving }, cmd )
+                    ( { model | status = SavingCheckpoints schedule }, cmd )
 
                 _ ->
                     ( model, Cmd.none )
 
         SelectedCheckpoint fieldValue ->
             case model.status of
-                Edit { checkpoints, selected } ->
+                EditCheckpoints ({ checkpoints, selected, start, finish } as possibleSchedule) ->
                     let
-                        new_selected =
+                        updatedSet =
                             Set.insert fieldValue selected
+
+                        updatedSchedule =
+                            { possibleSchedule | selected = updatedSet }
                     in
-                    ( { model | status = Edit (CheckpointSelection checkpoints new_selected) }, Cmd.none )
+                    ( { model | status = EditCheckpoints updatedSchedule }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
         DeselectedCheckpoint fieldValue ->
             case model.status of
-                Edit { checkpoints, selected } ->
+                EditCheckpoints ({ checkpoints, selected, start, finish } as possibleSchedule) ->
                     let
-                        new_selected =
+                        updatedSet =
                             Set.remove fieldValue selected
+
+                        updatedSchedule =
+                            { possibleSchedule | selected = updatedSet }
                     in
-                    ( { model | status = Edit (CheckpointSelection checkpoints new_selected) }, Cmd.none )
+                    ( { model | status = EditCheckpoints updatedSchedule }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
 
-setFromCheckpointList : List Checkpoint -> Set FieldValue
+setFromCheckpointList : List CheckpointPlace -> Set FieldValue
 setFromCheckpointList checkpoints =
     List.filter .saved checkpoints
         |> List.map .fieldValue
         |> Set.fromList
+
+
+isSelected : Set FieldValue -> CheckpointPlace -> Bool
+isSelected selected checkpoint =
+    Set.member checkpoint.fieldValue selected
 
 
 
@@ -230,53 +269,114 @@ setFromCheckpointList checkpoints =
 
 view : Model -> Html Msg
 view model =
+    let
+        editButton =
+            viewEditButton model.config.canEdit
+    in
     div [ class "checkpoints mrgv-" ] <|
         case model.status of
-            LoadingExistingCheckpoints ->
-                [ text "Loading Checkpoints..." ]
+            LoadingSchedule ->
+                [ text "Loading route schedule..." ]
 
-            Display checkpoints ->
-                [ viewDisplayCheckpoints checkpoints
-                , if model.config.canEdit then
-                    viewActionButton ClickedEditCheckpoints
-
-                  else
-                    text ""
+            DisplaySchedule schedule ->
+                [ viewDisplaySchedule schedule
+                , editButton ClickedEditCheckpoints
                 ]
 
-            LoadingPossibleCheckpoints checkpoints ->
-                [ text "Loading checkpoints.. "
-                , viewDisplayCheckpoints checkpoints
+            LoadingPossibleSchedule schedule ->
+                [ text "Loading additional checkpoints.. "
+                , viewDisplaySchedule schedule
                 ]
 
-            Edit checkpointSelection ->
-                [ viewEditCheckpoints checkpointSelection
-                , viewActionButton ClickedSaveCheckpoints
+            EditCheckpoints possibleSchedule ->
+                [ viewEditPossibleSchedule possibleSchedule
+                , editButton ClickedSaveCheckpoints
                 ]
 
-            Saving ->
-                [ text "Saving Checkpoints..." ]
+            SavingCheckpoints schedule ->
+                [ viewDisplaySchedule schedule ]
 
             Failure error ->
-                [ text error ]
-
-
-viewActionButton : Msg -> Html Msg
-viewActionButton message =
-    div [ class "grid grid--multiline grid--center grid--small" ]
-        [ div [ class "grid__item" ]
-            [ button
-                [ class "btn btn--secondary btn--block"
-                , onClick message
+                [ text error
+                , button
+                    [ class "btn btn--secondary btn--block"
+                    , onClick ClickedRetry
+                    ]
+                    [ text (messageToButtonText ClickedRetry) ]
                 ]
-                [ text (messageToString message) ]
-            ]
+
+
+viewDisplaySchedule : Schedule -> Html Msg
+viewDisplaySchedule { checkpoints, start, finish } =
+    div [ class "schedule" ]
+        [ viewDisplayPlace Start start
+        , viewDisplayCheckpoints checkpoints
+        , viewDisplayPlace Finish finish
         ]
 
 
-messageToString : Msg -> String
-messageToString message =
+viewEditPossibleSchedule : PossibleSchedule -> Html Msg
+viewEditPossibleSchedule { checkpoints, selected, start, finish } =
+    div [ class "schedule" ]
+        [ viewDisplayPlace Start start
+        , viewEditCheckpoints checkpoints selected
+        , viewDisplayPlace Finish finish
+        ]
+
+
+viewDisplayPlace : PlaceType -> Place -> Html Msg
+viewDisplayPlace placeType place =
+    div
+        [ class "box box--tight box--default mrgv- pdg- place"
+        , attribute "data-geom" "TODO"
+        ]
+        [ placeTypeToTitle placeType
+        , viewPlaceInfo place
+        ]
+
+
+placeTypeToTitle : PlaceType -> Html Msg
+placeTypeToTitle placeType =
+    case placeType of
+        Start ->
+            h3 [ class "mrgv0" ] [ text "Start" ]
+
+        Finish ->
+            h3 [ class "mrgv0" ] [ text "Finish" ]
+
+        Checkpoint ->
+            text ""
+
+
+viewPlaceInfo : Place -> Html Msg
+viewPlaceInfo place =
+    div [ class "grid grid--tight" ]
+        [ viewPlaceName place.name place.altitude
+        , viewPlaceSchedule place.schedule
+        , viewPlaceType place.placeType
+        , viewPlaceElevationAndDistance place.distance place.elevationGain place.elevationLoss
+        ]
+
+
+viewEditButton : Bool -> Msg -> Html Msg
+viewEditButton canEdit message =
+    if canEdit then
+        button
+            [ class "btn btn--primary btn--block"
+            , onClick message
+            ]
+            [ text (messageToButtonText message) ]
+
+    else
+        text ""
+
+
+messageToButtonText : Msg -> String
+messageToButtonText message =
     case message of
+        ClickedRetry ->
+            "Retry"
+
         ClickedEditCheckpoints ->
             "Add/Remove Checkpoints"
 
@@ -287,35 +387,30 @@ messageToString message =
             ""
 
 
-viewDisplayCheckpoints : List Checkpoint -> Html Msg
+viewDisplayCheckpoints : List CheckpointPlace -> Html Msg
 viewDisplayCheckpoints checkpoints =
     case checkpoints of
         [] ->
             div [ class "box box--default box--tight mrgv- pdg- place" ]
-                [ text "No checkpoint has been added to this route." ]
+                [ text "No checkpoint has been added to this route. With checkpoints, you can track your progress during your run." ]
 
         _ ->
-            ul [ class "list list--stacked" ] <|
-                List.map viewDisplayCheckpoint checkpoints
+            List.map .place checkpoints
+                |> List.map (viewDisplayPlace Checkpoint)
+                |> ul [ class "list list--stacked" ]
 
 
-viewDisplayCheckpoint : Checkpoint -> Html Msg
-viewDisplayCheckpoint checkpoint =
-    li [ class "box box--default box--tight mrgv- pdg- place", attribute "data-geom" "TODO" ]
-        [ viewCheckpointInfo checkpoint ]
-
-
-viewEditCheckpoints : CheckpointSelection -> Html Msg
-viewEditCheckpoints checkpointSelection =
+viewEditCheckpoints : List CheckpointPlace -> Set FieldValue -> Html Msg
+viewEditCheckpoints checkpoints selected =
     ul [ class "list list--stacked" ] <|
-        List.map (viewEditCheckpoint checkpointSelection.selected) checkpointSelection.checkpoints
+        List.map (viewEditCheckpoint selected) checkpoints
 
 
-viewEditCheckpoint : Set FieldValue -> Checkpoint -> Html Msg
+viewEditCheckpoint : Set FieldValue -> CheckpointPlace -> Html Msg
 viewEditCheckpoint selected checkpoint =
     let
         isChecked =
-            Set.member checkpoint.fieldValue selected
+            isSelected selected checkpoint
 
         message =
             if isChecked then
@@ -334,7 +429,7 @@ viewEditCheckpoint selected checkpoint =
                 [ tbody []
                     [ tr []
                         [ td [ class "text-center", width 10 ] [ viewCheckpointCheckbox message isChecked checkpoint ]
-                        , td [] [ viewCheckpointInfo checkpoint ]
+                        , td [] [ viewPlaceInfo checkpoint.place ]
                         ]
                     ]
                 ]
@@ -342,7 +437,7 @@ viewEditCheckpoint selected checkpoint =
         ]
 
 
-viewCheckpointCheckbox : Msg -> Bool -> Checkpoint -> Html Msg
+viewCheckpointCheckbox : Msg -> Bool -> CheckpointPlace -> Html Msg
 viewCheckpointCheckbox message isChecked checkpoint =
     input
         [ id checkpoint.fieldValue
@@ -355,18 +450,8 @@ viewCheckpointCheckbox message isChecked checkpoint =
         []
 
 
-viewCheckpointInfo : Checkpoint -> Html Msg
-viewCheckpointInfo checkpoint =
-    div [ class "grid grid--tight" ]
-        [ viewCheckpointName checkpoint.name checkpoint.altitude
-        , viewCheckpointSchedule checkpoint.schedule
-        , viewCheckpointType checkpoint.place_type
-        , viewElevationAndDistance checkpoint.distance checkpoint.elevationGain checkpoint.elevationLoss
-        ]
-
-
-viewCheckpointName : String -> Float -> Html Msg
-viewCheckpointName name altitude =
+viewPlaceName : String -> Float -> Html Msg
+viewPlaceName name altitude =
     div
         [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
         [ text <| name ++ ", "
@@ -374,22 +459,22 @@ viewCheckpointName name altitude =
         ]
 
 
-viewCheckpointSchedule : String -> Html Msg
-viewCheckpointSchedule schedule =
+viewPlaceSchedule : String -> Html Msg
+viewPlaceSchedule schedule =
     div
         [ class "w-1/3 sm-w-1/5 grid__item text-right" ]
         [ text schedule ]
 
 
-viewCheckpointType : String -> Html Msg
-viewCheckpointType place_type =
+viewPlaceType : String -> Html Msg
+viewPlaceType place_type =
     div
         [ class "w-1/2 grid__item text-small text-left" ]
         [ text place_type ]
 
 
-viewElevationAndDistance : Float -> Float -> Float -> Html Msg
-viewElevationAndDistance distance elevationGain elevationLoss =
+viewPlaceElevationAndDistance : Float -> Float -> Float -> Html Msg
+viewPlaceElevationAndDistance distance elevationGain elevationLoss =
     div
         [ class "w-1/2 grid__item text-small text-right" ]
         [ text <| format "0,0.0" distance ++ "km"
@@ -402,11 +487,11 @@ viewElevationAndDistance distance elevationGain elevationLoss =
 -- HTTP
 
 
-getCheckpoints : String -> (Result Error (List Checkpoint) -> Msg) -> Cmd Msg
-getCheckpoints url msg =
+getSchedule : String -> (Result Error Schedule -> Msg) -> Cmd Msg
+getSchedule url msg =
     Http.get
         { url = url
-        , expect = Http.expectJson msg checkpointsDecoder
+        , expect = Http.expectJson msg scheduleDecoder
         }
 
 
@@ -421,7 +506,7 @@ postCheckpoints url csrftoken selected =
     Http.post
         { url = url
         , body = body
-        , expect = Http.expectJson GotExistingCheckpoints checkpointsDecoder
+        , expect = Http.expectJson GotSchedule scheduleDecoder
         }
 
 
@@ -448,12 +533,3 @@ errorToString error =
 
         Http.BadBody errorMessage ->
             errorMessage
-
-
-
--- JSON Decoders
-
-
-checkpointsDecoder : Decoder (List Checkpoint)
-checkpointsDecoder =
-    Decode.field "checkpoints" <| Decode.list checkpointDecoder
