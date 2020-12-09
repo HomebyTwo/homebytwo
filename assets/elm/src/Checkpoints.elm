@@ -12,6 +12,7 @@ import Html.Events exposing (onClick)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
+import Json.Encode as Encode exposing (Value)
 import Numeral exposing (format)
 import Set exposing (Set)
 
@@ -85,6 +86,11 @@ scheduleDecoder =
 
 type alias PossibleSchedule =
     { checkpoints : List CheckpointPlace, selected : Set FieldValue, start : Place, finish : Place }
+
+
+selectedEncoder : Set FieldValue -> Value
+selectedEncoder selected =
+    Encode.set Encode.string selected
 
 
 type alias CheckpointPlace =
@@ -496,17 +502,19 @@ getSchedule url msg =
 
 
 postCheckpoints : String -> String -> Set FieldValue -> Cmd Msg
-postCheckpoints url csrftoken selected =
+postCheckpoints url csrfToken selected =
     let
         body =
-            Http.stringPart "csrfmiddlewaretoken" csrftoken
-                :: List.map (Http.stringPart "checkpoints") (Set.toList selected)
-                |> Http.multipartBody
+            Encode.object [ ( "checkpoints", selectedEncoder selected ) ]
     in
-    Http.post
-        { url = url
-        , body = body
+    Http.request
+        { method = "POST"
+        , headers = [ Http.header "X-CSRFToken" csrfToken ]
+        , url = url
+        , body = Http.jsonBody body
         , expect = Http.expectJson GotSchedule scheduleDecoder
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 

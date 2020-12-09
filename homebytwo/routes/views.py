@@ -245,7 +245,9 @@ def route_checkpoints_list(request, pk, edit=False):
     # save posted checkpoints
     if request.method == "POST":
         # validate submitted checkpoints with a form
-        form = CheckpointsForm(data=request.POST)
+        post_data = json.loads(request.body)
+        form = CheckpointsForm(data=post_data)
+
         if form.is_valid() and can_edit:
             save_form_checkpoints(
                 route,
