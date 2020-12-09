@@ -109,18 +109,6 @@ checkpointDecoder =
         |> required "saved" Decode.bool
 
 
-type alias Place =
-    { name : String
-    , placeType : String
-    , altitude : Float
-    , schedule : String
-    , distance : Float
-    , elevationGain : Float
-    , elevationLoss : Float
-    , geom : GeoJson.GeoJson
-    }
-
-
 type PlaceType
     = Start
     | Finish
@@ -133,6 +121,18 @@ type alias Start =
 
 type alias Finish =
     Place
+
+
+type alias Place =
+    { name : String
+    , placeType : String
+    , altitude : Float
+    , schedule : String
+    , distance : Float
+    , elevationGain : Float
+    , elevationLoss : Float
+    , geom : GeoJson.GeoJson
+    }
 
 
 placeDecoder : Decoder Place
@@ -160,6 +160,8 @@ type Msg
     | ClickedSaveCheckpoints
     | SelectedCheckpoint String
     | DeselectedCheckpoint String
+    | ClickedSelectAll
+    | ClickedClearAll
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -227,41 +229,61 @@ update msg model =
                     ( model, Cmd.none )
 
         SelectedCheckpoint fieldValue ->
-            case model.status of
-                EditCheckpoints ({ checkpoints, selected, start, finish } as possibleSchedule) ->
-                    let
-                        updatedSet =
-                            Set.insert fieldValue selected
-
-                        updatedSchedule =
-                            { possibleSchedule | selected = updatedSet }
-                    in
-                    ( { model | status = EditCheckpoints updatedSchedule }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
+            let
+                updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
+                updateSetFromPossibleSchedule possibleSchedule =
+                    Set.insert fieldValue possibleSchedule.selected
+            in
+            updateModelSelection updateSetFromPossibleSchedule model
 
         DeselectedCheckpoint fieldValue ->
-            case model.status of
-                EditCheckpoints ({ checkpoints, selected, start, finish } as possibleSchedule) ->
-                    let
-                        updatedSet =
-                            Set.remove fieldValue selected
+            let
+                updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
+                updateSetFromPossibleSchedule possibleSchedule =
+                    Set.remove fieldValue possibleSchedule.selected
+            in
+            updateModelSelection updateSetFromPossibleSchedule model
 
-                        updatedSchedule =
-                            { possibleSchedule | selected = updatedSet }
-                    in
-                    ( { model | status = EditCheckpoints updatedSchedule }, Cmd.none )
+        ClickedSelectAll ->
+            let
+                updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
+                updateSetFromPossibleSchedule possibleSchedule =
+                    setFromCheckpointList possibleSchedule.checkpoints
+            in
+            updateModelSelection updateSetFromPossibleSchedule model
 
-                _ ->
-                    ( model, Cmd.none )
+        ClickedClearAll ->
+            let
+                updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
+                updateSetFromPossibleSchedule _ =
+                    Set.empty
+            in
+            updateModelSelection updateSetFromPossibleSchedule model
+
+
+updateModelSelection : (PossibleSchedule -> Set FieldValue) -> Model -> ( Model, Cmd Msg )
+updateModelSelection updateSetFromPossibleSchedule model =
+    case model.status of
+        EditCheckpoints possibleSchedule ->
+            let
+                updatedSet =
+                    updateSetFromPossibleSchedule possibleSchedule
+
+                updatedSchedule =
+                    { possibleSchedule | selected = updatedSet }
+
+                updatedModel =
+                    { model | status = EditCheckpoints updatedSchedule }
+            in
+            ( updatedModel, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 setFromCheckpointList : List CheckpointPlace -> Set FieldValue
 setFromCheckpointList checkpoints =
-    List.filter .saved checkpoints
-        |> List.map .fieldValue
-        |> Set.fromList
+    List.map .fieldValue checkpoints |> Set.fromList
 
 
 isSelected : Set FieldValue -> CheckpointPlace -> Bool
@@ -408,8 +430,12 @@ viewDisplayCheckpoints checkpoints =
 
 viewEditCheckpoints : List CheckpointPlace -> Set FieldValue -> Html Msg
 viewEditCheckpoints checkpoints selected =
-    ul [ class "list list--stacked" ] <|
-        List.map (viewEditCheckpoint selected) checkpoints
+    div []
+        [ button [ onClick ClickedSelectAll ] [ text "Select All" ]
+        , button [ onClick ClickedClearAll ] [ text "Clear All" ]
+        , ul [ class "list list--stacked" ] <|
+            List.map (viewEditCheckpoint selected) checkpoints
+        ]
 
 
 viewEditCheckpoint : Set FieldValue -> CheckpointPlace -> Html Msg
