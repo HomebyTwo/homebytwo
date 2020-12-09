@@ -8,10 +8,7 @@
         <li class="h3 mrgv0">{{ route.get_total_distance.km|floatformat:1|intcomma }}km</li>
       {% endif %}
       {% if route.get_total_elevation_gain %}
-        <li class="h3 mrgv0">{{ route.get_total_elevation_gain.m|floatformat:0|intcomma }}m+</li>
-      {% endif %}
-      {% if "schedule" in route.data.columns %}
-        <li class="h3 mrgv0">{{ route.get_total_duration|duration:'hike' }}</li>
+        <li class="h3 mrgv0">{{ route.get_total_elevation_gain.m|floatformat:0|intcomma }}m D+</li>
       {% endif %}
     </ul>
   </div>
