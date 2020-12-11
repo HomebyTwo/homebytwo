@@ -1,11 +1,10 @@
-module Checkpoints exposing (main)
+port module Checkpoints exposing (main)
 
 -- Display route checkpoints
 --
 --
 
 import Browser
-import GeoJson exposing (GeoJson)
 import Html exposing (..)
 import Html.Attributes exposing (attribute, checked, class, classList, for, id, name, type_, value, width)
 import Html.Events exposing (onClick)
@@ -25,7 +24,7 @@ main =
     Browser.element
         { init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         , view = view
         }
 
@@ -43,6 +42,11 @@ init config =
             { config = config, status = LoadingSchedule }
     in
     ( model, cmd )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    clickedPlace ClickedCheckpoint
 
 
 
@@ -73,7 +77,10 @@ type Status
 
 
 type alias Schedule =
-    { checkpoints : List CheckpointPlace, start : Place, finish : Place }
+    { checkpoints : List CheckpointPlace
+    , start : Place
+    , finish : Place
+    }
 
 
 scheduleDecoder : Decoder Schedule
@@ -85,7 +92,11 @@ scheduleDecoder =
 
 
 type alias PossibleSchedule =
-    { checkpoints : List CheckpointPlace, selected : Set FieldValue, start : Place, finish : Place }
+    { checkpoints : List CheckpointPlace
+    , selected : Set FieldValue
+    , start : Place
+    , finish : Place
+    }
 
 
 selectedEncoder : Set FieldValue -> Value
@@ -109,10 +120,11 @@ checkpointDecoder =
         |> required "saved" Decode.bool
 
 
-type PlaceType
+type PlaceClass
     = Start
     | Finish
     | Checkpoint
+    | Possible
 
 
 type alias Start =
@@ -131,7 +143,7 @@ type alias Place =
     , distance : Float
     , elevationGain : Float
     , elevationLoss : Float
-    , geom : GeoJson.GeoJson
+    , coords : Coords
     }
 
 
@@ -145,7 +157,42 @@ placeDecoder =
         |> required "distance" Decode.float
         |> required "elevation_gain" Decode.float
         |> required "elevation_loss" Decode.float
-        |> required "geom" GeoJson.decoder
+        |> required "coords" coordsDecoder
+
+
+type alias Coords =
+    { lat : Float, lng : Float }
+
+
+coordsDecoder : Decoder Coords
+coordsDecoder =
+    Decode.succeed Coords
+        |> required "lat" Decode.float
+        |> required "lng" Decode.float
+
+
+
+-- PORTS
+
+
+type alias PlacesMsg =
+    { action : String, places : List PlaceMarker }
+
+
+type alias PlaceMarker =
+    { id : String
+    , placeClass : String
+    , name : String
+    , placeType : String
+    , schedule : String
+    , coords : Coords
+    }
+
+
+port updatePlaces : PlacesMsg -> Cmd msg
+
+
+port clickedPlace : (String -> msg) -> Sub msg
 
 
 
@@ -158,8 +205,7 @@ type Msg
     | GotPossibleSchedule (Result Http.Error Schedule)
     | ClickedEditCheckpoints
     | ClickedSaveCheckpoints
-    | SelectedCheckpoint String
-    | DeselectedCheckpoint String
+    | ClickedCheckpoint String
     | ClickedSelectAll
     | ClickedClearAll
 
@@ -170,24 +216,45 @@ update msg model =
         ClickedRetry ->
             ( { model | status = LoadingSchedule }, getSchedule model.config.displayUrl GotSchedule )
 
-        GotSchedule (Ok schedule) ->
-            ( { model | status = DisplaySchedule schedule }, Cmd.none )
+        GotSchedule result ->
+            case result of
+                Ok schedule ->
+                    let
+                        placeMarkers =
+                            placeMarkersFromSchedule schedule
 
-        GotSchedule (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+                        updatePlacesCmd =
+                            updatePlaces
+                                { action = "display"
+                                , places = placeMarkers
+                                }
+                    in
+                    ( { model | status = DisplaySchedule schedule }, updatePlacesCmd )
 
-        GotPossibleSchedule (Ok { checkpoints, start, finish }) ->
-            let
-                selected =
-                    setFromCheckpointList checkpoints
+                Err error ->
+                    ( { model | status = Failure (errorToString error) }, Cmd.none )
 
-                possibleSchedule =
-                    PossibleSchedule checkpoints selected start finish
-            in
-            ( { model | status = EditCheckpoints possibleSchedule }, Cmd.none )
+        GotPossibleSchedule result ->
+            case result of
+                Ok { checkpoints, start, finish } ->
+                    let
+                        selected =
+                            List.filter .saved checkpoints
+                                |> setFromCheckpointList
 
-        GotPossibleSchedule (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+                        possibleSchedule =
+                            PossibleSchedule checkpoints selected start finish
+
+                        placeMarkers =
+                            placeMarkersFromPossibleSchedule possibleSchedule
+
+                        updatePlacesCmd =
+                            updatePlaces { action = "edit", places = placeMarkers }
+                    in
+                    ( { model | status = EditCheckpoints possibleSchedule }, updatePlacesCmd )
+
+                Err error ->
+                    ( { model | status = Failure (errorToString error) }, Cmd.none )
 
         ClickedEditCheckpoints ->
             case model.status of
@@ -196,10 +263,10 @@ update msg model =
                         url =
                             model.config.editUrl
 
-                        cmd =
+                        getScheduleCmd =
                             getSchedule url GotPossibleSchedule
                     in
-                    ( { model | status = LoadingPossibleSchedule schedule }, cmd )
+                    ( { model | status = LoadingPossibleSchedule schedule }, getScheduleCmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -208,39 +275,29 @@ update msg model =
             case model.status of
                 EditCheckpoints { checkpoints, selected, start, finish } ->
                     let
-                        url =
-                            model.config.editUrl
-
-                        csrfToken =
-                            model.config.csrfToken
-
-                        cmd =
-                            postCheckpoints url csrfToken selected
-
                         selected_checkpoints =
                             List.filter (isSelected selected) checkpoints
 
                         schedule =
                             Schedule selected_checkpoints start finish
+
+                        postCheckpointsCmd =
+                            postCheckpoints model.config.editUrl model.config.csrfToken selected
                     in
-                    ( { model | status = SavingCheckpoints schedule }, cmd )
+                    ( { model | status = SavingCheckpoints schedule }, postCheckpointsCmd )
 
                 _ ->
                     ( model, Cmd.none )
 
-        SelectedCheckpoint fieldValue ->
+        ClickedCheckpoint fieldValue ->
             let
                 updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
                 updateSetFromPossibleSchedule possibleSchedule =
-                    Set.insert fieldValue possibleSchedule.selected
-            in
-            updateModelSelection updateSetFromPossibleSchedule model
+                    if Set.member fieldValue possibleSchedule.selected then
+                        Set.remove fieldValue possibleSchedule.selected
 
-        DeselectedCheckpoint fieldValue ->
-            let
-                updateSetFromPossibleSchedule : PossibleSchedule -> Set FieldValue
-                updateSetFromPossibleSchedule possibleSchedule =
-                    Set.remove fieldValue possibleSchedule.selected
+                    else
+                        Set.insert fieldValue possibleSchedule.selected
             in
             updateModelSelection updateSetFromPossibleSchedule model
 
@@ -272,10 +329,13 @@ updateModelSelection updateSetFromPossibleSchedule model =
                 updatedSchedule =
                     { possibleSchedule | selected = updatedSet }
 
-                updatedModel =
-                    { model | status = EditCheckpoints updatedSchedule }
+                placeMarkers =
+                    placeMarkersFromPossibleSchedule updatedSchedule
+
+                updatePlacesCmd =
+                    updatePlaces { action = "edit", places = placeMarkers }
             in
-            ( updatedModel, Cmd.none )
+            ( { model | status = EditCheckpoints updatedSchedule }, updatePlacesCmd )
 
         _ ->
             ( model, Cmd.none )
@@ -284,6 +344,70 @@ updateModelSelection updateSetFromPossibleSchedule model =
 setFromCheckpointList : List CheckpointPlace -> Set FieldValue
 setFromCheckpointList checkpoints =
     List.map .fieldValue checkpoints |> Set.fromList
+
+
+placeMarkersFromPossibleSchedule : PossibleSchedule -> List PlaceMarker
+placeMarkersFromPossibleSchedule { checkpoints, selected, start, finish } =
+    let
+        areSelected =
+            List.map (isSelected selected) checkpoints
+    in
+    List.map2 placeMarkerFromCheckpointPlace areSelected checkpoints
+
+
+placeMarkersFromSchedule : Schedule -> List PlaceMarker
+placeMarkersFromSchedule { checkpoints, start, finish } =
+    checkpoints
+        |> List.map (placeMarkerFromCheckpointPlace True)
+        |> (::) (placeMarkerFromPlace Start Nothing start)
+        |> (::) (placeMarkerFromPlace Finish Nothing finish)
+
+
+placeMarkerFromCheckpointPlace : Bool -> CheckpointPlace -> PlaceMarker
+placeMarkerFromCheckpointPlace selected checkpoint =
+    let
+        class =
+            if selected then
+                Checkpoint
+
+            else
+                Possible
+    in
+    placeMarkerFromPlace class (Just checkpoint.fieldValue) checkpoint.place
+
+
+placeMarkerFromPlace : PlaceClass -> Maybe FieldValue -> Place -> PlaceMarker
+placeMarkerFromPlace placeClass maybeFieldValue place =
+    let
+        class =
+            case placeClass of
+                Start ->
+                    "start"
+
+                Finish ->
+                    "finish"
+
+                Checkpoint ->
+                    "checkpoint"
+
+                Possible ->
+                    "possible"
+
+        id =
+            case maybeFieldValue of
+                Just fieldValue ->
+                    fieldValue
+
+                Nothing ->
+                    ""
+    in
+    PlaceMarker
+        id
+        class
+        (place.name ++ ", " ++ format "0,0" place.altitude ++ "m")
+        place.placeType
+        place.schedule
+        place.coords
 
 
 isSelected : Set FieldValue -> CheckpointPlace -> Bool
@@ -352,19 +476,17 @@ viewEditPossibleSchedule { checkpoints, selected, start, finish } =
         ]
 
 
-viewDisplayPlace : PlaceType -> Place -> Html Msg
-viewDisplayPlace placeType place =
+viewDisplayPlace : PlaceClass -> Place -> Html Msg
+viewDisplayPlace placeClass place =
     div
-        [ class "box box--tight box--default mrgv- pdg- place"
-        , attribute "data-geom" "TODO"
-        ]
-        [ placeTypeToTitle placeType
+        [ class "box box--tight box--default mrgv- pdg- place" ]
+        [ placeClassToTitle placeClass
         , viewPlaceInfo place
         ]
 
 
-placeTypeToTitle : PlaceType -> Html Msg
-placeTypeToTitle placeType =
+placeClassToTitle : PlaceClass -> Html Msg
+placeClassToTitle placeType =
     case placeType of
         Start ->
             h3 [ class "mrgv0" ] [ text "Start" ]
@@ -373,6 +495,9 @@ placeTypeToTitle placeType =
             h3 [ class "mrgv0" ] [ text "Finish" ]
 
         Checkpoint ->
+            text ""
+
+        Possible ->
             text ""
 
 
@@ -443,24 +568,16 @@ viewEditCheckpoint selected checkpoint =
     let
         isChecked =
             isSelected selected checkpoint
-
-        message =
-            if isChecked then
-                DeselectedCheckpoint checkpoint.fieldValue
-
-            else
-                SelectedCheckpoint checkpoint.fieldValue
     in
     li
         [ class "box box--tight mrgv- place"
         , classList [ ( "box--default", isChecked ) ]
-        , attribute "data-geom" "TODO"
         ]
         [ label [ for checkpoint.fieldValue, class "label pdg0" ]
             [ table [ class "mrgv0 pdg0" ]
                 [ tbody []
                     [ tr []
-                        [ td [ class "text-center", width 10 ] [ viewCheckpointCheckbox message isChecked checkpoint ]
+                        [ td [ class "text-center", width 10 ] [ viewCheckpointCheckbox isChecked checkpoint ]
                         , td [] [ viewPlaceInfo checkpoint.place ]
                         ]
                     ]
@@ -469,15 +586,15 @@ viewEditCheckpoint selected checkpoint =
         ]
 
 
-viewCheckpointCheckbox : Msg -> Bool -> CheckpointPlace -> Html Msg
-viewCheckpointCheckbox message isChecked checkpoint =
+viewCheckpointCheckbox : Bool -> CheckpointPlace -> Html Msg
+viewCheckpointCheckbox isChecked checkpoint =
     input
         [ id checkpoint.fieldValue
         , type_ "checkbox"
         , class "checkbox"
         , value checkpoint.fieldValue
         , checked isChecked
-        , onClick message
+        , onClick (ClickedCheckpoint checkpoint.fieldValue)
         ]
         []
 
@@ -499,10 +616,10 @@ viewPlaceSchedule schedule =
 
 
 viewPlaceType : String -> Html Msg
-viewPlaceType place_type =
+viewPlaceType placeType =
     div
         [ class "w-1/2 grid__item text-small text-left" ]
-        [ text place_type ]
+        [ text placeType ]
 
 
 viewPlaceElevationAndDistance : Float -> Float -> Float -> Html Msg

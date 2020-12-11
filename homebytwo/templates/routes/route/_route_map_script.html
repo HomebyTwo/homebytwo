@@ -2,11 +2,11 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
+
+    window.HomeByTwo.LeafletMap.map = new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
       id: 'mapid',
       routeGeoJson: {{ route | geojsonfeature | safe }},
       divIconClassName: 'placeIcon placeIcon--default',
-      markersSelector: '[data-geom]',
       mapBoxTileUrl: '{{ mapbox_tile_url }}'
     }, ['scrollWheelZoom']);
   });

@@ -110,6 +110,13 @@ class Place(TimeStampedModel):
         """
         return self.geom.transform(srid, clone=True).coords
 
+    def get_json_coords(self, srid=4326):
+        """
+        returns a dict with the place coords transformed to the requested srid
+        """
+        lng, lat = self.geom.transform(srid, clone=True).coords
+        return {"lat": lat, "lng": lng, "srid": srid}
+
     def get_geojson(self, fields):
         return serialize("geojson", [self], geometry_field="geom", fields=fields)
 

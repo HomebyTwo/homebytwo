@@ -17,9 +17,15 @@
     {% include "routes/route/_route_map_script.html" %}
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        HomeByTwo.Elm.Checkpoints.init({
+        window.HomeByTwo.Elm.checkpointsApp = window.HomeByTwo.Elm.Checkpoints.init({
           node: document.getElementById('elm-checkpoints'),
           flags: JSON.parse(document.getElementById('checkpoints-config').textContent)
+        });
+        window.HomeByTwo.Elm.checkpointsApp.ports.updatePlaces.subscribe(message => {
+          requestAnimationFrame(() => {
+            const leafletMap = window.HomeByTwo.LeafletMap.map;
+            leafletMap.updatePlaces(message.action, message.places);
+          });
         });
       });
     </script>

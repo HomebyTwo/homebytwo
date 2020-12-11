@@ -273,7 +273,7 @@ def route_checkpoints_list(request, pk, edit=False):
             "distance": checkpoint.distance_from_start.km,
             "elevation_gain": checkpoint.cumulative_elevation_gain.m,
             "elevation_loss": checkpoint.cumulative_elevation_loss.m,
-            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
+            "coords": checkpoint.place.get_json_coords(),
             "field_value": checkpoint.field_value,
             "saved": checkpoint in existing_checkpoints,
         }
@@ -295,7 +295,7 @@ def route_checkpoints_list(request, pk, edit=False):
         "distance": 0.0,
         "elevation_gain": 0.0,
         "elevation_loss": 0.0,
-        "geom": json.loads(start_place.get_geojson(fields=["name"])),
+        "coords": start_place.get_json_coords(),
     }
 
     end_place = route.end_place or Place(
@@ -311,7 +311,7 @@ def route_checkpoints_list(request, pk, edit=False):
         "distance": route.get_total_distance().km,
         "elevation_gain": route.get_total_elevation_gain().m,
         "elevation_loss": route.get_total_elevation_loss().m,
-        "geom": json.loads(end_place.get_geojson(fields=["name"])),
+        "coords": end_place.get_json_coords(),
     }
     return JsonResponse(
         {
