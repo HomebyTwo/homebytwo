@@ -184,6 +184,11 @@ def save_form_checkpoints(route, existing_checkpoints, checkpoints_data):
             place=Place.objects.get(pk=place_id),
             line_location=line_location,
         )
+
+        # re-attach the route with the calculated schedule,
+        # it was replaced by a fresh instance from the database.
+        checkpoint.route = route
+
         new_checkpoints.append(checkpoint)
 
     # delete existing checkpoints that are not in the form data

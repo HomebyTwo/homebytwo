@@ -5,7 +5,13 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponse,
+    HttpResponseForbidden,
+    JsonResponse,
+)
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -26,14 +32,7 @@ from rules.contrib.views import (
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm
-from .models import (
-    Activity,
-    ActivityType,
-    Place,
-    Route,
-    WebhookTransaction,
-    PlaceType,
-)
+from .models import Activity, ActivityType, Place, PlaceType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
     import_strava_activity_streams_task,
@@ -79,7 +78,7 @@ def view_route(request, pk):
         if performance_form.is_valid():
             activity_type_name = performance_form.cleaned_data["activity_type"]
             workout_type = performance_form.cleaned_data.get("workout_type")
-            gear_id = performance_form.cleaned_data.get("gear")
+            gear = performance_form.cleaned_data.get("gear")
 
             # update route instance activity type
             route.activity_type = ActivityType.objects.get(name=activity_type_name)
@@ -95,7 +94,7 @@ def view_route(request, pk):
             initial={"activity_type": route.activity_type.name},
         )
 
-        gear_id = (
+        gear = (
             performance_form.fields["gear"].choices[0][0]
             if "gear" in performance_form.fields
             else None
@@ -122,21 +121,19 @@ def view_route(request, pk):
 
     # prepare GET parameters for endpoint urls passed to the Checkpoints Elm module
     perf_params = {"activity_type": route.activity_type}
-    if gear_id is not None:
-        perf_params["gear_id"] = gear_id
+    if gear is not None:
+        perf_params["gear"] = gear
     if workout_type is not None:
         perf_params["workout_type"] = workout_type
     encoded_perf_params = urlencode(perf_params)
-    display_url = route.checkpoints_url + "?" + encoded_perf_params
-    edit_url = route.edit_checkpoints_url + "?" + encoded_perf_params
 
-    # create the context dict
+    # create the context dict for the Checkpoints Elm app
     context = {
         "route": route,
         "form": performance_form,
         "checkpoints_config": {
-            "displayUrl": display_url,
-            "editUrl": edit_url,
+            "displayUrl": route.checkpoints_url + "?" + encoded_perf_params,
+            "editUrl": route.edit_checkpoints_url + "?" + encoded_perf_params,
             "canEdit": request.user.has_perm("routes.change_route", route),
             "csrfToken": get_token(request),
         },
@@ -212,7 +209,9 @@ def route_checkpoints_list(request, pk, edit=False):
     retrieve JSON array of Checkpoint objects for a route
 
     if edit is requested, retrieve all possible checkpoints for the route,
-    otherwise only the checkpoints currently attached to the route.
+    otherwise return only the checkpoints currently attached to the route.
+    When new checkpoints are posted, begin in "edit" mode, and switch
+    to "display" once the posted data is validated and saved.
     """
 
     # retrieve route
@@ -221,22 +220,22 @@ def route_checkpoints_list(request, pk, edit=False):
     # check permission to edit and display checkpoints
     can_edit = request.user.has_perm("routes.change_route", route)
     if not request.user.has_perm("routes.view_route", route):
-        raise Http404
+        raise HttpResponseForbidden()
 
     # validate GET parameters for schedule calculation
     athlete = request.user.athlete if request.user.is_authenticated else None
-    form = ActivityPerformanceForm(route, athlete, data=request.GET)
+    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
 
-    if form.is_valid():
-        activity_type = form.cleaned_data.get("activity_type")
-        workout_type = form.cleaned_data.get("workout_type")
-        gear_id = form.cleaned_data.get("gear_id")
+    if perf_form.is_valid():
+        activity_type = perf_form.cleaned_data.get("activity_type")
+        workout_type = perf_form.cleaned_data.get("workout_type")
+        gear = perf_form.cleaned_data.get("gear")
     else:
-        activity_type = workout_type = gear_id = None
+        activity_type = workout_type = gear = None
 
     # calculate time schedule
     route.calculate_projected_time_schedule(
-        request.user, activity_type, workout_type, gear_id
+        request.user, activity_type, workout_type, gear
     )
 
     # retrieve existing checkpoints
@@ -244,19 +243,20 @@ def route_checkpoints_list(request, pk, edit=False):
 
     # save posted checkpoints
     if request.method == "POST":
-        # validate submitted checkpoints with a form
-        post_data = json.loads(request.body)
-        form = CheckpointsForm(data=post_data)
 
-        if form.is_valid() and can_edit:
-            save_form_checkpoints(
+        # validate submitted checkpoints, also check permissions
+        post_data = json.loads(request.body)
+        checkpoints_form = CheckpointsForm(data=post_data)
+
+        if can_edit and checkpoints_form.is_valid():
+            existing_checkpoints = save_form_checkpoints(
                 route,
                 existing_checkpoints,
-                checkpoints_data=form.cleaned_data["checkpoints"],
+                checkpoints_data=checkpoints_form.cleaned_data["checkpoints"],
             )
-            edit = False
-            existing_checkpoints = route.checkpoints.all()
 
+            # switch to returning "display" checkpoints if everything flies
+            edit = False
     # check if edit was requested and user has permission
     if edit and can_edit:
         checkpoints = route.find_possible_checkpoints()
@@ -265,59 +265,15 @@ def route_checkpoints_list(request, pk, edit=False):
 
     # prepare checkpoint dicts for the JSON response
     checkpoint_dicts = [
-        {
-            "name": checkpoint.place.name,
-            "place_type": checkpoint.place.place_type.name,
-            "altitude": checkpoint.altitude_on_route.m,
-            "schedule": checkpoint.schedule,
-            "distance": checkpoint.distance_from_start.km,
-            "elevation_gain": checkpoint.cumulative_elevation_gain.m,
-            "elevation_loss": checkpoint.cumulative_elevation_loss.m,
-            "coords": checkpoint.place.get_json_coords(),
-            "field_value": checkpoint.field_value,
-            "saved": checkpoint in existing_checkpoints,
-        }
+        checkpoint.get_json(existing_checkpoints)
         for checkpoint in checkpoints
     ]
 
-    # start place
-    start_place = route.start_place or Place(
-        name="Unknown start place",
-        place_type=PlaceType.objects.get(code="ll"),
-        geom=route.geom.interpolate_normalized(0),
-    )
-
-    start_place_dict = {
-        "name": start_place.name,
-        "place_type": start_place.place_type.name,
-        "altitude": route.get_start_altitude().m,
-        "schedule": "0 min",
-        "distance": 0.0,
-        "elevation_gain": 0.0,
-        "elevation_loss": 0.0,
-        "coords": start_place.get_json_coords(),
-    }
-
-    end_place = route.end_place or Place(
-        name="Unknown finish place",
-        place_type=PlaceType.objects.get(code="ll"),
-        geom=route.geom.interpolate_normalized(1),
-    )
-    end_place_dict = {
-        "name": end_place.name,
-        "place_type": end_place.place_type.name,
-        "altitude": route.get_end_altitude().m,
-        "schedule": route.get_total_schedule(),
-        "distance": route.get_total_distance().km,
-        "elevation_gain": route.get_total_elevation_gain().m,
-        "elevation_loss": route.get_total_elevation_loss().m,
-        "coords": end_place.get_json_coords(),
-    }
     return JsonResponse(
         {
             "checkpoints": checkpoint_dicts,
-            "start": start_place_dict,
-            "finish": end_place_dict,
+            "start": route.get_start_place_json(),
+            "finish": route.get_end_place_json(),
         }
     )
 
