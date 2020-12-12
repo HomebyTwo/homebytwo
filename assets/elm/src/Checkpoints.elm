@@ -353,12 +353,13 @@ placeMarkersFromPossibleSchedule { checkpoints, selected, start, finish } =
             List.map (isSelected selected) checkpoints
     in
     List.map2 placeMarkerFromCheckpointPlace areSelected checkpoints
+        |> (::) (placeMarkerFromPlace Start Nothing start)
+        |> (::) (placeMarkerFromPlace Finish Nothing finish)
 
 
 placeMarkersFromSchedule : Schedule -> List PlaceMarker
 placeMarkersFromSchedule { checkpoints, start, finish } =
-    checkpoints
-        |> List.map (placeMarkerFromCheckpointPlace True)
+    List.map (placeMarkerFromCheckpointPlace True) checkpoints
         |> (::) (placeMarkerFromPlace Start Nothing start)
         |> (::) (placeMarkerFromPlace Finish Nothing finish)
 
