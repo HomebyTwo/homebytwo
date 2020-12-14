@@ -32,3 +32,8 @@
     text-decoration: underline;
   }
 }
+
+.#{$namespace}loader,
+%loader {
+  @include loader01;
+}

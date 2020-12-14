@@ -433,7 +433,7 @@ view model =
 
             LoadingPossibleSchedule schedule ->
                 [ viewDisplaySchedule schedule
-                , viewLoadingButton "Loading additional checkpoints.. "
+                , viewLoadingButton "Loading additional checkpoints..."
                 ]
 
             EditCheckpoints schedule selection ->
@@ -443,7 +443,7 @@ view model =
 
             SavingCheckpoints schedule ->
                 [ viewDisplaySchedule schedule
-                , viewLoadingButton "Saving checkpoints"
+                , viewLoadingButton "Saving checkpoints..."
                 ]
 
             Failure error ->
@@ -652,9 +652,13 @@ viewEditButton canEdit message =
 viewLoadingButton : String -> Html Msg
 viewLoadingButton labelText =
     button
-        [ class "btn btn--primary btn--block btn--disabled btn--loading"
+        [ class "btn btn--primary btn--block btn--disabled"
         ]
-        [ text labelText ]
+        [ div [ class "inline-flex align-items-center" ]
+            [ div [ class "loader" ] []
+            , div [ class "pdgl--" ] [ text labelText ]
+            ]
+        ]
 
 
 messageToButtonText : Msg -> String
