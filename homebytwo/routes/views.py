@@ -132,8 +132,8 @@ def view_route(request, pk):
         "route": route,
         "form": performance_form,
         "checkpoints_config": {
-            "displayUrl": route.checkpoints_url + "?" + encoded_perf_params,
-            "editUrl": route.edit_checkpoints_url + "?" + encoded_perf_params,
+            "displayUrl": route.schedule_url + "?" + encoded_perf_params,
+            "editUrl": route.edit_schedule_url + "?" + encoded_perf_params,
             "canEdit": request.user.has_perm("routes.change_route", route),
             "csrfToken": get_token(request),
         },
@@ -204,7 +204,7 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
     template_name = "routes/route/route_confirm_delete.html"
 
 
-def route_checkpoints_list(request, pk, edit=False):
+def route_schedule(request, pk, edit=False):
     """
     retrieve JSON array of Checkpoint objects for a route
 
@@ -265,8 +265,7 @@ def route_checkpoints_list(request, pk, edit=False):
 
     # prepare checkpoint dicts for the JSON response
     checkpoint_dicts = [
-        checkpoint.get_json(existing_checkpoints)
-        for checkpoint in checkpoints
+        checkpoint.get_json(existing_checkpoints) for checkpoint in checkpoints
     ]
 
     return JsonResponse(
