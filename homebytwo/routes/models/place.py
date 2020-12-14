@@ -198,7 +198,7 @@ class Checkpoint(models.Model):
         """
         value used in the ModelForm to serialize checkpoints
         """
-        return "{}_{}".format(self.place.id, self.line_location)
+        return f"{self.line_location}_{self.place.id}"
 
     @property
     def altitude_on_route(self):

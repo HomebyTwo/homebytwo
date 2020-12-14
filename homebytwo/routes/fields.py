@@ -307,8 +307,8 @@ class CheckpointsChoiceField(MultipleChoiceField):
         try:
             value = [tuple(checkpoint_data.split("_")) for checkpoint_data in value]
             return [
-                (int(place_id), float(line_location))
-                for (place_id, line_location) in value
+                (float(line_location), int(place_id))
+                for (line_location, place_id) in value
             ]
 
         except (KeyError, ValueError):
@@ -328,7 +328,7 @@ class CheckpointsChoiceField(MultipleChoiceField):
             # check that line_location
             # is between [0.0 and 1.0]
             try:
-                if 0.0 > float(checkpoint[1]) > 1.0:
+                if 0.0 > float(checkpoint[0]) > 1.0:
                     raise ValidationError(
                         _("Invalid value: %(value)s"),
                         code="invalid",
