@@ -486,7 +486,7 @@ class SwitzerlandMobilityTestCase(TestCase):
             'class="field"',
             'id="id_start_place"',
         ]
-        map_data = '<div id="mapid"></div>'
+        map_data = '<div class="map map--small" id="mapid"></div>'
 
         self.assertContains(response, title, html=True)
         for start_place_form_element in start_place_form_elements:

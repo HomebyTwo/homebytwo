@@ -596,10 +596,10 @@ def test_view_route(athlete, client, settings):
 
     button = '<a class="btn btn--{btn_class} btn--block" href="{href}">{text}</a>'
     update_button = button.format(
-        btn_class="secondary", href=route.update_url, text="Re-Import from Source"
+        btn_class="secondary", href=route.edit_url, text="Edit Route"
     )
     delete_button = button.format(
-        btn_class="delete", href=route.delete_url, text=f"Delete {route.name}"
+        btn_class="delete", href=route.delete_url, text=f"Delete Route"
     )
 
     elm_config = '<script id="checkpoints-config" type="application/json">'
