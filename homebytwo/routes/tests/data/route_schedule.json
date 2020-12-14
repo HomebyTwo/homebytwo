@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Route schedule schema",
+  "definitions": {
+    "placeOrCheckpoint": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "place_type": {
+          "type": "string"
+        },
+        "altitude": {
+          "type": "number"
+        },
+        "distance": {
+          "type": "number"
+        },
+        "elevation_gain": {
+          "type": "number"
+        },
+        "elevation_loss": {
+          "type": "number"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "coords": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            },
+            "srid": {
+              "type": "number"
+            }
+          },
+          "field_value": {
+            "type": "string"
+          },
+          "saved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "place_type",
+        "altitude",
+        "schedule",
+        "distance",
+        "elevation_gain",
+        "elevation_loss",
+        "coords"
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/placeOrCheckpoint"
+      }
+    },
+    "start": {
+      "$ref": "#/definitions/placeOrCheckpoint"
+    },
+    "finish": {
+      "$ref": "#/definitions/placeOrCheckpoint"
+    }
+  },
+  "required": [
+    "checkpoints",
+    "start",
+    "finish"
+  ]
+}

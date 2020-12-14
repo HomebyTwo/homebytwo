@@ -32,7 +32,7 @@ from rules.contrib.views import (
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm
-from .models import Activity, ActivityType, Place, PlaceType, Route, WebhookTransaction
+from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
     import_strava_activity_streams_task,

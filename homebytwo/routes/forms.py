@@ -98,7 +98,7 @@ class ActivityPerformanceForm(Form):
             try:
                 # do not get or create because the data is not cleaned
                 route.activity_type = ActivityType.objects.get(
-                    name=self.data["activity_type"]
+                    name=self.data.get("activity_type")
                 )
             except ActivityType.DoesNotExist:
                 pass
