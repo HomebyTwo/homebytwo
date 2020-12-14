@@ -45,10 +45,14 @@ export default class LeafletMap {
 
   updatePlaces(action, places) {
 
+    // are we in edit mode?
+    const isEdit = (action === 'edit');
+
     // save markers as feature group for easy disposal
     const newMarkers = this.leaflet.featureGroup();
     newMarkers.addTo(this.map);
 
+    // prepare marker classes
     const markerClasses = {
       checkpoint: 'placeIcon--checkpoint',
       possible: 'placeIcon--possible',
@@ -57,6 +61,8 @@ export default class LeafletMap {
     };
 
     places.forEach(place => {
+      const isCheckpoint = (['checkpoint', 'possible'].includes(place.placeClass));
+      const clickable = (isEdit && isCheckpoint);
 
       // Icon
       const checkpointIcon = this.leaflet.divIcon({className: `placeIcon ${markerClasses[place.placeClass]}`});
@@ -73,8 +79,10 @@ export default class LeafletMap {
       this.leaflet.marker([place.coords.lat, place.coords.lng], {icon: checkpointIcon})
         .addTo(newMarkers)
         .bindTooltip(tooltipContent)
+
+        // add event listener to checkpoints
         .on('click', () => {
-          if (action === 'edit') {
+          if (clickable) {
             const checkpointsApp = window.HomeByTwo.Elm.checkpointsApp;
             checkpointsApp.ports.clickedPlace.send(place.id);
           }
