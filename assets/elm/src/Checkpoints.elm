@@ -1,4 +1,4 @@
-port module Checkpoints exposing (main)
+port module Checkpoints exposing (CheckpointPlace, main, placeInfoDecoder, selectionFromSavedCheckpoints)
 
 -- Display route checkpoints
 --
@@ -222,7 +222,7 @@ update msg model =
                 Ok schedule ->
                     let
                         selection =
-                            selectionFromCheckpointList schedule.checkpoints
+                            selectionFromSavedCheckpoints schedule.checkpoints
 
                         placeMarkers =
                             placeMarkersFromSchedule schedule selection
@@ -243,8 +243,7 @@ update msg model =
                 Ok schedule ->
                     let
                         selection =
-                            List.filter .saved schedule.checkpoints
-                                |> selectionFromCheckpointList
+                            selectionFromSavedCheckpoints schedule.checkpoints
 
                         placeMarkers =
                             placeMarkersFromSchedule schedule selection
@@ -306,7 +305,7 @@ update msg model =
             let
                 updateSelection : Schedule -> Selection -> Selection
                 updateSelection schedule _ =
-                    selectionFromCheckpointList schedule.checkpoints
+                    selectionFromCheckpoints schedule.checkpoints
             in
             updateModelSelection updateSelection model
 
@@ -320,12 +319,12 @@ update msg model =
 
 
 updateModelSelection : (Schedule -> Selection -> Selection) -> Model -> ( Model, Cmd Msg )
-updateModelSelection updateSetFromPossibleSchedule model =
+updateModelSelection updateSelectionFromPossibleSchedule model =
     case model.status of
         EditCheckpoints schedule selection ->
             let
                 updatedSelection =
-                    updateSetFromPossibleSchedule schedule selection
+                    updateSelectionFromPossibleSchedule schedule selection
 
                 placeMarkers =
                     placeMarkersFromSchedule schedule updatedSelection
@@ -339,8 +338,14 @@ updateModelSelection updateSetFromPossibleSchedule model =
             ( model, Cmd.none )
 
 
-selectionFromCheckpointList : List CheckpointPlace -> Selection
-selectionFromCheckpointList checkpoints =
+selectionFromSavedCheckpoints : List CheckpointPlace -> Selection
+selectionFromSavedCheckpoints checkpoints =
+    List.filter .saved checkpoints
+        |> selectionFromCheckpoints
+
+
+selectionFromCheckpoints : List CheckpointPlace -> Selection
+selectionFromCheckpoints checkpoints =
     List.map .fieldValue checkpoints |> Set.fromList
 
 
@@ -509,7 +514,7 @@ viewEditCheckpoints checkpoints selection =
     case checkpoints of
         [] ->
             div [ class "box box--default box--tight mrgv- pdg- place" ]
-                [ text "Sorry, but no checkpoint was found to this route. " ]
+                [ text "Sorry, no checkpoint was found for this route. " ]
 
         _ ->
             div []
