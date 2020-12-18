@@ -31,7 +31,7 @@ from rules.contrib.views import (
 
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
-from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm
+from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm, StartPlaceForm, EndPlaceForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
@@ -284,17 +284,93 @@ def route_checkpoints_edit(request, pk):
     if not request.user.has_perm("routes.change_route", route):
         raise HttpResponseForbidden()
 
+    # validate GET parameters for schedule calculation
+    athlete = request.user.athlete if request.user.is_authenticated else None
+    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
+
+    if perf_form.is_valid():
+        activity_type = perf_form.cleaned_data.get("activity_type")
+        workout_type = perf_form.cleaned_data.get("workout_type")
+        gear = perf_form.cleaned_data.get("gear")
+    else:
+        activity_type = workout_type = gear = None
+
+    # calculate time schedule
+    route.calculate_projected_time_schedule(
+        request.user, activity_type, workout_type, gear
+    )
+
+    # retrieve existing checkpoints
+    existing_checkpoints = route.checkpoints.all()
+
+    shouldFetchAllCheckpoints = True
+
+    # save posted checkpoints
+    if request.method == "POST":
+
+        # validate submitted checkpoints, also check permissions
+        post_data = json.loads(request.body)
+        checkpoints_form = CheckpointsForm(data=post_data)
+
+        if checkpoints_form.is_valid():
+            existing_checkpoints = save_form_checkpoints(
+                route,
+                existing_checkpoints,
+                checkpoints_data=checkpoints_form.cleaned_data["checkpoints"],
+            )
+
+            # switch to returning "display" checkpoints if everything flies
+            shouldFetchAllCheckpoints = False
+
+    # check if edit was requested and user has permission
+    if shouldFetchAllCheckpoints:
+        checkpoints = route.find_possible_checkpoints()
+    else:
+        checkpoints = existing_checkpoints
+
+    # prepare checkpoint dicts for the JSON response
+    checkpoint_dicts = [
+        checkpoint.get_json(existing_checkpoints) for checkpoint in checkpoints
+    ]
+
+    return JsonResponse({ "checkpoints": checkpoint_dicts })
+
 
 def route_start_edit(request, pk):
-    # retrieve route
     route = get_object_or_404(Route, pk=pk)
-    can_edit = request.user.has_perm("routes.change_route", route)
+
+    if not request.user.has_perm("routes.change_route", route):
+        raise HttpResponseForbidden()
+
+    if request.method == "POST":
+
+        # validate submitted checkpoints, also check permissions
+        post_data = json.loads(request.body)
+        place_start_form = StartPlaceForm(data=post_data)
+
+        if place_start_form.is_valid():
+            route.place_start = place_start_form.cleaned_data.start
+            route.save(update_fields=['place_start'])
+
+    return JsonResponse({ "start": route.get_start_place_json() })
 
 
 def route_finish_edit(request, pk):
-    # retrieve route
     route = get_object_or_404(Route, pk=pk)
-    can_edit = request.user.has_perm("routes.change_route", route)
+
+    if not request.user.has_perm("routes.change_route", route):
+        raise HttpResponseForbidden()
+
+    if request.method == "POST":
+        # validate submitted checkpoints, also check permissions
+        post_data = json.loads(request.body)
+        place_end_form = EndPlaceForm(data=post_data)
+
+        if place_end_form.is_valid():
+            route.end_place = place_end_form.cleaned_data.end
+            route.save(update_fields=['end_place'])
+
+    return JsonResponse({ "finish": route.get_end_place_json() })
 
 
 @login_required
