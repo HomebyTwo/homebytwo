@@ -204,7 +204,7 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
     template_name = "routes/route/route_confirm_delete.html"
 
 
-def route_schedule(request, pk, edit=False):
+def route_schedule(request, pk):
     """
     retrieve JSON array of Checkpoint objects for a route
 
@@ -218,7 +218,6 @@ def route_schedule(request, pk, edit=False):
     route = get_object_or_404(Route, pk=pk)
 
     # check permission to edit and display checkpoints
-    can_edit = request.user.has_perm("routes.change_route", route)
     if not request.user.has_perm("routes.view_route", route):
         raise HttpResponseForbidden()
 
@@ -248,7 +247,7 @@ def route_schedule(request, pk, edit=False):
         post_data = json.loads(request.body)
         checkpoints_form = CheckpointsForm(data=post_data)
 
-        if can_edit and checkpoints_form.is_valid():
+        if checkpoints_form.is_valid():
             existing_checkpoints = save_form_checkpoints(
                 route,
                 existing_checkpoints,
@@ -258,7 +257,7 @@ def route_schedule(request, pk, edit=False):
             # switch to returning "display" checkpoints if everything flies
             edit = False
     # check if edit was requested and user has permission
-    if edit and can_edit:
+    if edit:
         checkpoints = route.find_possible_checkpoints()
     else:
         checkpoints = existing_checkpoints
@@ -275,6 +274,27 @@ def route_schedule(request, pk, edit=False):
             "finish": route.get_end_place_json(),
         }
     )
+
+
+def route_checkpoints_edit(request, pk):
+
+    # retrieve route
+    route = get_object_or_404(Route, pk=pk)
+
+    if not request.user.has_perm("routes.change_route", route):
+        raise HttpResponseForbidden()
+
+
+def route_start_edit(request, pk):
+    # retrieve route
+    route = get_object_or_404(Route, pk=pk)
+    can_edit = request.user.has_perm("routes.change_route", route)
+
+
+def route_finish_edit(request, pk):
+    # retrieve route
+    route = get_object_or_404(Route, pk=pk)
+    can_edit = request.user.has_perm("routes.change_route", route)
 
 
 @login_required
