@@ -17,6 +17,7 @@ from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
 from rules.contrib.models import RulesModelBase, RulesModelMixin
 
+from . import Place, PlaceType
 from ..models import Checkpoint, Track
 from ..utils import (
     GARMIN_ACTIVITY_TYPE_MAP,
@@ -135,6 +136,8 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         action_reverse = {
             "display": ("routes:route", route_kwargs),
+            "schedule": ("routes:schedule", route_kwargs),
+            "edit_schedule": ("routes:edit_schedule", route_kwargs),
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
@@ -148,6 +151,14 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     @property
     def display_url(self):
         return self.get_absolute_url("display")
+
+    @property
+    def schedule_url(self):
+        return self.get_absolute_url("schedule")
+
+    @property
+    def edit_schedule_url(self):
+        return self.get_absolute_url("edit_schedule")
 
     @property
     def edit_url(self):
@@ -331,7 +342,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
             and find no additional place.
         """
         # Start with the checkpoints that have been saved before or not
-        checkpoints = list(self.checkpoint_set.all()) if not updated_geom else list()
+        checkpoints = list(self.checkpoints.all()) if not updated_geom else list()
         segments = deque(create_segments_from_checkpoints(checkpoints))
 
         while segments:
@@ -360,6 +371,48 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         return checkpoints
 
+    def get_start_place_json(self):
+        """
+        prepare start_place dict for checkpoints app
+        """
+        # start place
+        start_place = self.start_place or Place(
+            name="Unknown start place",
+            place_type=PlaceType.objects.get(code="ll"),
+            geom=self.geom.interpolate_normalized(0),
+        )
+
+        return {
+            "name": start_place.name,
+            "place_type": start_place.place_type.name,
+            "altitude": self.get_start_altitude().m,
+            "schedule": "0 min",
+            "distance": 0.0,
+            "elevation_gain": 0.0,
+            "elevation_loss": 0.0,
+            "coords": start_place.get_json_coords(),
+        }
+
+    def get_end_place_json(self):
+        """
+        prepare end_place dict for checkpoints app
+        """
+        end_place = self.end_place or Place(
+            name="Unknown finish place",
+            place_type=PlaceType.objects.get(code="ll"),
+            geom=self.geom.interpolate_normalized(1),
+        )
+        return {
+            "name": end_place.name,
+            "place_type": end_place.place_type.name,
+            "altitude": self.get_end_altitude().m,
+            "schedule": self.get_total_schedule(),
+            "distance": self.get_total_distance().km,
+            "elevation_gain": self.get_total_elevation_gain().m,
+            "elevation_loss": self.get_total_elevation_loss().m,
+            "coords": end_place.get_json_coords(),
+        }
+
     def get_gpx(self, start_time=None):
         """
         returns the route as a GPX with track schedule and waypoints
@@ -387,7 +440,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         # get GPX from checkpoints
         gpx_checkpoints = [
             checkpoint.get_gpx_waypoint(route=self, start_time=start_time)
-            for checkpoint in self.checkpoint_set.all()
+            for checkpoint in self.checkpoints.all()
         ]
         gpx_waypoints = deque(gpx_checkpoints)
 

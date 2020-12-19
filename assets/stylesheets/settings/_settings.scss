@@ -240,3 +240,14 @@ $container-max-width:               1200px;
  */
 
 $table-responsive-collapse:         $screen-sm-max;
+
+/**
+* Loader
+ */
+
+$loader-color: $hiking-yellow;
+$loader-size: 24px;
+$loader-height: 8px;
+$loader-border-size: 3px;
+$loader-gap: 12px;
+$loader-animation-duration: 1s;

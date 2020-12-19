@@ -7,6 +7,7 @@ from django.core.serializers import serialize
 from gpxpy.gpx import GPXWaypoint
 
 from ...core.models import TimeStampedModel
+from ..templatetags.duration import nice_repr
 
 PlaceTuple = namedtuple(
     "PlaceTuple",
@@ -108,6 +109,13 @@ class Place(TimeStampedModel):
         """
         return self.geom.transform(srid, clone=True).coords
 
+    def get_json_coords(self, srid=4326):
+        """
+        returns a dict with the place coords transformed to the requested srid
+        """
+        lng, lat = self.geom.transform(srid, clone=True).coords
+        return {"lat": lat, "lng": lng, "srid": srid}
+
     def get_geojson(self, fields):
         return serialize("geojson", [self], geometry_field="geom", fields=fields)
 
@@ -158,11 +166,39 @@ class Checkpoint(models.Model):
     Intermediate model for route - place
     """
 
-    route = models.ForeignKey("Route", on_delete=models.CASCADE)
-    place = models.ForeignKey("Place", on_delete=models.CASCADE)
+    route = models.ForeignKey(
+        "Route", on_delete=models.CASCADE, related_name="checkpoints"
+    )
+    place = models.ForeignKey(
+        "Place", on_delete=models.CASCADE, related_name="checkpoints"
+    )
 
     # location on the route normalized 0=start 1=end
     line_location = models.FloatField(default=0)
+
+    class Meta:
+        ordering = ("line_location",)
+
+        constraints = [
+            models.UniqueConstraint(
+                name="unique checkpoint on route",
+                fields=["route", "place", "line_location"],
+            ),
+        ]
+
+    def __str__(self):
+        return "{0:.1f}km: {1} - {2}".format(
+            self.distance_from_start.km,
+            self.place.name,
+            self.place.place_type.name,
+        )
+
+    @property
+    def field_value(self):
+        """
+        value used in the ModelForm to serialize checkpoints
+        """
+        return f"{self.line_location}_{self.place.id}"
 
     @property
     def altitude_on_route(self):
@@ -184,29 +220,9 @@ class Checkpoint(models.Model):
             self.line_location, "cumulative_elevation_loss", absolute=True
         )
 
-    @property
-    def field_value(self):
-        """
-        value used in the ModelForm to serialize checkpoints
-        """
-        return "{}_{}".format(self.place.id, self.line_location)
-
-    class Meta:
-        ordering = ("line_location",)
-
-        constraints = [
-            models.UniqueConstraint(
-                name="unique checkpoint on route",
-                fields=["route", "place", "line_location"],
-            ),
-        ]
-
-    def __str__(self):
-        return "{0:.1f}km: {1} - {2}".format(
-            self.distance_from_start.km,
-            self.place.name,
-            self.place.place_type.name,
-        )
+    def get_schedule(self):
+        value = self.route.get_time_data(self.line_location, "schedule")
+        return nice_repr(value, "hike")
 
     def get_gpx_waypoint(self, route=None, start_time=datetime.utcnow()):
         """
@@ -219,3 +235,17 @@ class Checkpoint(models.Model):
             line_location=self.line_location,
             start_time=start_time,
         )
+
+    def get_json(self, existing_checkpoints):
+        return {
+            "name": self.place.name,
+            "place_type": self.place.place_type.name,
+            "altitude": self.altitude_on_route.m,
+            "distance": self.distance_from_start.km,
+            "elevation_gain": self.cumulative_elevation_gain.m,
+            "elevation_loss": self.cumulative_elevation_loss.m,
+            "schedule": self.get_schedule(),
+            "coords": self.place.get_json_coords(),
+            "field_value": self.field_value,
+            "saved": self in existing_checkpoints,
+        }

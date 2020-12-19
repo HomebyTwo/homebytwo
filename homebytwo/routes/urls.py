@@ -14,11 +14,22 @@ urlpatterns = [
             [
                 # display route: routes/5/
                 path("", views.view_route, name="route"),
-                # retrieve possible checkpoints as json: routes/5/checkpoints/
+                # retrieve route schedule as json: routes/5/schedule/
                 path(
-                    "checkpoints/",
-                    views.route_checkpoints_list,
-                    name="checkpoints_list",
+                    "schedule/",
+                    include(
+                        [
+                            path("", views.route_schedule, name="schedule"),
+                            path(
+                                # get and post route possible schedule with as json:
+                                # routes/5/schedule/
+                                "edit/",
+                                views.route_schedule,
+                                kwargs={"edit": True},
+                                name="edit_schedule",
+                            ),
+                        ]
+                    ),
                 ),
                 # edit route: /routes/5/edit/
                 path("edit/", views.RouteEdit.as_view(), name="edit"),

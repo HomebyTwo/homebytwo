@@ -6,7 +6,7 @@ from django.contrib.gis.db.models.functions import Distance, LineLocatePoint
 from django.contrib.gis.measure import D
 
 from .fields import LineSubstring
-from .models import ActivityType, Place
+from .models import ActivityType, Checkpoint, Place
 
 # named tuple to handle Urls
 Link = namedtuple("Link", ["url", "text"])
@@ -171,3 +171,29 @@ def get_distances(points):
         yield from (p2.distance(p1) for p1, p2 in zip(points[1:], points))
 
     return list(accumulate(get_relative_distances()))
+
+
+def save_form_checkpoints(route, existing_checkpoints, checkpoints_data):
+    """
+    save checkpoint data posted to the RouteForm or CheckpointsForm
+    """
+    checkpoints_data.sort()
+
+    new_checkpoints = []
+    for line_location, place_id in checkpoints_data:
+        checkpoint, created = Checkpoint.objects.get_or_create(
+            route=route,
+            place=Place.objects.get(pk=place_id),
+            line_location=line_location,
+        )
+
+        # re-attach the route with the calculated schedule,
+        # it was replaced by a fresh instance from the database.
+        checkpoint.route = route
+        new_checkpoints.append(checkpoint)
+
+    # delete existing checkpoints that are not in the form data
+    new_checkpoint_ids = [checkpoint.id for checkpoint in new_checkpoints]
+    existing_checkpoints.exclude(pk__in=new_checkpoint_ids).delete()
+
+    return new_checkpoints

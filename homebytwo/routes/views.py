@@ -5,10 +5,18 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponse,
+    HttpResponseForbidden,
+    JsonResponse,
+)
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
+from django.utils.http import urlencode
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_safe
 from django.views.generic.edit import DeleteView, UpdateView
@@ -23,7 +31,7 @@ from rules.contrib.views import (
 
 from ..importers.decorators import remote_connection, strava_required
 from ..importers.exceptions import SwitzerlandMobilityError
-from .forms import ActivityPerformanceForm, RouteForm
+from .forms import ActivityPerformanceForm, CheckpointsForm, RouteForm
 from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
     import_strava_activities_task,
@@ -32,6 +40,7 @@ from .tasks import (
     train_prediction_models_task,
     upload_route_to_garmin_task,
 )
+from .utils import save_form_checkpoints
 
 
 @login_required
@@ -69,7 +78,9 @@ def view_route(request, pk):
         if performance_form.is_valid():
             activity_type_name = performance_form.cleaned_data["activity_type"]
             workout_type = performance_form.cleaned_data.get("workout_type")
-            gear_id = performance_form.cleaned_data.get("gear")
+            gear = performance_form.cleaned_data.get("gear")
+
+            # update route instance activity type
             route.activity_type = ActivityType.objects.get(name=activity_type_name)
 
     # invalid form: the activity type was changed in the form,
@@ -83,11 +94,12 @@ def view_route(request, pk):
             initial={"activity_type": route.activity_type.name},
         )
 
-        gear_id = (
+        gear = (
             performance_form.fields["gear"].choices[0][0]
             if "gear" in performance_form.fields
             else None
         )
+
         workout_type = (
             performance_form.fields["workout_type"].choices[0][0]
             if "workout_type" in performance_form.fields
@@ -107,25 +119,24 @@ def view_route(request, pk):
             route.update_permanent_track_data(min_step_distance=1, max_gradient=100)
             route.update_track_details_from_data()
 
-    # calculate route schedule for display
-    route.calculate_projected_time_schedule(
-        user=request.user,
-        gear=gear_id,
-        workout_type=workout_type,
-    )
+    # prepare GET parameters for endpoint urls passed to the Checkpoints Elm module
+    perf_params = {"activity_type": route.activity_type}
+    if gear is not None:
+        perf_params["gear"] = gear
+    if workout_type is not None:
+        perf_params["workout_type"] = workout_type
+    encoded_perf_params = urlencode(perf_params)
 
-    # retrieve checkpoints along the way
-    checkpoints = route.checkpoint_set.all()
-    checkpoints = checkpoints.select_related("route", "place")
-
-    # schedule is not a calculated property on Checkpoint: the schedule can change
-    for checkpoint in checkpoints:
-        checkpoint.schedule = route.get_time_data(checkpoint.line_location, "schedule")
-
+    # create the context dict for the Checkpoints Elm app
     context = {
         "route": route,
-        "checkpoints": checkpoints,
         "form": performance_form,
+        "checkpoints_config": {
+            "displayUrl": route.schedule_url + "?" + encoded_perf_params,
+            "editUrl": route.edit_schedule_url + "?" + encoded_perf_params,
+            "canEdit": request.user.has_perm("routes.change_route", route),
+            "csrfToken": get_token(request),
+        },
     }
     return render(request, "routes/route/route.html", context)
 
@@ -193,25 +204,77 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
     template_name = "routes/route/route_confirm_delete.html"
 
 
-@require_safe
-def route_checkpoints_list(request, pk):
-    route = get_object_or_404(Route, pk=pk, athlete=request.user.athlete)
+def route_schedule(request, pk, edit=False):
+    """
+    retrieve JSON array of Checkpoint objects for a route
 
-    possible_checkpoints = route.find_possible_checkpoints()
-    existing_checkpoints = route.checkpoint_set.all()
+    if edit is requested, retrieve all possible checkpoints for the route,
+    otherwise return only the checkpoints currently attached to the route.
+    When new checkpoints are posted, begin in "edit" mode, and switch
+    to "display" once the posted data is validated and saved.
+    """
 
-    checkpoints_dicts = [
-        {
-            "name": checkpoint.place.name,
-            "field_value": checkpoint.field_value,
-            "geom": json.loads(checkpoint.place.get_geojson(fields=["name"])),
-            "place_type": checkpoint.place.place_type.name,
-            "checked": checkpoint in existing_checkpoints,
-        }
-        for checkpoint in possible_checkpoints
+    # retrieve route
+    route = get_object_or_404(Route, pk=pk)
+
+    # check permission to edit and display checkpoints
+    can_edit = request.user.has_perm("routes.change_route", route)
+    if not request.user.has_perm("routes.view_route", route):
+        raise HttpResponseForbidden()
+
+    # validate GET parameters for schedule calculation
+    athlete = request.user.athlete if request.user.is_authenticated else None
+    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
+
+    if perf_form.is_valid():
+        activity_type = perf_form.cleaned_data.get("activity_type")
+        workout_type = perf_form.cleaned_data.get("workout_type")
+        gear = perf_form.cleaned_data.get("gear")
+    else:
+        activity_type = workout_type = gear = None
+
+    # calculate time schedule
+    route.calculate_projected_time_schedule(
+        request.user, activity_type, workout_type, gear
+    )
+
+    # retrieve existing checkpoints
+    existing_checkpoints = route.checkpoints.all()
+
+    # save posted checkpoints
+    if request.method == "POST":
+
+        # validate submitted checkpoints, also check permissions
+        post_data = json.loads(request.body)
+        checkpoints_form = CheckpointsForm(data=post_data)
+
+        if can_edit and checkpoints_form.is_valid():
+            existing_checkpoints = save_form_checkpoints(
+                route,
+                existing_checkpoints,
+                checkpoints_data=checkpoints_form.cleaned_data["checkpoints"],
+            )
+
+            # switch to returning "display" checkpoints if everything flies
+            edit = False
+    # check if edit was requested and user has permission
+    if edit and can_edit:
+        checkpoints = route.find_possible_checkpoints()
+    else:
+        checkpoints = existing_checkpoints
+
+    # prepare checkpoint dicts for the JSON response
+    checkpoint_dicts = [
+        checkpoint.get_json(existing_checkpoints) for checkpoint in checkpoints
     ]
 
-    return JsonResponse({"checkpoints": checkpoints_dicts})
+    return JsonResponse(
+        {
+            "checkpoints": checkpoint_dicts,
+            "start": route.get_start_place_json(),
+            "finish": route.get_end_place_json(),
+        }
+    )
 
 
 @login_required
