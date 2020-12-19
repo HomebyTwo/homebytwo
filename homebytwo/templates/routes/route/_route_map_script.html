@@ -2,12 +2,11 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-
-    window.HomeByTwo.LeafletMap.map = new window.HomeByTwo.LeafletMap(window.HomeByTwo.L, {
-      id: 'mapid',
-      routeGeoJson: {{ route | geojsonfeature | safe }},
-      divIconClassName: 'placeIcon placeIcon--default',
-      mapBoxTileUrl: '{{ mapbox_tile_url }}'
-    }, ['scrollWheelZoom']);
+    // TODO don’t use a hardcoded ID
+    window.HomeByTwo.LeafletElm.init({node: document.getElementById("leaflet-elm"), flags: {
+      routes: ["{{ route|geojsonfeature|escapejs }}"],
+      tileUrl: "{{ mapbox_tile_url }}"
+    }
+    });
   });
 </script>
