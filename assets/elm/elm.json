@@ -14,7 +14,8 @@
             "elm/json": "1.1.3",
             "elm/url": "1.0.0",
             "ggb/numeral-elm": "1.4.3",
-            "mgold/elm-geojson": "2.0.1"
+            "mgold/elm-geojson": "2.0.1",
+            "miyamoen/select-list": "4.1.0"
         },
         "indirect": {
             "elm/bytes": "1.0.8",

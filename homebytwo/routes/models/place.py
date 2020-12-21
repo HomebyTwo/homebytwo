@@ -246,6 +246,6 @@ class Checkpoint(models.Model):
             "elevation_loss": self.cumulative_elevation_loss.m,
             "schedule": self.get_schedule(),
             "coords": self.place.get_json_coords(),
-            "field_value": self.field_value,
+            "place_id": self.field_value,
             "saved": self in existing_checkpoints,
         }

@@ -17,21 +17,30 @@
 }
 
 .placeIcon--checkpoint {
-  border-color: $white;
-  background-color: $mountain-red;
-}
-
-.placeIcon--possible {
   border-color: $mountain-red;
   background-color: $white;
+
+  &.selected {
+    border-color: $white;
+    background-color: $mountain-red;
+  }
 }
+
 
 .placeIcon--start {
   border-color: $hiking-green;
-  background-color: $hiking-green;
+  background-color: $white;
+
+  &.selected {
+    background-color: $hiking-green;
+  }
 }
 
 .placeIcon--finish {
   border-color: $mountain-red;
-  background-color: $mountain-red;
+  background-color: $white;
+
+  &.selected {
+    background-color: $mountain-red;
+  }
 }

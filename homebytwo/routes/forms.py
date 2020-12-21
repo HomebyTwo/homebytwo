@@ -69,19 +69,18 @@ class RouteForm(ModelForm):
         required=False,
     )
 
-class StartPlaceForm(Form):
+
+class StartForm(Form):
     start = ModelChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False
+        queryset=Place.objects.all(), empty_label=None, required=False
     )
 
-class EndPlaceForm(Form):
-    end = ModelChoiceField(
-        queryset=Place.objects.all(),
-        empty_label=None,
-        required=False
+
+class FinishForm(Form):
+    finish = ModelChoiceField(
+        queryset=Place.objects.all(), empty_label=None, required=False
     )
+
 
 class CheckpointsForm(Form):
     """

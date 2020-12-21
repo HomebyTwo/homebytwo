@@ -137,7 +137,9 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         action_reverse = {
             "display": ("routes:route", route_kwargs),
             "schedule": ("routes:schedule", route_kwargs),
-            "edit_schedule": ("routes:edit_schedule", route_kwargs),
+            "edit_checkpoints": ("routes:edit_checkpoints", route_kwargs),
+            "edit_start": ("routes:edit_start", route_kwargs),
+            "edit_finish": ("routes:edit_finish", route_kwargs),
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
@@ -157,8 +159,16 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         return self.get_absolute_url("schedule")
 
     @property
-    def edit_schedule_url(self):
-        return self.get_absolute_url("edit_schedule")
+    def edit_checkpoints_url(self):
+        return self.get_absolute_url("edit_checkpoints")
+
+    @property
+    def edit_start_url(self):
+        return self.get_absolute_url("edit_start")
+
+    @property
+    def edit_finish_url(self):
+        return self.get_absolute_url("edit_finish")
 
     @property
     def edit_url(self):
@@ -371,9 +381,12 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         return checkpoints
 
-    def get_start_place_json(self):
+    def get_start_places_json(self, fetch_all_places=False, max_distance=200):
         """
-        prepare start_place dict for checkpoints app
+        prepare list of start_places for checkpoints app
+
+        :param fetch_all_places: send all available start places or just the saved one
+        :param max_distance: search within in meters
         """
         # start place
         start_place = self.start_place or Place(
@@ -382,36 +395,65 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
             geom=self.geom.interpolate_normalized(0),
         )
 
-        return {
-            "name": start_place.name,
-            "place_type": start_place.place_type.name,
-            "altitude": self.get_start_altitude().m,
-            "schedule": "0 min",
-            "distance": 0.0,
-            "elevation_gain": 0.0,
-            "elevation_loss": 0.0,
-            "coords": start_place.get_json_coords(),
-        }
+        # possible start places options
+        if fetch_all_places:
+            start_places = list(self.get_start_places(max_distance))
+        else:
+            start_places = [start_place]
+        if start_place not in start_places:
+            start_places.append(start_place)
 
-    def get_end_place_json(self):
+        return [
+            {
+                "place_id": str(place.id) or "",
+                "name": place.name,
+                "place_type": place.place_type.name,
+                "altitude": self.get_start_altitude().m,
+                "schedule": "0 min",
+                "distance": 0.0,
+                "elevation_gain": 0.0,
+                "elevation_loss": 0.0,
+                "coords": place.get_json_coords(),
+                "saved": place == start_place,
+            }
+            for place in start_places
+        ]
+
+    def get_end_places_json(self, fetch_all_places=False, max_distance=200):
         """
-        prepare end_place dict for checkpoints app
+        prepare list of end_places for checkpoints app
+
+        :param fetch_all_places: send all available finish places or just the saved one
+        :param max_distance: search within in meters
         """
         end_place = self.end_place or Place(
             name="Unknown finish place",
             place_type=PlaceType.objects.get(code="ll"),
             geom=self.geom.interpolate_normalized(1),
         )
-        return {
-            "name": end_place.name,
-            "place_type": end_place.place_type.name,
-            "altitude": self.get_end_altitude().m,
-            "schedule": self.get_total_schedule(),
-            "distance": self.get_total_distance().km,
-            "elevation_gain": self.get_total_elevation_gain().m,
-            "elevation_loss": self.get_total_elevation_loss().m,
-            "coords": end_place.get_json_coords(),
-        }
+        if fetch_all_places:
+            end_places = list(self.get_end_places(max_distance))
+        else:
+            end_places = [end_place]
+
+        if end_place not in end_places:
+            end_places.append(end_place)
+
+        return [
+            {
+                "place_id": str(place.id) or "",
+                "name": place.name,
+                "place_type": place.place_type.name,
+                "altitude": self.get_end_altitude().m,
+                "schedule": self.get_total_schedule(),
+                "distance": self.get_total_distance().km,
+                "elevation_gain": self.get_total_elevation_gain().m,
+                "elevation_loss": self.get_total_elevation_loss().m,
+                "coords": place.get_json_coords(),
+                "saved": place == end_place,
+            }
+            for place in end_places
+        ]
 
     def get_gpx(self, start_time=None):
         """

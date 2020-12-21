@@ -24,7 +24,7 @@
         window.HomeByTwo.Elm.checkpointsApp.ports.updatePlaces.subscribe(message => {
           requestAnimationFrame(() => {
             const leafletMap = window.HomeByTwo.LeafletMap.map;
-            leafletMap.updatePlaces(message.action, message.places);
+            leafletMap.updatePlaces(message.places);
           });
         });
       });

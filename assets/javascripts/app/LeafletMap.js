@@ -43,10 +43,7 @@ export default class LeafletMap {
     this.map = map;
   }
 
-  updatePlaces(action, places) {
-
-    // are we in edit mode?
-    const isEdit = (action === 'edit');
+  updatePlaces(places) {
 
     // save markers as feature group for easy disposal
     const newMarkers = this.leaflet.featureGroup();
@@ -55,17 +52,15 @@ export default class LeafletMap {
     // prepare marker classes
     const markerClasses = {
       checkpoint: 'placeIcon--checkpoint',
-      possible: 'placeIcon--possible',
       finish: 'placeIcon--finish',
       start: 'placeIcon--start'
     };
 
     places.forEach(place => {
-      const isCheckpoint = (['checkpoint', 'possible'].includes(place.placeClass));
-      const clickable = (isEdit && isCheckpoint);
-
-      // Icon
-      const checkpointIcon = this.leaflet.divIcon({className: `placeIcon ${markerClasses[place.placeClass]}`});
+      // Icon style
+      let classes = `placeIcon ${markerClasses[place.placeClass]}`;
+      classes += place.selected ? ' selected' : '';
+      const checkpointIcon = this.leaflet.divIcon({className: classes});
 
       // tooltip content
       const tooltipContent = `
@@ -76,17 +71,20 @@ export default class LeafletMap {
       `;
 
       // create the marker and bind it as tooltip
-      this.leaflet.marker([place.coords.lat, place.coords.lng], {icon: checkpointIcon})
+      const marker = this.leaflet.marker(
+        [place.coords.lat, place.coords.lng], {icon: checkpointIcon})
         .addTo(newMarkers)
-        .bindTooltip(tooltipContent)
+        .bindTooltip(tooltipContent);
 
-        // add event listener to checkpoints
-        .on('click', () => {
-          if (clickable) {
-            const checkpointsApp = window.HomeByTwo.Elm.checkpointsApp;
-            checkpointsApp.ports.clickedPlace.send(place.id);
-          }
+      // add event listener to editable places
+      if (place.edit) {
+        marker.on('click', () => {
+          const checkpointsApp = window.HomeByTwo.Elm.checkpointsApp;
+          checkpointsApp.ports.clickedPlace.send(
+            {'placeId': place.id, 'placeClass': place.placeClass}
+          );
         });
+      }
     });
 
     // dump previous markers and replace them with fresh batch
