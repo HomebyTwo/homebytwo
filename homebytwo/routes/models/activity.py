@@ -569,8 +569,7 @@ class ActivityTypeQuerySet(models.QuerySet):
         """
         activity_types = self.filter(name__in=ActivityType.SUPPORTED_ACTIVITY_TYPES)
         activity_types = activity_types.exclude(activities=None)
-        activity_types = activity_types.annotate(num_activities=Count("activities"))
-        return activity_types.order_by("-num_activities")
+        return activity_types.order_by("name")
 
     def for_athlete(self, athlete):
         """
