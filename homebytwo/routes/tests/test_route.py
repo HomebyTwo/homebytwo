@@ -603,7 +603,7 @@ def test_view_route(athlete, client, settings):
     )
 
     elm_config = '<script id="checkpoints-config" type="application/json">'
-    elm_edit_url = route.edit_schedule_url
+    elm_edit_url = route.schedule_url
 
     response = client.get(url)
     user = response.context["user"]
@@ -871,8 +871,8 @@ def test_get_route_schedule_empty(athlete, client, route_schedule_schema):
     assert len(schedule["checkpoints"]) == 0
     validate(schedule, route_schedule_schema)
 
-    assert schedule["start"]["name"] == "Unknown start place"
-    assert schedule["finish"]["name"] == "Unknown finish place"
+    assert schedule["start"][0]["name"] == "Unknown start place"
+    assert schedule["finish"][0]["name"] == "Unknown finish place"
 
 
 def test_get_route_schedule_one_checkpoint(athlete, client, route_schedule_schema):

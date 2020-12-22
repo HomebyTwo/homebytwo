@@ -4,7 +4,6 @@ from typing import List, Optional
 from django.contrib.gis.db import models
 from django.contrib.gis.measure import D
 from django.core.exceptions import FieldError
-from django.db.models import Count
 
 from numpy import array
 from pandas import DataFrame

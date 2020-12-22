@@ -39,7 +39,7 @@
               "type": "number"
             }
           },
-          "field_value": {
+          "place_id": {
             "type": "string"
           },
           "saved": {
@@ -68,10 +68,16 @@
       }
     },
     "start": {
-      "$ref": "#/definitions/placeOrCheckpoint"
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/placeOrCheckpoint"
+      }
     },
     "finish": {
-      "$ref": "#/definitions/placeOrCheckpoint"
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/placeOrCheckpoint"
+      }
     }
   },
   "required": [
