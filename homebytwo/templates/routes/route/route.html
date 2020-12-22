@@ -7,8 +7,12 @@
 {% endblock header %}
 
 {% block content %}
-  {% include "routes/route/_route_map.html" %}
-  {% include "routes/route/_route_schedule.html" %}
+  <section id="schedule">
+    {% include "routes/route/_performance_box.html" %}
+    {% include "routes/route/_route_map.html" %}
+    {% include "routes/route/_route_checkpoints.html" %}
+    {% include "routes/route/_route_edit_buttons.html" %}
+  </section>
   {% include "routes/route/_route_source_link.html" %}
 {% endblock content %}
 

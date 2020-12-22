@@ -34,9 +34,9 @@ from ..importers.exceptions import SwitzerlandMobilityError
 from .forms import (
     ActivityPerformanceForm,
     CheckpointsForm,
+    FinishForm,
     RouteForm,
     StartForm,
-    FinishForm,
 )
 from .models import Activity, ActivityType, Route, WebhookTransaction
 from .tasks import (
@@ -212,27 +212,14 @@ class RouteDelete(PermissionRequiredMixin, DeleteView):
     template_name = "routes/route/route_confirm_delete.html"
 
 
-def route_schedule(request, pk):
+def calculate_schedule(route, athlete, data):
     """
-    retrieve JSON array of Checkpoint objects for a route
+    Validate get performance parameters and calculate schedule for a route
 
-    if edit is requested, retrieve all possible checkpoints for the route,
-    otherwise return only the checkpoints currently attached to the route.
-    When new checkpoints are posted, begin in "edit" mode, and switch
-    to "display" once the posted data is validated and saved.
+    This is used for the endpoints of the Elm Checkpoints app.
     """
-
-    # retrieve route
-    route = get_object_or_404(Route, pk=pk)
-
-    # check permission to edit and display checkpoints
-    if not request.user.has_perm("routes.view_route", route):
-        raise HttpResponseForbidden()
-
     # validate GET parameters for schedule calculation
-    athlete = request.user.athlete if request.user.is_authenticated else None
-    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
-
+    perf_form = ActivityPerformanceForm(route, athlete, data)
     if perf_form.is_valid():
         activity_type = perf_form.cleaned_data.get("activity_type")
         workout_type = perf_form.cleaned_data.get("workout_type")
@@ -242,8 +229,27 @@ def route_schedule(request, pk):
 
     # calculate time schedule
     route.calculate_projected_time_schedule(
-        request.user, activity_type, workout_type, gear
+        athlete.user, activity_type, workout_type, gear
     )
+
+
+def route_schedule(request, pk):
+    """
+    retrieve JSON with the current Checkpoints, Start and Finish for a route.
+
+    This is consumed by the Elm app.
+    """
+
+    # retrieve route
+    route = get_object_or_404(Route, pk=pk)
+
+    # check permission to edit and display checkpoints
+    if not request.user.has_perm("routes.view_route", route):
+        raise HttpResponseForbidden()
+
+    # schedule calculation
+    athlete = request.user.athlete if request.user.is_authenticated else None
+    calculate_schedule(route, athlete, request.GET)
 
     # retrieve existing checkpoints
     existing_checkpoints = route.checkpoints.all()
@@ -270,31 +276,18 @@ def route_checkpoints_edit(request, pk):
     if not request.user.has_perm("routes.change_route", route):
         raise HttpResponseForbidden()
 
-    # validate GET parameters for schedule calculation
+    # calculate schedule
     athlete = request.user.athlete if request.user.is_authenticated else None
-    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
-
-    if perf_form.is_valid():
-        activity_type = perf_form.cleaned_data.get("activity_type")
-        workout_type = perf_form.cleaned_data.get("workout_type")
-        gear = perf_form.cleaned_data.get("gear")
-    else:
-        activity_type = workout_type = gear = None
-
-    # calculate time schedule
-    route.calculate_projected_time_schedule(
-        request.user, activity_type, workout_type, gear
-    )
+    calculate_schedule(route, athlete, request.GET)
 
     # retrieve existing checkpoints
     existing_checkpoints = route.checkpoints.all()
-
-    shouldFetchAllCheckpoints = True
+    fetch_all_places = True
 
     # save posted checkpoints
     if request.method == "POST":
 
-        # validate submitted checkpoints, also check permissions
+        # validate submitted checkpoints
         post_data = json.loads(request.body)
         checkpoints_form = CheckpointsForm(data=post_data)
 
@@ -306,10 +299,10 @@ def route_checkpoints_edit(request, pk):
             )
 
             # switch to returning "display" checkpoints if everything flies
-            shouldFetchAllCheckpoints = False
+            fetch_all_places = False
 
-    # check if edit was requested and user has permission
-    if shouldFetchAllCheckpoints:
+    # find all possible checkpoints for the route
+    if fetch_all_places:
         checkpoints = route.find_possible_checkpoints()
     else:
         checkpoints = existing_checkpoints
@@ -330,7 +323,7 @@ def route_start_edit(request, pk):
         raise HttpResponseForbidden()
 
     if request.method == "POST":
-        # validate submitted checkpoints, also check permissions
+        # validate submitted start place
         post_data = json.loads(request.body)
         start_form = StartForm(data=post_data)
 
@@ -348,24 +341,13 @@ def route_start_edit(request, pk):
 def route_finish_edit(request, pk):
     route = get_object_or_404(Route, pk=pk)
     fetch_all_places = True
+
     if not request.user.has_perm("routes.change_route", route):
         raise HttpResponseForbidden()
 
-    # validate GET parameters for schedule calculation
+    # schedule calculation
     athlete = request.user.athlete if request.user.is_authenticated else None
-    perf_form = ActivityPerformanceForm(route, athlete, data=request.GET)
-
-    if perf_form.is_valid():
-        activity_type = perf_form.cleaned_data.get("activity_type")
-        workout_type = perf_form.cleaned_data.get("workout_type")
-        gear = perf_form.cleaned_data.get("gear")
-    else:
-        activity_type = workout_type = gear = None
-
-    # calculate time schedule
-    route.calculate_projected_time_schedule(
-        request.user, activity_type, workout_type, gear
-    )
+    calculate_schedule(route, athlete, request.GET)
 
     if request.method == "POST":
         # validate submitted checkpoints, also check permissions

@@ -67,6 +67,7 @@ export default class LeafletMap {
         <div class="box box--tight text-center ">
           <h4 class="mrgv0">${place.schedule}</h4>
           <p class="mrgv0">${place.name}</p>
+          ${place.selected ?'':'<p class="small mrgv0">Not selected</p>'}
         </div>
       `;
 

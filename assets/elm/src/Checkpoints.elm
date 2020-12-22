@@ -738,8 +738,7 @@ viewEditCheckpoints ( checkpoints, selection ) =
 
         _ ->
             div []
-                [ button [ onClick ClickedSelectAllCheckpoints ] [ text (messageToButtonText ClickedSelectAllCheckpoints) ]
-                , button [ onClick ClickedClearAllCheckpoints ] [ text (messageToButtonText ClickedClearAllCheckpoints) ]
+                [ viewClearSelectAllButtons
                 , List.map placeInfoFromCheckpoint checkpoints
                     |> List.map (viewEditCheckpoint selection)
                     |> ul [ class "list list--stacked" ]
@@ -826,17 +825,25 @@ viewPlace canEdit { status, data } =
                 Editing ->
                     div
                         [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
-                        [ select
-                            [ onInput (PickedPlace place) ]
-                            (SelectList.selectedMap selectOption data)
-                        , viewPlaceEditButton canEdit status place
+                        [ div [ class "media media--small" ]
+                            [ div [ class "media__body" ]
+                                [ select
+                                    [ class "field field--small", onInput (PickedPlace place) ]
+                                    (SelectList.selectedMap selectOption data)
+                                ]
+                            , div [ class "media__right" ]
+                                [ viewPlaceEditButton canEdit status place
+                                ]
+                            ]
                         ]
 
                 _ ->
                     div
                         [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
                         [ text (placeNameText placeInfo.name placeInfo.altitude)
-                        , viewPlaceEditButton canEdit status place
+                        , span [ class "pdgl" ]
+                            [ viewPlaceEditButton canEdit status place
+                            ]
                         ]
     in
     div
@@ -910,13 +917,15 @@ viewPlaceEditButton canEdit placeStatus place =
     if canEdit then
         case placeStatus of
             Display ->
-                button [ onClick (ClickedEditPlace place) ] [ text "Edit" ]
+                button [ class "btn btn--secondary btn--small", onClick (ClickedEditPlace place) ]
+                    [ text "Edit" ]
 
             Loading ->
                 div [ class "loader" ] []
 
             Editing ->
-                button [ onClick (ClickedSavePlace place) ] [ text "Save" ]
+                button [ class "btn btn--primary btn--small", onClick (ClickedSavePlace place) ]
+                    [ text "Save" ]
 
             Saving ->
                 div [ class "loader" ] []
@@ -967,6 +976,36 @@ viewCheckpointEditButton canEdit checkpointStatus =
         text ""
 
 
+viewClearSelectAllButtons : Html Msg
+viewClearSelectAllButtons =
+    div []
+        [ h4 [] [ text "Edit Checkpoints" ]
+        , div [ class "mrgv-" ]
+            [ button
+                [ class "btn btn--primary btn--block btn--small"
+                , onClick ClickedSaveCheckpoints
+                ]
+                [ text "Save Checkpoints" ]
+            ]
+        , div [ class "grid grid--small" ]
+            [ div [ class "grid__item w-1/2" ]
+                [ button
+                    [ onClick ClickedSelectAllCheckpoints
+                    , class "btn btn--secondary btn--block btn--small "
+                    ]
+                    [ text (messageToButtonText ClickedSelectAllCheckpoints) ]
+                ]
+            , div [ class "grid__item w-1/2" ]
+                [ button
+                    [ onClick ClickedClearAllCheckpoints
+                    , class "btn btn--secondary btn--block btn--small "
+                    ]
+                    [ text (messageToButtonText ClickedClearAllCheckpoints) ]
+                ]
+            ]
+        ]
+
+
 messageToButtonText : Msg -> String
 messageToButtonText message =
     case message of
@@ -974,7 +1013,7 @@ messageToButtonText message =
             "Retry"
 
         ClickedEditCheckpoints ->
-            "Add/Remove Checkpoints"
+            "Edit Checkpoints"
 
         ClickedSaveCheckpoints ->
             "Save Checkpoints"
