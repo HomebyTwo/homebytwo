@@ -850,6 +850,21 @@ def route_schedule_schema(read_json_file):
     return read_json_file("route_schedule.json")
 
 
+@fixture(scope="module")
+def route_start_schema(read_json_file):
+    return read_json_file("route_start.json")
+
+
+@fixture(scope="module")
+def route_finish_schema(read_json_file):
+    return read_json_file("route_finish.json")
+
+
+@fixture(scope="module")
+def route_checkpoints_schema(read_json_file):
+    return read_json_file("route_checkpoints.json")
+
+
 def test_get_route_schedule(athlete, client, route_schedule_schema):
     number_of_checkpoints = 5
     route = create_route_with_checkpoints(number_of_checkpoints, athlete=athlete)
@@ -887,6 +902,40 @@ def test_get_route_schedule_one_checkpoint(athlete, client, route_schedule_schem
 
     assert len(schedule["checkpoints"]) == 1
     validate(schedule, route_schedule_schema)
+
+
+def test_get_start_places(athlete, client, route_start_schema):
+    route = RouteFactory(athlete=athlete)
+    url = route.edit_start_url
+    response = client.get(url)
+    start_places = response.json()
+
+    assert response.status_code == 200
+    assert len(start_places["start"]) == 1
+    validate(start_places, route_start_schema)
+
+
+def test_get_start_places_no_start(athlete, client, route_start_schema):
+    route = RouteFactory(athlete=athlete, start_place=None)
+    url = route.edit_start_url
+    response = client.get(url)
+    start_places = response.json()
+
+    assert response.status_code == 200
+    assert len(start_places["start"]) == 1
+    validate(start_places, route_start_schema)
+    assert start_places["start"][0]["name"] == "Unknown start place"
+
+
+def test_get_end_place(athlete, client, route_end_schema):
+    route = RouteFactory(athlete=athlete)
+    url = route.edit_finish_url
+    response = client.get(url)
+    end_places = response.json()
+
+    assert response.status_code == 200
+    assert len(end_places["finish"]) == 1
+    validate(end_places, route_end_schema)
 
 
 #######################

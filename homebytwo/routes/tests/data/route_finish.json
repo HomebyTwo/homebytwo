@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Route schedule schema",
+  "title": "Route edit_finish schema",
   "definitions": {
     "placeOrCheckpoint": {
       "type": "object",
@@ -63,18 +63,6 @@
   },
   "type": "object",
   "properties": {
-    "checkpoints": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/placeOrCheckpoint"
-      }
-    },
-    "start": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/placeOrCheckpoint"
-      }
-    },
     "finish": {
       "type": "array",
       "items": {
@@ -83,8 +71,6 @@
     }
   },
   "required": [
-    "checkpoints",
-    "start",
     "finish"
   ]
 }
