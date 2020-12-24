@@ -1,21 +1,29 @@
 {% load rules %}
 
-{% has_perm "routes.delete_route" user route as can_delete_route %}
+{% has_perm "routes.update_route" user route as can_update_route %}
+
 
 <div class="form-group grid grid--right">
-  <div class="grid__item lg-w-4/5 grid grid--tight">
+  <div class="grid__item lg-w-4/5 grid grid--center grid--tight">
     {# Edit or Update Route #}
     {% if route.pk %}
-      <a href="{{ route.display_url }}" class="btn btn--default btn--block mrgt-">Cancel</a>
-      <input class="btn btn--primary btn--block mrgt-" type="submit" value="Update {{ route.name }}"/>
+      <button class="btn btn--primary btn--block mrgt-" type="submit">Update {{ route.name }}</button>
+      {% if can_update_route %}
+        <a class="btn btn--secondary btn--block mrgt-" href="{{ route.update_url }}">
+          Update course from remote service
+        </a>
+      {% endif %}
       {# Import Route #}
     {% else %}
       <input class="btn btn--primary btn--block mrgt-" type="submit" value="Import {{ route.name }}"/>
     {% endif %}
+    {% if route.pk and can_delete_route %}
+      <div class="grid__item lg-w-4/5">
+        <a href="{{ route.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ route.name }}</a>
+      </div>
+    {% endif %}
+      <a href="{{ route.display_url }}" class="btn btn--default btn--block mrgt-">Cancel</a>
+    {% include "routes/route/_route_source_link.html" %}
   </div>
-  {% if route.pk and can_delete_route %}
-    <div class="grid__item lg-w-4/5">
-      <a href="{{ route.delete_url }}" class="btn btn--delete btn--block mrgt-">Delete {{ route.name }}</a>
-    </div>
-  {% endif %}
 </div>
+

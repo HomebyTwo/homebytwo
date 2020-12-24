@@ -1,4 +1,11 @@
-#mapid {
-  height: 60em;
+.map {
   width: 100%;
+}
+
+.map--default{
+  height: 60em;
+}
+
+.map--small{
+  height: 30em;
 }

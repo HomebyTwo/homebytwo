@@ -51,12 +51,12 @@ def coda(settings):
     yield {"doc_url": doc_url, "table_url": table_url}
 
 
-@fixture
+@fixture(scope="module")
 def current_dir_path(request):
     return Path(request.module.__file__).parent.resolve()
 
 
-@fixture
+@fixture(scope="module")
 def open_file(current_dir_path):
     def _open_file(file, binary=False):
         return open_data(file, current_dir_path, binary)
@@ -64,7 +64,7 @@ def open_file(current_dir_path):
     return _open_file
 
 
-@fixture
+@fixture(scope="module")
 def read_file(open_file):
     def _read_file(file, binary=False):
         return open_file(file, binary=binary).read()
@@ -72,7 +72,7 @@ def read_file(open_file):
     return _read_file
 
 
-@fixture
+@fixture(scope="module")
 def read_json_file(read_file):
     def _read_json_file(file):
         return json.loads(read_file(file))

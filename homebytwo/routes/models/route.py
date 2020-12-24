@@ -17,6 +17,7 @@ from garmin_uploader.workflow import Activity as GarminActivity
 from requests.exceptions import HTTPError
 from rules.contrib.models import RulesModelBase, RulesModelMixin
 
+from . import Place, PlaceType
 from ..models import Checkpoint, Track
 from ..utils import (
     GARMIN_ACTIVITY_TYPE_MAP,
@@ -135,6 +136,10 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         action_reverse = {
             "display": ("routes:route", route_kwargs),
+            "schedule": ("routes:schedule", route_kwargs),
+            "edit_checkpoints": ("routes:edit_checkpoints", route_kwargs),
+            "edit_start": ("routes:edit_start", route_kwargs),
+            "edit_finish": ("routes:edit_finish", route_kwargs),
             "edit": ("routes:edit", route_kwargs),
             "update": ("routes:update", route_kwargs),
             "delete": ("routes:delete", route_kwargs),
@@ -148,6 +153,22 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
     @property
     def display_url(self):
         return self.get_absolute_url("display")
+
+    @property
+    def schedule_url(self):
+        return self.get_absolute_url("schedule")
+
+    @property
+    def edit_checkpoints_url(self):
+        return self.get_absolute_url("edit_checkpoints")
+
+    @property
+    def edit_start_url(self):
+        return self.get_absolute_url("edit_start")
+
+    @property
+    def edit_finish_url(self):
+        return self.get_absolute_url("edit_finish")
 
     @property
     def edit_url(self):
@@ -331,7 +352,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
             and find no additional place.
         """
         # Start with the checkpoints that have been saved before or not
-        checkpoints = list(self.checkpoint_set.all()) if not updated_geom else list()
+        checkpoints = list(self.checkpoints.all()) if not updated_geom else list()
         segments = deque(create_segments_from_checkpoints(checkpoints))
 
         while segments:
@@ -360,6 +381,80 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
 
         return checkpoints
 
+    def get_start_places_json(self, fetch_all_places=False, max_distance=200):
+        """
+        prepare list of start_places for checkpoints app
+
+        :param fetch_all_places: send all available start places or just the saved one
+        :param max_distance: search within in meters
+        """
+        # start place
+        start_place = self.start_place or Place(
+            name="Unknown start place",
+            place_type=PlaceType.objects.get(code="ll"),
+            geom=self.geom.interpolate_normalized(0),
+        )
+
+        # possible start places options
+        if fetch_all_places:
+            start_places = list(self.get_start_places(max_distance))
+        else:
+            start_places = [start_place]
+        if start_place not in start_places:
+            start_places.append(start_place)
+
+        return [
+            {
+                "place_id": str(place.id) or "",
+                "name": place.name,
+                "place_type": place.place_type.name,
+                "altitude": self.get_start_altitude().m,
+                "schedule": "0 min",
+                "distance": 0.0,
+                "elevation_gain": 0.0,
+                "elevation_loss": 0.0,
+                "coords": place.get_json_coords(),
+                "saved": place == start_place,
+            }
+            for place in start_places
+        ]
+
+    def get_end_places_json(self, fetch_all_places=False, max_distance=200):
+        """
+        prepare list of end_places for checkpoints app
+
+        :param fetch_all_places: send all available finish places or just the saved one
+        :param max_distance: search within in meters
+        """
+        end_place = self.end_place or Place(
+            name="Unknown finish place",
+            place_type=PlaceType.objects.get(code="ll"),
+            geom=self.geom.interpolate_normalized(1),
+        )
+        if fetch_all_places:
+            end_places = list(self.get_end_places(max_distance))
+        else:
+            end_places = [end_place]
+
+        if end_place not in end_places:
+            end_places.append(end_place)
+
+        return [
+            {
+                "place_id": str(place.id) or "",
+                "name": place.name,
+                "place_type": place.place_type.name,
+                "altitude": self.get_end_altitude().m,
+                "schedule": self.get_total_schedule(),
+                "distance": self.get_total_distance().km,
+                "elevation_gain": self.get_total_elevation_gain().m,
+                "elevation_loss": self.get_total_elevation_loss().m,
+                "coords": place.get_json_coords(),
+                "saved": place == end_place,
+            }
+            for place in end_places
+        ]
+
     def get_gpx(self, start_time=None):
         """
         returns the route as a GPX with track schedule and waypoints
@@ -387,7 +482,7 @@ class Route(RulesModelMixin, Track, metaclass=RulesModelBase):
         # get GPX from checkpoints
         gpx_checkpoints = [
             checkpoint.get_gpx_waypoint(route=self, start_time=start_time)
-            for checkpoint in self.checkpoint_set.all()
+            for checkpoint in self.checkpoints.all()
         ]
         gpx_waypoints = deque(gpx_checkpoints)
 

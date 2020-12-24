@@ -5,7 +5,7 @@ from pathlib import Path
 from re import compile as re_compile
 
 from django.conf import settings
-from django.contrib.gis.geos import LineString, Point
+from django.contrib.gis.geos import LineString
 from django.forms.models import model_to_dict
 from django.shortcuts import resolve_url
 from django.test import TestCase, override_settings
@@ -19,10 +19,9 @@ from requests.exceptions import ConnectionError
 
 from ...routes.fields import DataFrameField
 from ...routes.forms import RouteForm
-from ...routes.models import Checkpoint
-from ...routes.tests.factories import ActivityFactory, ActivityTypeFactory, PlaceFactory
+from ...routes.tests.factories import ActivityFactory, ActivityTypeFactory
 from ...utils.factories import AthleteFactory, UserFactory
-from ...utils.tests import create_checkpoints_from_geom, get_route_post_data, read_data
+from ...utils.tests import get_route_post_data, read_data
 from ..exceptions import SwitzerlandMobilityError, SwitzerlandMobilityMissingCredentials
 from ..forms import SwitzerlandMobilityLogin
 from ..models import SwitzerlandMobilityRoute
@@ -479,10 +478,6 @@ class SwitzerlandMobilityTestCase(TestCase):
         self.assertContains(response, content)
 
     def test_get_import_switzerland_mobility_route(self):
-
-        possible_checkpoint_place = PlaceFactory(
-            geom=Point(x=770627.7496480079, y=5804675.451271648)
-        )
         response = self.get_import_route_response(route_id=2823968)
 
         title = "<title>Homebytwo - Import Haute Cime</title>"
@@ -491,10 +486,9 @@ class SwitzerlandMobilityTestCase(TestCase):
             'class="field"',
             'id="id_start_place"',
         ]
-        map_data = '<div id="mapid"></div>'
+        map_data = '<div class="map map--small" id="mapid"></div>'
 
         self.assertContains(response, title, html=True)
-        self.assertContains(response, possible_checkpoint_place.name)
         for start_place_form_element in start_place_form_elements:
             self.assertContains(response, start_place_form_element)
         self.assertContains(response, map_data, html=True)
@@ -554,13 +548,6 @@ class SwitzerlandMobilityTestCase(TestCase):
             {
                 "start_place": route.start_place.id,
                 "end_place": route.end_place.id,
-                "checkpoints": [
-                    "not_valid",
-                    "invalid",
-                    "0_valid",
-                    "1_2",
-                    "still_not_valid",
-                ],
             }
         )
 
@@ -574,11 +561,9 @@ class SwitzerlandMobilityTestCase(TestCase):
 
         alert_box = '<li class="box mrgv- alert error" >'
         required_field = "This field is required."
-        invalid_value = "Invalid value"
 
         self.assertContains(response, alert_box)
         self.assertContains(response, required_field)
-        self.assertContains(response, invalid_value)
 
     @responses.activate
     def test_switzerland_mobility_routes_success(self):
@@ -830,29 +815,6 @@ def test_post_switzerland_mobility_login_server_error(
 #####################
 
 
-def test_get_import_switzerland_mobility_route_with_checkpoints(
-    athlete,
-    client,
-    switzerland_mobility_data_from_json,
-    mock_import_route_call_response,
-):
-    route_json = "switzerland_mobility_route.json"
-    geom, _ = switzerland_mobility_data_from_json(route_json)
-
-    number_of_checkpoints = 5
-    create_checkpoints_from_geom(geom, number_of_checkpoints)
-
-    response = mock_import_route_call_response(
-        data_source="switzerland_mobility",
-        source_id=1234567,
-        api_response_json=route_json,
-        method="get",
-    )
-
-    checkpoint_choices = response.context["form"].fields["checkpoints"].choices
-    assert len(checkpoint_choices) == number_of_checkpoints
-
-
 def test_get_import_switzerland_mobility_route_redirect_to_login_with_import_id(
     athlete, client, mock_import_route_call_response
 ):
@@ -869,7 +831,7 @@ def test_get_import_switzerland_mobility_route_redirect_to_login_with_import_id(
     assertRedirects(response, redirect_url)
 
 
-def test_post_import_switzerland_mobility_route_no_checkpoints(
+def test_post_import_switzerland_mobility_route(
     athlete, client, mock_import_route_call_response
 ):
     source_id = 2191833
@@ -888,42 +850,6 @@ def test_post_import_switzerland_mobility_route_no_checkpoints(
 
     route = SwitzerlandMobilityRoute.objects.get(source_id=source_id)
     assertRedirects(response, route.get_absolute_url())
-
-
-def test_post_import_switzerland_mobility_route_with_checkpoints(
-    athlete,
-    client,
-    switzerland_mobility_data_from_json,
-    mock_import_route_call_response,
-):
-    route_json = "switzerland_mobility_route.json"
-    geom, _ = switzerland_mobility_data_from_json(route_json)
-
-    number_of_checkpoints = 5
-    route = SwitzerlandMobilityRouteFactory.build(
-        athlete=athlete, activity_type=ActivityTypeFactory(name="Run")
-    )
-    ActivityFactory(athlete=athlete, activity_type=route.activity_type)
-
-    post_data = get_route_post_data(route)
-    post_data["checkpoints"] = create_checkpoints_from_geom(geom, number_of_checkpoints)
-
-    post_response = mock_import_route_call_response(
-        data_source=route.data_source,
-        source_id=route.source_id,
-        api_response_json=route_json,
-        method="post",
-        post_data=post_data,
-        follow_redirect=True,
-    )
-
-    # a new route has been created with the post response
-    new_route = SwitzerlandMobilityRoute.objects.get(
-        data_source=route.data_source, source_id=route.source_id, athlete=athlete
-    )
-    checkpoints = Checkpoint.objects.filter(route=new_route.pk)
-    assert checkpoints.count() == number_of_checkpoints
-    assertRedirects(post_response, new_route.get_absolute_url())
 
 
 def test_post_import_switzerland_mobility_route_updated(

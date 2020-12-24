@@ -11,6 +11,7 @@ from numpy import interp
 
 from ...core.models import TimeStampedModel
 from ..fields import DataFrameField
+from ..templatetags.duration import nice_repr
 from ..utils import get_image_path, get_places_within
 from . import ActivityPerformance, ActivityType, Place
 
@@ -225,7 +226,7 @@ class Track(TimeStampedModel):
     def update_track_details_from_data(self, commit=True):
         """
         set track details from the track data,
-        usually replacing remote information received for the route
+        usually replacing remote information received from the remote source
         """
         if not all(
             column in ["cumulative_elevation_gain", "cumulative_elevation_loss"]
@@ -265,7 +266,9 @@ class Track(TimeStampedModel):
         # no ActivityPerformance for the user, fallback on ActivityType
         return self.activity_type.get_prediction_model()
 
-    def calculate_projected_time_schedule(self, user, workout_type=None, gear=None):
+    def calculate_projected_time_schedule(
+        self, user, activity_type=None, workout_type=None, gear=None
+    ):
         """
         Calculates route pace and route schedule based on the athlete's prediction model
         for the route's activity type.
@@ -275,6 +278,13 @@ class Track(TimeStampedModel):
 
         # add temporary columns useful to the schedule calculation
         data = self.data
+
+        # set route activity type
+        if activity_type:
+            try:
+                self.activity_type = ActivityType.objects.get(name=activity_type)
+            except ActivityType.DoesNotExist:
+                pass
 
         # add gear and workout type to every row
         data["gear"] = gear or "None"
@@ -361,6 +371,12 @@ class Track(TimeStampedModel):
         returns total duration as a timedelta object
         """
         return self.get_time_data(1, "schedule")
+
+    def get_total_schedule(self):
+        """
+        returns string of formatted total duration for schedule display
+        """
+        return nice_repr(self.get_total_duration(), "hike")
 
     def get_closest_places_along_line(self, line_location=0, max_distance=200):
         """

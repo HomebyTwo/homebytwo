@@ -52,6 +52,7 @@
 @import '../../node_modules/kanbasu/src/scss/helpers/display';
 @import '../../node_modules/kanbasu/src/scss/helpers/align';
 @import '../../node_modules/kanbasu/src/scss/helpers/align-responsive';
+@import '../../node_modules/kanbasu/src/scss/helpers/flex';
 
 
 /**
@@ -69,6 +70,13 @@
 @import '../../node_modules/kanbasu/src/scss/components/list-stacked';
 @import '../../node_modules/kanbasu/src/scss/components/embed-responsive';
 @import '../../node_modules/kanbasu/src/scss/components/container';
+
+
+/**
+* Spinthatshit Loader
+*/
+@import '../../node_modules/spinthatshit/src/animations';
+@import '../../node_modules/spinthatshit/src/loaders/loader01';
 
 /**
 * Homebytwo Defaults

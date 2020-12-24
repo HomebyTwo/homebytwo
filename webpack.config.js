@@ -2,8 +2,7 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const SpriteLoaderPlugin = require('svg-sprite-loader/plugin');
-const browserslist = require('./package.json').browserslist;
-const VueLoaderPlugin = require('vue-loader/lib/plugin');
+const elmSource = path.resolve(__dirname, 'assets/elm');
 
 module.exports = {
   mode: process.env.NODE_ENV,
@@ -13,11 +12,7 @@ module.exports = {
       path.resolve(__dirname, 'assets'),
       'node_modules',
     ],
-    extensions: ['.js', '.vue'],
-    alias: {
-      vue$: 'vue/dist/vue.esm.js',
-    },
-
+    extensions: ['.js'],
   },
   entry: {
     main: path.resolve(__dirname, 'assets/javascripts/main.js'),
@@ -29,8 +24,22 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.vue$/,
-        loader: 'vue-loader',
+        test: /\.elm$/,
+        exclude: [/elm-stuff/, /node_modules/],
+        use: [
+          {
+            loader: 'elm-hot-webpack-loader',
+            options: {
+              cwd: elmSource
+            }
+          },
+          {
+            loader: 'elm-webpack-loader',
+            options: {
+              cwd: elmSource
+            }
+          }
+        ]
       },
       {
         test: /\.js$/,
@@ -96,8 +105,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: '[name].css',
     }),
-    new SpriteLoaderPlugin(),
-    new VueLoaderPlugin(),
+    new SpriteLoaderPlugin()
   ],
   devServer: {
     proxy: {

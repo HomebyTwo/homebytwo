@@ -16,7 +16,31 @@
   border-radius: 6px;
 }
 
-.placeIcon--default{
+.placeIcon--checkpoint {
   border-color: $mountain-red;
   background-color: $white;
+
+  &.selected {
+    border-color: $white;
+    background-color: $mountain-red;
+  }
+}
+
+
+.placeIcon--start {
+  border-color: $hiking-green;
+  background-color: $white;
+
+  &.selected {
+    background-color: $hiking-green;
+  }
+}
+
+.placeIcon--finish {
+  border-color: $mountain-red;
+  background-color: $white;
+
+  &.selected {
+    background-color: $mountain-red;
+  }
 }

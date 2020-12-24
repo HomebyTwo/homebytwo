@@ -13,14 +13,16 @@ from django.urls import resolve, reverse
 from django.utils.six import StringIO
 
 import pytest
+from jsonschema import validate
 from pandas import DataFrame
+from pytest import fixture
 from pytest_django.asserts import assertContains, assertRedirects
 
 from ...utils.factories import AthleteFactory
-from ...utils.tests import create_checkpoints_from_geom, create_route_with_checkpoints
+from ...utils.tests import create_route_with_checkpoints
 from ..fields import DataFrameField
 from ..forms import RouteForm
-from ..models import Route
+from ..models import Checkpoint, Route
 from ..templatetags.duration import base_round, display_timedelta, nice_repr
 from .factories import (
     ActivityFactory,
@@ -589,17 +591,19 @@ def test_view_route(athlete, client, settings):
     route.calculate_projected_time_schedule(athlete.user)
     url = route.get_absolute_url()
 
-    title_distance = f"{route.get_total_distance().km:.1f}"
-    title_elevation_gain = f"{route.get_total_elevation_gain().m:.0f}"
-    title_schedule = f"{nice_repr(route.get_total_duration(), 'hike')}"
+    title_distance = f"{route.get_total_distance().km:,.1f}"
+    title_elevation_gain = f"{route.get_total_elevation_gain().m:,.0f}"
 
-    button = '<a class="btn btn--secondary btn--block" href="{href}">{text}</a>'
-    edit_button = button.format(
-        href=route.get_absolute_url("edit"), text="Add/Remove Checkpoints"
-    )
+    button = '<a class="btn btn--{btn_class} btn--block" href="{href}">{text}</a>'
     update_button = button.format(
-        href=route.get_absolute_url("update"), text="Re-Import from Source"
+        btn_class="secondary", href=route.edit_url, text="Edit Route"
     )
+    delete_button = button.format(
+        btn_class="delete", href=route.delete_url, text="Delete Route"
+    )
+
+    elm_config = '<script id="checkpoints-config" type="application/json">'
+    elm_edit_url = route.schedule_url
 
     response = client.get(url)
     user = response.context["user"]
@@ -610,11 +614,10 @@ def test_view_route(athlete, client, settings):
     assertContains(response, route.name)
     assertContains(response, title_distance)
     assertContains(response, title_elevation_gain)
-    assertContains(response, title_schedule)
-    assertContains(response, route.start_place.name)
-    assertContains(response, route.end_place.name)
     assertContains(response, update_button, html=True)
-    assertContains(response, edit_button, html=True)
+    assertContains(response, delete_button, html=True)
+    assertContains(response, elm_config)
+    assertContains(response, elm_edit_url)
 
 
 def test_view_route_success_not_owner(athlete, client):
@@ -644,30 +647,6 @@ def test_view_route_success_not_logged_in(athlete, client):
     assertContains(response, route_name)
     assert edit_url not in response_content
     assert update_url not in response_content
-
-
-def test_view_route_success_no_start_place(athlete, client):
-    route = RouteFactory(start_place=None)
-    url = route.get_absolute_url()
-    route_name = route.name
-    end_place_name = route.end_place.name
-
-    response = client.get(url)
-
-    assertContains(response, route_name)
-    assertContains(response, end_place_name)
-
-
-def test_view_route_success_no_end_place(athlete, client):
-    route = RouteFactory(end_place=None)
-    url = route.get_absolute_url()
-    route_name = route.name
-    start_place_name = route.start_place.name
-
-    response = client.get(url)
-
-    assertContains(response, route_name)
-    assertContains(response, start_place_name)
 
 
 ####################
@@ -721,13 +700,13 @@ def test_post_route_remove_checkpoints(
     }
     checkpoints_data = [
         "_".join([str(checkpoint.place.id), str(checkpoint.line_location)])
-        for checkpoint in route.checkpoint_set.all()
+        for checkpoint in route.checkpoints.all()
     ]
     post_data["checkpoints"] = checkpoints_data[: number_of_checkpoints - 3]
     url = route.get_absolute_url("edit")
     client.post(url, post_data)
 
-    assert route.checkpoint_set.count(), number_of_checkpoints - 3
+    assert route.checkpoints.count(), number_of_checkpoints - 3
 
 
 def test_get_route_edit_not_owner(athlete, client):
@@ -862,30 +841,101 @@ def test_post_route_delete_not_owner(athlete, client):
 
 
 ################################
-# view routes:checkpoints_list #
+# view routes:schedule #
 ################################
 
 
-def test_get_checkpoints_list_empty(athlete, client):
+@fixture(scope="module")
+def route_schedule_schema(read_json_file):
+    return read_json_file("route_schedule.json")
+
+
+@fixture(scope="module")
+def route_start_schema(read_json_file):
+    return read_json_file("route_start.json")
+
+
+@fixture(scope="module")
+def route_finish_schema(read_json_file):
+    return read_json_file("route_finish.json")
+
+
+@fixture(scope="module")
+def route_checkpoints_schema(read_json_file):
+    return read_json_file("route_checkpoints.json")
+
+
+def test_get_route_schedule(athlete, client, route_schedule_schema):
+    number_of_checkpoints = 5
+    route = create_route_with_checkpoints(number_of_checkpoints, athlete=athlete)
+    response = client.get(route.schedule_url)
+    schedule = response.json()
+
+    assert response.status_code == 200
+    assert len(schedule["checkpoints"]) == number_of_checkpoints
+    validate(schedule, route_schedule_schema)
+
+
+def test_get_route_schedule_empty(athlete, client, route_schedule_schema):
+    route = RouteFactory(athlete=athlete, start_place=None, end_place=None)
+    url = route.schedule_url
+    response = client.get(url)
+    schedule = response.json()
+
+    assert response.status_code == 200
+    assert len(schedule["checkpoints"]) == 0
+    validate(schedule, route_schedule_schema)
+
+    assert schedule["start"][0]["name"] == "Unknown start place"
+    assert schedule["finish"][0]["name"] == "Unknown finish place"
+
+
+def test_get_route_schedule_one_checkpoint(athlete, client, route_schedule_schema):
+    route = RouteFactory()
+    route.calculate_projected_time_schedule(athlete.user)
+    place = PlaceFactory(geom=route.geom.interpolate_normalized(0.5))
+    Checkpoint.objects.get_or_create(place=place, route=route, line_location=0.5)
+
+    url = route.schedule_url
+    response = client.get(url)
+    schedule = response.json()
+
+    assert len(schedule["checkpoints"]) == 1
+    validate(schedule, route_schedule_schema)
+
+
+def test_get_start_places(athlete, client, route_start_schema):
     route = RouteFactory(athlete=athlete)
-    url = reverse("routes:checkpoints_list", args=[route.pk])
+    url = route.edit_start_url
     response = client.get(url)
-    assert response.status_code == 200
-    assert not response.json()["checkpoints"]
-
-
-def test_get_checkpoints_list(athlete, client, switzerland_mobility_data_from_json):
-    number_of_checkpoints = 20
-    geom = LineString([(x, 0) for x in range(number_of_checkpoints + 2)])
-    route = RouteFactory(athlete=athlete, start_place=None, end_place=None, geom=geom)
-
-    # checkpoints
-    create_checkpoints_from_geom(route.geom, number_of_checkpoints)
-    url = reverse("routes:checkpoints_list", args=[route.pk])
-    response = client.get(url)
+    start_places = response.json()
 
     assert response.status_code == 200
-    assert len(response.json()["checkpoints"]) == number_of_checkpoints
+    assert len(start_places["start"]) == 1
+    validate(start_places, route_start_schema)
+
+
+def test_get_start_places_no_start(athlete, client, route_start_schema):
+    route = RouteFactory(athlete=athlete, start_place=None)
+    url = route.edit_start_url
+    response = client.get(url)
+    start_places = response.json()
+
+    assert response.status_code == 200
+    assert len(start_places["start"]) == 1
+    validate(start_places, route_start_schema)
+    assert start_places["start"][0]["name"] == "Unknown start place"
+
+
+def test_get_end_place(athlete, client, route_end_schema):
+    route = RouteFactory(athlete=athlete)
+    url = route.edit_finish_url
+    response = client.get(url)
+    end_places = response.json()
+
+    assert response.status_code == 200
+    assert len(end_places["finish"]) == 1
+    validate(end_places, route_end_schema)
 
 
 #######################

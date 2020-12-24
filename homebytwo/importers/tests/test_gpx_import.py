@@ -80,7 +80,7 @@ def test_upload_gpx_view_empty(athlete, client, uploaded_file):
 def test_get_gpx_route_no_update_button(athlete, client):
     route = RouteFactory(data_source="homebytwo", athlete=athlete)
     response = client.get(route.get_absolute_url())
-    assertContains(response, route.edit_url)
+    assertContains(response, route.delete_url)
     assertNotContains(response, route.get_absolute_url("update"))
 
 
