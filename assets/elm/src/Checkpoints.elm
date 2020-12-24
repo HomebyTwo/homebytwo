@@ -39,38 +39,12 @@ init config =
             config.displayUrl
 
         cmd =
-            getSchedule url GotSchedule
+            getSchedule url
 
         model =
-            { config = config, status = LoadingSchedule }
+            { config = config, status = initialStatus }
     in
     ( model, cmd )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    clickedPlace (clickedPlaceMessage model)
-
-
-clickedPlaceMessage : Model -> { placeId : PlaceId, placeClass : String } -> Msg
-clickedPlaceMessage model { placeId, placeClass } =
-    case model.status of
-        DisplaySchedule schedule ->
-            case placeClass of
-                "start" ->
-                    PickedPlace (SelectList.selected schedule.start.data) placeId
-
-                "finish" ->
-                    PickedPlace (SelectList.selected schedule.finish.data) placeId
-
-                "checkpoint" ->
-                    ClickedCheckpoint placeId
-
-                _ ->
-                    Noop
-
-        _ ->
-            Noop
 
 
 
@@ -93,36 +67,27 @@ type alias Config =
     }
 
 
-type Status
-    = Failure String
-    | LoadingSchedule
-    | DisplaySchedule Schedule
-
-
-type alias Schedule =
+type alias Status =
     { checkpoints : CheckpointStatus
     , start : PlaceStatus
     , finish : PlaceStatus
     }
 
 
-type alias CheckpointStatus =
-    { status : EditStatus
-    , data : ( List Checkpoint, CheckpointSelection )
-    }
+type CheckpointStatus
+    = LoadingCheckpoints (List Checkpoint)
+    | DisplayCheckpoints (List Checkpoint)
+    | EditingCheckpoints (List Checkpoint) CheckpointSelection
+    | SavingCheckpoints (List Checkpoint)
+    | ErrorCheckpoints String
 
 
-type alias PlaceStatus =
-    { status : EditStatus
-    , data : SelectList Place
-    }
-
-
-type EditStatus
-    = Display
-    | Loading
-    | Editing
-    | Saving
+type PlaceStatus
+    = LoadingPlace (Maybe Place)
+    | DisplayPlace Place
+    | EditingPlace (SelectList Place)
+    | SavingPlace Place
+    | ErrorPlace String
 
 
 type alias CheckpointSelection =
@@ -179,10 +144,50 @@ type alias PlaceMarker =
     }
 
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    clickedPlace (clickedPlaceMessage model)
+
+
+clickedPlaceMessage : Model -> { placeId : PlaceId, placeClass : String } -> Msg
+clickedPlaceMessage model { placeId, placeClass } =
+    case placeClass of
+        "start" ->
+            case model.status.start of
+                EditingPlace placeList ->
+                    PickedPlace placeList placeId
+
+                _ ->
+                    Noop
+
+        "finish" ->
+            case model.status.finish of
+                EditingPlace placeList ->
+                    PickedPlace placeList placeId
+
+                _ ->
+                    Noop
+
+        "checkpoint" ->
+            case model.status.checkpoints of
+                EditingCheckpoints _ _ ->
+                    ClickedCheckpoint placeId
+
+                _ ->
+                    Noop
+
+        _ ->
+            Noop
+
+
 port updatePlaces : PlacesMsg -> Cmd msg
 
 
 port clickedPlace : ({ placeId : String, placeClass : String } -> msg) -> Sub msg
+
+
+
+-- UPDATE
 
 
 type Msg
@@ -197,99 +202,90 @@ type Msg
     | ClickedSelectAllCheckpoints
     | ClickedClearAllCheckpoints
     | ClickedSaveCheckpoints
-    | GotCheckpoints (Result Http.Error ( List Checkpoint, CheckpointSelection ))
+    | GotCheckpoints (Result Http.Error (List Checkpoint))
       -- Start and Finish
     | ClickedEditPlace Place
     | GotPossiblePlace Place (Result Http.Error (SelectList Place))
-    | PickedPlace Place String
-    | ClickedSavePlace Place
-    | GotPlace Place (Result Http.Error (SelectList Place))
+    | PickedPlace (SelectList Place) String
+    | ClickedSavePlace (SelectList Place)
+    | GotPlace Place (Result Http.Error Place)
 
 
-
--- UPDATE
+initialStatus =
+    { checkpoints = LoadingCheckpoints []
+    , start = LoadingPlace Nothing
+    , finish = LoadingPlace Nothing
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ config, status } as model) =
     case msg of
         Noop ->
             ( model, Cmd.none )
 
         ClickedRetry ->
-            ( { model | status = LoadingSchedule }, getSchedule model.config.displayUrl GotSchedule )
+            ( { model | status = initialStatus }, getSchedule model.config.displayUrl )
 
         GotSchedule (Ok scheduleData) ->
             let
-                schedule =
-                    { checkpoints =
-                        { status = Display
-                        , data = scheduleData.checkpointData
-                        }
-                    , start =
-                        { status = Display
-                        , data = scheduleData.startData
-                        }
-                    , finish =
-                        { status = Display
-                        , data = scheduleData.finishData
-                        }
+                updatedStatus =
+                    { checkpoints = DisplayCheckpoints scheduleData.checkpointData
+                    , start = DisplayPlace scheduleData.startData
+                    , finish = DisplayPlace scheduleData.finishData
                     }
 
                 placeMarkers =
-                    placeMarkersFromSchedule schedule
+                    placeMarkersFromStatus updatedStatus
 
                 updatePlacesCmd =
                     updatePlaces { places = placeMarkers }
             in
-            ( { model | status = DisplaySchedule schedule }, updatePlacesCmd )
+            ( { model | status = updatedStatus }, updatePlacesCmd )
 
         GotSchedule (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+            let
+                updatedStatus =
+                    { checkpoints = ErrorCheckpoints <| errorToString error
+                    , start = ErrorPlace <| errorToString error
+                    , finish = ErrorPlace <| errorToString error
+                    }
+            in
+            ( { model | status = updatedStatus }, Cmd.none )
 
         ClickedEditCheckpoints ->
-            case model.status of
-                DisplaySchedule schedule ->
+            case status.checkpoints of
+                DisplayCheckpoints checkpoints ->
                     let
-                        updatedSchedule =
-                            { schedule
-                                | checkpoints =
-                                    { status = Loading
-                                    , data = schedule.checkpoints.data
-                                    }
-                            }
+                        updatedCheckpoints =
+                            LoadingCheckpoints checkpoints
+
+                        updatedStatus =
+                            { status | checkpoints = updatedCheckpoints }
                     in
-                    ( { model
-                        | status = DisplaySchedule updatedSchedule
-                      }
+                    ( { model | status = updatedStatus }
                     , getCheckpoints model.config.checkpointUrl
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        GotPossibleCheckpoints (Ok data) ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        updatedSchedule =
-                            { schedule | checkpoints = { status = Editing, data = data } }
+        GotPossibleCheckpoints (Ok ( checkpoints, selection )) ->
+            let
+                updatedStatus =
+                    { status | checkpoints = EditingCheckpoints checkpoints selection }
 
-                        status =
-                            DisplaySchedule updatedSchedule
-
-                        placeMarkers =
-                            placeMarkersFromSchedule updatedSchedule
-                    in
-                    ( { model | status = status }
-                    , updatePlaces <| PlacesMsg placeMarkers
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
+            in
+            ( { model | status = updatedStatus }, updatePlaces <| PlacesMsg placeMarkers )
 
         GotPossibleCheckpoints (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+            let
+                updatedStatus =
+                    { status | checkpoints = ErrorCheckpoints <| errorToString error }
+            in
+            ( { model | status = updatedStatus }, Cmd.none )
 
         ClickedCheckpoint placeId ->
             let
@@ -322,241 +318,182 @@ update msg model =
             updateCheckpointSelection updateSelectionFunction model
 
         ClickedSaveCheckpoints ->
-            case model.status of
-                DisplaySchedule ({ checkpoints, start, finish } as schedule) ->
+            case status.checkpoints of
+                EditingCheckpoints checkpoints selection ->
                     let
                         updatedCheckpoints =
-                            { checkpoints | status = Saving }
+                            checkpoints
+                                |> List.filter (isSelected selection)
 
-                        updatedSchedule =
-                            { schedule | checkpoints = updatedCheckpoints }
+                        updatedStatus =
+                            { status | checkpoints = SavingCheckpoints updatedCheckpoints }
 
-                        ( _, selection ) =
-                            checkpoints.data
+                        postCmd =
+                            postCheckpoints config.checkpointUrl config.csrfToken selection
                     in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , postCheckpoints model.config.checkpointUrl model.config.csrfToken selection
+                    ( { model | status = updatedStatus }
+                    , postCmd
                     )
 
                 _ ->
                     ( model, Cmd.none )
 
-        GotCheckpoints (Ok data) ->
-            case model.status of
-                DisplaySchedule ({ checkpoints, start, finish } as schedule) ->
-                    let
-                        updatedCheckpoints =
-                            { status = Display, data = data }
+        GotCheckpoints (Ok checkpoints) ->
+            let
+                updatedStatus =
+                    { status | checkpoints = DisplayCheckpoints checkpoints }
 
-                        updatedSchedule =
-                            { schedule | checkpoints = updatedCheckpoints }
-
-                        placeMarkers =
-                            placeMarkersFromSchedule updatedSchedule
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , updatePlaces <| PlacesMsg placeMarkers
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
+            in
+            ( { model | status = updatedStatus }, updatePlaces <| PlacesMsg placeMarkers )
 
         GotCheckpoints (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+            let
+                updatedStatus =
+                    { status | checkpoints = ErrorCheckpoints <| errorToString error }
+            in
+            ( { model | status = updatedStatus }, Cmd.none )
 
         ClickedEditPlace place ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        ( placeStatus, url ) =
-                            case place of
-                                Start _ ->
-                                    ( schedule.start, model.config.startUrl )
+            let
+                ( updatedStatus, url ) =
+                    case place of
+                        Start _ ->
+                            ( { status | start = LoadingPlace (Just place) }
+                            , model.config.startUrl
+                            )
 
-                                Finish _ ->
-                                    ( schedule.finish, model.config.finishUrl )
-
-                        updatedPlaceStatus =
-                            { placeStatus | status = Loading }
-
-                        updatedSchedule =
-                            case place of
-                                Start _ ->
-                                    { schedule | start = updatedPlaceStatus }
-
-                                Finish _ ->
-                                    { schedule | finish = updatedPlaceStatus }
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , getPlace place url
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+                        Finish _ ->
+                            ( { status | finish = LoadingPlace (Just place) }
+                            , model.config.finishUrl
+                            )
+            in
+            ( { model | status = updatedStatus }, getPlace place url )
 
         GotPossiblePlace place (Ok placeList) ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        updatedStatus =
-                            { status = Editing, data = placeList }
+            let
+                updatedStatus =
+                    case place of
+                        Start _ ->
+                            { status | start = EditingPlace placeList }
 
-                        updatedSchedule =
-                            case place of
-                                Start _ ->
-                                    { schedule | start = updatedStatus }
+                        Finish _ ->
+                            { status | finish = EditingPlace placeList }
 
-                                Finish _ ->
-                                    { schedule | finish = updatedStatus }
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
+            in
+            ( { model | status = updatedStatus }, updatePlaces <| PlacesMsg placeMarkers )
 
-                        placeMarkers =
-                            placeMarkersFromSchedule updatedSchedule
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , updatePlaces <| PlacesMsg placeMarkers
-                    )
+        GotPossiblePlace place (Err error) ->
+            let
+                updatedStatus =
+                    case place of
+                        Start _ ->
+                            { status | start = ErrorPlace <| errorToString error }
 
-                _ ->
-                    ( model, Cmd.none )
+                        Finish _ ->
+                            { status | finish = ErrorPlace <| errorToString error }
+            in
+            ( { model | status = updatedStatus }, Cmd.none )
 
-        GotPossiblePlace _ (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+        PickedPlace placeList index ->
+            let
+                oldIndex =
+                    SelectList.index placeList
 
-        PickedPlace place index ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        old_place_list =
-                            case place of
-                                Start _ ->
-                                    schedule.start.data
+                newIndex =
+                    Maybe.withDefault oldIndex (String.toInt index)
 
-                                Finish _ ->
-                                    schedule.finish.data
+                updatedPlaceList =
+                    SelectList.selectedMap (\_ list -> list) placeList
+                        |> List.drop newIndex
+                        |> List.head
+                        |> Maybe.withDefault placeList
 
-                        old_index =
-                            SelectList.index old_place_list
+                updatedStatus =
+                    case SelectList.selected placeList of
+                        Start _ ->
+                            { status | start = EditingPlace updatedPlaceList }
 
-                        new_index =
-                            Maybe.withDefault old_index (String.toInt index)
+                        Finish _ ->
+                            { status | finish = EditingPlace updatedPlaceList }
 
-                        data =
-                            SelectList.selectedMap (\_ list -> list) old_place_list
-                                |> List.drop new_index
-                                |> List.head
-                                |> Maybe.withDefault old_place_list
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
+            in
+            ( { model | status = updatedStatus }, updatePlaces <| PlacesMsg placeMarkers )
 
-                        updatedStatus =
-                            { status = Editing, data = data }
+        ClickedSavePlace placeList ->
+            let
+                place =
+                    SelectList.selected placeList
 
-                        updatedSchedule =
-                            case place of
-                                Start _ ->
-                                    { schedule | start = updatedStatus }
+                placeId =
+                    place |> placeInfoFromPlace |> .placeId
 
-                                Finish _ ->
-                                    { schedule | finish = updatedStatus }
+                ( updatedStatus, url ) =
+                    case place of
+                        Start _ ->
+                            ( { status | start = SavingPlace place }, model.config.startUrl )
 
-                        placeMarkers =
-                            placeMarkersFromSchedule updatedSchedule
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , updatePlaces <| PlacesMsg placeMarkers
-                    )
+                        Finish _ ->
+                            ( { status | finish = SavingPlace place }, model.config.finishUrl )
+            in
+            ( { model | status = updatedStatus }
+            , postPlace place url model.config.csrfToken placeId
+            )
 
-                _ ->
-                    ( model, Cmd.none )
+        GotPlace _ (Ok place) ->
+            let
+                updatedStatus =
+                    case place of
+                        Start _ ->
+                            { status | start = DisplayPlace place }
 
-        ClickedSavePlace place ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        ( data, url ) =
-                            case place of
-                                Start _ ->
-                                    ( schedule.start.data, model.config.startUrl )
+                        Finish _ ->
+                            { status | finish = DisplayPlace place }
 
-                                Finish _ ->
-                                    ( schedule.finish.data, model.config.finishUrl )
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
+            in
+            ( { model | status = updatedStatus }, updatePlaces <| PlacesMsg placeMarkers )
 
-                        updatedStatus =
-                            { data = data, status = Saving }
+        GotPlace place (Err error) ->
+            let
+                updatedStatus =
+                    case place of
+                        Start _ ->
+                            { status | start = ErrorPlace <| errorToString error }
 
-                        updatedSchedule =
-                            case place of
-                                Start _ ->
-                                    { schedule | start = updatedStatus }
-
-                                Finish _ ->
-                                    { schedule | finish = updatedStatus }
-
-                        placeId =
-                            SelectList.selected data
-                                |> placeInfoFromPlace
-                                |> .placeId
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }
-                    , postPlace place url model.config.csrfToken placeId
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        GotPlace place (Ok data) ->
-            case model.status of
-                DisplaySchedule schedule ->
-                    let
-                        updatedStatus =
-                            { status = Display, data = data }
-
-                        updatedSchedule =
-                            case place of
-                                Start _ ->
-                                    { schedule | start = updatedStatus }
-
-                                Finish _ ->
-                                    { schedule | finish = updatedStatus }
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        GotPlace _ (Err error) ->
-            ( { model | status = Failure (errorToString error) }, Cmd.none )
+                        Finish _ ->
+                            { status | start = ErrorPlace <| errorToString error }
+            in
+            ( { model | status = updatedStatus }, Cmd.none )
 
 
 updateCheckpointSelection : (List Checkpoint -> CheckpointSelection -> CheckpointSelection) -> Model -> ( Model, Cmd Msg )
 updateCheckpointSelection updateSelectionFunction model =
-    case model.status of
-        DisplaySchedule schedule ->
-            case schedule.checkpoints.status of
-                Editing ->
-                    let
-                        ( checkpoints, selection ) =
-                            schedule.checkpoints.data
+    case model.status.checkpoints of
+        EditingCheckpoints checkpoints selection ->
+            let
+                status =
+                    model.status
 
-                        updatedSelection =
-                            updateSelectionFunction checkpoints selection
+                updatedSelection =
+                    updateSelectionFunction checkpoints selection
 
-                        updatedSchedule =
-                            { schedule
-                                | checkpoints =
-                                    { status = Editing
-                                    , data = ( checkpoints, updatedSelection )
-                                    }
-                            }
+                updatedStatus =
+                    { status | checkpoints = EditingCheckpoints checkpoints updatedSelection }
 
-                        placeMarkers =
-                            placeMarkersFromSchedule updatedSchedule
+                placeMarkers =
+                    placeMarkersFromStatus updatedStatus
 
-                        updatePlacesCmd =
-                            updatePlaces { places = placeMarkers }
-                    in
-                    ( { model | status = DisplaySchedule updatedSchedule }, updatePlacesCmd )
-
-                _ ->
-                    ( model, Cmd.none )
+                updatePlacesCmd =
+                    updatePlaces <| PlacesMsg placeMarkers
+            in
+            ( { model | status = updatedStatus }, updatePlacesCmd )
 
         _ ->
             ( model, Cmd.none )
@@ -583,31 +520,35 @@ placeInfoFromPlace place =
 
 
 
--- Place Markers for Leaflet
+-- PLACE MARKERS FOR LEAFLET
 
 
-placeMarkersFromSchedule : Schedule -> List PlaceMarker
-placeMarkersFromSchedule { checkpoints, start, finish } =
+placeMarkersFromStatus : Status -> List PlaceMarker
+placeMarkersFromStatus { checkpoints, start, finish } =
     placeMarkersFromCheckpoints checkpoints
         ++ placeMarkersFromPlace start
         ++ placeMarkersFromPlace finish
 
 
-placeMarkersFromCheckpoints : CheckpointStatus -> List PlaceMarker
-placeMarkersFromCheckpoints { status, data } =
-    let
-        ( checkpoints, selection ) =
-            data
 
-        areSelected =
-            List.map (isSelected selection) checkpoints
-    in
-    case status of
-        Editing ->
+--
+
+
+placeMarkersFromCheckpoints : CheckpointStatus -> List PlaceMarker
+placeMarkersFromCheckpoints checkpointStatus =
+    case checkpointStatus of
+        EditingCheckpoints checkpoints selection ->
+            let
+                areSelected =
+                    List.map (isSelected selection) checkpoints
+            in
             List.map2 (placeMarkerFromCheckpoint True) areSelected checkpoints
 
+        DisplayCheckpoints checkpoints ->
+            List.map (placeMarkerFromCheckpoint False True) checkpoints
+
         _ ->
-            List.map2 (placeMarkerFromCheckpoint False) areSelected checkpoints
+            []
 
 
 placeMarkerFromCheckpoint : Bool -> Bool -> Checkpoint -> PlaceMarker
@@ -615,13 +556,36 @@ placeMarkerFromCheckpoint edit selected (Checkpoint checkpointInfo) =
     placeMarkerFromPlaceInfo "checkpoint" selected edit checkpointInfo.placeId checkpointInfo
 
 
+
+-- Place
+
+
 placeMarkersFromPlace : PlaceStatus -> List PlaceMarker
-placeMarkersFromPlace { status, data } =
-    SelectList.selectedMap (placeMarkerMap status) data
+placeMarkersFromPlace placeStatus =
+    case placeStatus of
+        EditingPlace selectList ->
+            SelectList.selectedMap placeMarkerFromSelectedMap selectList
+
+        DisplayPlace place ->
+            [ placeMarkerFromPlace place ]
+
+        LoadingPlace maybePlace ->
+            case maybePlace of
+                Just place ->
+                    [ placeMarkerFromPlace place ]
+
+                Nothing ->
+                    []
+
+        SavingPlace place ->
+            [ placeMarkerFromPlace place ]
+
+        ErrorPlace _ ->
+            []
 
 
-placeMarkerMap : EditStatus -> Position -> SelectList Place -> PlaceMarker
-placeMarkerMap status position selectList =
+placeMarkerFromSelectedMap : Position -> SelectList Place -> PlaceMarker
+placeMarkerFromSelectedMap position selectList =
     let
         place =
             SelectList.selected selectList
@@ -631,21 +595,23 @@ placeMarkerMap status position selectList =
 
         index =
             SelectList.index selectList
-
-        edit =
-            case status of
-                Editing ->
-                    True
-
-                _ ->
-                    False
     in
     case place of
         Start info ->
-            placeMarkerFromPlaceInfo "start" selected edit (String.fromInt index) info
+            placeMarkerFromPlaceInfo "start" selected True (String.fromInt index) info
 
         Finish info ->
-            placeMarkerFromPlaceInfo "finish" selected edit (String.fromInt index) info
+            placeMarkerFromPlaceInfo "finish" selected True (String.fromInt index) info
+
+
+placeMarkerFromPlace : Place -> PlaceMarker
+placeMarkerFromPlace place =
+    case place of
+        Start info ->
+            placeMarkerFromPlaceInfo "start" True False info.placeId info
+
+        Finish info ->
+            placeMarkerFromPlaceInfo "finish" True False info.placeId info
 
 
 placeMarkerFromPlaceInfo : String -> Bool -> Bool -> PlaceId -> PlaceInfo -> PlaceMarker
@@ -667,32 +633,18 @@ placeMarkerFromPlaceInfo placeClass selected edit placeId placeInfo =
 
 view : Model -> Html Msg
 view model =
+    let
+        { config, status } =
+            model
+    in
     div [ class "checkpoints mrgv-" ] <|
-        case model.status of
-            LoadingSchedule ->
-                [ text "Loading route schedule..." ]
-
-            DisplaySchedule { start, checkpoints, finish } ->
-                let
-                    canEdit =
-                        model.config.canEdit
-                in
-                [ div [ class "schedule" ]
-                    [ viewPlace canEdit start
-                    , viewCheckpoints checkpoints
-                    , viewPlace canEdit finish
-                    , viewCheckpointEditButton canEdit checkpoints.status
-                    ]
-                ]
-
-            Failure error ->
-                [ text error
-                , button
-                    [ class "btn btn--secondary btn--block"
-                    , onClick ClickedRetry
-                    ]
-                    [ text (messageToButtonText ClickedRetry) ]
-                ]
+        [ div [ class "schedule" ]
+            [ viewPlace config.canEdit status.start
+            , viewCheckpoints status.checkpoints
+            , viewPlace config.canEdit status.finish
+            , viewCheckpointEditButton config.canEdit status.checkpoints
+            ]
+        ]
 
 
 
@@ -700,25 +652,38 @@ view model =
 
 
 viewCheckpoints : CheckpointStatus -> Html Msg
-viewCheckpoints { status, data } =
+viewCheckpoints status =
     case status of
-        Editing ->
-            viewEditCheckpoints data
+        EditingCheckpoints checkpoints selection ->
+            viewEditCheckpoints checkpoints selection
 
-        _ ->
-            viewDisplayCheckpoints data
+        DisplayCheckpoints checkpoints ->
+            viewDisplayCheckpoints checkpoints
+
+        LoadingCheckpoints checkpoints ->
+            case checkpoints of
+                [] ->
+                    div [ class "box" ] [ div [ class "loader pull-left mrgr--" ] [], text "Loading checkpoints.." ]
+
+                _ ->
+                    viewDisplayCheckpoints checkpoints
+
+        SavingCheckpoints checkpoints ->
+            viewDisplayCheckpoints checkpoints
+
+        ErrorCheckpoints error ->
+            text error
 
 
-viewDisplayCheckpoints : ( List Checkpoint, CheckpointSelection ) -> Html Msg
-viewDisplayCheckpoints ( checkpoints, selection ) =
+viewDisplayCheckpoints : List Checkpoint -> Html Msg
+viewDisplayCheckpoints checkpoints =
     case checkpoints of
         [] ->
             div [ class "box box--default box--tight mrgv- pdg- place" ]
                 [ text "No checkpoint has been added to this route. With checkpoints, you can track your progress during your run." ]
 
         _ ->
-            List.filter (isSelected selection) checkpoints
-                |> List.map placeInfoFromCheckpoint
+            List.map placeInfoFromCheckpoint checkpoints
                 |> List.map viewDisplayCheckpoint
                 |> ul [ class "list list--stacked" ]
 
@@ -729,8 +694,8 @@ viewDisplayCheckpoint checkpointInfo =
         [ viewCheckpointInfo checkpointInfo ]
 
 
-viewEditCheckpoints : ( List Checkpoint, CheckpointSelection ) -> Html Msg
-viewEditCheckpoints ( checkpoints, selection ) =
+viewEditCheckpoints : List Checkpoint -> CheckpointSelection -> Html Msg
+viewEditCheckpoints checkpoints selection =
     case checkpoints of
         [] ->
             div [ class "box box--default box--tight mrgv- pdg- place" ]
@@ -804,56 +769,98 @@ viewCheckpointPlaceName name altitude =
 
 
 viewPlace : Bool -> PlaceStatus -> Html Msg
-viewPlace canEdit { status, data } =
+viewPlace canEdit placeStatus =
     let
-        place =
-            SelectList.selected data
+        button =
+            viewPlaceEditButton canEdit placeStatus
+    in
+    case placeStatus of
+        EditingPlace placeList ->
+            viewEditPlace button placeList
 
+        LoadingPlace maybePlace ->
+            case maybePlace of
+                Just place ->
+                    viewDisplayPlace button place
+
+                Nothing ->
+                    div [ class "box" ] [ div [ class "loader pull-left mrgr--" ] [], text "Loading place.." ]
+
+        DisplayPlace place ->
+            viewDisplayPlace button place
+
+        SavingPlace place ->
+            viewDisplayPlace button place
+
+        ErrorPlace error ->
+            text error
+
+
+viewDisplayPlace : Html Msg -> Place -> Html Msg
+viewDisplayPlace button place =
+    let
         placeInfo =
             placeInfoFromPlace place
-
-        title =
-            case place of
-                Start _ ->
-                    "Start"
-
-                Finish _ ->
-                    "Finish"
-
-        placeName =
-            case status of
-                Editing ->
-                    div
-                        [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
-                        [ div [ class "media media--small" ]
-                            [ div [ class "media__body" ]
-                                [ select
-                                    [ class "field field--small", onInput (PickedPlace place) ]
-                                    (SelectList.selectedMap selectOption data)
-                                ]
-                            , div [ class "media__right" ]
-                                [ viewPlaceEditButton canEdit status place
-                                ]
-                            ]
-                        ]
-
-                _ ->
-                    div
-                        [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
-                        [ text (placeNameText placeInfo.name placeInfo.altitude)
-                        , span [ class "pdgl" ]
-                            [ viewPlaceEditButton canEdit status place
-                            ]
-                        ]
     in
     div
         [ class "box box--tight box--default mrgv- pdg- place" ]
-        [ h3 [ class "mrgv0" ] [ text title ]
+        [ h3 [ class "mrgv0" ] [ text <| titleFromPlace place ]
         , div [ class "grid grid--tight" ]
-            [ placeName
+            [ viewDisplayPlaceName button place
             , viewPlaceSchedule placeInfo.schedule
             , viewPlaceType placeInfo.placeType
             , viewPlaceElevationAndDistance placeInfo.distance placeInfo.elevationGain placeInfo.elevationLoss
+            ]
+        ]
+
+
+viewDisplayPlaceName : Html Msg -> Place -> Html Msg
+viewDisplayPlaceName button place =
+    let
+        placeInfo =
+            placeInfoFromPlace place
+    in
+    div
+        [ class "w-2/3 sm-w-4/5 grid__item place__name" ]
+        [ text (placeNameText placeInfo.name placeInfo.altitude)
+        , span [ class "pdgl" ] [ button ]
+        ]
+
+
+viewEditPlace : Html Msg -> SelectList Place -> Html Msg
+viewEditPlace button placeList =
+    let
+        place =
+            SelectList.selected placeList
+
+        placeInfo =
+            placeInfoFromPlace place
+    in
+    div
+        [ class "box box--tight box--default mrgv- pdg- place" ]
+        [ h3 [ class "mrgv0" ] [ text <| titleFromPlace place ]
+        , div [ class "grid grid--tight" ]
+            [ viewEditPlaceName button placeList
+            , viewPlaceSchedule placeInfo.schedule
+            , viewPlaceType placeInfo.placeType
+            , viewPlaceElevationAndDistance placeInfo.distance placeInfo.elevationGain placeInfo.elevationLoss
+            ]
+        ]
+
+
+viewEditPlaceName : Html Msg -> SelectList Place -> Html Msg
+viewEditPlaceName button placeList =
+    div
+        [ class "w-2/3 sm-w-4/5 grid__item" ]
+        [ div [ class "media media--small" ]
+            [ div [ class "media__body" ]
+                [ select
+                    [ class "field field--small", onInput (PickedPlace placeList) ]
+                    (SelectList.selectedMap selectOption placeList)
+                ]
+            , div [ class "media__right" ]
+                [ button
+                ]
             ]
         ]
 
@@ -868,11 +875,21 @@ selectOption position placeList =
             position == Selected
 
         placeInfo =
-            placeInfoFromPlace <| SelectList.selected placeList
+            SelectList.selected placeList |> placeInfoFromPlace
     in
     option
         [ value index, selected isChecked ]
         [ text (placeNameText placeInfo.name placeInfo.altitude) ]
+
+
+titleFromPlace : Place -> String
+titleFromPlace place =
+    case place of
+        Start _ ->
+            "Start"
+
+        Finish _ ->
+            "Finish"
 
 
 
@@ -912,41 +929,44 @@ viewPlaceElevationAndDistance distance elevationGain elevationLoss =
 -- Buttons
 
 
-viewPlaceEditButton : Bool -> EditStatus -> Place -> Html Msg
-viewPlaceEditButton canEdit placeStatus place =
+viewPlaceEditButton : Bool -> PlaceStatus -> Html Msg
+viewPlaceEditButton canEdit placeStatus =
     if canEdit then
         case placeStatus of
-            Display ->
+            DisplayPlace place ->
                 button [ class "btn btn--secondary btn--small", onClick (ClickedEditPlace place) ]
                     [ text "Edit" ]
 
-            Loading ->
+            LoadingPlace _ ->
                 div [ class "loader" ] []
 
-            Editing ->
-                button [ class "btn btn--primary btn--small", onClick (ClickedSavePlace place) ]
+            EditingPlace placeList ->
+                button [ class "btn btn--primary btn--small", onClick (ClickedSavePlace placeList) ]
                     [ text "Save" ]
 
-            Saving ->
+            SavingPlace _ ->
                 div [ class "loader" ] []
+
+            ErrorPlace _ ->
+                text ""
 
     else
         text ""
 
 
-viewCheckpointEditButton : Bool -> EditStatus -> Html Msg
-viewCheckpointEditButton canEdit checkpointStatus =
+viewCheckpointEditButton : Bool -> CheckpointStatus -> Html Msg
+viewCheckpointEditButton canEdit status =
     if canEdit then
-        case checkpointStatus of
-            Display ->
-                button
+        case status of
+            DisplayCheckpoints _ ->
+                a
                     [ class "btn btn--primary btn--block"
                     , onClick ClickedEditCheckpoints
                     ]
                     [ text (messageToButtonText ClickedEditCheckpoints) ]
 
-            Loading ->
-                button
+            LoadingCheckpoints _ ->
+                a
                     [ class "btn btn--primary btn--block btn--disabled"
                     ]
                     [ div [ class "inline-flex align-items-center" ]
@@ -955,15 +975,15 @@ viewCheckpointEditButton canEdit checkpointStatus =
                         ]
                     ]
 
-            Editing ->
-                button
+            EditingCheckpoints _ _ ->
+                a
                     [ class "btn btn--primary btn--block"
                     , onClick ClickedSaveCheckpoints
                     ]
                     [ text (messageToButtonText ClickedSaveCheckpoints) ]
 
-            Saving ->
-                button
+            SavingCheckpoints _ ->
+                a
                     [ class "btn btn--primary btn--block btn--disabled"
                     ]
                     [ div [ class "inline-flex align-items-center" ]
@@ -971,6 +991,9 @@ viewCheckpointEditButton canEdit checkpointStatus =
                         , div [ class "pdgl--" ] [ text "Saving Checkpoints..." ]
                         ]
                     ]
+
+            ErrorCheckpoints _ ->
+                text ""
 
     else
         text ""
@@ -1033,18 +1056,18 @@ messageToButtonText message =
 
 
 type alias ScheduleData =
-    { checkpointData : ( List Checkpoint, Set PlaceId )
-    , startData : SelectList Place
-    , finishData : SelectList Place
+    { checkpointData : List Checkpoint
+    , startData : Place
+    , finishData : Place
     }
 
 
 scheduleDecoder : Decoder ScheduleData
 scheduleDecoder =
     Decode.succeed ScheduleData
-        |> custom checkpointDataDecoder
-        |> custom startDataDecoder
-        |> custom finishDataDecoder
+        |> custom checkpointsDecoder
+        |> custom startPlaceDecoder
+        |> custom finishPlaceDecoder
 
 
 
@@ -1056,7 +1079,6 @@ checkpointDataDecoder =
     Decode.map2 Tuple.pair
         checkpointsDecoder
         checkpointSelectionDecoder
-        |> Decode.field "checkpoints"
 
 
 checkpointSelectionDecoder : Decoder (Set PlaceId)
@@ -1066,6 +1088,7 @@ checkpointSelectionDecoder =
         (Decode.field "place_id" Decode.string)
         |> Decode.list
         |> Decode.map filteredCheckpointSelection
+        |> Decode.field "checkpoints"
 
 
 filteredCheckpointSelection : List ( Bool, PlaceId ) -> Set PlaceId
@@ -1081,6 +1104,7 @@ checkpointsDecoder =
         |> Decode.map placeInfoFromPlaceJson
         |> Decode.map Checkpoint
         |> Decode.list
+        |> Decode.field "checkpoints"
 
 
 
@@ -1096,6 +1120,17 @@ startDataDecoder =
         |> Decode.field "start"
 
 
+startPlaceDecoder : Decoder Place
+startPlaceDecoder =
+    placeJsonDecoder
+        |> Decode.map placeInfoFromPlaceJson
+        |> Decode.map Start
+        |> Decode.list
+        |> Decode.map List.head
+        |> Decode.andThen failOnEmptyList
+        |> Decode.field "start"
+
+
 
 -- Finish
 
@@ -1106,6 +1141,17 @@ finishDataDecoder =
         |> Decode.list
         |> Decode.andThen toSelectList
         |> Decode.map (SelectList.map Finish)
+        |> Decode.field "finish"
+
+
+finishPlaceDecoder : Decoder Place
+finishPlaceDecoder =
+    placeJsonDecoder
+        |> Decode.map placeInfoFromPlaceJson
+        |> Decode.map Finish
+        |> Decode.list
+        |> Decode.map List.head
+        |> Decode.andThen failOnEmptyList
         |> Decode.field "finish"
 
 
@@ -1131,6 +1177,16 @@ toSelectList placeJsonList =
 
         _ ->
             Decode.fail "List of places must contain exactly one saved place."
+
+
+failOnEmptyList : Maybe Place -> Decoder Place
+failOnEmptyList maybePlace =
+    case maybePlace of
+        Just place ->
+            Decode.succeed place
+
+        Nothing ->
+            Decode.fail "place list cannot be empty."
 
 
 type alias PlaceJson =
@@ -1196,11 +1252,11 @@ checkpointSelectionEncoder selection =
 -- HTTP
 
 
-getSchedule : String -> (Result Error ScheduleData -> Msg) -> Cmd Msg
-getSchedule url msg =
+getSchedule : String -> Cmd Msg
+getSchedule url =
     Http.get
         { url = url
-        , expect = Http.expectJson msg scheduleDecoder
+        , expect = Http.expectJson GotSchedule scheduleDecoder
         }
 
 
@@ -1223,7 +1279,7 @@ postCheckpoints url csrfToken selection =
         , headers = [ Http.header "X-CSRFToken" csrfToken ]
         , url = url
         , body = Http.jsonBody body
-        , expect = Http.expectJson GotCheckpoints checkpointDataDecoder
+        , expect = Http.expectJson GotCheckpoints checkpointsDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -1252,10 +1308,14 @@ postPlace place url csrfToken placeId =
         ( body, decoder ) =
             case place of
                 Start _ ->
-                    ( Encode.object [ ( "start", Encode.string placeId ) ], startDataDecoder )
+                    ( Encode.object [ ( "start", Encode.string placeId ) ]
+                    , startPlaceDecoder
+                    )
 
                 Finish _ ->
-                    ( Encode.object [ ( "finish", Encode.string placeId ) ], finishDataDecoder )
+                    ( Encode.object [ ( "finish", Encode.string placeId ) ]
+                    , finishPlaceDecoder
+                    )
     in
     Http.request
         { method = "POST"
